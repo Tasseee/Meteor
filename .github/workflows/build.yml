@@ -3,13 +3,9 @@ name: Nightfall Build
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [main, master]
   pull_request:
-    branches:
-      - main
-      - master
+    branches: [main, master]
   workflow_dispatch:
 
 permissions:
@@ -32,12 +28,16 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
 
-      - name: Grant execute permission
-        run: chmod +x gradlew
+      - name: Verify project files
+        run: |
+          ls -la
+          test -f build.gradle || test -f build.gradle.kts
 
       - name: Build Nightfall
-        run: ./gradlew build --no-daemon
+        run: gradle build --no-daemon
 
       - name: Upload build artifacts
         if: success()
