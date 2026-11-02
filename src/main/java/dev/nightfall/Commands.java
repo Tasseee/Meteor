@@ -1,0 +1,236 @@
+package dev.nightfall;
+
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import dev.nightfall.config.Config;
+import dev.nightfall.module.ModuleManager;
+import dev.nightfall.modules.AutoTpa;
+import dev.nightfall.modules.AutoText;
+import dev.nightfall.modules.BaseFinder;
+import dev.nightfall.modules.TrapperBot;
+import dev.nightfall.modules.FakeBases;
+import dev.nightfall.modules.StaffWatch;
+import dev.nightfall.modules.SchematicBuilder;
+import dev.nightfall.module.setting.ListSetting;
+import dev.nightfall.scanner.Waypoint;
+import dev.nightfall.scanner.WaypointManager;
+import dev.nightfall.util.Storage;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.text.Text;
+import java.util.List;
+
+import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
+import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
+
+/** /nf wp | /nf tpa | /nf profile | /nf scan */
+public final class Commands {
+    private Commands() {}
+
+    private static int say(com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c, String s) {
+        c.getSource().sendFeedback(Text.literal("[Nightfall] " + s));
+        return 1;
+    }
+
+    private static String str(com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c, String n) {
+        return StringArgumentType.getString(c, n);
+    }
+
+    public static void register(CommandDispatcher<FabricClientCommandSource> d) {
+        LiteralArgumentBuilder<FabricClientCommandSource> root = literal("nf");
+
+        // ---- Waypoints ----
+        root.then(literal("wp")
+                .then(literal("add")
+                        .then(argument("name", StringArgumentType.word())
+                                .executes(c -> addWp(c, str(c, "name"), "Default"))
+                                .then(argument("category", StringArgumentType.word())
+                                        .executes(c -> addWp(c, str(c, "name"), str(c, "category"))))))
+                .then(literal("del")
+                        .then(argument("name", StringArgumentType.word())
+                                .executes(c -> say(c, WaypointManager.remove(str(c, "name")) ? "Waypoint geloescht" : "Nicht gefunden"))))
+                .then(literal("list").executes(c -> {
+                    String dim = Storage.dim();
+                    int n = 0;
+                    for (Waypoint w : WaypointManager.all()) {
+                        say(c, "[" + w.category + "] " + w.name + " " + w.x + " " + w.y + " " + w.z + " (" + w.dim + ")" + (w.dim.equals(dim) ? "" : " - andere Dimension"));
+                        n++;
+                    }
+                    return say(c, n + " Waypoints");
+                })));
+
+        // ---- AutoTPA Listen ----
+        AutoTpa tpa = ModuleManager.get(AutoTpa.class);
+        root.then(literal("tpa")
+                .then(listCmd("wl", tpa.whitelist, "Whitelist"))
+                .then(listCmd("bl", tpa.blacklist, "Blacklist"))
+                .then(literal("list").executes(c -> {
+                    say(c, "Whitelist: " + String.join(", ", tpa.whitelist.get()));
+                    return say(c, "Blacklist: " + String.join(", ", tpa.blacklist.get()));
+                })));
+
+        // ---- Freunde (KillAura) ----
+        root.then(literal("friend")
+                .then(listCmd("x", ModuleManager.get(dev.nightfall.modules.KillAura.class).friends, "Freunde")));
+
+        // ---- TrapperBot ----
+        TrapperBot trapper = ModuleManager.get(TrapperBot.class);
+        root.then(literal("trapper")
+                .then(literal("status").executes(c -> say(c, "TrapperBot: " + (trapper.isEnabled() ? "AN" : "AUS") + " | " + trapper.status())))
+                .then(literal("bl").then(listCmd("x", trapper.blacklist, "Trapper-Blacklist"))));
+
+        // ---- AutoText: user-authored messages only ----
+        AutoText autoText = ModuleManager.get(AutoText.class);
+        root.then(literal("autotext")
+                .then(literal("add").then(argument("message", StringArgumentType.greedyString()).executes(c -> {
+                    String msg = str(c, "message");
+                    return say(c, autoText.addMessage(msg) ? "AutoText-Nachricht hinzugefuegt (" + autoText.messageList().size() + ")" : "Ungueltige oder bereits vorhandene Nachricht (max. 256 Zeichen)");
+                })))
+                .then(literal("del").then(argument("message", StringArgumentType.greedyString()).executes(c -> {
+                    String msg = str(c, "message");
+                    return say(c, autoText.removeMessage(msg) ? "AutoText-Nachricht entfernt" : "Nachricht nicht gefunden");
+                })))
+                .then(literal("list").executes(c -> {
+                    List<String> lines = autoText.messageList();
+                    for (int i = 0; i < lines.size(); i++) say(c, (i + 1) + ". " + lines.get(i));
+                    return say(c, lines.size() + " Nachricht(en); Intervall in der ClickGUI einstellen (mind. 5 Sekunden)");
+                })));
+
+        // FakeStats values are configured directly in the FakeStats module settings.
+        // Only free-form text (AutoText messages and display name) remains command-based.
+
+        // ---- Profile ----
+        root.then(literal("profile")
+                .then(literal("save").then(argument("name", StringArgumentType.word())
+                        .executes(c -> say(c, Config.saveProfile(str(c, "name")) ? "Profil gespeichert" : "Fehler beim Speichern"))))
+                .then(literal("load").then(argument("name", StringArgumentType.word())
+                        .executes(c -> say(c, Config.loadProfile(str(c, "name")) ? "Profil geladen" : "Profil nicht gefunden"))))
+                .then(literal("list").executes(c -> {
+                    java.nio.file.Path dir = Storage.dir().resolve("profiles");
+                    try {
+                        java.nio.file.Files.createDirectories(dir);
+                        try (var stream = java.nio.file.Files.list(dir)) {
+                            var names = stream.filter(java.nio.file.Files::isRegularFile)
+                                    .map(path -> path.getFileName().toString())
+                                    .filter(name -> name.endsWith(".json"))
+                                    .sorted().toList();
+                            for (String name : names) say(c, name.substring(0, name.length() - 5));
+                            return say(c, names.size() + " Profil(e)");
+                        }
+                    } catch (java.io.IOException e) { return say(c, "Profilordner konnte nicht gelesen werden"); }
+                })));
+
+        // ---- Local-only fake-base test/decoy markers ----
+        root.then(literal("fake")
+                .then(literal("add").then(argument("name", StringArgumentType.word()).executes(c -> {
+                    MinecraftClient mc = MinecraftClient.getInstance();
+                    if (mc.player == null) return 0;
+                    WaypointManager.add(str(c, "name"), FakeBases.CATEGORY, mc.player.getBlockX(), mc.player.getBlockY(), mc.player.getBlockZ());
+                    return say(c, "Lokale TEST/DECOY-Markierung gesetzt: " + str(c, "name"));
+                })))
+                .then(literal("del").then(argument("name", StringArgumentType.word()).executes(c -> {
+                    String name = str(c, "name");
+                    Waypoint found = null;
+                    for (Waypoint w : WaypointManager.all()) if (FakeBases.CATEGORY.equalsIgnoreCase(w.category) && w.name.equalsIgnoreCase(name)) { found = w; break; }
+                    if (found == null) return say(c, "Fake-Markierung nicht gefunden");
+                    WaypointManager.remove(found);
+                    return say(c, "Fake-Markierung entfernt: " + name);
+                })))
+                .then(literal("list").executes(c -> {
+                    int n = 0;
+                    for (Waypoint w : WaypointManager.all()) if (FakeBases.CATEGORY.equalsIgnoreCase(w.category)) { say(c, "[TEST/DECOY] " + w.name + " " + w.x + " " + w.y + " " + w.z); n++; }
+                    return say(c, n + " lokale Fake-Markierung(en)");
+                })));
+
+        // ---- Staff list: visible client data only, no confirmed vanish claims ----
+        StaffWatch staff = ModuleManager.get(StaffWatch.class);
+        root.then(literal("staff")
+                .then(literal("add").then(argument("name", StringArgumentType.word()).executes(c ->
+                        say(c, staff.staffNames.add(str(c, "name")) ? "StaffWatch-Name hinzugefügt" : "Name bereits eingetragen"))))
+                .then(literal("del").then(argument("name", StringArgumentType.word()).executes(c ->
+                        say(c, staff.staffNames.remove(str(c, "name")) ? "StaffWatch-Name entfernt" : "Name nicht gefunden"))))
+                .then(literal("list").executes(c -> say(c, "Beobachtete Namen: " + String.join(", ", staff.staffNames.get())))));
+
+        // ---- Soft keyboard click feedback (only while Nightfall UI/editor is open) ----
+        root.then(literal("keysounds")
+                .then(argument("state", StringArgumentType.word()).executes(c -> {
+                    String state = str(c, "state");
+                    if (!state.equalsIgnoreCase("on") && !state.equalsIgnoreCase("off"))
+                        return say(c, "Verwendung: /nf keysounds on|off");
+                    Config.keySounds = state.equalsIgnoreCase("on");
+                    Config.save();
+                    return say(c, "Tastatur-Klicksounds: " + (Config.keySounds ? "AN" : "AUS"));
+                })));
+
+        // ---- Local schematic builder (.nfbuild, Sponge .schem, Litematica .litematic) ----
+        SchematicBuilder builder = ModuleManager.get(SchematicBuilder.class);
+        root.then(literal("build")
+                .then(literal("load").then(argument("name", StringArgumentType.word()).executes(c -> {
+                    if (MinecraftClient.getInstance().player == null) return say(c, "Bitte zuerst einer Welt beitreten.");
+                    String name = str(c, "name");
+                    if (!builder.load(name)) return say(c, "Vorlage nicht geladen: " + builder.status());
+                    builder.setEnabled(true);
+                    return say(c, "Vorlage geladen: " + builder.status() + " | Material in der Hotbar bereithalten. Ghost-Umrisse aktiv; Route ist nur Navigationshilfe.");
+                })))
+                .then(literal("status").executes(c -> say(c, builder.status())))
+                .then(literal("pause").executes(c -> { builder.setBuildPaused(true); return say(c, "Builder pausiert; Bewegung wird freigegeben."); }))
+                .then(literal("resume").executes(c -> { builder.setBuildPaused(false); return say(c, "Builder fortgesetzt."); }))
+                .then(literal("preview").then(argument("state", StringArgumentType.word()).executes(c -> {
+                    String state = str(c, "state");
+                    if (!state.equalsIgnoreCase("on") && !state.equalsIgnoreCase("off")) return say(c, "Verwendung: /nf build preview on|off");
+                    builder.setPreviewEnabled(state.equalsIgnoreCase("on"));
+                    return say(c, "Blueprint-HUD und 3D-Ghost-Umrisse: " + (builder.isPreviewEnabled() ? "AN" : "AUS"));
+                })))
+                .then(literal("route").executes(c -> say(c, builder.planRoute())))
+                .then(literal("follow").then(argument("state", StringArgumentType.word()).executes(c -> {
+                    String state = str(c, "state");
+                    if (!state.equalsIgnoreCase("on") && !state.equalsIgnoreCase("off")) return say(c, "Verwendung: /nf build follow on|off");
+                    return say(c, builder.setFollowRoute(state.equalsIgnoreCase("on")));
+                })))
+                .then(literal("stop").executes(c -> { builder.stopBuild(); return say(c, "Builder gestoppt und Vorlage entladen."); }))
+                .then(literal("dir").executes(c -> say(c, "Vorlagenordner (.nfbuild, Sponge .schem, Litematica .litematic): " + SchematicBuilder.schematicDir().toAbsolutePath()))));
+
+        // ---- BaseFinder Pro controls: pause/resume/status ----
+        BaseFinder finder = ModuleManager.get(BaseFinder.class);
+        root.then(literal("scan")
+                .then(literal("pause").executes(c -> {
+                    finder.setPaused(true);
+                    return say(c, "BaseFinder pausiert. Bereits gesammelte Ergebnisse bleiben erhalten.");
+                }))
+                .then(literal("resume").executes(c -> {
+                    finder.setPaused(false);
+                    return say(c, "BaseFinder fortgesetzt.");
+                }))
+                .then(literal("status").executes(c -> say(c,
+                        "BaseFinder " + (finder.isEnabled() ? "AN" : "AUS")
+                                + (finder.isPaused() ? " (PAUSIERT)" : "")
+                                + " | Queue " + finder.queueSize()
+                                + " | gescannt " + finder.scannedSinceRefill() + "/" + finder.candidatesLastRefill()
+                                + " | Ergebnisse " + finder.resultCount()
+                                + " | letztes Budget " + String.format(java.util.Locale.ROOT, "%.2f ms", finder.lastScanMs()))))
+                .then(literal("clear").executes(c -> {
+                    finder.clearMarks();
+                    return say(c, "Markierungen dieses Servers/Dimension geloescht");
+                })));
+
+        d.register(root);
+    }
+
+    private static LiteralArgumentBuilder<FabricClientCommandSource> listCmd(String lit, ListSetting list, String label) {
+        return literal(lit)
+                .then(literal("add").then(argument("name", StringArgumentType.word())
+                        .executes(c -> say(c, list.add(str(c, "name")) ? label + ": hinzugefuegt" : "Schon vorhanden"))))
+                .then(literal("del").then(argument("name", StringArgumentType.word())
+                        .executes(c -> say(c, list.remove(str(c, "name")) ? label + ": entfernt" : "Nicht vorhanden"))));
+    }
+
+    private static int addWp(com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c, String name, String cat) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null) return 0;
+        WaypointManager.add(name, cat, mc.player.getBlockX(), mc.player.getBlockY(), mc.player.getBlockZ());
+        return say(c, "Waypoint '" + name + "' gesetzt");
+    }
+}
