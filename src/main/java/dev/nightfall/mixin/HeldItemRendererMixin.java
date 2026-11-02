@@ -16,16 +16,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import dev.nightfall.modules.GlowESP;
-import net.minecraft.entity.Entity;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
 /** Local first-person-only transform hook for the player's 3D arm and held item. */
 @Mixin(HeldItemRenderer.class)
 public abstract class HeldItemRendererMixin {
     @Unique private int nightfall$matrixDepth;
 
-    @Inject(method = "renderFirstPersonItem(Lnet/minecraft/client/network/AbstractClientPlayerEntity;FFLnet/minecraft/util/Hand;FLnet/minecraft/item/ItemStack;FLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/command/OrderedRenderCommandQueue;I)V", at = @At("HEAD"))
+    @Inject(method = "renderFirstPersonItem", at = @At("HEAD"))
     private void nightfall$beforeFirstPersonItem(AbstractClientPlayerEntity player, float tickProgress, float pitch,
                                                 Hand hand, float swingProgress, ItemStack item, float equipProgress,
                                                 MatrixStack matrices, OrderedRenderCommandQueue queue, int light,
@@ -46,7 +42,7 @@ public abstract class HeldItemRendererMixin {
         }
     }
 
-    @Inject(method = "renderFirstPersonItem(Lnet/minecraft/client/network/AbstractClientPlayerEntity;FFLnet/minecraft/util/Hand;FLnet/minecraft/item/ItemStack;FLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/command/OrderedRenderCommandQueue;I)V", at = @At("RETURN"))
+    @Inject(method = "renderFirstPersonItem", at = @At("RETURN"))
     private void nightfall$afterFirstPersonItem(AbstractClientPlayerEntity player, float tickProgress, float pitch,
                                                Hand hand, float swingProgress, ItemStack item, float equipProgress,
                                                MatrixStack matrices, OrderedRenderCommandQueue queue, int light,
@@ -54,25 +50,6 @@ public abstract class HeldItemRendererMixin {
         if (nightfall$matrixDepth > 0) {
             matrices.pop();
             nightfall$matrixDepth--;
-        }
-    }
-}
-
-
-/** Feeds local GlowESP targets into Minecraft's native outline framebuffer/shader. */
-@Mixin(Entity.class)
-abstract class EntityGlowMixin {
-    @Inject(method = "isGlowing()Z", at = @At("HEAD"), cancellable = true)
-    private void nightfall$localGlow(CallbackInfoReturnable<Boolean> cir) {
-        Entity self = (Entity)(Object)this;
-        if (GlowESP.shouldGlowLocal(self)) cir.setReturnValue(true);
-    }
-
-    @Inject(method = "getTeamColorValue()I", at = @At("HEAD"), cancellable = true)
-    private void nightfall$glowColor(CallbackInfoReturnable<Integer> cir) {
-        Entity self = (Entity)(Object)this;
-        if (GlowESP.shouldGlowLocal(self)) {
-            cir.setReturnValue(GlowESP.colorFor(self, 0xFFFFFF));
         }
     }
 }
