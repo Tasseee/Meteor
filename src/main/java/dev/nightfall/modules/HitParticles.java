@@ -48,7 +48,7 @@ public final class HitParticles extends Module {
             double dx = (Math.random() - 0.5) * 0.8;
             double dy = Math.random() * 1.5;
             double dz = (Math.random() - 0.5) * 0.8;
-            mc.world.addParticle(p, entity.getX() + dx, entity.getY() + dy, entity.getZ() + dz,
+            mc.particleManager.addParticle(p, entity.getX() + dx, entity.getY() + dy, entity.getZ() + dz,
                     dx * 0.15, 0.08 + Math.random() * 0.12, dz * 0.15);
         }
     }
