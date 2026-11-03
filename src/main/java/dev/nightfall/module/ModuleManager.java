@@ -42,6 +42,7 @@ public final class ModuleManager {
         MODULES.add(new Jesus());
         MODULES.add(new WaterWalk());
         MODULES.add(new Noclip());
+        MODULES.add(new Freecam());
         // Visuals
         MODULES.add(new PlayerEsp());
         MODULES.add(new EntityEsp());
