@@ -180,7 +180,7 @@ public class BaseFinder extends Module {
         for (int v : cells.values()) maxCell = Math.max(maxCell, v);
 
         double cluster = maxCell >= 6 ? (maxCell - 5) * wCluster.get() : 0;
-        double score = storage * wStorage.get() + shulker * wStorage.get() * 1.5
+        double blockScore = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + redstone * wRedstone.get() + cluster;
         int signalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
                 + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (cluster > 0 ? 1 : 0);
@@ -188,17 +188,27 @@ public class BaseFinder extends Module {
         ChunkResult old = results.get(k);
         ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
         Status prev = res.status;
-        res.score = score;
+        res.blockScore = blockScore;
+        res.stashScore = storage * wStorage.get() + shulker * wStorage.get() * 1.5
+                + hopper * wHopper.get() + furnace * wFurnace.get() + cluster;
+        res.score = combinedScore(res);
+        double score = res.score;
+        signalKinds += (res.entityScore > 0 ? 1 : 0) + (res.geodeScore > 0 ? 1 : 0)
+                + (res.valuableScore > 0 ? 1 : 0) + (res.redstoneScore > 0 ? 1 : 0)
+                + (res.farmScore > 0 ? 1 : 0) + (res.activityScore > 0 ? 1 : 0);
         res.lastScanTick = tick;
+        res.blockReasons.clear();
         res.reasons.clear();
         // Expose the weighted contributions so a score can be inspected and tuned.
-        if (storage > 0) res.reasons.add(storage + " Chest/Barrel (" + fmt(storage * wStorage.get()) + ")");
-        if (shulker > 0) res.reasons.add(shulker + " Shulker (" + fmt(shulker * wStorage.get() * 1.5) + ")");
-        if (hopper > 0) res.reasons.add(hopper + " Hopper (" + fmt(hopper * wHopper.get()) + ")");
-        if (furnace > 0) res.reasons.add(furnace + " Furnace (" + fmt(furnace * wFurnace.get()) + ")");
-        if (redstone > 0) res.reasons.add(redstone + " Dispenser/Comparator/Crafter (" + fmt(redstone * wRedstone.get()) + ")");
-        if (cluster > 0) res.reasons.add("Lagerzone (" + maxCell + " in 4x4x4, +" + fmt(cluster) + ")");
+        if (storage > 0) res.blockReasons.add(storage + " Chest/Barrel (" + fmt(storage * wStorage.get()) + ")");
+        if (shulker > 0) res.blockReasons.add(shulker + " Shulker (" + fmt(shulker * wStorage.get() * 1.5) + ")");
+        if (hopper > 0) res.blockReasons.add(hopper + " Hopper (" + fmt(hopper * wHopper.get()) + ")");
+        if (furnace > 0) res.blockReasons.add(furnace + " Furnace (" + fmt(furnace * wFurnace.get()) + ")");
+        if (redstone > 0) res.blockReasons.add(redstone + " Dispenser/Comparator/Crafter (" + fmt(redstone * wRedstone.get()) + ")");
+        if (cluster > 0) res.blockReasons.add("Lagerzone (" + maxCell + " in 4x4x4, +" + fmt(cluster) + ")");
 
+        res.reasons.addAll(res.blockReasons);
+        res.reasons.addAll(res.intelligenceReasons);
         if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
             res.status = Status.SUS;
             if (prev != Status.SUS) {
@@ -219,6 +229,33 @@ public class BaseFinder extends Module {
                 res.reasons.add("Score hoch, aber nur " + signalKinds + " Signaltyp(en) — nicht als SUS markiert");
         }
         if (old == null) results.put(k, res);
+    }
+
+
+    public void updateIntelligence(int cx, int cz, double entityScore, double geodeScore,
+                                   double valuableScore, double redstoneScore, double farmScore,
+                                   double activityScore, double completeness, List<String> reasons) {
+        long k = key(cx, cz);
+        ChunkResult res = results.computeIfAbsent(k, ignored -> new ChunkResult(cx, cz));
+        res.entityScore = Math.max(0, entityScore);
+        res.geodeScore = Math.max(0, geodeScore);
+        res.valuableScore = Math.max(0, valuableScore);
+        res.redstoneScore = Math.max(0, redstoneScore);
+        res.farmScore = Math.max(0, farmScore);
+        res.activityScore = Math.max(0, activityScore);
+        res.dataCompleteness = Math.max(0, Math.min(1, completeness));
+        res.intelligenceReasons.clear();
+        if (reasons != null) res.intelligenceReasons.addAll(reasons);
+        res.score = combinedScore(res);
+        res.reasons.clear();
+        res.reasons.addAll(res.blockReasons);
+        res.reasons.addAll(res.intelligenceReasons);
+        dirty = true;
+    }
+
+    private static double combinedScore(ChunkResult r) {
+        return r.blockScore + r.entityScore + r.geodeScore + r.valuableScore
+                + r.redstoneScore + r.farmScore + r.activityScore;
     }
 
     private static String fmt(double value) { return String.format(Locale.ROOT, "%.1f", value); }
