@@ -7,6 +7,8 @@ public final class ChunkResult {
     public enum Status { CLEAN, SUS, GONE, DECOY }
     public final int cx, cz;
     public double score, blockScore, stashScore, entityScore, geodeScore;
+    /** Number of distinct block-entity evidence types in this chunk. */
+    public int blockSignalKinds;
     public double valuableScore, redstoneScore, farmScore, activityScore;
     /** 0..1 deep-scan coverage; not a probability. */
     public double dataCompleteness;
