@@ -50,7 +50,6 @@ public final class Noclip extends Module {
         double length = Math.sqrt(x * x + z * z);
         if (length > 0) { x /= length; z /= length; }
         player.setVelocity(x * velocity, vertical * velocity, z * velocity);
-        player.velocityModified = true;
     }
 
     @Override
