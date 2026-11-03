@@ -10,6 +10,7 @@ import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.scanner.ChunkResult;
 import dev.nightfall.scanner.ChunkResult.Status;
 import dev.nightfall.util.Storage;
+import dev.nightfall.util.HugoSmpCompat;
 import net.minecraft.block.entity.*;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.text.Text;
@@ -37,6 +38,7 @@ public class BaseFinder extends Module {
     private final NumberSetting wRedstone = add(new NumberSetting("Gewicht Redstone", 1.2, 0.1, 5.0, 0.1));
     private final NumberSetting wCluster  = add(new NumberSetting("Gewicht Cluster", 1.5, 0.0, 5.0, 0.1));
     private final BoolSetting   chat      = add(new BoolSetting("Chat-Meldung", true));
+    private final BoolSetting   hugoAntiEspGuard = add(new BoolSetting("HugoSMP Anti-ESP Schutz", true));
 
     private static final Gson GSON = new Gson();
     private static final Type MARK_LIST = new TypeToken<List<Mark>>() {}.getType();
@@ -57,6 +59,8 @@ public class BaseFinder extends Module {
     private int candidatesLastRefill;
     private int scannedSinceRefill;
     private boolean paused;
+    private boolean maskStateInitialized, lastMaskActive;
+    private long resumeAfterMaskTick;
 
     public BaseFinder() {
         super("BaseFinder", "Findet verdaechtige Chunks (Storage, Hopper, Redstone) in geladenen Chunks.", Category.BASEFINDER);
@@ -75,6 +79,8 @@ public class BaseFinder extends Module {
     public int lastScanned() { return lastScanned; }
     public int resultCount() { return results.size(); }
     public boolean isPaused() { return paused; }
+    public boolean isHugoSmpMaskActive() { return hugoAntiEspGuard.get() && HugoSmpCompat.undergroundBlocksMayBeMasked(); }
+    public boolean isHugoSmpGuardEnabled() { return hugoAntiEspGuard.get() && HugoSmpCompat.isHugoSmpServer(); }
     public void setPaused(boolean value) { paused = value; }
     public int candidatesLastRefill() { return candidatesLastRefill; }
     public int scannedSinceRefill() { return scannedSinceRefill; }
@@ -117,9 +123,21 @@ public class BaseFinder extends Module {
             lastWorld = w;
             ctxKey = Storage.server() + "_" + Storage.dim();
             loadMarks();
+            maskStateInitialized = false;
         }
         tick++;
-        if (paused) { lastScanned = 0; lastScanNanos = 0; return; }
+        boolean maskActive = isHugoSmpMaskActive();
+        if (!maskStateInitialized) {
+            lastMaskActive = maskActive;
+            maskStateInitialized = true;
+        } else if (maskActive != lastMaskActive) {
+            lastMaskActive = maskActive;
+            queue.clear();
+            for (ChunkResult result : results.values()) result.lastScanTick = 0;
+            // Give the server/client a moment to deliver real blocks after entering the unmasked area.
+            resumeAfterMaskTick = maskActive ? tick : tick + 40;
+        }
+        if (paused || tick < resumeAfterMaskTick) { lastScanned = 0; lastScanNanos = 0; return; }
 
         int pcx = mc.player.getBlockX() >> 4, pcz = mc.player.getBlockZ() >> 4;
         if (queue.isEmpty() && tick % 20 == 0) refill(w, pcx, pcz);
@@ -172,7 +190,9 @@ public class BaseFinder extends Module {
         int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0;
         Map<Integer, Integer> cells = new HashMap<>();
 
+        boolean maskActive = isHugoSmpMaskActive();
         for (BlockEntity be : ch.getBlockEntities().values()) {
+            if (maskActive && be.getPos().getY() <= 0) continue;
             boolean dense = false;
             if (be instanceof ChestBlockEntity || be instanceof BarrelBlockEntity) { storage++; dense = true; }
             else if (be instanceof ShulkerBoxBlockEntity) { shulker++; dense = true; }
@@ -198,6 +218,7 @@ public class BaseFinder extends Module {
         ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
         Status prev = res.status;
         res.blockScore = blockScore;
+        res.serverLimited = maskActive;
         res.stashScore = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + cluster;
         res.score = combinedScore(res);
@@ -215,10 +236,15 @@ public class BaseFinder extends Module {
         if (furnace > 0) res.blockReasons.add(furnace + " Furnace (" + fmt(furnace * wFurnace.get()) + ")");
         if (redstone > 0) res.blockReasons.add(redstone + " Dispenser/Comparator/Crafter (" + fmt(redstone * wRedstone.get()) + ")");
         if (cluster > 0) res.blockReasons.add("Lagerzone (" + maxCell + " in 4x4x4, +" + fmt(cluster) + ")");
+        if (maskActive) res.blockReasons.add("HugoSMP Anti-ESP: Blockdaten <=Y0 vorsorglich ignoriert (Spieler über Y5)");
 
         res.reasons.addAll(res.blockReasons);
         res.reasons.addAll(res.intelligenceReasons);
-        if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
+        if (FakeBases.isMarkedChunk(cx, cz)) {
+            res.status = Status.DECOY;
+            res.reasons.add("Manuell als FakeBase/Decoy markiert — normaler SUS-Alarm unterdrückt");
+            if (prev != Status.DECOY) { dirty = true; marksDirty = true; }
+        } else if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
             res.status = Status.SUS;
             if (prev != Status.SUS) {
                 res.foundAtMillis = System.currentTimeMillis();
@@ -273,7 +299,7 @@ public class BaseFinder extends Module {
         top.clear(); marks.clear();
         for (ChunkResult r : results.values()) {
             if (r.status == Status.SUS) { top.add(r); marks.add(r); }
-            else if (r.status == Status.GONE) marks.add(r);
+            else if (r.status == Status.GONE || r.status == Status.DECOY) marks.add(r);
         }
         top.sort((a, b) -> Double.compare(b.score, a.score));
         dirty = false;
