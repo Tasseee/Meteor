@@ -25,7 +25,7 @@ public final class ArmorHud extends HudModule {
         ctx.fill(0, 0, w, 2, Theme.ACCENT);
         // Minecraft armor inventory order: boots, leggings, chestplate, helmet.
         for (int i = 0; i < 4; i++) {
-            ItemStack stack = mc.player.getInventory().getArmorStack(i);
+            ItemStack stack = mc.player.getInventory().getArmor().get(i);
             int x = 6 + i * 35;
             int y = 4;
             if (!stack.isEmpty()) {
