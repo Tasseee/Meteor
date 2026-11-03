@@ -32,7 +32,7 @@ public final class JumpCircles extends Module {
             double angle = Math.PI * 2 * i / 18.0;
             double x = mc.player.getX() + Math.cos(angle) * radius.get();
             double z = mc.player.getZ() + Math.sin(angle) * radius.get();
-            mc.world.addParticle(p, x, mc.player.getY() + 0.08, z,
+            mc.particleManager.addParticle(p, x, mc.player.getY() + 0.08, z,
                     Math.cos(angle) * 0.025, 0.025, Math.sin(angle) * 0.025);
         }
     }
