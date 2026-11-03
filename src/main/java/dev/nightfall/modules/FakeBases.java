@@ -22,6 +22,19 @@ public final class FakeBases extends Module {
 
     public FakeBases() { super("FakeBases", "Eigene lokale TEST/DECOY-Markierungen; verändert keine Weltblöcke.", Category.WORLD); }
 
+    /**
+     * A manually placed decoy marker also acts as local false-positive feedback for BaseFinder.
+     * Any candidate in the same chunk and dimension is shown as DECOY instead of triggering SUS.
+     */
+    public static boolean isMarkedChunk(int cx, int cz) {
+        String dimension = Storage.dim();
+        for (Waypoint waypoint : WaypointManager.all()) {
+            if (!CATEGORY.equalsIgnoreCase(waypoint.category) || !dimension.equals(waypoint.dim)) continue;
+            if ((waypoint.x >> 4) == cx && (waypoint.z >> 4) == cz) return true;
+        }
+        return false;
+    }
+
     @Override public void renderHud(DrawContext ctx) {
         if (mc.player == null || !Projection.valid()) return;
         for (Waypoint w : WaypointManager.all()) {
