@@ -361,7 +361,7 @@ public final class IntelligenceScanner extends Module {
                 || b == Blocks.ATTACHED_MELON_STEM || b == Blocks.PUMPKIN_STEM
                 || b == Blocks.ATTACHED_PUMPKIN_STEM || b == Blocks.MOSS_BLOCK
                 || b == Blocks.POINTED_DRIPSTONE || b == Blocks.BEEHIVE || b == Blocks.BEE_NEST
-                || b == Blocks.HONEY_BLOCK || b == Blocks.GLOW_BERRIES;
+                || b == Blocks.HONEY_BLOCK || b == Blocks.CAVE_VINES || b == Blocks.CAVE_VINES_PLANT;
     }
 
     @Override
