@@ -52,8 +52,9 @@ public final class IntelligenceScanner extends Module {
     private final List<Entity> undergroundEntities = new ArrayList<>();
 
     private ClientWorld lastWorld;
-    private long tick, lastEntityRefresh;
+    private long tick, lastEntityRefresh, resumeAfterMaskTick;
     private int scannedChunks, lastEntityCount;
+    private boolean maskStateInitialized, lastMaskActive;
 
     public IntelligenceScanner() {
         super("Intelligence", "Untergrund-Entities, Geoden, wertvolle Bloecke, Redstone- und Farmhinweise; scannt nur geladene Chunks.", Category.BASEFINDER);
@@ -90,8 +91,25 @@ public final class IntelligenceScanner extends Module {
             scannedChunks = 0;
             lastEntityCount = 0;
             lastEntityRefresh = 0;
+            maskStateInitialized = false;
         }
         tick++;
+
+        boolean maskActive = hugoMaskActive();
+        if (!maskStateInitialized) {
+            lastMaskActive = maskActive;
+            maskStateInitialized = true;
+        } else if (maskActive != lastMaskActive) {
+            lastMaskActive = maskActive;
+            Set<Long> oldSnapshots = new HashSet<>(snapshots.keySet());
+            snapshots.clear();
+            queue.clear();
+            inQueue.clear();
+            // Drop stale geode/farm contributions before the newly visible block data is rescanned.
+            for (long key : oldSnapshots) publish(key, null);
+            resumeAfterMaskTick = maskActive ? tick : tick + 40;
+        }
+
         if (tick - lastEntityRefresh >= 20) refreshEntities();
         if (tick % 20 == 0) refillQueue();
         runDeepScan();
@@ -178,7 +196,17 @@ public final class IntelligenceScanner extends Module {
         }
     }
 
+    private boolean hugoMaskActive() {
+        try {
+            return dev.nightfall.module.ModuleManager.get(BaseFinder.class).isHugoSmpMaskActive();
+        } catch (IllegalStateException ignored) {
+            return false;
+        }
+    }
+
     private void runDeepScan() {
+        if (tick < resumeAfterMaskTick) return;
+        boolean maskActive = hugoMaskActive();
         long deadline = System.nanoTime() + (long) (budgetMs.get() * 1_000_000.0);
         while (!queue.isEmpty() && System.nanoTime() < deadline) {
             ScanJob job = queue.poll();
