@@ -220,7 +220,7 @@ public final class TrapperBot extends Module {
     }
 
     private void fightTarget() {
-        if (target == null || !target.isAlive() || target.getWorld() != mc.world) target = findWorldPlayer(targetName);
+        if (target == null || !target.isAlive() || target.getEntityWorld() != mc.world) target = findWorldPlayer(targetName);
         if (target == null || !target.isAlive()) {
             restoreSlot();
             startCooldown(cooldownSeconds.getInt() * 20);
