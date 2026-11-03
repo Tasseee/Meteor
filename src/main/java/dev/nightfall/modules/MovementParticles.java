@@ -37,7 +37,7 @@ public final class MovementParticles extends Module {
             double a = Math.PI*2*i/n, r = ring ? 0.65 : 0.28;
             double x = mc.player.getX() + Math.cos(a)*r + (Math.random()-.5)*.12;
             double z = mc.player.getZ() + Math.sin(a)*r + (Math.random()-.5)*.12;
-            mc.world.addParticle(p,x,mc.player.getY()+0.1+Math.random()*.5,z,Math.cos(a)*.015,.025,Math.sin(a)*.015);
+            mc.particleManager.addParticle(p,x,mc.player.getY()+0.1+Math.random()*.5,z,Math.cos(a)*.015,.025,Math.sin(a)*.015);
         }
     }
 }
