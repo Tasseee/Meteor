@@ -55,7 +55,7 @@ public class CrystalAura extends Module {
             EndCrystalEntity best = null; double bestScore = 0;
             for (Entity e : mc.world.getEntities()) {
                 if (!(e instanceof EndCrystalEntity c) || !c.isAlive() || p.distanceTo(c) > breakRange.get()) continue;
-                Vec3d pos = c.getPos();
+                Vec3d pos = c.getEntityPos();
                 double self = CombatUtil.explosionDamage(pos, p, 6.0);
                 if (!selfSafe(self, p)) continue;
                 double dt = CombatUtil.explosionDamage(pos, t, 6.0);
@@ -90,7 +90,7 @@ public class CrystalAura extends Module {
                 if (!mc.world.getBlockState(up).isAir() || !mc.world.getBlockState(up.up()).isAir()) continue;
                 Vec3d top = new Vec3d(bp.getX() + 0.5, bp.getY() + 1.0, bp.getZ() + 0.5);
                 if (p.getEyePos().distanceTo(top) > placeRange.get()) continue;
-                if (t.getPos().distanceTo(top) > 12) continue;
+                if (t.getEntityPos().distanceTo(top) > 12) continue;
                 Box clear = new Box(bp.getX(), bp.getY() + 1, bp.getZ(), bp.getX() + 1, bp.getY() + 3, bp.getZ() + 1);
                 if (!mc.world.getOtherEntities(null, clear).isEmpty()) continue;
                 double dt = CombatUtil.explosionDamage(top, t, 6.0);
