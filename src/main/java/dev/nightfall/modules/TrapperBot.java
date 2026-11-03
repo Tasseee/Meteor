@@ -46,6 +46,10 @@ public final class TrapperBot extends Module {
     private final BoolSetting buildTrap = add(new BoolSetting("1x2-Falle bauen", true));
     private final BoolSetting requireTrap = add(new BoolSetting("Nur in Falle angreifen", true));
     private final BoolSetting criticalOnly = add(new BoolSetting("Nur Crits", true));
+    private final BoolSetting useAutoGap = add(new BoolSetting("AutoGap waehrend Trapping", true));
+    private final BoolSetting useAutoTotem = add(new BoolSetting("AutoTotem waehrend Trapping", true));
+    private final BoolSetting pauseAutoPvp = add(new BoolSetting("Eigenes AutoPvP pausieren", true));
+    private final BoolSetting sellAfterKill = add(new BoolSetting("/sell nach Kill senden", false));
     public final ListSetting blacklist = add(new ListSetting("Blacklist"));
 
     private final Random random = new Random();
@@ -60,6 +64,8 @@ public final class TrapperBot extends Module {
     private int blockSlot = -1;
     private PlayerEntity target;
     private List<BlockPos> buildOrder = List.of();
+    private boolean autoGapWasEnabled, autoTotemWasEnabled, autoPvpWasEnabled;
+    private boolean targetSellSent;
 
     public TrapperBot() {
         super("TrapperBot", "Warnt Spieler, sendet /tpahere und kaempft nach Annahme mit Crits.", Category.COMBAT);
@@ -72,6 +78,13 @@ public final class TrapperBot extends Module {
         targetName = "";
         attemptedThisSession.clear();
         buildPasses = 0;
+        targetSellSent = false;
+        autoGapWasEnabled = ModuleManager.get(AutoGap.class).isEnabled();
+        autoTotemWasEnabled = ModuleManager.get(AutoTotem.class).isEnabled();
+        autoPvpWasEnabled = ModuleManager.get(AutoPvp.class).isEnabled();
+        if (useAutoGap.get() && !autoGapWasEnabled) ModuleManager.get(AutoGap.class).setEnabled(true);
+        if (useAutoTotem.get() && !autoTotemWasEnabled) ModuleManager.get(AutoTotem.class).setEnabled(true);
+        if (pauseAutoPvp.get() && autoPvpWasEnabled) ModuleManager.get(AutoPvp.class).setEnabled(false);
     }
 
     @Override
@@ -79,7 +92,18 @@ public final class TrapperBot extends Module {
         releaseControls();
         restoreSlot();
         resetTarget();
+        restoreCombatModules();
         phase = Phase.IDLE;
+    }
+
+    private void restoreCombatModules() {
+        if (mc.player == null) return;
+        if (useAutoGap.get() && !autoGapWasEnabled && ModuleManager.get(AutoGap.class).isEnabled())
+            ModuleManager.get(AutoGap.class).setEnabled(false);
+        if (useAutoTotem.get() && !autoTotemWasEnabled && ModuleManager.get(AutoTotem.class).isEnabled())
+            ModuleManager.get(AutoTotem.class).setEnabled(false);
+        if (pauseAutoPvp.get() && autoPvpWasEnabled && !ModuleManager.get(AutoPvp.class).isEnabled())
+            ModuleManager.get(AutoPvp.class).setEnabled(true);
     }
 
     /** Clears all per-connection state when leaving a server/world. */
@@ -89,6 +113,8 @@ public final class TrapperBot extends Module {
         resetTarget();
         attemptedThisSession.clear();
         buildPasses = 0;
+        targetSellSent = false;
+        restoreCombatModules();
         phase = Phase.IDLE;
     }
 
@@ -169,6 +195,7 @@ public final class TrapperBot extends Module {
                 if (buildTrap.get() && requireTrap.get()) {
                     mc.player.sendMessage(Text.literal("[Nightfall] TrapperBot: Keine geeigneten vollen Bloecke in der Hotbar; Crit-Angriff wartet auf eine Falle."), false);
                 }
+                timer = 100;
                 phase = Phase.FIGHTING;
             }
             return;
@@ -223,6 +250,10 @@ public final class TrapperBot extends Module {
         if (target == null || !target.isAlive() || target.getEntityWorld() != mc.world) target = findWorldPlayer(targetName);
         if (target == null || !target.isAlive()) {
             restoreSlot();
+            if (!targetSellSent && sellAfterKill.get() && mc.getNetworkHandler() != null) {
+                mc.getNetworkHandler().sendChatCommand("sell");
+                targetSellSent = true;
+            }
             startCooldown(cooldownSeconds.getInt() * 20);
             return;
         }
@@ -231,8 +262,8 @@ public final class TrapperBot extends Module {
         if (player.distanceTo(target) > fightRange.get() + 1.0) {
             // The target left the trap area; do not chase across the world.
             releaseControls();
-            if (--timer <= 0) startCooldown(20 * 20);
-            else if (timer == 0) timer = 100;
+            if (timer <= 0) timer = 100;
+            else if (--timer <= 0) startCooldown(20 * 20);
             return;
         }
         timer = 100;
@@ -352,5 +383,9 @@ public final class TrapperBot extends Module {
         if (mc.options == null) return;
         mc.options.jumpKey.setPressed(false);
         mc.options.sprintKey.setPressed(false);
+        mc.options.forwardKey.setPressed(false);
+        mc.options.backKey.setPressed(false);
+        mc.options.leftKey.setPressed(false);
+        mc.options.rightKey.setPressed(false);
     }
 }
