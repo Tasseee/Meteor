@@ -221,6 +221,12 @@ public final class IntelligenceScanner extends Module {
                 int column = job.cursor / job.height;
                 int y = job.bottomY + job.cursor % job.height;
                 int x = column & 15, z = column >> 4;
+                if (maskActive && y <= 0) {
+                    // HugoSMP may send fake block updates below Y=0 while the player is above Y=5.
+                    job.cursor++;
+                    processed++;
+                    continue;
+                }
                 Block block = chunk.getBlockState(pos.set(job.cx * 16 + x, y, job.cz * 16 + z)).getBlock();
                 job.accept(block, pos.getX(), pos.getY(), pos.getZ());
                 job.cursor++;
