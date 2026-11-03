@@ -30,7 +30,7 @@ public final class SkyVisualRenderer {
         if (!sky.isEnabled()) return;
 
         MatrixStack matrices = context.matrices();
-        Vec3d camera = mc.gameRenderer.getCamera().getPos();
+        Vec3d camera = mc.gameRenderer.getCamera().getCameraPos();
         Vec3d forward = mc.player.getRotationVec(1.0f).normalize();
         Vec3d right = new Vec3d(forward.z, 0.0, -forward.x);
         if (right.lengthSquared() < 1.0E-6) right = new Vec3d(1.0, 0.0, 0.0);
