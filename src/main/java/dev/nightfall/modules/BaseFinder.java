@@ -96,7 +96,16 @@ public class BaseFinder extends Module {
 
     public void clearMarks() { clearData(); marksDirty = true; saveMarks(); }
 
-    @Override protected void onDisable() { clear(); }
+    @Override protected void onEnable() {
+        try { dev.nightfall.module.ModuleManager.get(IntelligenceScanner.class).setEnabled(true); }
+        catch (IllegalStateException ignored) { }
+    }
+
+    @Override protected void onDisable() {
+        try { dev.nightfall.module.ModuleManager.get(IntelligenceScanner.class).setEnabled(false); }
+        catch (IllegalStateException ignored) { }
+        clear();
+    }
 
     @Override
     public void onTick() {
