@@ -28,7 +28,7 @@ public final class StaffWatch extends Module {
         if (mc.getNetworkHandler() != null) {
             for (PlayerListEntry entry : mc.getNetworkHandler().getPlayerList()) {
                 if (entry.getProfile() != null && entry.getProfile().name() != null)
-                    tab.add(entry.getProfile().getName().toLowerCase(java.util.Locale.ROOT));
+                    tab.add(entry.getProfile().name().toLowerCase(java.util.Locale.ROOT));
             }
         }
         Set<String> loaded = new HashSet<>();
