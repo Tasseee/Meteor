@@ -24,7 +24,7 @@ public final class AntiVanishHints extends Module {
         Set<String> tab = new HashSet<>();
         for (PlayerListEntry entry : mc.getNetworkHandler().getPlayerList()) {
             if (entry.getProfile() != null && entry.getProfile().name() != null)
-                tab.add(entry.getProfile().getName().toLowerCase(Locale.ROOT));
+                tab.add(entry.getProfile().name().toLowerCase(Locale.ROOT));
         }
         Set<String> loaded = new HashSet<>();
         mc.world.getPlayers().forEach(p -> loaded.add(p.getGameProfile().name().toLowerCase(Locale.ROOT)));
