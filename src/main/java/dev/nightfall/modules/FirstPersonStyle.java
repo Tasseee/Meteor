@@ -10,16 +10,16 @@ import org.joml.Quaternionf;
 /** Changes the local first-person arm/item model transform. The arm itself remains Minecraft's 3D player model. */
 public final class FirstPersonStyle extends Module {
     private final ModeSetting pose = add(new ModeSetting("Handhaltung", "Vanilla", "Vanilla", "Katana", "Heavy", "Floating", "Compact"));
-    private final NumberSetting x = add(new NumberSetting("X-Position", 0, -0.35, 0.35, 0.01));
-    private final NumberSetting y = add(new NumberSetting("Y-Position", 0, -0.35, 0.35, 0.01));
-    private final NumberSetting z = add(new NumberSetting("Z-Position", 0, -0.35, 0.35, 0.01));
+    private final NumberSetting x = add(new NumberSetting("X-Position", 0, -0.8, 0.8, 0.01));
+    private final NumberSetting y = add(new NumberSetting("Y-Position", 0, -0.8, 0.8, 0.01));
+    private final NumberSetting z = add(new NumberSetting("Z-Position", 0, -0.8, 0.8, 0.01));
     private final NumberSetting pitch = add(new NumberSetting("X-Rotation", 0, -45, 45, 1));
     private final NumberSetting yaw = add(new NumberSetting("Y-Rotation", 0, -45, 45, 1));
     private final NumberSetting roll = add(new NumberSetting("Z-Rotation", 0, -90, 90, 1));
     private final NumberSetting scale = add(new NumberSetting("3D-Skalierung", 1.0, 0.65, 1.35, 0.01));
 
     public FirstPersonStyle() {
-        super("FirstPersonStyle", "3D-Arm und gehaltenes Item lokal positionieren, drehen und skalieren.", Category.VISUALS);
+        super("ViewModel", "Arme und gehaltenes Item frei auf dem Bildschirm positionieren, drehen und skalieren.", Category.VISUALS);
     }
 
     public void transform(MatrixStack matrices, boolean leftHand) {
