@@ -39,6 +39,8 @@ public final class StaffWatch extends Module {
         int entityAbsentStreak;
         long lastTabSeen;
         long lastEntitySeen;
+        boolean everSeenTab;
+        boolean everSeenEntity;
         boolean inTab;
         boolean entityLoaded;
         boolean invisible;
@@ -52,8 +54,8 @@ public final class StaffWatch extends Module {
             add(entityHistory, entity);
             tabAbsentStreak = tab ? 0 : tabAbsentStreak + 1;
             entityAbsentStreak = entity ? 0 : entityAbsentStreak + 1;
-            if (tab) lastTabSeen = now;
-            if (entity) lastEntitySeen = now;
+            if (tab) { lastTabSeen = now; everSeenTab = true; }
+            if (entity) { lastEntitySeen = now; everSeenEntity = true; }
         }
 
         private static void add(ArrayDeque<Boolean> history, boolean value) {
@@ -79,6 +81,8 @@ public final class StaffWatch extends Module {
         public final boolean inTab;
         public final boolean entityLoaded;
         public final boolean invisible;
+        public final boolean everSeenTab;
+        public final boolean everSeenEntity;
         public final String gameMode;
         public final String tabDisplay;
 
@@ -91,6 +95,8 @@ public final class StaffWatch extends Module {
             inTab = o.inTab;
             entityLoaded = o.entityLoaded;
             invisible = o.invisible;
+            everSeenTab = o.everSeenTab;
+            everSeenEntity = o.everSeenEntity;
             gameMode = o.gameMode;
             tabDisplay = o.tabDisplay;
         }
@@ -192,9 +198,12 @@ public final class StaffWatch extends Module {
             } else if (o.entityLoaded) {
                 status = "Entity geladen; Tab-Eintrag fehlt";
                 color = 0xFFFFC857;
-            } else if (o.tabAbsentStreak >= 3) {
-                status = "Tab fehlt " + o.tabAbsentStreak + " Samples in Folge; Ursache unbekannt";
+            } else if (o.everSeenTab && o.tabAbsentStreak >= 3) {
+                status = "Tab nach vorheriger Sichtung " + o.tabAbsentStreak + " Samples weg; Ursache unbekannt";
                 color = 0xFFFFC857;
+            } else if (!o.everSeenTab && !o.everSeenEntity) {
+                status = "bisher nie in Tab/als Entity beobachtet";
+                color = 0xFFB7B7C8;
             } else {
                 status = "aktuell keine sichtbaren Daten";
                 color = 0xFFB7B7C8;
