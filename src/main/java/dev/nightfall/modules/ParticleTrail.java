@@ -26,7 +26,7 @@ public final class ParticleTrail extends Module {
             double x = mc.player.getX() + (Math.random() - 0.5) * 0.65;
             double y = mc.player.getY() + 0.15 + Math.random() * 1.25;
             double z = mc.player.getZ() + (Math.random() - 0.5) * 0.65;
-            mc.world.addParticle(particle, x, y, z, 0, 0.015, 0);
+            mc.particleManager.addParticle(particle, x, y, z, 0, 0.015, 0);
         }
     }
 
