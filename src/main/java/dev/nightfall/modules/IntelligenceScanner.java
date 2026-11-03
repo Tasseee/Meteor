@@ -72,7 +72,15 @@ public final class IntelligenceScanner extends Module {
     protected void onDisable() {
         queue.clear();
         inQueue.clear();
+        snapshots.clear();
+        entityKnownChunks.clear();
+        entityEvidence.clear();
+        playerSightings.clear();
         undergroundEntities.clear();
+        lastWorld = null;
+        lastEntityRefresh = 0;
+        lastEntityCount = 0;
+        maskStateInitialized = false;
     }
 
     @Override
