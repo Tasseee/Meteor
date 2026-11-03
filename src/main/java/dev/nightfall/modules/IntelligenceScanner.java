@@ -237,6 +237,7 @@ public final class IntelligenceScanner extends Module {
                 }
                 Block block = chunk.getBlockState(pos.set(job.cx * 16 + x, y, job.cz * 16 + z)).getBlock();
                 job.accept(block, pos.getX(), pos.getY(), pos.getZ());
+                job.validScanned++;
                 job.cursor++;
                 processed++;
             }
@@ -297,9 +298,11 @@ public final class IntelligenceScanner extends Module {
                 reasons.add(scan.redstoneBlocks + " Redstone-/Maschinenbloecke (Sculk Sensor ausgeschlossen)");
             }
             if (scan.farmBlocks > 0) {
-                farmScore = Math.max(farmScore, scan.farmBlocks >= 24
-                        ? Math.min(5.0, scan.farmBlocks / 16.0) : scan.farmBlocks * 0.025);
-                reasons.add(scan.farmBlocks + " Farm-/Anbaubloecke");
+                int farmTypes = Integer.bitCount(scan.farmKinds);
+                double densityScore = scan.farmBlocks >= 24
+                        ? Math.min(5.0, scan.farmBlocks / 16.0) : scan.farmBlocks * 0.025;
+                farmScore = Math.max(farmScore, Math.min(6.0, densityScore + farmTypes * 0.35));
+                reasons.add(scan.farmBlocks + " Farm-/Anbaubloecke in " + farmTypes + " Kategorie(n)");
             }
             if (scan.calcite + scan.smoothBasalt > 0 && scan.budding > 0)
                 reasons.add("Geodenstruktur mit Calcite/Smooth Basalt");
@@ -317,9 +320,9 @@ public final class IntelligenceScanner extends Module {
     private final class ScanJob {
         final int cx, cz, bottomY, height, total;
         final long key;
-        int cursor;
+        int cursor, validScanned;
         int budding, smallBuds, mediumBuds, largeBuds, matureCrystals, amethystBlocks, calcite, smoothBasalt;
-        int valuableBlocks, redstoneBlocks, farmBlocks;
+        int valuableBlocks, redstoneBlocks, farmBlocks, farmKinds;
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
         boolean harvestObserved;
@@ -352,7 +355,10 @@ public final class IntelligenceScanner extends Module {
             if (b == Blocks.NETHERITE_BLOCK || b == Blocks.DIAMOND_BLOCK || b == Blocks.DRAGON_HEAD
                     || b == Blocks.EMERALD_BLOCK || b == Blocks.IRON_BLOCK) valuableBlocks++;
             if (isRedstone(b)) redstoneBlocks++;
-            if (isFarmBlock(b)) farmBlocks++;
+            if (isFarmBlock(b)) {
+                farmBlocks++;
+                farmKinds |= farmKind(b);
+            }
         }
 
         void addCrystal(List<BlockPos> stage, int x, int y, int z) {
@@ -370,8 +376,9 @@ public final class IntelligenceScanner extends Module {
             s.buds = smallBuds + mediumBuds + largeBuds;
             s.matureCrystals = matureCrystals; s.amethystBlocks = amethystBlocks;
             s.calcite = calcite; s.smoothBasalt = smoothBasalt;
-            s.valuableBlocks = valuableBlocks; s.redstoneBlocks = redstoneBlocks; s.farmBlocks = farmBlocks;
-            s.completeness = Math.min(1.0, (double) cursor / total);
+            s.valuableBlocks = valuableBlocks; s.redstoneBlocks = redstoneBlocks;
+            s.farmBlocks = farmBlocks; s.farmKinds = farmKinds;
+            s.completeness = Math.min(1.0, (double) validScanned / total);
             s.harvestObserved = harvestObserved;
             s.lastCompleteTick = cursor >= total ? now : 0;
             s.crystals.addAll(crystalPositions);
@@ -387,7 +394,7 @@ public final class IntelligenceScanner extends Module {
 
     private static final class ScanSnapshot {
         int budding, smallBuds, mediumBuds, largeBuds, buds, matureCrystals, amethystBlocks;
-        int calcite, smoothBasalt, valuableBlocks, redstoneBlocks, farmBlocks;
+        int calcite, smoothBasalt, valuableBlocks, redstoneBlocks, farmBlocks, farmKinds;
         boolean harvestObserved;
         long lastCompleteTick;
         double completeness;
@@ -423,6 +430,18 @@ public final class IntelligenceScanner extends Module {
                 || b == Blocks.PISTON || b == Blocks.STICKY_PISTON || b == Blocks.LEVER
                 || b == Blocks.TRIPWIRE_HOOK || b == Blocks.DAYLIGHT_DETECTOR || b == Blocks.TARGET
                 || b == Blocks.CRAFTER;
+    }
+
+    private static int farmKind(Block b) {
+        if (b == Blocks.WHEAT || b == Blocks.CARROTS || b == Blocks.POTATOES
+                || b == Blocks.BEETROOTS || b == Blocks.NETHER_WART) return 1;
+        if (b == Blocks.SUGAR_CANE || b == Blocks.BAMBOO || b == Blocks.CACTUS
+                || b == Blocks.KELP || b == Blocks.KELP_PLANT) return 1 << 1;
+        if (b == Blocks.MELON || b == Blocks.PUMPKIN || b == Blocks.MELON_STEM
+                || b == Blocks.ATTACHED_MELON_STEM || b == Blocks.PUMPKIN_STEM
+                || b == Blocks.ATTACHED_PUMPKIN_STEM) return 1 << 2;
+        if (b == Blocks.BEEHIVE || b == Blocks.BEE_NEST || b == Blocks.HONEY_BLOCK) return 1 << 3;
+        return 1 << 4;
     }
 
     private static boolean isFarmBlock(Block b) {
