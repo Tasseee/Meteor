@@ -37,7 +37,10 @@ public final class IntelligenceScanner extends Module {
     private final BoolSetting crystalEsp = add(new BoolSetting("Geoden-Kristalle ESP", true));
     private final BoolSetting geodeBoxEsp = add(new BoolSetting("Geoden-Box ESP", true));
     private final ColorSetting entityColor = add(new ColorSetting("Entity-ESP Farbe", 0xFFB84D));
-    private final ColorSetting crystalColor = add(new ColorSetting("Kristall-ESP Farbe", 0x9B5CF6));
+    private final ColorSetting smallBudColor = add(new ColorSetting("Geode: kleiner Bud", 0xB9A1FF));
+    private final ColorSetting mediumBudColor = add(new ColorSetting("Geode: mittlerer Bud", 0x9B5CF6));
+    private final ColorSetting largeBudColor = add(new ColorSetting("Geode: grosser Bud", 0x7E57C2));
+    private final ColorSetting clusterColor = add(new ColorSetting("Geode: Cluster", 0xE0C4FF));
     private final ColorSetting geodeColor = add(new ColorSetting("Geoden-Box Farbe", 0x6C55D9));
 
     private final Map<Long, ScanSnapshot> snapshots = new HashMap<>();
@@ -279,6 +282,10 @@ public final class IntelligenceScanner extends Module {
         int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
         boolean harvestObserved;
         final List<BlockPos> crystalPositions = new ArrayList<>();
+        final List<BlockPos> smallCrystalPositions = new ArrayList<>();
+        final List<BlockPos> mediumCrystalPositions = new ArrayList<>();
+        final List<BlockPos> largeCrystalPositions = new ArrayList<>();
+        final List<BlockPos> clusterPositions = new ArrayList<>();
 
         ScanJob(int cx, int cz, int bottomY, int height) {
             this.cx = cx; this.cz = cz; this.bottomY = bottomY; this.height = Math.max(1, height);
@@ -289,10 +296,10 @@ public final class IntelligenceScanner extends Module {
         void accept(Block b, int x, int y, int z) {
             boolean geode = false;
             if (b == Blocks.BUDDING_AMETHYST) { budding++; geode = true; }
-            else if (b == Blocks.SMALL_AMETHYST_BUD) { smallBuds++; geode = true; addCrystal(x, y, z); }
-            else if (b == Blocks.MEDIUM_AMETHYST_BUD) { mediumBuds++; geode = true; addCrystal(x, y, z); }
-            else if (b == Blocks.LARGE_AMETHYST_BUD) { largeBuds++; geode = true; addCrystal(x, y, z); }
-            else if (b == Blocks.AMETHYST_CLUSTER) { matureCrystals++; geode = true; addCrystal(x, y, z); }
+            else if (b == Blocks.SMALL_AMETHYST_BUD) { smallBuds++; geode = true; addCrystal(smallCrystalPositions, x, y, z); }
+            else if (b == Blocks.MEDIUM_AMETHYST_BUD) { mediumBuds++; geode = true; addCrystal(mediumCrystalPositions, x, y, z); }
+            else if (b == Blocks.LARGE_AMETHYST_BUD) { largeBuds++; geode = true; addCrystal(largeCrystalPositions, x, y, z); }
+            else if (b == Blocks.AMETHYST_CLUSTER) { matureCrystals++; geode = true; addCrystal(clusterPositions, x, y, z); }
             else if (b == Blocks.AMETHYST_BLOCK) { amethystBlocks++; geode = true; }
             else if (b == Blocks.CALCITE) { calcite++; geode = true; }
             else if (b == Blocks.SMOOTH_BASALT) { smoothBasalt++; geode = true; }
@@ -306,8 +313,12 @@ public final class IntelligenceScanner extends Module {
             if (isFarmBlock(b)) farmBlocks++;
         }
 
-        void addCrystal(int x, int y, int z) {
-            if (crystalPositions.size() < 256) crystalPositions.add(new BlockPos(x, y, z));
+        void addCrystal(List<BlockPos> stage, int x, int y, int z) {
+            if (crystalPositions.size() < 256) {
+                BlockPos pos = new BlockPos(x, y, z);
+                crystalPositions.add(pos);
+                if (stage.size() < 256) stage.add(pos);
+            }
         }
 
         ScanSnapshot snapshot(long now) {
@@ -322,6 +333,10 @@ public final class IntelligenceScanner extends Module {
             s.harvestObserved = harvestObserved;
             s.lastCompleteTick = cursor >= total ? now : 0;
             s.crystals.addAll(crystalPositions);
+            s.smallCrystals.addAll(smallCrystalPositions);
+            s.mediumCrystals.addAll(mediumCrystalPositions);
+            s.largeCrystals.addAll(largeCrystalPositions);
+            s.clusters.addAll(clusterPositions);
             if (minX != Integer.MAX_VALUE && maxX - minX <= 64 && maxY - minY <= 64 && maxZ - minZ <= 64)
                 s.bounds = new Box(minX, minY, minZ, maxX + 1, maxY + 1, maxZ + 1);
             return s;
@@ -336,11 +351,27 @@ public final class IntelligenceScanner extends Module {
         double completeness;
         Box bounds;
         final List<BlockPos> crystals = new ArrayList<>();
+        final List<BlockPos> smallCrystals = new ArrayList<>();
+        final List<BlockPos> mediumCrystals = new ArrayList<>();
+        final List<BlockPos> largeCrystals = new ArrayList<>();
+        final List<BlockPos> clusters = new ArrayList<>();
     }
 
     private static final class EntityEvidence {
         int frames, villagers, armorStands, playerCount;
         double clusterBonus, activityScore;
+    }
+
+    private void drawCrystalStage(DrawContext ctx, List<BlockPos> positions, int rgb) {
+        for (BlockPos pos : positions) {
+            double dx = pos.getX() + 0.5 - mc.player.getX();
+            double dy = pos.getY() + 0.5 - mc.player.getY();
+            double dz = pos.getZ() + 0.5 - mc.player.getZ();
+            if (dx * dx + dy * dy + dz * dz > 96.0 * 96.0) continue;
+            Draw.box(ctx, new Box(pos.getX(), pos.getY(), pos.getZ(),
+                    pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1),
+                    0xFF000000 | rgb, 1, true);
+        }
     }
 
     private static boolean isRedstone(Block b) {
@@ -380,14 +411,11 @@ public final class IntelligenceScanner extends Module {
         }
         for (ScanSnapshot snapshot : snapshots.values()) {
             if (snapshot.completeness < 1.0 || snapshot.crystals.isEmpty()) continue;
-            if (crystalEsp.get()) for (BlockPos pos : snapshot.crystals) {
-                double dx = pos.getX() + 0.5 - mc.player.getX();
-                double dy = pos.getY() + 0.5 - mc.player.getY();
-                double dz = pos.getZ() + 0.5 - mc.player.getZ();
-                if (dx * dx + dy * dy + dz * dz > 96.0 * 96.0) continue;
-                Draw.box(ctx, new Box(pos.getX(), pos.getY(), pos.getZ(),
-                        pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1),
-                        0xFF000000 | crystalColor.rgb(), 1, true);
+            if (crystalEsp.get()) {
+                drawCrystalStage(ctx, snapshot.smallCrystals, smallBudColor.rgb());
+                drawCrystalStage(ctx, snapshot.mediumCrystals, mediumBudColor.rgb());
+                drawCrystalStage(ctx, snapshot.largeCrystals, largeBudColor.rgb());
+                drawCrystalStage(ctx, snapshot.clusters, clusterColor.rgb());
             }
             if (geodeBoxEsp.get() && snapshot.bounds != null) {
                 double bx = (snapshot.bounds.minX + snapshot.bounds.maxX) * 0.5 - mc.player.getX();
