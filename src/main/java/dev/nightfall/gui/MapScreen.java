@@ -144,14 +144,21 @@ public class MapScreen extends Screen {
         if (hr != null && hr.status != ChunkResult.Status.CLEAN) {
             String t1 = (hr.status == ChunkResult.Status.SUS ? "SUS" : "SUS WEG") + "  Score " + String.format("%.1f", hr.score);
             String t2 = String.join(", ", hr.reasons);
-            String t3 = hr.foundAtMillis > 0 ? "erkannt vor " + ago(System.currentTimeMillis() - hr.foundAtMillis) : "";
-            int tw = Math.max(mc.textRenderer.getWidth(t1), Math.max(mc.textRenderer.getWidth(t2), mc.textRenderer.getWidth(t3))) + 10;
-            int tx = Math.min(mx + 10, width - tw - 4), ty = Math.min(my + 10, height - 40);
-            ctx.fill(tx, ty, tx + tw, ty + 34, 0xF0141418);
-            ctx.fill(tx, ty, tx + 2, ty + 34, Theme.ACCENT);
+            String t3 = "Entity " + fmt(hr.entityScore) + " | Geode " + fmt(hr.geodeScore)
+                    + " | Wertbloecke " + fmt(hr.valuableScore) + " | Stash " + fmt(hr.stashScore);
+            String t4 = "Redstone " + fmt(hr.redstoneScore) + " | Farm " + fmt(hr.farmScore)
+                    + " | Activity " + fmt(hr.activityScore) + " | Deep-Scan " + Math.round(hr.dataCompleteness * 100) + "%";
+            String t5 = hr.foundAtMillis > 0 ? "erkannt vor " + ago(System.currentTimeMillis() - hr.foundAtMillis) : "";
+            int tw = Math.max(Math.max(mc.textRenderer.getWidth(t1), mc.textRenderer.getWidth(t2)),
+                    Math.max(mc.textRenderer.getWidth(t3), Math.max(mc.textRenderer.getWidth(t4), mc.textRenderer.getWidth(t5)))) + 10;
+            int tx = Math.min(mx + 10, width - tw - 4), ty = Math.min(my + 10, height - 64);
+            ctx.fill(tx, ty, tx + tw, ty + 58, 0xF0141418);
+            ctx.fill(tx, ty, tx + 2, ty + 58, Theme.ACCENT);
             ctx.drawText(mc.textRenderer, t1, tx + 6, ty + 3, Theme.TEXT, false);
             ctx.drawText(mc.textRenderer, t2, tx + 6, ty + 13, Theme.TEXT_DIM, false);
             ctx.drawText(mc.textRenderer, t3, tx + 6, ty + 23, Theme.TEXT_DIM, false);
+            ctx.drawText(mc.textRenderer, t4, tx + 6, ty + 33, Theme.TEXT_DIM, false);
+            ctx.drawText(mc.textRenderer, t5, tx + 6, ty + 45, Theme.TEXT_DIM, false);
         }
 
         // Waypoint setzen/loeschen
@@ -176,6 +183,8 @@ public class MapScreen extends Screen {
         ctx.fill(x, y, x + 8, y + 8, 0xFF000000 | rgb);
         ctx.drawText(mc.textRenderer, t, x + 12, y, Theme.TEXT, false);
     }
+
+    private static String fmt(double value) { return String.format(java.util.Locale.ROOT, "%.1f", value); }
 
     private static String ago(long ms) {
         long s = ms / 1000;
