@@ -97,7 +97,6 @@ public final class TrapperBot extends Module {
     }
 
     private void restoreCombatModules() {
-        if (mc.player == null) return;
         if (useAutoGap.get() && !autoGapWasEnabled && ModuleManager.get(AutoGap.class).isEnabled())
             ModuleManager.get(AutoGap.class).setEnabled(false);
         if (useAutoTotem.get() && !autoTotemWasEnabled && ModuleManager.get(AutoTotem.class).isEnabled())
@@ -161,6 +160,7 @@ public final class TrapperBot extends Module {
         }
         Collections.shuffle(candidates, random);
         targetName = candidates.get(0);
+        targetSellSent = false;
         attemptedThisSession.add(targetName.toLowerCase(java.util.Locale.ROOT));
 
         // Give the recipient an explicit warning before the teleport request.
