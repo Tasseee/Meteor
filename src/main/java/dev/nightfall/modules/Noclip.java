@@ -7,6 +7,9 @@ import net.minecraft.client.network.ClientPlayerEntity;
 
 /**
  * Client-side no-clip movement. This changes local collision only; multiplayer
+ * movement remains subject to server validation and correction.
+ *
+ * Multiplayer
  * servers remain authoritative and may correct or reject the resulting position.
  */
 public final class Noclip extends Module {
