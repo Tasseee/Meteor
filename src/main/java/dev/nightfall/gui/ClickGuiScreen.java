@@ -361,7 +361,7 @@ public class ClickGuiScreen extends Screen {
         ctx.fill(iconX, y + 5, iconX + 15, y + 20, Theme.withAlpha(mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, mod.isEnabled() ? 58 : 28));
         String icon = mod.getName().substring(0, 1).toUpperCase(Locale.ROOT);
         ctx.drawText(mc.textRenderer, icon, iconX + 4, y + 9, mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, true);
-        ctx.drawText(mc.textRenderer, mod.getName(), panelX + 34, y + 9, Theme.lerp(Theme.TEXT_DIM, Theme.TEXT, enabled), false);
+        ctx.drawText(mc.textRenderer, mod.getName(), panelX + 34, y + 9, (0xFF000000 | Theme.lerp(Theme.TEXT_DIM, Theme.TEXT, enabled)), false);
 
         String key = listening == mod ? "..." : (mod.getKey() >= 0 ? Keys.name(mod.getKey()) : "");
         if (!key.isEmpty()) {
