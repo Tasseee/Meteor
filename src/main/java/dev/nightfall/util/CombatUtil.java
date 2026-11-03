@@ -17,7 +17,7 @@ public final class CombatUtil {
      */
     public static double explosionDamage(Vec3d center, LivingEntity e, double power) {
         double q = power * 2.0;
-        double d = e.getPos().distanceTo(center) / q;
+        double d = e.getEntityPos().distanceTo(center) / q;
         if (d > 1.0) return 0;
         double impact = 1.0 - d;
         double dmg = (impact * impact + impact) / 2.0 * 7.0 * q + 1.0;
