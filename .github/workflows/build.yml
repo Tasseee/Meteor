@@ -34,9 +34,35 @@ jobs:
         run: |
           ls -la
           test -f build.gradle || test -f build.gradle.kts
+          test -f src/main/resources/fabric.mod.json
+          test -f src/main/resources/nightfall.mixins.json
 
       - name: Build Nightfall
         run: gradle build --no-daemon
+
+      - name: Verify Fabric JAR metadata
+        run: |
+          python3 - <<'PY'
+          import glob
+          import json
+          import zipfile
+
+          jars = [p for p in glob.glob("build/libs/*.jar") if not p.endswith("-sources.jar")]
+          if not jars:
+              raise SystemExit("No distributable Nightfall JAR was produced")
+
+          for path in jars:
+              with zipfile.ZipFile(path) as jar:
+                  names = set(jar.namelist())
+                  if "fabric.mod.json" not in names:
+                      raise SystemExit(f"{path} is missing fabric.mod.json")
+                  metadata = json.loads(jar.read("fabric.mod.json"))
+                  if metadata.get("id") != "nightfall":
+                      raise SystemExit(f"{path} has unexpected mod id: {metadata.get('id')!r}")
+                  if "dev.nightfall.Nightfall" not in metadata.get("entrypoints", {}).get("client", []):
+                      raise SystemExit(f"{path} is missing the Nightfall client entrypoint")
+                  print(f"Verified Fabric mod: {path} (version {metadata.get('version')})")
+          PY
 
       - name: Upload build artifacts
         if: success()
