@@ -5,6 +5,7 @@ import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.util.Theme;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.item.ItemStack;
+import net.minecraft.entity.EquipmentSlot;
 
 /** Compact armor row with durability bars and percentage labels. */
 public final class ArmorHud extends HudModule {
@@ -25,7 +26,7 @@ public final class ArmorHud extends HudModule {
         ctx.fill(0, 0, w, 2, Theme.ACCENT);
         // Minecraft armor inventory order: boots, leggings, chestplate, helmet.
         for (int i = 0; i < 4; i++) {
-            ItemStack stack = mc.player.getInventory().getArmor().get(i);
+            ItemStack stack = switch (i) { case 0 -> mc.player.getEquippedStack(EquipmentSlot.FEET); case 1 -> mc.player.getEquippedStack(EquipmentSlot.LEGS); case 2 -> mc.player.getEquippedStack(EquipmentSlot.CHEST); default -> mc.player.getEquippedStack(EquipmentSlot.HEAD); };
             int x = 6 + i * 35;
             int y = 4;
             if (!stack.isEmpty()) {
