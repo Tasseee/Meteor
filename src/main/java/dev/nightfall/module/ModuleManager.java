@@ -65,6 +65,7 @@ public final class ModuleManager {
         MODULES.add(new Waypoints());
         MODULES.add(new FakeBases());
         // Basefinder
+        MODULES.add(new IntelligenceScanner());
         MODULES.add(new BaseFinder());
         // Misc
         MODULES.add(new AutoTpa());
