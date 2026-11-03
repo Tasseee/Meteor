@@ -43,9 +43,14 @@ public final class AntiVanishHints extends Module {
             if (o == null) {
                 line = name + " · noch keine Stichproben";
             } else {
-                line = name + " · Tab fehlt " + o.tabAbsentSamples + "/" + o.samples
-                        + " · Entity fehlt " + o.entityAbsentSamples + "/" + o.samples
-                        + " · aktuelle Tab-Lücke " + o.tabAbsentStreak;
+                String tabHistory = o.everSeenTab
+                        ? "Tab-Lücke " + o.tabAbsentSamples + "/" + o.samples
+                        : "nie im Tab gesehen";
+                String entityHistory = o.everSeenEntity
+                        ? "Entity-Lücke " + o.entityAbsentSamples + "/" + o.samples
+                        : "nie als Entity geladen";
+                line = name + " · " + tabHistory + " · " + entityHistory
+                        + " · aktuelle Tab-Lücke " + (o.everSeenTab ? o.tabAbsentStreak : "n/a");
                 if ("SPECTATOR".equalsIgnoreCase(o.gameMode)) line += " · Spectator";
                 if (o.invisible) line += " · invis-Status am Entity";
             }
