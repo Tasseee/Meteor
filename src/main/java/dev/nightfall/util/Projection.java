@@ -1,6 +1,7 @@
 package dev.nightfall.util;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.Camera;
 import net.minecraft.util.math.Vec3d;
 
 /**
@@ -26,9 +27,12 @@ public final class Projection {
         valid = false;
         if (mc.player == null || mc.world == null || w <= 0 || h <= 0
                 || !mc.options.getPerspective().isFirstPerson()) return;
-        Vec3d e = mc.player.getEyePos();
+        // Use the exact interpolated render camera, not the tick-based player pose.
+        // Mixing tick position/rotation with render-time entity boxes causes visible ESP jitter while moving.
+        Camera camera = mc.gameRenderer.getCamera();
+        Vec3d e = camera.getCameraPos();
         ex = e.x; ey = e.y; ez = e.z;
-        double yaw = Math.toRadians(mc.player.getYaw()), pitch = Math.toRadians(mc.player.getPitch());
+        double yaw = Math.toRadians(camera.getYaw()), pitch = Math.toRadians(camera.getPitch());
         double sy = Math.sin(yaw), cy = Math.cos(yaw), sp = Math.sin(pitch), cp = Math.cos(pitch);
         fx = -sy * cp; fy = -sp; fz = cy * cp;
         rx = -cy; rz = -sy;
