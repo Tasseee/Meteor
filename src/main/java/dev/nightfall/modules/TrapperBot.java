@@ -121,7 +121,7 @@ public final class TrapperBot extends Module {
     private void chooseAndWarn() {
         List<String> candidates = new ArrayList<>();
         for (PlayerListEntry entry : mc.getNetworkHandler().getPlayerList()) {
-            String name = entry.getProfile().getName();
+            String name = entry.getProfile().name();
             if (name == null || name.isBlank() || !name.matches("[A-Za-z0-9_]{3,16}")) continue;
             if (name.equalsIgnoreCase(mc.player.getName().getString()) || blacklist.has(name)) continue;
             if (attemptedThisSession.contains(name.toLowerCase(java.util.Locale.ROOT))) continue;
@@ -177,7 +177,7 @@ public final class TrapperBot extends Module {
     }
 
     private void buildOneBlock() {
-        if (target == null || !target.isAlive() || target.getWorld() != mc.world) {
+        if (target == null || !target.isAlive() || target.getEntityWorld() != mc.world) {
             startCooldown(20 * 20);
             return;
         }
