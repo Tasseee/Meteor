@@ -12,7 +12,6 @@ import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.TrapperBot;
 import dev.nightfall.modules.FakeBases;
 import dev.nightfall.modules.StaffWatch;
-import dev.nightfall.modules.SchematicBuilder;
 import dev.nightfall.module.setting.ListSetting;
 import dev.nightfall.scanner.Waypoint;
 import dev.nightfall.scanner.WaypointManager;
@@ -164,34 +163,6 @@ public final class Commands {
                     Config.save();
                     return say(c, "Tastatur-Klicksounds: " + (Config.keySounds ? "AN" : "AUS"));
                 })));
-
-        // ---- Local schematic builder (.nfbuild, Sponge .schem, Litematica .litematic) ----
-        SchematicBuilder builder = ModuleManager.get(SchematicBuilder.class);
-        root.then(literal("build")
-                .then(literal("load").then(argument("name", StringArgumentType.word()).executes(c -> {
-                    if (MinecraftClient.getInstance().player == null) return say(c, "Bitte zuerst einer Welt beitreten.");
-                    String name = str(c, "name");
-                    if (!builder.load(name)) return say(c, "Vorlage nicht geladen: " + builder.status());
-                    builder.setEnabled(true);
-                    return say(c, "Vorlage geladen: " + builder.status() + " | Material in der Hotbar bereithalten. Ghost-Umrisse aktiv; Route ist nur Navigationshilfe.");
-                })))
-                .then(literal("status").executes(c -> say(c, builder.status())))
-                .then(literal("pause").executes(c -> { builder.setBuildPaused(true); return say(c, "Builder pausiert; Bewegung wird freigegeben."); }))
-                .then(literal("resume").executes(c -> { builder.setBuildPaused(false); return say(c, "Builder fortgesetzt."); }))
-                .then(literal("preview").then(argument("state", StringArgumentType.word()).executes(c -> {
-                    String state = str(c, "state");
-                    if (!state.equalsIgnoreCase("on") && !state.equalsIgnoreCase("off")) return say(c, "Verwendung: /nf build preview on|off");
-                    builder.setPreviewEnabled(state.equalsIgnoreCase("on"));
-                    return say(c, "Blueprint-HUD und 3D-Ghost-Umrisse: " + (builder.isPreviewEnabled() ? "AN" : "AUS"));
-                })))
-                .then(literal("route").executes(c -> say(c, builder.planRoute())))
-                .then(literal("follow").then(argument("state", StringArgumentType.word()).executes(c -> {
-                    String state = str(c, "state");
-                    if (!state.equalsIgnoreCase("on") && !state.equalsIgnoreCase("off")) return say(c, "Verwendung: /nf build follow on|off");
-                    return say(c, builder.setFollowRoute(state.equalsIgnoreCase("on")));
-                })))
-                .then(literal("stop").executes(c -> { builder.stopBuild(); return say(c, "Builder gestoppt und Vorlage entladen."); }))
-                .then(literal("dir").executes(c -> say(c, "Vorlagenordner (.nfbuild, Sponge .schem, Litematica .litematic): " + SchematicBuilder.schematicDir().toAbsolutePath()))));
 
         // ---- BaseFinder Pro controls: pause/resume/status ----
         BaseFinder finder = ModuleManager.get(BaseFinder.class);
