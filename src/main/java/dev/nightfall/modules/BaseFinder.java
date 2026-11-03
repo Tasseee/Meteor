@@ -221,10 +221,7 @@ public class BaseFinder extends Module {
         res.stashScore = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + cluster;
         res.score = combinedScore(res);
-        double score = res.score;
-        signalKinds += (res.entityScore > 0 ? 1 : 0) + (res.geodeScore > 0 ? 1 : 0)
-                + (res.valuableScore > 0 ? 1 : 0) + (res.redstoneScore > 0 ? 1 : 0)
-                + (res.farmScore > 0 ? 1 : 0) + (res.activityScore > 0 ? 1 : 0);
+
         res.lastScanTick = tick;
         res.blockReasons.clear();
         res.reasons.clear();
