@@ -4,7 +4,6 @@ import dev.nightfall.module.HudModule;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.util.Theme;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 
 /** Shows item cooldowns using the local client's cooldown manager. */
@@ -22,7 +21,7 @@ public final class CooldownHud extends HudModule {
 
     @Override protected void draw(DrawContext ctx) {
         if (mc.player == null) return;
-        Item[] items = {Items.ENDER_PEARL, Items.WIND_CHARGE, Items.CHORUS_FRUIT};
+        var items = new net.minecraft.item.ItemStack[]{Items.ENDER_PEARL.getDefaultStack(), Items.WIND_CHARGE.getDefaultStack(), Items.CHORUS_FRUIT.getDefaultStack()};
         String[] names = {"Pearl", "Wind", "Chorus"};
         boolean[] enabled = {pearls.get(), windCharges.get(), chorus.get()};
         int count = 0;
@@ -37,7 +36,7 @@ public final class CooldownHud extends HudModule {
             float cooldown = mc.player.getItemCooldownManager().getCooldownProgress(items[i], 0.0f);
             int y = 4 + line * 16;
             String status = cooldown > 0.001f ? Math.round(cooldown * 100f) + "%" : "Ready";
-            ctx.drawItem(items[i].getDefaultStack(), 5, y - 2);
+            ctx.drawItem(items[i], 5, y - 2);
             ctx.drawText(mc.textRenderer, names[i], 25, y, Theme.TEXT, false);
             int right = w - 6;
             int labelWidth = mc.textRenderer.getWidth(status);
