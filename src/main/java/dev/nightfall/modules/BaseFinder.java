@@ -211,13 +211,12 @@ public class BaseFinder extends Module {
         double cluster = maxCell >= 6 ? (maxCell - 5) * wCluster.get() : 0;
         double blockScore = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + redstone * wRedstone.get() + cluster;
-        int signalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
-                + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (cluster > 0 ? 1 : 0);
-
         ChunkResult old = results.get(k);
         ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
         Status prev = res.status;
         res.blockScore = blockScore;
+        res.blockSignalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
+                + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (cluster > 0 ? 1 : 0);
         res.serverLimited = maskActive;
         res.stashScore = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + cluster;
@@ -240,29 +239,7 @@ public class BaseFinder extends Module {
 
         res.reasons.addAll(res.blockReasons);
         res.reasons.addAll(res.intelligenceReasons);
-        if (FakeBases.isMarkedChunk(cx, cz)) {
-            res.status = Status.DECOY;
-            res.reasons.add("Manuell als FakeBase/Decoy markiert — normaler SUS-Alarm unterdrückt");
-            if (prev != Status.DECOY) { dirty = true; marksDirty = true; }
-        } else if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
-            res.status = Status.SUS;
-            if (prev != Status.SUS) {
-                res.foundAtMillis = System.currentTimeMillis();
-                dirty = true; marksDirty = true;
-                if (chat.get() && mc.player != null) {
-                    mc.player.sendMessage(Text.literal("[Nightfall] SUS Chunk " + cx + "," + cz + " (Block "
-                            + res.blockX() + ", " + res.blockZ() + ") Score " + fmt(score)
-                            + " - " + String.join(", ", res.reasons)), false);
-                }
-            }
-        } else if (prev == Status.SUS || prev == Status.GONE) {
-            res.status = Status.GONE;
-            if (prev == Status.SUS) { dirty = true; marksDirty = true; }
-        } else {
-            res.status = Status.CLEAN;
-            if (score >= threshold.get() && signalKinds < minSignals.getInt())
-                res.reasons.add("Score hoch, aber nur " + signalKinds + " Signaltyp(en) — nicht als SUS markiert");
-        }
+        reassess(res, prev, true);
         if (old == null) results.put(k, res);
     }
 
@@ -285,7 +262,51 @@ public class BaseFinder extends Module {
         res.reasons.clear();
         res.reasons.addAll(res.blockReasons);
         res.reasons.addAll(res.intelligenceReasons);
+        reassess(res, res.status, true);
         dirty = true;
+    }
+
+    /**
+     * Keep score and status in sync regardless of which scanner published the latest evidence.
+     * Repeated refreshes do not produce repeated chat messages; only a transition into SUS does.
+     */
+    private void reassess(ChunkResult res, Status previous, boolean allowNotification) {
+        Status next;
+        int signalKinds = res.blockSignalKinds
+                + (res.entityScore > 0 ? 1 : 0)
+                + (res.geodeScore > 0 ? 1 : 0)
+                + (res.valuableScore > 0 ? 1 : 0)
+                + (res.redstoneScore > 0 ? 1 : 0)
+                + (res.farmScore > 0 ? 1 : 0)
+                + (res.activityScore > 0 ? 1 : 0);
+
+        if (FakeBases.isMarkedChunk(res.cx, res.cz)) {
+            next = Status.DECOY;
+            if (!res.reasons.contains("Manuell als FakeBase/Decoy markiert — normaler SUS-Alarm unterdrückt"))
+                res.reasons.add("Manuell als FakeBase/Decoy markiert — normaler SUS-Alarm unterdrückt");
+        } else if (res.score >= threshold.get() && signalKinds >= minSignals.getInt()) {
+            next = Status.SUS;
+            if (previous != Status.SUS) {
+                res.foundAtMillis = System.currentTimeMillis();
+                if (allowNotification && chat.get() && mc.player != null) {
+                    mc.player.sendMessage(Text.literal("[Nightfall] SUS Chunk " + res.cx + "," + res.cz
+                            + " (Block " + res.blockX() + ", " + res.blockZ() + ") Score " + fmt(res.score)
+                            + " - " + String.join(", ", res.reasons)), false);
+                }
+            }
+        } else if (previous == Status.SUS || previous == Status.GONE) {
+            next = Status.GONE;
+        } else {
+            next = Status.CLEAN;
+            if (res.score >= threshold.get() && signalKinds < minSignals.getInt())
+                res.reasons.add("Score hoch, aber nur " + signalKinds + " Signaltyp(en) — nicht als SUS markiert");
+        }
+
+        if (next != previous) {
+            dirty = true;
+            marksDirty = true;
+        }
+        res.status = next;
     }
 
     private static double combinedScore(ChunkResult r) {
