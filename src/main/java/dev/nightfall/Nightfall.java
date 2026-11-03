@@ -10,7 +10,6 @@ import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.TrapperBot;
 import dev.nightfall.scanner.WaypointManager;
-import dev.nightfall.render.SchematicGhostRenderer;
 import dev.nightfall.render.SkyVisualRenderer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -38,7 +37,6 @@ public class Nightfall implements ClientModInitializer {
     public void onInitializeClient() {
         ModuleManager.init();
         Config.load();
-        SchematicGhostRenderer.register();
         SkyVisualRenderer.register();
 
         ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
@@ -128,7 +126,7 @@ public class Nightfall implements ClientModInitializer {
             // A soft vanilla UI click with a tiny pitch variation gives tactile feedback
             // without adding external audio assets or playing sounds during normal gameplay.
             float pitch = 0.88f + ((key * 37) % 17) / 100.0f;
-            mc.player.playSound(SoundEvents.UI_BUTTON_CLICK, 0.16f, pitch);
+            mc.player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.16f, pitch);
         }
 }
 }
