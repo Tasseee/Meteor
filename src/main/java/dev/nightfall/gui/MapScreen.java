@@ -98,6 +98,7 @@ public class MapScreen extends Screen {
             int rgb = switch (res.status) {
                 case SUS -> Theme.lerp(0x9B5CF6, 0xFF3B5C, (float) (res.score / (bf.thresholdValue() * 3.0)));
                 case GONE -> 0x2F6FDB;
+                case DECOY -> 0xA84D74;
                 default -> 0x24242E;
             };
             ctx.fill(x0, y0, x0 + cell, y0 + cell, 0xFF000000 | rgb);
@@ -142,7 +143,7 @@ public class MapScreen extends Screen {
         String coords = "Block " + (int) Math.floor(bx) + ", " + (int) Math.floor(bz) + "   Chunk " + hcx + ", " + hcz;
         ctx.drawText(mc.textRenderer, coords, 8, 8, Theme.TEXT, true);
         if (hr != null && hr.status != ChunkResult.Status.CLEAN) {
-            String t1 = (hr.status == ChunkResult.Status.SUS ? "SUS" : "SUS WEG") + "  Score " + String.format("%.1f", hr.score);
+            String t1 = (hr.status == ChunkResult.Status.SUS ? "SUS" : (hr.status == ChunkResult.Status.DECOY ? "FAKE/DECOY" : "SUS WEG")) + "  Score " + String.format("%.1f", hr.score);
             String t2 = String.join(", ", hr.reasons);
             String t3 = "Entity " + fmt(hr.entityScore) + " | Geode " + fmt(hr.geodeScore)
                     + " | Wertbloecke " + fmt(hr.valuableScore) + " | Stash " + fmt(hr.stashScore);
