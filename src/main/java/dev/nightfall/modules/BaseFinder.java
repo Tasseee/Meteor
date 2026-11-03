@@ -216,7 +216,7 @@ public class BaseFinder extends Module {
         Status prev = res.status;
         res.blockScore = blockScore;
         res.blockSignalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
-                + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (cluster > 0 ? 1 : 0);
+                + (furnace > 0 ? 1 : 0) + (cluster > 0 ? 1 : 0);
         res.serverLimited = maskActive;
         res.stashScore = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + cluster;
