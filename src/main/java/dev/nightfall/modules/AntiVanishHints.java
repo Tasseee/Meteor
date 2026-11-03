@@ -23,11 +23,11 @@ public final class AntiVanishHints extends Module {
         if (mc.player == null || mc.world == null || mc.getNetworkHandler() == null) return;
         Set<String> tab = new HashSet<>();
         for (PlayerListEntry entry : mc.getNetworkHandler().getPlayerList()) {
-            if (entry.getProfile() != null && entry.getProfile().getName() != null)
+            if (entry.getProfile() != null && entry.getProfile().name() != null)
                 tab.add(entry.getProfile().getName().toLowerCase(Locale.ROOT));
         }
         Set<String> loaded = new HashSet<>();
-        mc.world.getPlayers().forEach(p -> loaded.add(p.getGameProfile().getName().toLowerCase(Locale.ROOT)));
+        mc.world.getPlayers().forEach(p -> loaded.add(p.getGameProfile().name().toLowerCase(Locale.ROOT)));
 
         StaffWatch staff = dev.nightfall.module.ModuleManager.get(StaffWatch.class);
         if (staff.staffNames.get().isEmpty()) return;
