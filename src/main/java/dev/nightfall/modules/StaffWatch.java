@@ -27,12 +27,12 @@ public final class StaffWatch extends Module {
         Set<String> tab = new HashSet<>();
         if (mc.getNetworkHandler() != null) {
             for (PlayerListEntry entry : mc.getNetworkHandler().getPlayerList()) {
-                if (entry.getProfile() != null && entry.getProfile().getName() != null)
+                if (entry.getProfile() != null && entry.getProfile().name() != null)
                     tab.add(entry.getProfile().getName().toLowerCase(java.util.Locale.ROOT));
             }
         }
         Set<String> loaded = new HashSet<>();
-        for (var player : mc.world.getPlayers()) loaded.add(player.getGameProfile().getName().toLowerCase(java.util.Locale.ROOT));
+        for (var player : mc.world.getPlayers()) loaded.add(player.getGameProfile().name().toLowerCase(java.util.Locale.ROOT));
 
         int x = 8, y = 44;
         ctx.drawText(mc.textRenderer, "StaffWatch · Client-Hinweise", x, y, Theme.ACCENT, true);
