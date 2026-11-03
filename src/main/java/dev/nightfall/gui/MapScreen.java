@@ -25,7 +25,7 @@ public class MapScreen extends Screen {
     private static int filter = 1;
     private static boolean init;
 
-    private boolean prevL, prevR, prevM, prevC, prev1, prev2, prev3;
+    private boolean prevL, prevR, prevM, prevC, prev1, prev2, prev3, prev4;
     private double lastMx, lastMy;
 
     public MapScreen() {
@@ -41,6 +41,7 @@ public class MapScreen extends Screen {
         prev1 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_1) == GLFW.GLFW_PRESS;
         prev2 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_2) == GLFW.GLFW_PRESS;
         prev3 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_3) == GLFW.GLFW_PRESS;
+        prev4 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_4) == GLFW.GLFW_PRESS;
     }
 
     @Override public boolean shouldPause() { return false; }
@@ -71,14 +72,16 @@ public class MapScreen extends Screen {
         boolean k1 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_1) == GLFW.GLFW_PRESS;
         boolean k2 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_2) == GLFW.GLFW_PRESS;
         boolean k3 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_3) == GLFW.GLFW_PRESS;
+        boolean k4 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_4) == GLFW.GLFW_PRESS;
         boolean clickR = r && !prevR;
         if (mk && !prevM) { close(); return; }
         if (k1 && !prev1) filter = 1;
         if (k2 && !prev2) filter = 2;
         if (k3 && !prev3) filter = 3;
+        if (k4 && !prev4) filter = 4;
         if (ck && !prevC && mc.player != null) { cx = mc.player.getX(); cz = mc.player.getZ(); }
         if (l && prevL) { cx -= (mx - lastMx) / zoom * 16.0; cz -= (my - lastMy) / zoom * 16.0; }
-        prevL = l; prevR = r; prevM = mk; prevC = ck; prev1 = k1; prev2 = k2; prev3 = k3;
+        prevL = l; prevR = r; prevM = mk; prevC = ck; prev1 = k1; prev2 = k2; prev3 = k3; prev4 = k4;
         lastMx = mx; lastMy = my;
 
         BaseFinder bf = ModuleManager.get(BaseFinder.class);
@@ -90,6 +93,7 @@ public class MapScreen extends Screen {
             boolean show = switch (filter) {
                 case 2 -> res.status == ChunkResult.Status.SUS;
                 case 3 -> res.status == ChunkResult.Status.GONE;
+                case 4 -> res.status == ChunkResult.Status.DECOY;
                 default -> true;
             };
             if (!show) continue;
@@ -170,13 +174,13 @@ public class MapScreen extends Screen {
         }
 
         // Legende + Filter
-        String[] names = {"Alle", "Verdaechtig", "Verschwunden"};
+        String[] names = {"Alle", "Verdaechtig", "Verschwunden", "Fake/Decoy"};
         ctx.fill(6, height - 52, 150, height - 6, 0xE6141418);
         ctx.fill(6, height - 52, 8, height - 6, Theme.ACCENT);
         legend(ctx, mc, 14, height - 46, 0x9B5CF6, "SUS (Score steigt: rot)");
         legend(ctx, mc, 14, height - 34, 0x2F6FDB, "SUS WEG");
         legend(ctx, mc, 14, height - 22, 0x24242E, "gescannt, unauffaellig");
-        String f = "Filter [1/2/3]: " + names[filter - 1] + "   C: zentrieren   RMB: Waypoint";
+        String f = "Filter [1/2/3/4]: " + names[filter - 1] + "   C: zentrieren   RMB: Waypoint";
         ctx.drawText(mc.textRenderer, f, width - mc.textRenderer.getWidth(f) - 8, 8, Theme.TEXT_DIM, true);
     }
 
