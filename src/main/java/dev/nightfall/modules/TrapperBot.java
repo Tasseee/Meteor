@@ -247,8 +247,14 @@ public final class TrapperBot extends Module {
     }
 
     private void fightTarget() {
-        if (target == null || !target.isAlive() || target.getEntityWorld() != mc.world) target = findWorldPlayer(targetName);
-        if (target == null || !target.isAlive()) {
+        if (target == null || target.getEntityWorld() != mc.world) target = findWorldPlayer(targetName);
+        if (target == null) {
+            // The player left the loaded world; this is not proof of a kill.
+            restoreSlot();
+            startCooldown(cooldownSeconds.getInt() * 20);
+            return;
+        }
+        if (!target.isAlive()) {
             restoreSlot();
             if (!targetSellSent && sellAfterKill.get() && mc.getNetworkHandler() != null) {
                 mc.getNetworkHandler().sendChatCommand("sell");
