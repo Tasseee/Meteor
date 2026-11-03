@@ -41,6 +41,7 @@ public final class ModuleManager {
         MODULES.add(new LongJump());
         MODULES.add(new Jesus());
         MODULES.add(new WaterWalk());
+        MODULES.add(new Noclip());
         // Visuals
         MODULES.add(new PlayerEsp());
         MODULES.add(new EntityEsp());
