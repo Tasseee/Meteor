@@ -48,6 +48,7 @@ public final class InvSeeValue extends Module {
     private String pendingTarget;
     private int previousSyncId = -1;
     private long pendingUntil;
+    private long queueWatchUntil;
     private String lastTarget;
     private double lastTotal;
     private int lastUnpriced;
