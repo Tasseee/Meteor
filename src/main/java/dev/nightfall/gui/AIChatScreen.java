@@ -3,6 +3,7 @@ package dev.nightfall.gui;
 import dev.nightfall.ai.AIChatClient;
 import dev.nightfall.ai.AIConfig;
 import dev.nightfall.ai.AIActionRegistry;
+import dev.nightfall.ai.AIBuilder;
 import dev.nightfall.util.Theme;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -67,6 +68,7 @@ public final class AIChatScreen extends Screen {
     }
 
     public static void onDisconnect() {
+        AIBuilder.onDisconnect();
         if (active != null && active.waitingLocate) {
             active.waitingLocate = false;
             active.status = "Verbindung getrennt";
@@ -79,6 +81,7 @@ public final class AIChatScreen extends Screen {
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         expireLocateRequest();
+        if (AIBuilder.isRunning()) status = AIBuilder.statusLabel();
         MinecraftClient mc = MinecraftClient.getInstance();
         ctx.fill(0, 0, width, height, 0xA9000000);
 
@@ -383,6 +386,7 @@ public final class AIChatScreen extends Screen {
     private void cancelPendingAction() {
         if (pendingAction == null || pendingToolCall == null) return;
         AIChatClient.ToolCall call = pendingToolCall;
+        AIActionRegistry.cancel(pendingAction);
         pendingAction = null;
         pendingToolCall = null;
         String result = "Der Spieler hat die Aktion vor der Ausführung abgebrochen. Es wurde nichts verändert.";

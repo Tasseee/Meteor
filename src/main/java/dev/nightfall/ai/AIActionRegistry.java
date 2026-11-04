@@ -14,6 +14,7 @@ import net.minecraft.util.Identifier;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Explicit allow-list of actions the model may request.
@@ -62,6 +63,18 @@ public final class AIActionRegistry {
                 objectSchema()));
         tools.add(tool("random_teleport", "Request the server's random teleport using its common /rtp command. The player must confirm first; the server must support it.",
                 objectSchema()));
+        JsonObject command = property("command", "string",
+                "A single Minecraft server command requested by the player, without the leading slash. Do not use server administration or destructive world-edit commands.");
+        command.getAsJsonObject("schema").addProperty("maxLength", 256);
+        tools.add(tool("run_server_command",
+                "Send one ordinary Minecraft/server command exactly as requested by the player. Nightfall previews the exact command and asks for confirmation. Server permissions remain authoritative; dangerous administration and world-edit roots are blocked.",
+                objectSchema(command, "command")));
+        tools.add(tool("build_starter_shelter",
+                "Plan and build a small 4x4 starter shelter from one full-cube block material already available in the hotbar. It checks a flat clear area and 54 blocks, previews the material and asks for confirmation. The player may need to move closer as the build pauses when a block is out of reach.",
+                objectSchema()));
+        tools.add(tool("stop_build",
+                "Stop the currently running Nightfall block-by-block build. The player must confirm first.",
+                objectSchema()));
         return tools;
     }
 
@@ -104,6 +117,27 @@ public final class AIActionRegistry {
                     "Nightfall liest Dimension, Position und Lebenspunkte und sendet diese Daten an den konfigurierten KI-Anbieter.");
             case "random_teleport" -> new Action(name, args,
                     "Nightfall sendet nach deiner Bestätigung den Serverbefehl /rtp. Der Server muss diesen Befehl anbieten; Nightfall kann den Teleport nicht erzwingen.");
+            case "run_server_command" -> {
+                String command = requiredString(args, "command", 256).trim();
+                while (command.startsWith("/")) command = command.substring(1).trim();
+                if (command.isBlank() || command.chars().anyMatch(Character::isISOControl)
+                        || command.indexOf(';') >= 0)
+                    throw new IllegalArgumentException("Bitte gib genau einen gültigen Minecraft-Befehl ohne Zeilenumbruch oder Befehlsverkettung an.");
+                String root = command.split("\\s+", 2)[0].toLowerCase(Locale.ROOT);
+                int namespace = root.lastIndexOf(':');
+                if (namespace >= 0) root = root.substring(namespace + 1);
+                if (Set.of("op", "deop", "ban", "ban-ip", "pardon", "pardon-ip", "kick",
+                        "stop", "restart", "whitelist", "reload", "save-all", "save-off", "save-on",
+                        "execute", "function", "fill", "clone", "setblock", "place", "data", "loot",
+                        "forceload").contains(root))
+                    throw new IllegalArgumentException("Dieser Serververwaltungs- oder Welteditierbefehl ist aus Sicherheitsgründen gesperrt.");
+                yield new Action(name, args, "Nightfall sendet nach deiner Bestätigung exakt diesen Befehl an den aktuellen Server:\\n/"
+                        + command + "\\nDer Server entscheidet über Berechtigungen und Ausführung. Nightfall umgeht keine Rechte.");
+            }
+            case "build_starter_shelter" -> new Action(name, args, AIBuilder.prepareStarterShelter());
+            case "stop_build" -> new Action(name, args,
+                    AIBuilder.isRunning() ? "Nightfall stoppt den laufenden Bau. Bereits gesetzte Blöcke bleiben bestehen."
+                            : "Aktuell läuft kein Nightfall-Bau.");
             default -> throw new IllegalArgumentException("Diese Aktion ist nicht freigegeben.");
         };
     }
@@ -157,8 +191,26 @@ public final class AIActionRegistry {
                     yield "Der /rtp-Befehl konnte nicht gesendet werden. Prüfe deine Verbindung.";
                 }
             }
+            case "run_server_command" -> {
+                if (mc.player.networkHandler == null) yield "Aktion fehlgeschlagen: Keine Serververbindung.";
+                String command = args.get("command").getAsString().trim();
+                while (command.startsWith("/")) command = command.substring(1).trim();
+                try {
+                    mc.player.networkHandler.sendChatCommand(command);
+                    yield "Der Befehl /" + command + " wurde an den Server gesendet. Ob er funktioniert, entscheidet der Server.";
+                } catch (RuntimeException error) {
+                    yield "Der Befehl konnte nicht gesendet werden. Prüfe deine Verbindung.";
+                }
+            }
+            case "build_starter_shelter" -> AIBuilder.startStarterShelter();
+            case "stop_build" -> AIBuilder.stop();
             default -> "Aktion nicht freigegeben.";
         };
+    }
+
+    /** Discard local plan state when the player cancels the confirmation. */
+    public static void cancel(Action action) {
+        if (action != null && "build_starter_shelter".equals(action.name())) AIBuilder.cancelPrepared();
     }
 
     private static String playerStatus(MinecraftClient mc) {

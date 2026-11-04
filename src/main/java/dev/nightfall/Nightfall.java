@@ -7,6 +7,7 @@ import dev.nightfall.gui.HudEditorScreen;
 import dev.nightfall.gui.MapScreen;
 import dev.nightfall.gui.AIChatScreen;
 import dev.nightfall.ai.AIConfig;
+import dev.nightfall.ai.AIBuilder;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
@@ -102,6 +103,7 @@ public class Nightfall implements ClientModInitializer {
             prevGui = g; prevHud = hu; prevMap = m; prevAi = ai;
             ModuleManager.pollKeys(mc);
         }
+        AIBuilder.tick();
         ModuleManager.tick();
     }
 
