@@ -294,16 +294,16 @@ public final class AIActionRegistry {
     private static String inventorySummary(MinecraftClient mc) {
         StringBuilder out = new StringBuilder("Inventar des Spielers. Der Builder kann nur Material aus den Slots 1–9 (Hotbar) direkt verwenden.");
         boolean any = false;
-        out.append("\\nHotbar:");
+        out.append("\nHotbar:");
         for (int slot = 0; slot < 9; slot++) {
             ItemStack stack = mc.player.getInventory().getStack(slot);
             if (stack.isEmpty()) continue;
             any = true;
-            out.append("\\n- Slot ").append(slot + 1).append(": ")
+            out.append("\n- Slot ").append(slot + 1).append(": ")
                     .append(stack.getName().getString()).append(" [")
                     .append(Registries.ITEM.getId(stack.getItem())).append("] × ").append(stack.getCount());
         }
-        if (!any) out.append("\\n- leer");
+        if (!any) out.append("\n- leer");
 
         Map<String, Integer> rest = new LinkedHashMap<>();
         for (int slot = 9; slot < 36; slot++) {
@@ -312,12 +312,12 @@ public final class AIActionRegistry {
             String key = stack.getName().getString() + " [" + Registries.ITEM.getId(stack.getItem()) + "]";
             rest.merge(key, stack.getCount(), Integer::sum);
         }
-        out.append("\\nRestliches Inventar:");
-        if (rest.isEmpty()) out.append("\\n- leer");
+        out.append("\nRestliches Inventar:");
+        if (rest.isEmpty()) out.append("\n- leer");
         for (Map.Entry<String, Integer> entry : rest.entrySet()) {
-            out.append("\\n- ").append(entry.getKey()).append(": ").append(entry.getValue());
+            out.append("\n- ").append(entry.getKey()).append(": ").append(entry.getValue());
             if (out.length() > 3500) {
-                out.append("\\n(gekürzt)");
+                out.append("\n(gekürzt)");
                 break;
             }
         }
