@@ -257,7 +257,7 @@ public final class AIPlayerController {
         }
         BlockPos waypoint = path.get(pathIndex);
         Vec3d destination = new Vec3d(waypoint.getX() + 0.5, waypoint.getY(), waypoint.getZ() + 0.5);
-        double distance = Math.sqrt(mc.player.getPos().squaredDistanceTo(destination));
+        double distance = Math.sqrt(mc.player.squaredDistanceTo(destination.x, destination.y, destination.z));
         if (distance < 0.28 && Math.abs(mc.player.getY() - waypoint.getY()) < 0.65) {
             pathIndex++;
             stuckTicks = 0;
@@ -268,7 +268,7 @@ public final class AIPlayerController {
             }
             waypoint = path.get(pathIndex);
             destination = new Vec3d(waypoint.getX() + 0.5, waypoint.getY(), waypoint.getZ() + 0.5);
-            distance = Math.sqrt(mc.player.getPos().squaredDistanceTo(destination));
+            distance = Math.sqrt(mc.player.squaredDistanceTo(destination.x, destination.y, destination.z));
         }
 
         if (distance < lastWaypointDistance - MIN_PROGRESS) {
