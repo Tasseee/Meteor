@@ -78,7 +78,7 @@ public final class AIChatScreen extends Screen {
     }
 
     /** Called from the client tick so command/locate deadlines continue while this screen is hidden. */
-    public static void tick() {
+    public static void clientTick() {
         if (active == null) return;
         active.expireLocateRequest();
         active.expireCommandRequest();
