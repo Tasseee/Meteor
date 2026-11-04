@@ -29,11 +29,20 @@ public final class NameTags extends Module {
         String username = player.getName().getString();
         if (!showRank || mc.getNetworkHandler() == null) return username;
         PlayerListEntry entry = mc.getNetworkHandler().getPlayerListEntry(player.getUuid());
-        if (entry == null || entry.getDisplayName() == null) return username;
-        String decorated = entry.getDisplayName().getString().trim();
-        if (decorated.isEmpty() || decorated.equalsIgnoreCase(username)) return username;
-        return decorated.toLowerCase(Locale.ROOT).contains(username.toLowerCase(Locale.ROOT))
-                ? decorated : decorated + " " + username;
+        if (entry != null && entry.getDisplayName() != null) {
+            String decorated = entry.getDisplayName().getString().trim();
+            if (!decorated.isEmpty() && !decorated.equalsIgnoreCase(username))
+                return decorated.toLowerCase(Locale.ROOT).contains(username.toLowerCase(Locale.ROOT))
+                        ? decorated : decorated + " " + username;
+        }
+
+        // Fall back to the visible scoreboard-team prefix when tab display names are plain.
+        var team = player.getScoreboardTeam();
+        if (team != null) {
+            String prefix = team.getPrefix().getString().trim();
+            if (!prefix.isEmpty()) return prefix + " " + username;
+        }
+        return username;
     }
 
     public static boolean shouldHideOwnName(Entity entity) {
