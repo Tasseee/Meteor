@@ -127,9 +127,12 @@ public final class AIBuilder {
                 }
             }
         }
-        if (selected == null || available < selectedBlueprint.blocks)
-            throw new IllegalArgumentException("Für " + selectedBlueprint.label + " brauche ich "
-                    + selectedBlueprint.blocks + " volle Blöcke derselben Sorte in deiner Hotbar. Gefunden: " + available + ".");
+        boolean creative = playerIsCreative(mc);
+        if (selected == null || available < (creative ? 1 : selectedBlueprint.blocks))
+            throw new IllegalArgumentException(creative
+                    ? "Lege mindestens einen passenden Full-Block in deine Hotbar."
+                    : "Für " + selectedBlueprint.label + " brauche ich " + selectedBlueprint.blocks
+                    + " volle Blöcke derselben Sorte in deiner Hotbar. Gefunden: " + available + ".");
 
         ClientPlayerEntity player = mc.player;
         Direction forward = player.getHorizontalFacing();
@@ -217,7 +220,7 @@ public final class AIBuilder {
             case CUSTOM -> throw new IllegalStateException("Eigener Bauplan darf nicht über Vorlagen-Planung laufen.");
         };
         return "Bauplan geprüft: " + selectedBlueprint.label + " – " + layout + ". Material: "
-                + materialName + " × " + selectedBlueprint.blocks + " (Hotbar: " + available + "). "
+                + materialName + " × " + (creative ? "unbegrenzt (Kreativmodus)" : selectedBlueprint.blocks + " (Hotbar: " + available + ")") + ". "
                 + "Fläche und Boden sind geprüft. Jede Platzierung wird erst nach Server-Weltupdate gezählt; bei fehlender Reichweite pausiere ich."
                 + fixedLayoutPreview(nextPlan, origin, right, forward, baseY, selected);
     }
@@ -271,11 +274,14 @@ public final class AIBuilder {
             offsetMaterials.put(offset, blockMaterial);
             requiredCounts.merge(blockMaterial, 1, Integer::sum);
         }
+        boolean creative = playerIsCreative(mc);
         for (Map.Entry<BlockItem, Integer> requirement : requiredCounts.entrySet()) {
             int found = counts.getOrDefault(requirement.getKey(), 0);
-            if (found < requirement.getValue())
-                throw new IllegalArgumentException("Für " + requirement.getKey().getName().getString()
-                        + " brauche ich " + requirement.getValue() + " Blöcke, in der Hotbar liegen aber nur " + found + ".");
+            if (found < (creative ? 1 : requirement.getValue()))
+                throw new IllegalArgumentException(creative
+                        ? "Lege mindestens einen Block von " + requirement.getKey().getName().getString() + " in die Hotbar."
+                        : "Für " + requirement.getKey().getName().getString() + " brauche ich " + requirement.getValue()
+                        + " Blöcke, in der Hotbar liegen aber nur " + found + ".");
         }
         if (selected == null) selected = offsetMaterials.values().iterator().next();
 
@@ -416,6 +422,10 @@ public final class AIBuilder {
             legend.add(entry.getValue() + "=" + entry.getKey().getName().getString());
         preview.append(String.join(", ", legend));
         return preview.toString();
+    }
+
+    private static boolean playerIsCreative(MinecraftClient mc) {
+        return mc.player != null && mc.player.getAbilities().creativeMode;
     }
 
     private static Map<BlockItem, Integer> collectHotbarMaterials(MinecraftClient mc) {
