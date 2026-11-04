@@ -164,6 +164,24 @@ public final class AIPlayerController {
                 + "Der Abbau wird abgebrochen, falls der Server keine Blockänderung bestätigt.";
     }
 
+    public static String previewLookedBlock() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        if (!(mc.crosshairTarget instanceof BlockHitResult hit))
+            throw new IllegalArgumentException("Du schaust gerade keinen Block direkt an. Richte das Fadenkreuz auf einen Block.");
+        BlockPos pos = hit.getBlockPos();
+        return previewMine(pos.getX(), pos.getY(), pos.getZ());
+    }
+
+    public static String mineLookedBlock() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        if (!(mc.crosshairTarget instanceof BlockHitResult hit))
+            throw new IllegalArgumentException("Du schaust gerade keinen Block direkt an. Richte das Fadenkreuz auf einen Block.");
+        BlockPos pos = hit.getBlockPos();
+        return mineBlock(pos.getX(), pos.getY(), pos.getZ());
+    }
+
     public static String mineBlock(int x, int y, int z) {
         MinecraftClient mc = MinecraftClient.getInstance();
         requireWorld(mc);
@@ -527,7 +545,7 @@ public final class AIPlayerController {
 
         BlockPos supportPos = feet.down();
         BlockState support = mc.world.getBlockState(supportPos);
-        if (support.getFluidState().isEmpty() == false) return false;
+        if (!support.getFluidState().isEmpty() || isHazard(support)) return false;
         var supportShape = support.getCollisionShape(mc.world, supportPos);
         if (supportShape.isEmpty() || supportShape.getMax(Direction.Axis.Y) < 0.95) return false;
 
