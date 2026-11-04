@@ -69,8 +69,17 @@ public class HudEditorScreen extends Screen {
         if (keyG) Config.snapGrid = !Config.snapGrid;
 
         ctx.fill(0, 0, width, height, 0x66000000);
-        // Subtle shared accent wash keeps the editor visually consistent with ClickGUI.
-        ctx.fill(0, 0, width, 2, Theme.withAlpha(Theme.ACCENT, 110));
+        // Fixed editor chrome stays readable over the live HUD preview.
+        ctx.fill(0, 0, width, 29, 0xE5101119);
+        ctx.fill(0, 28, width, 30, Theme.withAlpha(Theme.ACCENT, 190));
+        ctx.fill(0, height - 25, width, height, 0xE5101119);
+        ctx.fill(0, height - 26, width, height - 25, Theme.withAlpha(Theme.ACCENT, 150));
+        ctx.drawText(mc.textRenderer, "NIGHTFALL", 10, 8, Theme.TEXT, true);
+        ctx.drawText(mc.textRenderer, "HUD EDITOR", 82, 8, Theme.ACCENT, true);
+        int activeCount = 0;
+        for (HudModule element : elements) if (element.isEnabled()) activeCount++;
+        String counter = activeCount + " / " + elements.size() + " aktiv";
+        ctx.drawText(mc.textRenderer, counter, width - mc.textRenderer.getWidth(counter) - 10, 8, Theme.TEXT_DIM, false);
         if (Config.snapGrid) {
             int g = Math.max(2, Config.gridSize * 4);
             for (int x = 0; x < width; x += g) ctx.fill(x, 0, x + 1, height, 0x14FFFFFF);
@@ -117,9 +126,15 @@ public class HudEditorScreen extends Screen {
             if (e.isLocked()) ctx.drawText(mc.textRenderer, "L", p[0] + ew - 7, p[1] + 1, 0xFFFFD27A, false);
         }
 
-        String help = "Ziehen: verschieben | Rechtsklick: ein/aus | Mausrad: Groesse | Mittelklick: sperren | R: reset | G: Raster "
-                + (Config.snapGrid ? "an" : "aus");
-        ctx.drawText(mc.textRenderer, help, width / 2 - mc.textRenderer.getWidth(help) / 2, height - 14, Theme.TEXT_DIM, true);
+        String help = "Ziehen: bewegen  ·  Rechtsklick: an/aus  ·  Rad: Größe  ·  Mitte: sperren  ·  R: Reset  ·  G: Raster "
+                + (Config.snapGrid ? "AN" : "AUS") + "  ·  H/Esc: schließen";
+        int helpWidth = mc.textRenderer.getWidth(help);
+        float helpScale = helpWidth > width - 20 ? (width - 20f) / helpWidth : 1f;
+        ctx.getMatrices().pushMatrix();
+        ctx.getMatrices().scale(helpScale, helpScale);
+        ctx.drawText(mc.textRenderer, help, Math.round((width - helpWidth * helpScale) / (2f * helpScale)),
+                Math.round((height - 15) / helpScale), Theme.TEXT_DIM, false);
+        ctx.getMatrices().popMatrix();
         if (hovered != null) ctx.drawText(mc.textRenderer, hovered.getName() + (hovered.isScalable() ? "  x" + String.format("%.1f", hovered.scale()) : ""),
                 mx + 8, my + 8, Theme.TEXT, true);
     }
