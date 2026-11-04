@@ -99,6 +99,16 @@ public final class Config {
         }
     }
 
+    private static int readKey(JsonObject root, String name, int fallback) {
+        try {
+            int key = root.has(name) ? root.get(name).getAsInt() : fallback;
+            return key >= 0 && key <= GLFW.GLFW_KEY_LAST ? key : fallback;
+        } catch (RuntimeException invalidKey) {
+            Nightfall.LOGGER.warn("Ungueltiger globaler Keybind '{}' - Standardtaste wird verwendet", name);
+            return fallback;
+        }
+    }
+
     public static void load() {
         if (!Files.exists(FILE)) return;
         try {
@@ -106,9 +116,9 @@ public final class Config {
             if (!parsed.isJsonObject()) throw new JsonParseException("Config-Wurzel ist kein JSON-Objekt");
             JsonObject root = parsed.getAsJsonObject();
 
-            if (root.has("guiKey")) guiKey = root.get("guiKey").getAsInt();
-            if (root.has("hudKey")) hudKey = root.get("hudKey").getAsInt();
-            if (root.has("mapKey")) mapKey = root.get("mapKey").getAsInt();
+            guiKey = readKey(root, "guiKey", GLFW.GLFW_KEY_RIGHT_SHIFT);
+            hudKey = readKey(root, "hudKey", GLFW.GLFW_KEY_H);
+            mapKey = readKey(root, "mapKey", GLFW.GLFW_KEY_M);
             if (root.has("snapGrid")) snapGrid = root.get("snapGrid").getAsBoolean();
             if (root.has("keySounds")) keySounds = root.get("keySounds").getAsBoolean();
             if (root.has("gridSize")) gridSize = Math.max(1, Math.min(64, root.get("gridSize").getAsInt()));
