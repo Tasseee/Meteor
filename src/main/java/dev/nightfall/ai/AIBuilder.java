@@ -387,22 +387,22 @@ public final class AIBuilder {
             layerCounts.merge(offset.y(), 1, Integer::sum);
         }
 
-        StringBuilder preview = new StringBuilder("\\nGrundriss (y=0, vorne = deine Blickrichtung):");
+        StringBuilder preview = new StringBuilder("\nGrundriss (y=0, vorne = deine Blickrichtung):");
         if (groundPlan.isEmpty()) {
-            preview.append("\\n(keine Blöcke auf y=0; der Plan ist an vorhandenen Blöcken verankert)");
+            preview.append("\n(keine Blöcke auf y=0; der Plan ist an vorhandenen Blöcken verankert)");
         } else {
             for (int z = 0; z <= maxZ; z++) {
-                preview.append("\\n");
+                preview.append("\n");
                 for (int x = 0; x <= maxX; x++)
                     preview.append(groundPlan.getOrDefault(x + ":" + z, '.'));
             }
         }
-        preview.append("\\nSchichten: ");
+        preview.append("\nSchichten: ");
         List<String> layers = new ArrayList<>();
         for (Map.Entry<Integer, Integer> entry : layerCounts.entrySet())
             layers.add("y" + entry.getKey() + "=" + entry.getValue());
         preview.append(String.join(", ", layers));
-        preview.append("\\nLegende: ");
+        preview.append("\nLegende: ");
         List<String> legend = new ArrayList<>();
         for (Map.Entry<BlockItem, Character> entry : palette.entrySet())
             legend.add(entry.getValue() + "=" + entry.getKey().getName().getString());
