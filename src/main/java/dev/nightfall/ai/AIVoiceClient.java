@@ -38,6 +38,8 @@ public final class AIVoiceClient {
     private static volatile boolean busy;
     private static volatile boolean capturing;
     private static volatile boolean stopRequested;
+    private static volatile boolean cancelRequested;
+    private static volatile long speechGeneration;
     private static volatile TargetDataLine recordingLine;
     private static volatile SourceDataLine playbackLine;
 
@@ -78,6 +80,7 @@ public final class AIVoiceClient {
         busy = true;
         capturing = true;
         stopRequested = false;
+        cancelRequested = false;
         notifyStatus(onStatus, "Mikrofon aktiv · F8 beendet die Aufnahme (max. 20 Sekunden).");
         Thread worker = new Thread(() -> captureAndTranscribe(settings, onTranscript, onStatus),
                 "Nightfall-Voice-Input");
@@ -87,6 +90,7 @@ public final class AIVoiceClient {
 
     public static synchronized void stopRecording() {
         if (!capturing) return;
+        cancelRequested = true;
         stopRequested = true;
         TargetDataLine line = recordingLine;
         if (line != null) {
@@ -117,6 +121,10 @@ public final class AIVoiceClient {
             line.close();
             recordingLine = null;
 
+            if (cancelRequested) {
+                busy = false;
+                return;
+            }
             byte[] rawPcm = pcm.toByteArray();
             if (rawPcm.length < 3200) {
                 busy = false;
@@ -144,6 +152,10 @@ public final class AIVoiceClient {
             }
         }
 
+        if (cancelRequested) {
+            busy = false;
+            return;
+        }
         notifyStatus(onStatus, "Sprachaufnahme wird an den konfigurierten Anbieter gesendet …");
         transcribe(settings, wav, onTranscript, onStatus);
     }
@@ -206,6 +218,7 @@ public final class AIVoiceClient {
         if (spoken.length() > 1200) spoken = spoken.substring(0, 1200);
 
         final String input = spoken;
+        final long generation = ++speechGeneration;
         Thread worker = new Thread(() -> {
             try {
                 JsonObject payload = new JsonObject();
@@ -220,8 +233,9 @@ public final class AIVoiceClient {
                         .POST(HttpRequest.BodyPublishers.ofString(payload.toString()))
                         .build();
                 HttpResponse<byte[]> response = HTTP.send(request, HttpResponse.BodyHandlers.ofByteArray());
-                if (response.statusCode() < 200 || response.statusCode() >= 300) return;
-                playWav(response.body());
+                if (response.statusCode() < 200 || response.statusCode() >= 300
+                        || generation != speechGeneration) return;
+                playWav(response.body(), generation);
             } catch (Exception ignored) {
                 // Voice output is optional; a TTS failure must never break the chat or game loop.
             }
@@ -231,6 +245,7 @@ public final class AIVoiceClient {
     }
 
     public static void stopSpeaking() {
+        speechGeneration++;
         SourceDataLine line = playbackLine;
         playbackLine = null;
         if (line != null) {
@@ -239,7 +254,7 @@ public final class AIVoiceClient {
         }
     }
 
-    private static void playWav(byte[] bytes) throws Exception {
+    private static void playWav(byte[] bytes, long generation) throws Exception {
         try (AudioInputStream input = AudioSystem.getAudioInputStream(new ByteArrayInputStream(bytes))) {
             AudioFormat format = input.getFormat();
             DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
@@ -249,10 +264,11 @@ public final class AIVoiceClient {
             line.start();
             byte[] buffer = new byte[4096];
             int read;
-            while ((read = input.read(buffer, 0, buffer.length)) != -1 && playbackLine == line) {
+            while ((read = input.read(buffer, 0, buffer.length)) != -1
+                    && playbackLine == line && generation == speechGeneration) {
                 if (read > 0) line.write(buffer, 0, read);
             }
-            if (playbackLine == line) line.drain();
+            if (playbackLine == line && generation == speechGeneration) line.drain();
             line.stop();
             line.close();
             if (playbackLine == line) playbackLine = null;
