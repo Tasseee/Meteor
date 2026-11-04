@@ -149,3 +149,43 @@ The editable database is bundled at `src/main/resources/nightfall/blueprints.jso
 Each record carries a Minecraft version, tags, source URL, validation note and automation status. `SUPPORTED_TEMPLATE` entries link to an existing Nightfall build action; `GUIDE_ONLY` entries are knowledge and must not be converted into invented block layouts. The farm guides cite Minecraft Wiki pages and are not advertised as tested schematics or guaranteed farm designs. Server settings, tick/simulation distance and version-specific mechanics can change the result.
 
 The JSON file can be edited locally without rebuilding Nightfall. Keep IDs unique and use the existing schema. For new sources, record the page URL and distinguish verified mechanics from untested layout suggestions.
+
+
+## Community schematics and local imports
+
+Nightfall does not scrape schematic sites or bypass download/account restrictions. The bundled
+`src/main/resources/nightfall/community_schematics.json` is a source index, not a redistributed
+collection of other creators' files. It currently links to the Donut.build listings **Small Fast
+Kelp Farm** (TheCommand / credited design BasicRedstone) and **Beginner Bonemeal Farm**
+(kekw kekw), plus the Donut Schematics community farm library. The source page's own version,
+dimensions, material list and comments are retained as provenance; missing metadata is marked
+as unknown and negative user reports are not hidden.
+
+Download the original file using the source site's normal download button and place it in:
+
+`config/nightfall/schematics/`
+
+Supported local formats:
+
+- Sponge Schematic v2 (`.schem`)
+- Litematica v5–v7 (`.litematic`; positive-sized regions only)
+
+The importer limits files to 32 MB, dimensions to 64 blocks per axis, volume to 262,144 cells
+and the automatically placed subset to 5,000 blocks. It rejects invalid/truncated palettes,
+unknown block states, oversized input and mirrored/negative Litematica regions.
+
+AI actions:
+
+- `list_schematics`: lists local files and the curated community source index. Read-only.
+- `inspect_schematic`: parses one local file and reports dimensions, materials, block counts,
+  unsupported block examples, Block Entities and Entities. Read-only.
+- `build_schematic`: prepares the automatically supported subset and displays a normal Nightfall
+  placement preview. It requires player confirmation before the first placement.
+
+**Important limitations:** Automatic placement currently accepts only static default-state full
+cube BlockItems without fluid, falling behavior, block entities or state properties. Therefore
+oriented blocks (pistons, observers, hoppers, stairs, etc.), containers, inventories, entities,
+villagers, water/lava, redstone states and block-entity data are excluded from the automatic
+subset. They are reported as manual-only/skipped. A partially placed schematic is not necessarily
+a functioning farm. Check the summary before approving it, and test community schematics in a
+copy of the world first. No creator's downloaded schematic file is bundled by Nightfall.
