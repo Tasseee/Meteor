@@ -17,7 +17,13 @@ Example:
   "baseUrl": "https://api.openai.com/v1/chat/completions",
   "model": "gpt-4o-mini",
   "apiKey": "YOUR_API_KEY",
-  "shareWorldContext": true
+  "shareWorldContext": true,
+  "audioBaseUrl": "https://api.openai.com/v1",
+  "transcriptionModel": "whisper-1",
+  "speechModel": "gpt-4o-mini-tts",
+  "speechVoice": "alloy",
+  "voiceInputEnabled": false,
+  "voiceOutputEnabled": false
 }
 ```
 
@@ -27,6 +33,9 @@ The key is stored locally as plain text in the Minecraft config folder. Do not u
 
 - Press **J** to open Nightfall AI (default; configurable as `aiKey` in `config/nightfall.json`).
 - Press **Enter** or click **SEND** to send a message.
+- Press **F8** or click **MIC** to start push-to-talk recording; press F8 again to stop. Recordings are limited to 20 seconds.
+- The recognized text is inserted into the input field. Review it and press **Enter** to send it; voice recognition never sends a message by itself.
+- Enable `voiceOutputEnabled` to speak final assistant replies. Closing the chat or disconnecting stops active recording/playback.
 - Press **Escape** to close the chat.
 - Use the mouse wheel to scroll through the current conversation.
 
@@ -68,7 +77,8 @@ After a tool call, Nightfall displays a preview. The tool is executed only after
 - The builder offers three deterministic templates: a 4x4 starter shelter (54 blocks), a 6x6 house with three-block-high walls (130 blocks), and a 5x5 watchtower with four six-block-high corner pillars (74 blocks). For other user-requested structures, `build_custom_structure` accepts an AI-generated plan of up to 200 blocks in a 16x16x11 grid.
 - The read-only `get_build_status` tool lets the player ask for confirmed progress, current building phase, pause reason and active materials without approving another action.
 - The builder chooses full-cube block items already in the hotbar, or honors exact material item IDs/localized names supplied globally or for individual custom-plan blocks. In Survival it checks the full required count per material; in Creative it only requires one matching hotbar stack because placements do not consume blocks. Ambiguous partial names are rejected consistently for both preset and custom builds. It verifies the required count for each material and all safe target positions, then sends genuine block-placement interactions one at a time. Ambiguous localized material names are rejected instead of selecting an arbitrary matching item. Custom plans reject duplicates, out-of-range coordinates, occupied targets, and disconnected/floating components; every component must anchor to an existing solid block. It waits for the corresponding world block state before counting a placement, retries up to two times after a timeout, and stops safely when the server rejects a placement. If a block is out of reach, the queue pauses until the player moves closer. The originally selected hotbar slot is restored when the build finishes or stops. Every builder confirmation shows a top-down ASCII footprint for the y=0 layer, counts blocks per vertical layer, and lists the material-symbol legend; the chat renderer preserves these line breaks.
-- Combat targeting, autonomous navigation, voice input/output, and arbitrary code execution remain out of scope. More structures and other reviewed skills can be added to the same registry.
+- Autonomous combat targeting and obstacle-aware navigation remain out of scope. The current movement tool only walks forward for a bounded number of ticks. Building places approved blocks automatically, but the player must position themselves, stay within reach, and confirm the plan before placements begin. Complex farms requiring entities, fluids, containers or redstone are still guide-only.
+- Voice input/output is available as an opt-in feature (see below). Arbitrary code execution remains out of scope.
 - When the inventory tool is approved, its result is sent back to the configured AI provider. It includes exact item IDs and distinguishes the hotbar from the rest of the inventory because the current builder places only materials already in the 9-slot hotbar. Do not approve it if you do not want to share that inventory snapshot.
 
 Future skills should stay narrowly scoped, validated, previewed, and explicitly confirmed before world changes or data disclosure.
@@ -76,10 +86,16 @@ Future skills should stay narrowly scoped, validated, previewed, and explicitly 
 
 ## Lokale Bauplan-Wissensdatenbank
 
-Nightfall enthält eine versionierte, kuratierte Wissensdatenbank und das read-only Werkzeug
-`search_blueprints`. Ein Eintrag nennt Version, Voraussetzungen, Provenienz und ausdrücklich
-seinen Test-/Automatisierungsstatus. Ein Wissenseintrag wird nicht automatisch als ausführbarer
-Blockplan behandelt.
+Nightfall enthält eine lokale, erweiterbare JSON-Wissensdatenbank und das read-only Werkzeug
+`search_blueprints`. Beim ersten Aufruf wird `src/main/resources/nightfall/blueprints.json` nach
+`config/nightfall/blueprints.json` kopiert. Die lokale Datei kann ohne Mod-Neubau erweitert werden
+(maximal 250 Einträge, Schema-Version 1, UTF-8). Jeder Eintrag enthält ID, Minecraft-Version,
+Tags, Quelle, Validierungsstatus und Automatisierungsstatus. `SUPPORTED_TEMPLATE` verweist auf
+ein bestehendes Nightfall-Bauwerkzeug; `GUIDE_ONLY` ist ausschließlich eine Anleitung.
+
+Enthaltene Einträge: Starter-Schutzhaus, großes Haus, Wachturm, Java-Eisenfarm, große Tropfsteinfarm
+und manueller Zuckerrohr-Anbau. Suche mit `Eisenfarm`, `Tropfstein`, `Zuckerrohr`, `Haus` oder
+`alle`. Die Datenbank darf Anleitungen nicht als getestete Schematics ausgeben.
 
 ### Große Tropfsteinfarm
 
@@ -89,8 +105,23 @@ Wartungszugang und Hinweisen zu Wasserführung, Wachstum und Ernte. Es ist derze
 Technik-/Bauleitfaden, kein getestetes Schematic und keine behauptete vollautomatische Farm.
 Die Ernteschaltung muss auf der konkreten Welt/Serverversion separat validiert werden.
 
-**Wichtige Grenze:** Der derzeitige Builder platziert nur Full-Cube-BlockItems. Er kann
-Wasserquellen, spitze Tropfsteine, Hopper, Kolben, Beobachter und Redstone nicht als
-funktionierende Farmmechanik zuverlässig aufbauen. Nightfall darf deshalb nicht behaupten,
-die Farm automatisch errichten zu können. Der Leitfaden empfiehlt, zunächst eine Zelle
-manuell zu testen und erst danach auf 16 Module zu erweitern.
+**Wichtige Grenze:** Der derzeitige Builder platziert nur Full-Cube-BlockItems aus der Hotbar.
+Er kann noch keine Wasserquellen, spitzen Tropfsteine, Dorfbewohner, Hopper, Kolben, Beobachter
+oder Redstone-Schaltungen als funktionierende Farmmechanik zuverlässig aufbauen. Farm-Einträge
+mit `GUIDE_ONLY` dürfen deshalb nicht automatisch in Blockpläne umgewandelt werden.
+
+## Voice: Push-to-talk und gesprochene Antworten
+
+Sprache ist standardmäßig deaktiviert. Aktiviere `voiceInputEnabled` und/oder
+`voiceOutputEnabled` in `config/nightfall/ai.json`. Das Mikrofon wird nur nach F8 oder einem
+Klick auf MIC geöffnet. F8 beendet die Aufnahme; maximal 20 Sekunden werden erfasst. Nightfall
+speichert keine Audiodatei dauerhaft. Die Aufnahme wird als WAV an `audioBaseUrl` unter
+`/audio/transcriptions` übertragen. Erkannter Text wird in das Eingabefeld eingefügt und muss
+vom Spieler geprüft und mit Enter gesendet werden. Der Chat spricht finale KI-Antworten über
+`/audio/speech`, wenn `voiceOutputEnabled` aktiv ist.
+
+Die Sprachschnittstelle verwendet `transcriptionModel`, `speechModel` und `speechVoice`.
+Der Standard-Endpunkt ist OpenAI API v1. Andere Anbieter müssen beide Audio-Endpunkte und die
+gewählten Modelle unterstützen. Audio und erkannter Text werden an diesen Anbieter übertragen;
+aktiviere Sprache nur, wenn du damit einverstanden bist. Schließen des Chats und Trennen der
+Serververbindung stoppen laufende Aufnahme/Wiedergabe.
