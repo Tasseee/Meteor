@@ -63,9 +63,17 @@ public final class AIChatScreen extends Screen {
         return false;
     }
 
+    /**
+     * Reuse the in-memory chat session after the screen is closed. This also keeps
+     * command-response tracking alive while the player is in another screen.
+     */
+    public static AIChatScreen getOrCreate() {
+        return active == null ? new AIChatScreen() : active;
+    }
+
     @Override
     public void removed() {
-        if (active == this) active = null;
+        // Keep this session as the background receiver for pending server responses.
     }
 
     public static void onGameMessage(String message) {

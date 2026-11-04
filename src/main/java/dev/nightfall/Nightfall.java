@@ -100,7 +100,7 @@ public class Nightfall implements ClientModInitializer {
                 if (g && !prevGui) open(mc, new ClickGuiScreen());
                 else if (hu && !prevHud) open(mc, new HudEditorScreen());
                 else if (m && !prevMap) open(mc, new MapScreen());
-                else if (ai && !prevAi) open(mc, new AIChatScreen());
+                else if (ai && !prevAi) open(mc, AIChatScreen.getOrCreate());
             }
             prevGui = g; prevHud = hu; prevMap = m; prevAi = ai;
             ModuleManager.pollKeys(mc);
