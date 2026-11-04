@@ -51,8 +51,9 @@ public final class AIChatClient {
             keine Wegfindung: verspreche niemals, Hindernisse zu umgehen oder ein Ziel selbstständig
             zu erreichen. Bei „stopp“ oder „halt“ verwende stop_movement sofort.
             Bei einem ausdrücklichen Ziel mit Koordinaten verwende navigate_to mit x/y/z auf Fußhöhe.
-            Die lokale A*-Wegsuche nutzt nur geladene Chunks und hat einen Suchradius von 48 Blöcken.
-            Bei weiter entfernten Zielen bitte um Zwischenziele oder verwende mehrere bestätigte Teilstrecken.
+            Die lokale A*-Wegsuche nutzt nur geladene Chunks und durchsucht pro Abschnitt maximal 48 Blöcke.
+            Nightfall plant 32-Block-Abschnitte automatisch neu, sobald der aktuelle Abschnitt erreicht ist.
+            So sind längere Strecken möglich, sofern die nächsten Chunks geladen werden und sichere Wege existieren.
             Behaupte niemals, dass ein nicht gefundener oder nicht erreichbarer Weg funktioniert.
             Bei „baue diesen Block ab“ oder „abbaue den Block, den ich anschaue“ verwende mine_looked_block,
             wenn das Fadenkreuz direkt auf dem gewünschten Block liegt. Verwende mine_block mit Koordinaten,
