@@ -124,7 +124,7 @@ public final class ModuleManager {
     public static String assignKey(Module m, int key) {
         if (key < -1 || key > GLFW.GLFW_KEY_LAST) return "Ungueltige Taste";
         if (key >= 0) {
-            if (key == Config.guiKey || key == Config.hudKey || key == Config.mapKey) return "Taste ist bereits fuer GUI/HUD/Karte belegt";
+            if (key == Config.guiKey || key == Config.hudKey || key == Config.mapKey || key == Config.aiKey) return "Taste ist bereits fuer eine globale Nightfall-Funktion belegt";
             for (Module o : MODULES) if (o != m && o.getKey() == key) return "Taste bereits belegt von " + o.getName();
         }
         m.setKey(key);

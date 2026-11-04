@@ -21,6 +21,8 @@ public final class Config {
     public static int guiKey = GLFW.GLFW_KEY_RIGHT_SHIFT;
     public static int hudKey = GLFW.GLFW_KEY_H;
     public static int mapKey = GLFW.GLFW_KEY_M;
+    /** Opens the Nightfall AI companion chat. */
+    public static int aiKey = GLFW.GLFW_KEY_J;
     public static boolean snapGrid = true;
     /** Soft keyboard click feedback while Nightfall GUI/editor is open. */
     public static boolean keySounds = true;
@@ -42,6 +44,7 @@ public final class Config {
             root.addProperty("guiKey", guiKey);
             root.addProperty("hudKey", hudKey);
             root.addProperty("mapKey", mapKey);
+            root.addProperty("aiKey", aiKey);
             root.addProperty("snapGrid", snapGrid);
             root.addProperty("keySounds", keySounds);
             root.addProperty("gridSize", gridSize);
@@ -138,6 +141,8 @@ public final class Config {
             guiKey = readKey(root, "guiKey", GLFW.GLFW_KEY_RIGHT_SHIFT);
             hudKey = readKey(root, "hudKey", GLFW.GLFW_KEY_H);
             mapKey = readKey(root, "mapKey", GLFW.GLFW_KEY_M);
+            aiKey = readKey(root, "aiKey", GLFW.GLFW_KEY_J);
+            if (aiKey == guiKey || aiKey == hudKey || aiKey == mapKey) aiKey = GLFW.GLFW_KEY_J;
             snapGrid = readBoolean(root, "snapGrid", true);
             keySounds = readBoolean(root, "keySounds", true);
             gridSize = readInt(root, "gridSize", 4, 1, 64);

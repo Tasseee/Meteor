@@ -5,6 +5,8 @@ import net.minecraft.sound.SoundEvents;
 import dev.nightfall.gui.ClickGuiScreen;
 import dev.nightfall.gui.HudEditorScreen;
 import dev.nightfall.gui.MapScreen;
+import dev.nightfall.gui.AIChatScreen;
+import dev.nightfall.ai.AIConfig;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
@@ -33,12 +35,13 @@ public class Nightfall implements ClientModInitializer {
     public static final String VERSION = "2.0.0";
     public static final Logger LOGGER = LoggerFactory.getLogger("nightfall");
 
-    private boolean prevGui, prevHud, prevMap;
+    private boolean prevGui, prevHud, prevMap, prevAi;
 
     @Override
     public void onInitializeClient() {
         ModuleManager.init();
         Config.load();
+        AIConfig.load();
         SkyVisualRenderer.register();
 
         ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
@@ -87,12 +90,14 @@ public class Nightfall implements ClientModInitializer {
             boolean g = GLFW.glfwGetKey(h, Config.guiKey) == GLFW.GLFW_PRESS;
             boolean hu = GLFW.glfwGetKey(h, Config.hudKey) == GLFW.GLFW_PRESS;
             boolean m = GLFW.glfwGetKey(h, Config.mapKey) == GLFW.GLFW_PRESS;
+            boolean ai = GLFW.glfwGetKey(h, Config.aiKey) == GLFW.GLFW_PRESS;
             if (mc.currentScreen == null && mc.player != null) {
                 if (g && !prevGui) open(mc, new ClickGuiScreen());
                 else if (hu && !prevHud) open(mc, new HudEditorScreen());
                 else if (m && !prevMap) open(mc, new MapScreen());
+                else if (ai && !prevAi) open(mc, new AIChatScreen());
             }
-            prevGui = g; prevHud = hu; prevMap = m;
+            prevGui = g; prevHud = hu; prevMap = m; prevAi = ai;
             ModuleManager.pollKeys(mc);
         }
         ModuleManager.tick();
