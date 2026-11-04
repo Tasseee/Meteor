@@ -70,7 +70,10 @@ public class Nightfall implements ClientModInitializer {
         ClientLifecycleEvents.CLIENT_STOPPING.register(c -> {
             ModuleManager.get(BaseFinder.class).saveMarks();
             WaypointManager.save();
+            // Persist the user's desired enabled states before modules release
+            // external resources such as sidecar processes and executors.
             Config.save();
+            ModuleManager.shutdown();
         });
 
         LOGGER.info("{} {} geladen", NAME, VERSION);
