@@ -13,6 +13,7 @@ import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.TrapperBot;
 import dev.nightfall.modules.FakeBases;
 import dev.nightfall.modules.InvSeeValue;
+import dev.nightfall.modules.Lyrics;
 import dev.nightfall.modules.StaffWatch;
 import dev.nightfall.module.setting.ListSetting;
 import dev.nightfall.scanner.Waypoint;
@@ -212,6 +213,15 @@ public final class Commands {
                     Config.keySounds = state.equalsIgnoreCase("on");
                     Config.save();
                     return say(c, "Tastatur-Klicksounds: " + (Config.keySounds ? "AN" : "AUS"));
+                })));
+
+        // ---- Lyrics playback sidecar ----
+        Lyrics lyrics = ModuleManager.get(Lyrics.class);
+        root.then(literal("lyrics")
+                .then(literal("status").executes(c -> say(c, "Lyrics " + (lyrics.isEnabled() ? "AN" : "AUS") + " | " + lyrics.status())))
+                .then(literal("reconnect").executes(c -> {
+                    lyrics.reconnect();
+                    return say(c, "Lyrics-Verbindung wird neu aufgebaut.");
                 })));
 
         // ---- BaseFinder Pro controls: pause/resume/status ----
