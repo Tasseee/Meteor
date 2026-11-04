@@ -49,6 +49,7 @@ public final class AIChatScreen extends Screen {
     private boolean waitingCommandResponse;
     private String trackedCommand = "";
     private long commandDeadline;
+    private boolean pendingCommandFeedbackAI;
 
     public AIChatScreen() {
         super(Text.literal("Nightfall AI"));
@@ -85,8 +86,10 @@ public final class AIChatScreen extends Screen {
         }
         if (active != null && active.waitingCommandResponse) {
             active.waitingCommandResponse = false;
-            active.history.add(new ChatLine("assistant",
-                    "Die Verbindung wurde getrennt, bevor ich eine Servermeldung zu /" + active.trackedCommand + " erkennen konnte."));
+            String feedback = "Verbindung getrennt, bevor eine Servermeldung zu /" + active.trackedCommand
+                    + " erkannt wurde. Der Befehl wurde möglicherweise gesendet, seine Ausführung ist nicht bestätigt.";
+            active.history.add(new ChatLine("assistant", feedback));
+            active.apiHistory.add(new AIChatClient.Message("user", feedback));
             active.scroll = Float.MAX_VALUE;
         }
     }
@@ -337,6 +340,11 @@ public final class AIChatScreen extends Screen {
         String context = settings.shareWorldContext() ? worldContext() : "";
         AIChatClient.request(new ArrayList<>(apiHistory), context, result -> {
             waiting = false;
+            if (pendingCommandFeedbackAI) {
+                pendingCommandFeedbackAI = false;
+                requestAI();
+                return;
+            }
             if (!result.success()) {
                 history.set(responseIndex, new ChatLine("assistant", result.text()));
                 status = "Verbindung fehlgeschlagen";
@@ -473,19 +481,38 @@ public final class AIChatScreen extends Screen {
         if (!relevant) return;
 
         waitingCommandResponse = false;
-        status = rejected ? "Server hat den Befehl abgelehnt" : "Servermeldung empfangen · Ergebnis nicht verifiziert";
-        history.add(new ChatLine("assistant", "Servermeldung nach /" + trackedCommand + ": " + message
-                + (rejected ? "" : "\nHinweis: Die Meldung wurde zugeordnet, Nightfall kann den serverseitigen Effekt aber nicht unabhängig prüfen.")));
+        String command = trackedCommand;
+        String feedback = "Serverantwort auf den bereits gesendeten Befehl /" + command + ": " + message
+                + (rejected
+                ? "\\nDer Server scheint den Befehl abzulehnen. Erkläre dem Spieler die Meldung."
+                : "\\nDiese Meldung ist nur ein möglicher Hinweis, kein unabhängiger Beweis für den Effekt. Erkläre genau, was sie aussagt.");
+        feedback += "\\nDies ist nur eine Rückmeldung zu einem bereits gesendeten Befehl. Sende ihn nicht erneut und führe keine neue Aktion aus; interpretiere ausschließlich diese Servermeldung.";
+        status = rejected ? "Server hat den Befehl abgelehnt" : "Servermeldung empfangen · KI wertet aus";
+        history.add(new ChatLine("assistant", "Servermeldung nach /" + command + ": " + message
+                + (rejected ? "" : "\\nHinweis: Die Meldung wurde zugeordnet, Nightfall kann den serverseitigen Effekt aber nicht unabhängig prüfen.")));
+        apiHistory.add(new AIChatClient.Message("user", feedback));
         scroll = Float.MAX_VALUE;
+        if (waiting) pendingCommandFeedbackAI = true;
+        else {
+            actionRoundTrips = 0;
+            requestAI();
+        }
     }
 
     private void expireCommandRequest() {
         if (!waitingCommandResponse || System.currentTimeMillis() <= commandDeadline) return;
         waitingCommandResponse = false;
+        String command = trackedCommand;
+        String feedback = "Für /" + command + " wurde innerhalb von 30 Sekunden keine eindeutig zuordenbare Serverantwort erkannt. Der Befehl wurde gesendet, seine Ausführung ist nicht bestätigt. Erkläre dem Spieler das knapp und sende den Befehl nicht erneut.";
         status = "Befehl gesendet · keine eindeutige Antwort erkannt";
-        history.add(new ChatLine("assistant", "Ich habe innerhalb von 30 Sekunden keine eindeutig zuordenbare Servermeldung zu /"
-                + trackedCommand + " erkannt. Der Befehl wurde gesendet, seine Ausführung ist damit nicht bestätigt."));
+        history.add(new ChatLine("assistant", feedback));
+        apiHistory.add(new AIChatClient.Message("user", feedback));
         scroll = Float.MAX_VALUE;
+        if (waiting) pendingCommandFeedbackAI = true;
+        else {
+            actionRoundTrips = 0;
+            requestAI();
+        }
     }
 
     private void expireLocateRequest() {
