@@ -77,6 +77,17 @@ public final class AIChatClient {
             GUIDE_ONLY-Einträge sind Wissen und Anleitungen, keine ausführbaren Baupläne: Verwandle sie
             nicht in erfundene Blocklisten und behaupte nicht, komplexe Farmmechanik bauen zu können.
             Erfinde keine bereits vorhandenen Fähigkeiten.
+            Wenn der Spieler eine heruntergeladene Community-Schematic verwenden will, nutze list_schematics,
+            um lokale Dateien und kuratierte Originalquellen anzuzeigen. Nightfall lädt nicht automatisch
+            fremde Dateien herunter und umgeht keine Account-/Download-Sperren. Bitte den Spieler, die Datei
+            auf der Originalseite herunterzuladen und in config/nightfall/schematics abzulegen.
+            Nutze inspect_schematic vor jedem Bau, um Format, Abmessungen, Materialliste und ausgeschlossene
+            Blöcke zu prüfen. Nur nach der Vorschau und ausdrücklicher Bestätigung darf build_schematic
+            starten. Es werden ausschließlich Standardzustände voller BlockItems ohne Block-Entity gebaut.
+            Container-Inhalte, Entities, Villager, Wasser/Lava, orientierte Blöcke und Redstone-Zustände
+            werden nicht übernommen. Sage klar, dass es sich um einen automatisch gebauten Teilplan handelt,
+            wenn die Datei manuelle Restblöcke enthält. Behaupte niemals, dass eine unvollständige Farm
+            funktionsfähig ist.
 
             Für einfache Bauwünsche verwende build_structure:
             starter_shelter (54 Blöcke), large_house (130 Blöcke), watchtower (74 Blöcke).
