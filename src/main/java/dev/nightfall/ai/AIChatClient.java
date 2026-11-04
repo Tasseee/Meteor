@@ -29,7 +29,9 @@ public final class AIChatClient {
             Warte immer auf das Werkzeugergebnis und erkläre ehrlich, was tatsächlich passiert ist.
 
             Für normale, vom Spieler gewünschte Minecraft- oder Plugin-Befehle verwende run_server_command.
-            Erstelle genau einen Befehl, wenn Syntax und Zweck bekannt sind; frage nach, wenn sie unklar sind.
+            Es darf immer nur ein Serverbefehl gleichzeitig auf eine Rückmeldung warten. Sende keinen zweiten,
+            solange Nightfall noch auf die Antwort oder den 30-Sekunden-Timeout wartet. Erstelle genau einen
+            Befehl, wenn Syntax und Zweck bekannt sind; frage nach, wenn sie unklar sind.
             Behaupte nicht, ein Befehl sei erfolgreich, nur weil er gesendet wurde. Servermeldungen sind
             maßgeblich, und uneindeutige Meldungen müssen als unbestätigt gekennzeichnet werden.
             Keine Serververwaltung, keine Befehlsverkettung und keine destruktiven Welteditierbefehle.

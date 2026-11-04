@@ -77,6 +77,13 @@ public final class AIChatScreen extends Screen {
         // Keep this session as the background receiver for pending server responses.
     }
 
+    /** Called from the client tick so command/locate deadlines continue while this screen is hidden. */
+    public static void tick() {
+        if (active == null) return;
+        active.expireLocateRequest();
+        active.expireCommandRequest();
+    }
+
     public static void onGameMessage(String message) {
         if (active != null) {
             active.handleLocateMessage(message);
@@ -135,8 +142,6 @@ public final class AIChatScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        expireLocateRequest();
-        expireCommandRequest();
         if (AIBuilder.isRunning()) status = AIBuilder.statusLabel();
         MinecraftClient mc = MinecraftClient.getInstance();
         ctx.fill(0, 0, width, height, 0xA9000000);
@@ -400,6 +405,8 @@ public final class AIChatScreen extends Screen {
                 AIChatClient.ToolCall call = result.toolCall();
                 apiHistory.add(AIChatClient.Message.assistantToolCall(result.rawAssistantMessage()));
                 try {
+                    if ("run_server_command".equals(call.name()) && waitingCommandResponse)
+                        throw new IllegalArgumentException("Ein Serverbefehl wartet noch auf eine Rückmeldung. Warte auf die Serverantwort oder den 30-Sekunden-Timeout, bevor du den nächsten Befehl sendest.");
                     pendingAction = AIActionRegistry.prepare(call.name(), call.arguments());
                     pendingToolCall = call;
                     history.set(responseIndex, new ChatLine("assistant",

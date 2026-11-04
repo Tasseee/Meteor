@@ -88,6 +88,7 @@ public class Nightfall implements ClientModInitializer {
     }
 
     private void onTick(MinecraftClient mc) {
+        AIChatScreen.tick();
         KeySound.tick(mc, mc.player != null && mc.world != null
                 && (mc.currentScreen instanceof ClickGuiScreen || mc.currentScreen instanceof HudEditorScreen));
         if (mc.getWindow() != null) {
