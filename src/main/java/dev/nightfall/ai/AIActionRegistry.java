@@ -135,6 +135,11 @@ public final class AIActionRegistry {
         tools.add(tool("search_blueprints",
                 "Search Nightfall's local version-aware blueprint knowledge base. Returns plans, prerequisites, provenance and honest tested/automation status. This is read-only and never starts building.",
                 blueprintSearchSchema));
+        JsonObject walkTicks = property("ticks", "integer", "Dauer der kurzen Vorwärtsbewegung in Ticks (1 bis 100).").get("schema").getAsJsonObject();
+        walkTicks.addProperty("minimum", 1);
+        walkTicks.addProperty("maximum", 100);
+        tools.add(tool("walk_forward", "Walk forward for a short bounded duration. This is not obstacle-aware pathfinding. Requires player confirmation.", objectSchema(walkTicks, "ticks")));
+        tools.add(tool("stop_movement", "Immediately release Nightfall's movement keys and stop its active movement.", objectSchema()));
         tools.add(tool("get_build_status",
                 "Read the current Nightfall builder status: confirmed block count, phase, pause reason, blueprint and materials. Read-only; no confirmation required.",
                 objectSchema()));
@@ -228,6 +233,12 @@ public final class AIActionRegistry {
             case "build_starter_shelter" -> new Action(name, args, AIBuilder.prepareStarterShelter());
             case "search_blueprints" -> new Action(name, args,
                     "Nightfall durchsucht die lokale Bauplan-Datenbank nach: " + requiredString(args, "query", 96));
+            case "walk_forward" -> {
+                int ticks = readBoundedInteger(args, "ticks", 1, 100);
+                yield new Action(name, args, "Nightfall hält die Vorwärtstaste für höchstens " + ticks
+                        + " Ticks. Keine Hindernis-Umgehung; du kannst jederzeit „Stopp“ sagen.");
+            }
+            case "stop_movement" -> new Action(name, args, "Nightfall gibt sofort alle eigenen Bewegungs-Tasten frei.");
             case "get_build_status" -> new Action(name, args, AIBuilder.describeStatus());
             case "pause_build" -> new Action(name, args,
                     AIBuilder.isRunning() ? "Nightfall pausiert den Bau nach einer eventuell noch ausstehenden Blockbestätigung."
@@ -243,7 +254,7 @@ public final class AIActionRegistry {
 
     /** Called only from the Minecraft client thread after explicit player confirmation. */
     public static boolean requiresConfirmation(String actionName) {
-        return !Set.of("search_blueprints", "get_build_status", "pause_build", "stop_build").contains(actionName);
+        return !Set.of("search_blueprints", "get_build_status", "pause_build", "stop_build", "stop_movement").contains(actionName);
     }
 
     public static String execute(Action action) {
@@ -307,6 +318,8 @@ public final class AIActionRegistry {
             }
             case "build_structure", "build_starter_shelter", "build_custom_structure" -> AIBuilder.startPreparedStructure();
             case "search_blueprints" -> BlueprintCatalog.search(args.get("query").getAsString());
+            case "walk_forward" -> AIPlayerController.walkForward(readBoundedInteger(args, "ticks", 1, 100));
+            case "stop_movement" -> AIPlayerController.stop("Auf deinen Befehl gestoppt.");
             case "get_build_status" -> AIBuilder.describeStatus();
             case "pause_build" -> AIBuilder.pause();
             case "resume_build" -> AIBuilder.resume();
@@ -417,6 +430,15 @@ public final class AIActionRegistry {
                     readCoordinate(block, "y"), readCoordinate(block, "z"), blockMaterial));
         }
         return result;
+    }
+
+    private static int readBoundedInteger(JsonObject args, String key, int min, int max) {
+        if (!args.has(key) || !args.get(key).isJsonPrimitive() || !args.getAsJsonPrimitive(key).isNumber())
+            throw new IllegalArgumentException("Aktionsparameter '" + key + "' muss eine ganze Zahl sein.");
+        double value = args.get(key).getAsDouble();
+        if (!Double.isFinite(value) || value != Math.rint(value) || value < min || value > max)
+            throw new IllegalArgumentException("Aktionsparameter '" + key + "' muss zwischen " + min + " und " + max + " liegen.");
+        return (int) value;
     }
 
     private static int readCoordinate(JsonObject object, String key) {
