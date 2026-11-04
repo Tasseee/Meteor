@@ -39,6 +39,10 @@ public final class AIChatClient {
             Wenn der Spieler Material nennt, übergib seine Minecraft-Item-ID oder den Blocknamen als
             optionales Feld material. Verwende nur Material, das Nightfall in der Hotbar bestätigt.
 
+            Wenn Material oder Hotbar-Bestand für einen Bauplan unbekannt sind, kannst du zuerst
+            get_inventory anfordern. Das Werkzeug benötigt eine eigene Bestätigung und liefert exakte
+            Item-IDs; verwende zum Bauen nur dort als Hotbar gelistete Materialien. Das restliche Inventar
+            kann der Spieler vor dem Bau erst in die Hotbar legen.
             Für andere ausdrücklich gewünschte Gebäude verwende build_custom_structure.
             Erzeuge einen konkreten, kompakten Blockplan mit höchstens 200 Blöcken, Koordinaten als
             nichtnegative ganzzahlige Offsets in X/Z 0–15 und Y 0–10. Jeder Block muss über eine

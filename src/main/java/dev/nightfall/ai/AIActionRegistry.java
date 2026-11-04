@@ -10,6 +10,7 @@ import dev.nightfall.scanner.Waypoint;
 import dev.nightfall.scanner.WaypointManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.item.ItemStack;
+import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
@@ -291,18 +292,32 @@ public final class AIActionRegistry {
     }
 
     private static String inventorySummary(MinecraftClient mc) {
-        Map<String, Integer> items = new LinkedHashMap<>();
-        for (int i = 0; i < 36; i++) {
-            ItemStack stack = mc.player.getInventory().getStack(i);
+        StringBuilder out = new StringBuilder("Inventar des Spielers. Der Builder kann nur Material aus den Slots 1–9 (Hotbar) direkt verwenden.");
+        boolean any = false;
+        out.append("\\nHotbar:");
+        for (int slot = 0; slot < 9; slot++) {
+            ItemStack stack = mc.player.getInventory().getStack(slot);
             if (stack.isEmpty()) continue;
-            items.merge(stack.getName().getString(), stack.getCount(), Integer::sum);
+            any = true;
+            out.append("\\n- Slot ").append(slot + 1).append(": ")
+                    .append(stack.getName().getString()).append(" [")
+                    .append(Registries.ITEM.getId(stack.getItem())).append("] × ").append(stack.getCount());
         }
-        if (items.isEmpty()) return "Das Inventar ist leer.";
-        StringBuilder out = new StringBuilder("Inventar des Spielers (Itemname: Gesamtmenge):");
-        for (Map.Entry<String, Integer> entry : items.entrySet()) {
-            out.append("\n- ").append(entry.getKey()).append(": ").append(entry.getValue());
+        if (!any) out.append("\\n- leer");
+
+        Map<String, Integer> rest = new LinkedHashMap<>();
+        for (int slot = 9; slot < 36; slot++) {
+            ItemStack stack = mc.player.getInventory().getStack(slot);
+            if (stack.isEmpty()) continue;
+            String key = stack.getName().getString() + " [" + Registries.ITEM.getId(stack.getItem()) + "]";
+            rest.merge(key, stack.getCount(), Integer::sum);
+        }
+        out.append("\\nRestliches Inventar:");
+        if (rest.isEmpty()) out.append("\\n- leer");
+        for (Map.Entry<String, Integer> entry : rest.entrySet()) {
+            out.append("\\n- ").append(entry.getKey()).append(": ").append(entry.getValue());
             if (out.length() > 3500) {
-                out.append("\n(gekürzt)");
+                out.append("\\n(gekürzt)");
                 break;
             }
         }
