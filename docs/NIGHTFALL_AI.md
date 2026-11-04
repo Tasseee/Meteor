@@ -72,3 +72,25 @@ After a tool call, Nightfall displays a preview. The tool is executed only after
 - When the inventory tool is approved, its result is sent back to the configured AI provider. It includes exact item IDs and distinguishes the hotbar from the rest of the inventory because the current builder places only materials already in the 9-slot hotbar. Do not approve it if you do not want to share that inventory snapshot.
 
 Future skills should stay narrowly scoped, validated, previewed, and explicitly confirmed before world changes or data disclosure.
+
+
+## Lokale Bauplan-Wissensdatenbank
+
+Nightfall enthält eine versionierte, kuratierte Wissensdatenbank und das read-only Werkzeug
+`search_blueprints`. Ein Eintrag nennt Version, Voraussetzungen, Provenienz und ausdrücklich
+seinen Test-/Automatisierungsstatus. Ein Wissenseintrag wird nicht automatisch als ausführbarer
+Blockplan behandelt.
+
+### Große Tropfsteinfarm
+
+Der erste Farmdatensatz ist `farm.dripstone.megafarm.01` für Java 1.21.11:
+ein Ausbaukonzept mit 16 Wachstumszellen in einem 4×4-Raster, getrennten Sammelrinnen,
+Wartungszugang und Hinweisen zu Wasserführung, Wachstum und Ernte. Es ist derzeit ein
+Technik-/Bauleitfaden, kein getestetes Schematic und keine behauptete vollautomatische Farm.
+Die Ernteschaltung muss auf der konkreten Welt/Serverversion separat validiert werden.
+
+**Wichtige Grenze:** Der derzeitige Builder platziert nur Full-Cube-BlockItems. Er kann
+Wasserquellen, spitze Tropfsteine, Hopper, Kolben, Beobachter und Redstone nicht als
+funktionierende Farmmechanik zuverlässig aufbauen. Nightfall darf deshalb nicht behaupten,
+die Farm automatisch errichten zu können. Der Leitfaden empfiehlt, zunächst eine Zelle
+manuell zu testen und erst danach auf 16 Module zu erweitern.
