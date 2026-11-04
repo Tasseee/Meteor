@@ -116,24 +116,9 @@ public final class AIBuilder {
             counts.merge(item, stack.getCount(), Integer::sum);
         }
         BlockItem selected = preferredMaterial;
+        if (selected == null && preferredMaterialId != null && !preferredMaterialId.isBlank())
+            selected = resolveMaterial(counts, preferredMaterialId);
         int available = selected == null ? 0 : counts.getOrDefault(selected, 0);
-        if (selected == null && preferredMaterialId != null && !preferredMaterialId.isBlank()) {
-            String requested = preferredMaterialId.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
-            for (Map.Entry<BlockItem, Integer> entry : counts.entrySet()) {
-                Identifier itemId = Registries.ITEM.getId(entry.getKey());
-                String displayName = entry.getKey().getName().getString().toLowerCase(Locale.ROOT);
-                if (itemId.toString().equals(requested) || itemId.getPath().equals(requested)
-                        || displayName.equalsIgnoreCase(preferredMaterialId.trim())
-                        || displayName.contains(preferredMaterialId.trim().toLowerCase(Locale.ROOT))) {
-                    selected = entry.getKey();
-                    available = entry.getValue();
-                    break;
-                }
-            }
-            if (selected == null)
-                throw new IllegalArgumentException("Das gewünschte Baumaterial " + preferredMaterialId
-                        + " befindet sich nicht als voller Block in deiner Hotbar.");
-        }
         if (selected == null) {
             for (Map.Entry<BlockItem, Integer> entry : counts.entrySet()) {
                 if (entry.getValue() > available) {

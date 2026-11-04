@@ -392,11 +392,16 @@ public final class AIActionRegistry {
     private static int readCoordinate(JsonObject object, String key) {
         if (!object.get(key).isJsonPrimitive() || !object.getAsJsonPrimitive(key).isNumber())
             throw new IllegalArgumentException("Die Koordinate " + key + " muss eine ganze Zahl sein.");
-        double value = object.get(key).getAsDouble();
-        int integer = object.get(key).getAsInt();
-        if (!Double.isFinite(value) || value != integer)
-            throw new IllegalArgumentException("Die Koordinate " + key + " muss eine ganze Zahl sein.");
-        return integer;
+        double value;
+        try {
+            value = object.get(key).getAsDouble();
+        } catch (NumberFormatException invalid) {
+            throw new IllegalArgumentException("Die Koordinate " + key + " muss eine gültige Zahl sein.");
+        }
+        int maximum = "y".equals(key) ? 10 : 15;
+        if (!Double.isFinite(value) || value != Math.rint(value) || value < 0 || value > maximum)
+            throw new IllegalArgumentException("Die Koordinate " + key + " muss eine ganze Zahl zwischen 0 und " + maximum + " sein.");
+        return (int) value;
     }
 
     private static JsonObject objectSchema() {
