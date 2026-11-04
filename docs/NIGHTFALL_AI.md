@@ -125,3 +125,27 @@ Der Standard-Endpunkt ist OpenAI API v1. Andere Anbieter müssen beide Audio-End
 gewählten Modelle unterstützen. Audio und erkannter Text werden an diesen Anbieter übertragen;
 aktiviere Sprache nur, wenn du damit einverstanden bist. Schließen des Chats und Trennen der
 Serververbindung stoppen laufende Aufnahme/Wiedergabe.
+
+
+## Core companion actions · navigation, combat, mining and eating
+
+The AI action registry includes the following approved actions:
+
+- `navigate_to`: requests a feet-level target coordinate. Nightfall plans an A* route in 32-block segments using only loaded client chunks and safe full-height support blocks. It avoids fluids, solid collisions and common hazards, replans after each segment as chunks load, and stops after five minutes, prolonged lack of progress, or when no safe next segment exists. This is not a guarantee of a route through unloaded terrain, caves, parkour, water or server-specific obstacles.
+- `attack_nearest_hostile`: chooses only a nearby vanilla `HostileEntity`, approaches by local navigation and uses normal melee interactions. It never targets players, passive mobs or neutral mobs. It stops after 12 attacks or 45 seconds.
+- `mine_looked_block`: mines the block currently under the crosshair. `mine_block` accepts explicit x/y/z coordinates. Both use the currently held tool, require reach and direct line of sight, reject unbreakable blocks and block entities/containers, and wait for a world update.
+- `eat_food`: selects the best food item from the hotbar when the hunger bar is not full, consumes it using vanilla item interaction and restores the previous hotbar slot.
+- `stop_current_action`: releases Nightfall-controlled movement/use/attack keys and stops active navigation, mining, eating and combat. This safety action does not require confirmation.
+
+World-changing actions show a preview and require the player's explicit confirmation. The Minecraft server remains authoritative: client approval does not bypass server protections, reach checks or permissions.
+
+## First researched knowledge database
+
+The editable database is bundled at `src/main/resources/nightfall/blueprints.json` and copied to `config/nightfall/blueprints.json` the first time it is used. Schema version 1 currently contains 13 entries:
+
+- Supported Nightfall templates: 4x4 starter shelter, 6x6 large house and watchtower.
+- Guide-only farm research: Java iron farm, 16-cell dripstone farm, sugar cane, cobblestone generator, crop farmland, villager breeder, hostile mob drops, wool, manual tree farm and pumpkin/melon.
+
+Each record carries a Minecraft version, tags, source URL, validation note and automation status. `SUPPORTED_TEMPLATE` entries link to an existing Nightfall build action; `GUIDE_ONLY` entries are knowledge and must not be converted into invented block layouts. The farm guides cite Minecraft Wiki pages and are not advertised as tested schematics or guaranteed farm designs. Server settings, tick/simulation distance and version-specific mechanics can change the result.
+
+The JSON file can be edited locally without rebuilding Nightfall. Keep IDs unique and use the existing schema. For new sources, record the page URL and distinguish verified mechanics from untested layout suggestions.
