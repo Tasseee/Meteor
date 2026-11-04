@@ -48,6 +48,7 @@ public class ClickGuiScreen extends Screen {
     private boolean prevL, prevR, prevM, clickL, clickR, clickM;
     private boolean searchFocus;
     private Module listening;
+    private Module hoveredModule;
     private String notice = "";
     private long noticeUntil;
     private NumberSetting slider;
@@ -153,6 +154,11 @@ public class ClickGuiScreen extends Screen {
             if (k == GLFW.GLFW_KEY_PERIOD && messageDraft.length() < 256) { messageDraft += "."; return; }
             if (k == GLFW.GLFW_KEY_COMMA && messageDraft.length() < 256) { messageDraft += ","; return; }
             if (k == GLFW.GLFW_KEY_SLASH && messageDraft.length() < 256) { messageDraft += "/"; return; }
+            return;
+        }
+        if (!searchFocus && k == GLFW.GLFW_KEY_K && hoveredModule != null) {
+            listening = hoveredModule;
+            notice("Taste drücken für " + listening.getName() + " · Backspace löscht");
             return;
         }
         if (!searchFocus) return;
@@ -264,7 +270,7 @@ public class ClickGuiScreen extends Screen {
                         else if (clickR) { toggleExpanded(mod); clickR = false; }
                         else if (clickM) { listening = mod; searchFocus = false; notice("Taste drücken für " + mod.getName() + " · Backspace löscht"); clickM = false; }
                     }
-                    if (rowHovered) hovered = mod;
+                    if (rowHovered) { hovered = mod; hoveredModule = mod; }
                     rowY += MODULE_H;
 
                     float settingsH = mod.getSettings().size() * SETTING_H * mp;
@@ -311,7 +317,7 @@ public class ClickGuiScreen extends Screen {
             drawNotice(ctx, msg, 0xFFFFD27A);
         } else if (System.currentTimeMillis() < noticeUntil) drawNotice(ctx, notice, 0xFFFFD27A);
 
-        String footer = "L: Optionen  ·  Schalter rechts: An/Aus  ·  M: Keybind  ·  Mausrad: Scroll  ·  " + Nightfall.VERSION;
+        String footer = "L: Optionen  ·  Schalter: An/Aus  ·  K/Mittelklick: Keybind (auch HUD)  ·  Mausrad: Scroll  ·  " + Nightfall.VERSION;
         int footerW = mc.textRenderer.getWidth(footer);
         ctx.drawText(mc.textRenderer, footer, Math.max(6, (width - footerW) / 2), height - 9, Theme.TEXT_DIM, false);
     }
