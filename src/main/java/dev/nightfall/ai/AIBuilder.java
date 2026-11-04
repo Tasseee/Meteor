@@ -16,10 +16,13 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.HashSet;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Locale;
 
 public final class AIBuilder {
@@ -30,7 +33,8 @@ public final class AIBuilder {
     private enum Blueprint {
         STARTER_SHELTER("starter_shelter", "4x4-Schutzhaus", 4, 54),
         LARGE_HOUSE("large_house", "Großes Haus", 6, 130),
-        WATCHTOWER("watchtower", "Wachturm", 5, 74);
+        WATCHTOWER("watchtower", "Wachturm", 5, 74),
+        CUSTOM("custom", "Eigener Bauplan", 0, 0);
 
         final String id;
         final String label;
@@ -50,7 +54,10 @@ public final class AIBuilder {
         }
     }
 
+    public record RelativeBlock(int x, int y, int z) {}
+
     private static final List<BlockPos> PLAN = new ArrayList<>();
+    private static final List<RelativeBlock> CUSTOM_OFFSETS = new ArrayList<>();
     private static BlockItem material;
     private static Blueprint blueprint;
     private static Identifier dimension;
@@ -66,6 +73,7 @@ public final class AIBuilder {
     private static boolean running;
     private static boolean waitingForReach;
     private static String materialName = "";
+    private static String blueprintName = "";
     private static String status = "Builder bereit";
 
     private AIBuilder() {}
@@ -91,6 +99,8 @@ public final class AIBuilder {
             throw new IllegalArgumentException("Du musst dich zuerst in einer verbundenen Welt befinden.");
 
         Blueprint selectedBlueprint = Blueprint.parse(structure);
+        if (selectedBlueprint == Blueprint.CUSTOM)
+            throw new IllegalArgumentException("Eigene Pläne müssen über build_custom_structure validiert werden.");
         Map<BlockItem, Integer> counts = new LinkedHashMap<>();
         for (int slot = 0; slot < 9; slot++) {
             ItemStack stack = mc.player.getInventory().getStack(slot);
@@ -196,6 +206,8 @@ public final class AIBuilder {
         PLAN.addAll(nextPlan);
         material = selected;
         blueprint = selectedBlueprint;
+        blueprintName = selectedBlueprint.label;
+        CUSTOM_OFFSETS.clear();
         preparedPlayerPos = player.getBlockPos().toImmutable();
         preparedFacing = forward;
         materialName = selected.getName().getString();
@@ -215,6 +227,148 @@ public final class AIBuilder {
         return "Bauplan geprüft: " + selectedBlueprint.label + " – " + layout + ". Material: "
                 + materialName + " × " + selectedBlueprint.blocks + " (Hotbar: " + available + "). "
                 + "Fläche und Boden sind geprüft. Jede Platzierung wird erst nach Server-Weltupdate gezählt; bei fehlender Reichweite pausiere ich.";
+    }
+
+    public static String prepareCustomStructure(String name, String materialId, List<RelativeBlock> offsets) {
+        return prepareCustomStructure(name, null, materialId, offsets);
+    }
+
+    private static String prepareCustomStructure(String name, BlockItem preferredMaterial, List<RelativeBlock> offsets) {
+        return prepareCustomStructure(name, preferredMaterial, null, offsets);
+    }
+
+    private static String prepareCustomStructure(String name, BlockItem preferredMaterial,
+                                                 String preferredMaterialId, List<RelativeBlock> offsets) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (running) throw new IllegalArgumentException("Nightfall baut bereits. Stoppe den aktuellen Bau zuerst.");
+        if (mc.player == null || mc.world == null || mc.interactionManager == null || mc.getNetworkHandler() == null)
+            throw new IllegalArgumentException("Du musst dich zuerst in einer verbundenen Welt befinden.");
+        if (name == null || !name.matches("[\\p{L}0-9 _.-]{1,48}"))
+            throw new IllegalArgumentException("Der Bauplanname ist ungültig.");
+        if (offsets == null || offsets.isEmpty() || offsets.size() > 200)
+            throw new IllegalArgumentException("Ein eigener Bauplan muss zwischen 1 und 200 Blöcke enthalten.");
+
+        Set<RelativeBlock> uniqueOffsets = new HashSet<>();
+        int maxX = 0, maxY = 0, maxZ = 0;
+        for (RelativeBlock block : offsets) {
+            if (block == null || block.x() < 0 || block.x() > 15 || block.y() < 0 || block.y() > 10
+                    || block.z() < 0 || block.z() > 15)
+                throw new IllegalArgumentException("Der Bauplan überschreitet das erlaubte Raster (X/Z 0–15, Y 0–10).");
+            if (!uniqueOffsets.add(block)) throw new IllegalArgumentException("Der Bauplan enthält doppelte Blockpositionen.");
+            maxX = Math.max(maxX, block.x());
+            maxY = Math.max(maxY, block.y());
+            maxZ = Math.max(maxZ, block.z());
+        }
+
+        Map<BlockItem, Integer> counts = new LinkedHashMap<>();
+        for (int slot = 0; slot < 9; slot++) {
+            ItemStack stack = mc.player.getInventory().getStack(slot);
+            if (!(stack.getItem() instanceof BlockItem item)) continue;
+            BlockState state = item.getBlock().getDefaultState();
+            BlockPos sample = mc.player.getBlockPos();
+            if (item.getBlock() instanceof FallingBlock || state.getCollisionShape(mc.world, sample).isEmpty()
+                    || !state.isFullCube(mc.world, sample)) continue;
+            counts.merge(item, stack.getCount(), Integer::sum);
+        }
+        BlockItem selected = preferredMaterial;
+        int available = selected == null ? 0 : counts.getOrDefault(selected, 0);
+        if (selected == null && preferredMaterialId != null && !preferredMaterialId.isBlank()) {
+            String requested = preferredMaterialId.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
+            for (Map.Entry<BlockItem, Integer> entry : counts.entrySet()) {
+                Identifier itemId = Registries.ITEM.getId(entry.getKey());
+                String displayName = entry.getKey().getName().getString().toLowerCase(Locale.ROOT);
+                if (itemId.toString().equals(requested) || itemId.getPath().equals(requested)
+                        || displayName.equals(preferredMaterialId.trim().toLowerCase(Locale.ROOT))
+                        || displayName.contains(preferredMaterialId.trim().toLowerCase(Locale.ROOT))) {
+                    selected = entry.getKey();
+                    available = entry.getValue();
+                    break;
+                }
+            }
+            if (selected == null)
+                throw new IllegalArgumentException("Das gewünschte Baumaterial " + preferredMaterialId
+                        + " befindet sich nicht als voller Block in deiner Hotbar.");
+        }
+        if (selected == null) {
+            for (Map.Entry<BlockItem, Integer> entry : counts.entrySet()) {
+                if (entry.getValue() > available) {
+                    selected = entry.getKey();
+                    available = entry.getValue();
+                }
+            }
+        }
+        if (selected == null || available < offsets.size())
+            throw new IllegalArgumentException("Für diesen Bauplan brauche ich " + offsets.size()
+                    + " volle Blöcke derselben Sorte in der Hotbar. Gefunden: " + available + ".");
+
+        ClientPlayerEntity player = mc.player;
+        Direction forward = player.getHorizontalFacing();
+        Direction right = forward.rotateYClockwise();
+        BlockPos origin = player.getBlockPos().offset(forward, 1).offset(right, -((maxX + 1) / 2));
+        List<BlockPos> targets = new ArrayList<>(offsets.size());
+        Set<BlockPos> targetSet = new HashSet<>();
+        for (RelativeBlock offset : offsets) {
+            BlockPos target = origin.add(right.getOffsetX() * offset.x() + forward.getOffsetX() * offset.z(),
+                    offset.y(), right.getOffsetZ() * offset.x() + forward.getOffsetZ() * offset.z());
+            if (target.getY() < mc.world.getBottomY()
+                    || target.getY() >= mc.world.getBottomY() + mc.world.getHeight())
+                throw new IllegalArgumentException("Der Bauplan liegt außerhalb der Weltgrenzen.");
+            if (!mc.world.getBlockState(target).isReplaceable())
+                throw new IllegalArgumentException("Der Bauplatz ist nicht frei bei X=" + target.getX()
+                        + ", Y=" + target.getY() + ", Z=" + target.getZ() + ".");
+            targets.add(target);
+            targetSet.add(target);
+        }
+
+        // Breadth-first ordering starts at blocks attached to existing solid world blocks.
+        // Every other block must be face-connected to one of these anchors.
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        Set<BlockPos> visited = new HashSet<>();
+        for (BlockPos target : targets) {
+            for (Direction face : Direction.values()) {
+                BlockPos neighbor = target.offset(face);
+                if (targetSet.contains(neighbor)) continue;
+                BlockState support = mc.world.getBlockState(neighbor);
+                if (!support.getCollisionShape(mc.world, neighbor).isEmpty()) {
+                    if (visited.add(target)) queue.addLast(target);
+                    break;
+                }
+            }
+        }
+        List<BlockPos> ordered = new ArrayList<>(targets.size());
+        while (!queue.isEmpty()) {
+            BlockPos current = queue.removeFirst();
+            ordered.add(current);
+            for (Direction face : Direction.values()) {
+                BlockPos neighbor = current.offset(face);
+                if (targetSet.contains(neighbor) && visited.add(neighbor)) queue.addLast(neighbor);
+            }
+        }
+        if (ordered.size() != targets.size())
+            throw new IllegalArgumentException("Der Bauplan hat schwebende oder getrennte Teile. Alle Blöcke müssen über Seitenflächen mit dem Boden oder bestehenden festen Blöcken verbunden sein.");
+
+        PLAN.clear();
+        PLAN.addAll(ordered);
+        CUSTOM_OFFSETS.clear();
+        CUSTOM_OFFSETS.addAll(offsets);
+        material = selected;
+        blueprint = Blueprint.CUSTOM;
+        blueprintName = name.trim();
+        materialName = selected.getName().getString();
+        dimension = mc.world.getRegistryKey().getValue();
+        preparedPlayerPos = player.getBlockPos().toImmutable();
+        preparedFacing = forward;
+        index = 0;
+        delay = 0;
+        pendingTarget = null;
+        pendingTicks = 0;
+        placementRetries = 0;
+        prepared = true;
+        status = "Eigener Bauplan geprüft";
+        return "Eigener Bauplan geprüft: „" + blueprintName + "“, " + offsets.size() + " Blöcke, "
+                + (maxX + 1) + " × " + (maxY + 1) + " × " + (maxZ + 1)
+                + " Raster, Material: " + materialName + " × " + offsets.size()
+                + ". Alle Zielpositionen sind frei und die Teile sind mit dem Boden oder bestehenden Blöcken verbunden.";
     }
 
     private static BlockPos at(BlockPos origin, Direction right, Direction forward, int x, int z, int y) {
@@ -246,7 +400,7 @@ public final class AIBuilder {
         waitingForReach = false;
         running = true;
         status = "Bau gestartet";
-        notifyPlayer("Bau gestartet: " + blueprint.label + " · 0/" + PLAN.size() + ".");
+        notifyPlayer("Bau gestartet: " + blueprintName + " · 0/" + PLAN.size() + ".");
         return "Bau gestartet: " + blueprint.label + ", " + materialName + " × " + PLAN.size()
                 + ". Ich zähle einen Block erst nach bestätigtem Welt-Update.";
     }
@@ -291,7 +445,7 @@ public final class AIBuilder {
         }
 
         if (index >= PLAN.size()) {
-            stopInternal("Bau abgeschlossen: " + blueprint.label + " wurde vom Server bestätigt.", true);
+            stopInternal("Bau abgeschlossen: " + blueprintName + " wurde vom Server bestätigt.", true);
             return;
         }
         BlockPos target = PLAN.get(index);
@@ -370,6 +524,8 @@ public final class AIBuilder {
         PLAN.clear();
         material = null;
         blueprint = null;
+        blueprintName = "";
+        CUSTOM_OFFSETS.clear();
         pendingTarget = null;
         preparedPlayerPos = null;
         preparedFacing = null;
@@ -404,6 +560,8 @@ public final class AIBuilder {
         PLAN.clear();
         material = null;
         blueprint = null;
+        blueprintName = "";
+        CUSTOM_OFFSETS.clear();
         preparedPlayerPos = null;
         preparedFacing = null;
     }

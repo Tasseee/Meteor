@@ -1,6 +1,7 @@
 package dev.nightfall.ai;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.nightfall.module.Module;
@@ -11,7 +12,9 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Identifier;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -82,6 +85,45 @@ public final class AIActionRegistry {
         tools.add(tool("build_starter_shelter",
                 "Backward-compatible alias for build_structure with structure=starter_shelter.",
                 objectSchema()));
+        JsonObject customBlueprintSchema = objectSchema();
+        JsonObject customProps = customBlueprintSchema.getAsJsonObject("properties");
+        JsonObject customName = property("name", "string", "Short descriptive blueprint name.").get("schema").getAsJsonObject();
+        customName.addProperty("maxLength", 48);
+        customProps.add("name", customName);
+        JsonObject customMaterial = property("material", "string",
+                "Optional Minecraft item ID or localized block name in the hotbar. Omit to auto-select.").get("schema").getAsJsonObject();
+        customMaterial.addProperty("maxLength", 64);
+        customProps.add("material", customMaterial);
+        JsonObject coordinateSchema = new JsonObject();
+        coordinateSchema.addProperty("type", "object");
+        JsonObject coordinateProps = new JsonObject();
+        for (String axis : List.of("x", "y", "z")) {
+            JsonObject coordinate = new JsonObject();
+            coordinate.addProperty("type", "integer");
+            coordinate.addProperty("minimum", 0);
+            coordinate.addProperty("maximum", axis.equals("y") ? 10 : 15);
+            coordinateProps.add(axis, coordinate);
+        }
+        coordinateSchema.add("properties", coordinateProps);
+        JsonArray coordinateRequired = new JsonArray();
+        coordinateRequired.add("x");
+        coordinateRequired.add("y");
+        coordinateRequired.add("z");
+        coordinateSchema.add("required", coordinateRequired);
+        coordinateSchema.addProperty("additionalProperties", false);
+        JsonObject blocksSchema = new JsonObject();
+        blocksSchema.addProperty("type", "array");
+        blocksSchema.addProperty("minItems", 1);
+        blocksSchema.addProperty("maxItems", 200);
+        blocksSchema.add("items", coordinateSchema);
+        customProps.add("blocks", blocksSchema);
+        JsonArray customRequired = new JsonArray();
+        customRequired.add("name");
+        customRequired.add("blocks");
+        customBlueprintSchema.add("required", customRequired);
+        tools.add(tool("build_custom_structure",
+                "Create a custom connected blueprint with at most 200 blocks in a 16x16x11 grid. Coordinates are nonnegative x/y/z offsets; blocks must be connected face-to-face to solid ground or existing solid blocks. Use compact practical designs and one full-cube material from the hotbar. Nightfall validates every target and previews the plan before confirmation.",
+                customBlueprintSchema));
         tools.add(tool("stop_build",
                 "Stop the currently running Nightfall block-by-block build. The player must confirm first.",
                 objectSchema()));
@@ -147,6 +189,10 @@ public final class AIActionRegistry {
             case "build_structure" -> new Action(name, args, AIBuilder.prepareStructure(
                     requiredString(args, "structure", 32),
                     args.has("material") ? requiredString(args, "material", 64) : null));
+            case "build_custom_structure" -> new Action(name, args, AIBuilder.prepareCustomStructure(
+                    requiredString(args, "name", 48),
+                    args.has("material") ? requiredString(args, "material", 64) : null,
+                    readCustomBlocks(args.getAsJsonArray("blocks"))));
             case "build_starter_shelter" -> new Action(name, args, AIBuilder.prepareStarterShelter());
             case "stop_build" -> new Action(name, args,
                     AIBuilder.isRunning() ? "Nightfall stoppt den laufenden Bau. Bereits gesetzte Blöcke bleiben bestehen."
@@ -215,7 +261,7 @@ public final class AIActionRegistry {
                     yield "Der Befehl konnte nicht gesendet werden. Prüfe deine Verbindung.";
                 }
             }
-            case "build_structure", "build_starter_shelter" -> AIBuilder.startPreparedStructure();
+            case "build_structure", "build_starter_shelter", "build_custom_structure" -> AIBuilder.startPreparedStructure();
             case "stop_build" -> AIBuilder.stop();
             default -> "Aktion nicht freigegeben.";
         };
@@ -224,7 +270,8 @@ public final class AIActionRegistry {
     /** Discard local plan state when the player cancels the confirmation. */
     public static void cancel(Action action) {
         if (action != null && ("build_starter_shelter".equals(action.name())
-                || "build_structure".equals(action.name()))) AIBuilder.cancelPrepared();
+                || "build_structure".equals(action.name())
+                || "build_custom_structure".equals(action.name()))) AIBuilder.cancelPrepared();
     }
 
     private static String playerStatus(MinecraftClient mc) {
@@ -284,6 +331,31 @@ public final class AIActionRegistry {
         tool.addProperty("type", "function");
         tool.add("function", function);
         return tool;
+    }
+
+    private static List<AIBuilder.RelativeBlock> readCustomBlocks(JsonArray blocks) {
+        if (blocks == null || blocks.isEmpty() || blocks.size() > 200)
+            throw new IllegalArgumentException("Ein eigener Bauplan muss 1 bis 200 Blöcke enthalten.");
+        List<AIBuilder.RelativeBlock> result = new ArrayList<>(blocks.size());
+        for (JsonElement element : blocks) {
+            if (!element.isJsonObject()) throw new IllegalArgumentException("Ein Block im Bauplan ist kein Objekt.");
+            JsonObject block = element.getAsJsonObject();
+            if (block.size() != 3 || !block.has("x") || !block.has("y") || !block.has("z"))
+                throw new IllegalArgumentException("Jeder Bauplan-Block muss genau x, y und z enthalten.");
+            result.add(new AIBuilder.RelativeBlock(readCoordinate(block, "x"),
+                    readCoordinate(block, "y"), readCoordinate(block, "z")));
+        }
+        return result;
+    }
+
+    private static int readCoordinate(JsonObject object, String key) {
+        if (!object.get(key).isJsonPrimitive() || !object.getAsJsonPrimitive(key).isNumber())
+            throw new IllegalArgumentException("Die Koordinate " + key + " muss eine ganze Zahl sein.");
+        double value = object.get(key).getAsDouble();
+        int integer = object.get(key).getAsInt();
+        if (!Double.isFinite(value) || value != integer)
+            throw new IllegalArgumentException("Die Koordinate " + key + " muss eine ganze Zahl sein.");
+        return integer;
     }
 
     private static JsonObject objectSchema() {
