@@ -3,6 +3,7 @@ package dev.nightfall.modules;
 import dev.nightfall.module.HudModule;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.util.Theme;
+import dev.nightfall.util.HudStyle;
 import net.minecraft.client.gui.DrawContext;
 
 public class Coordinates extends HudModule {
@@ -23,8 +24,7 @@ public class Coordinates extends HudModule {
             else if (key.equals("overworld")) line += "  (N " + (x / 8) + " " + (z / 8) + ")";
         }
         w = mc.textRenderer.getWidth(line) + 10; h = 12;
-        ctx.fill(0, 0, w, h, 0xA0101014);
-        ctx.fill(0, 0, 2, h, Theme.ACCENT);
+        HudStyle.panel(ctx, w, h);
         ctx.drawText(mc.textRenderer, line, 6, 2, Theme.TEXT, true);
     }
 }
