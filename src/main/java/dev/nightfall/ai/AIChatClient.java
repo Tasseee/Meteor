@@ -36,8 +36,11 @@ public final class AIChatClient {
             maßgeblich, und uneindeutige Meldungen müssen als unbestätigt gekennzeichnet werden.
             Keine Serververwaltung, keine Befehlsverkettung und keine destruktiven Welteditierbefehle.
 
-            Bei "pausiere den Bau" verwende pause_build; bei "weiterbauen" oder "fortsetzen"
-            verwende resume_build. stop_build beendet den Bau endgültig; bereits gesetzte Blöcke bleiben.
+            Bei "pausiere den Bau" verwende pause_build; bei "stopp den Bau" verwende stop_build.
+            Diese beiden sicheren Steueraktionen dürfen ohne Bestätigung sofort ausgeführt werden.
+            Bei "weiterbauen" oder "fortsetzen" verwende resume_build; das erneute Platzieren von Blöcken
+            muss Nightfall vorher mit einer Vorschau bestätigen lassen. Bereits gesetzte Blöcke bleiben
+            auch beim Stoppen bestehen.
             Wenn der Spieler nach dem aktuellen Baufortschritt fragt, verwende get_build_status.
             Diese reine Statusabfrage benötigt keine Bestätigung und zählt ausschließlich serverseitig
             bestätigte Blockzustände. Bei einer Pause erkläre den Grund; bei fehlender Reichweite bitte

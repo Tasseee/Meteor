@@ -236,7 +236,7 @@ public final class AIActionRegistry {
 
     /** Called only from the Minecraft client thread after explicit player confirmation. */
     public static boolean requiresConfirmation(String actionName) {
-        return !"get_build_status".equals(actionName);
+        return !Set.of("get_build_status", "pause_build", "stop_build").contains(actionName);
     }
 
     public static String execute(Action action) {
