@@ -10,9 +10,9 @@ public final class HudStyle {
         if (width <= 0 || height <= 0) return;
         ctx.fillGradient(0, 0, width, height, 0xE51B1D29, 0xD9101119);
         ctx.fill(0, 0, width, 1, Theme.withAlpha(Theme.ACCENT, 220));
-        ctx.fill(0, height - 1, width, height, 0x553FFFFFF);
-        ctx.fill(0, 1, 1, height - 1, 0x553FFFFFF);
-        ctx.fill(width - 1, 1, width, height - 1, 0x553FFFFFF);
+        ctx.fill(0, height - 1, width, height, 0x553FFFFF);
+        ctx.fill(0, 1, 1, height - 1, 0x553FFFFF);
+        ctx.fill(width - 1, 1, width, height - 1, 0x553FFFFF);
         ctx.fill(0, 1, 2, height - 1, Theme.withAlpha(Theme.ACCENT, 145));
     }
 }
