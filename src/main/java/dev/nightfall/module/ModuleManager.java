@@ -42,9 +42,11 @@ public final class ModuleManager {
         MODULES.add(new Jesus());
         MODULES.add(new WaterWalk());
         MODULES.add(new Noclip());
+        MODULES.add(new BoatFly());
         MODULES.add(new Freecam());
         // Visuals
         MODULES.add(new PlayerEsp());
+        MODULES.add(new NameTags());
         MODULES.add(new EntityEsp());
         MODULES.add(new ItemEsp());
         MODULES.add(new StorageEsp());
@@ -75,6 +77,7 @@ public final class ModuleManager {
         MODULES.add(new SpawnerProtect());
         MODULES.add(new StaffWatch());
         MODULES.add(new AntiVanishHints());
+        MODULES.add(new InvSeeValue());
         // HUD
         MODULES.add(new Watermark());
         MODULES.add(new Coordinates());
