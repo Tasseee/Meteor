@@ -17,10 +17,13 @@ public final class AIConfig {
 
     private AIConfig() {}
 
-    public record Settings(String baseUrl, String model, String apiKey, boolean shareWorldContext) {
+    public record Settings(String baseUrl, String model, String apiKey, boolean shareWorldContext,
+                           String audioBaseUrl, String transcriptionModel, String speechModel,
+                           String speechVoice, boolean voiceInputEnabled, boolean voiceOutputEnabled) {
         static Settings defaults() {
             return new Settings("https://api.openai.com/v1/chat/completions",
-                    "gpt-4o-mini", "", true);
+                    "gpt-4o-mini", "", true,
+                    "https://api.openai.com/v1", "whisper-1", "gpt-4o-mini-tts", "alloy", false, false);
         }
     }
 
@@ -47,17 +50,35 @@ public final class AIConfig {
             String baseUrl = readString(root, "baseUrl", defaults.baseUrl()).trim();
             String model = readString(root, "model", defaults.model()).trim();
             String apiKey = readString(root, "apiKey", "").trim();
-            boolean shareContext = root.has("shareWorldContext")
-                    ? root.get("shareWorldContext").getAsBoolean() : defaults.shareWorldContext();
+            boolean shareContext = readBoolean(root, "shareWorldContext", defaults.shareWorldContext());
+            String audioBaseUrl = readString(root, "audioBaseUrl", defaults.audioBaseUrl()).trim();
+            String transcriptionModel = readString(root, "transcriptionModel", defaults.transcriptionModel()).trim();
+            String speechModel = readString(root, "speechModel", defaults.speechModel()).trim();
+            String speechVoice = readString(root, "speechVoice", defaults.speechVoice()).trim();
+            boolean voiceInput = readBoolean(root, "voiceInputEnabled", defaults.voiceInputEnabled());
+            boolean voiceOutput = readBoolean(root, "voiceOutputEnabled", defaults.voiceOutputEnabled());
 
             if (baseUrl.length() > 512) baseUrl = defaults.baseUrl();
             if (model.isBlank() || model.length() > 128) model = defaults.model();
             if (apiKey.length() > 4096) apiKey = "";
-            settings = new Settings(baseUrl, model, apiKey, shareContext);
+            if (audioBaseUrl.isBlank() || audioBaseUrl.length() > 512) audioBaseUrl = defaults.audioBaseUrl();
+            if (transcriptionModel.isBlank() || transcriptionModel.length() > 128) transcriptionModel = defaults.transcriptionModel();
+            if (speechModel.isBlank() || speechModel.length() > 128) speechModel = defaults.speechModel();
+            if (!speechVoice.matches("[A-Za-z0-9_-]{1,32}")) speechVoice = defaults.speechVoice();
+            settings = new Settings(baseUrl, model, apiKey, shareContext, audioBaseUrl,
+                    transcriptionModel, speechModel, speechVoice, voiceInput, voiceOutput);
         } catch (Exception e) {
             settings = Settings.defaults();
             Nightfall.LOGGER.warn("Nightfall AI-Konfiguration konnte nicht gelesen werden. Defaults werden verwendet: {}",
                     e.getClass().getSimpleName());
+        }
+    }
+
+    private static boolean readBoolean(JsonObject root, String key, boolean fallback) {
+        try {
+            return root.has(key) ? root.get(key).getAsBoolean() : fallback;
+        } catch (RuntimeException invalid) {
+            return fallback;
         }
     }
 
@@ -74,6 +95,12 @@ public final class AIConfig {
         root.addProperty("model", defaults.model());
         root.addProperty("apiKey", "");
         root.addProperty("shareWorldContext", defaults.shareWorldContext());
+        root.addProperty("audioBaseUrl", defaults.audioBaseUrl());
+        root.addProperty("transcriptionModel", defaults.transcriptionModel());
+        root.addProperty("speechModel", defaults.speechModel());
+        root.addProperty("speechVoice", defaults.speechVoice());
+        root.addProperty("voiceInputEnabled", defaults.voiceInputEnabled());
+        root.addProperty("voiceOutputEnabled", defaults.voiceOutputEnabled());
         Files.writeString(FILE, root.toString().replace(",", ",\n  ").replace("{", "{\n  ").replace("}", "\n}"));
     }
 }
