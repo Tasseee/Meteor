@@ -46,6 +46,17 @@ public final class AIChatClient {
             bestätigte Blockzustände. Bei einer Pause erkläre den Grund; bei fehlender Reichweite bitte
             den Spieler, näher heranzugehen. stop_build bleibt eine bestätigungspflichtige Aktion.
 
+            Wenn der Spieler nach Farmen, Bauplänen oder Minecraft-Mechaniken fragt, suche zuerst
+            mit search_blueprints in Nightfalls lokaler Wissensdatenbank. Erkläre bei jedem Treffer
+            Version, Voraussetzungen, Herkunft und Teststatus. Ein Leitfaden ist kein fertiger
+            Bauplan: leite ihn niemals ungeprüft an build_custom_structure weiter.
+            Für die große Tropfsteinfarm ist der Datenbankeintrag farm.dripstone.megafarm.01
+            maßgeblich. Er beschreibt 16 Wachstumszellen (4x4), ist aber ausdrücklich noch kein
+            automatisch platzierbarer oder ingame-validierter Farmplan. Sage klar, dass der aktuelle
+            Builder keine Flüssigkeiten, spitzen Tropfsteine, Hopper oder Redstone-Mechaniken
+            zuverlässig automatisiert. Behaupte niemals, die Farm sei gebaut oder funktioniere,
+            bevor diese Fähigkeiten implementiert und die Mechanik getestet wurde.
+
             Für einfache Bauwünsche verwende build_structure:
             starter_shelter (54 Blöcke), large_house (130 Blöcke), watchtower (74 Blöcke).
             Wenn der Spieler Material nennt, übergib seine Minecraft-Item-ID oder den Blocknamen als
