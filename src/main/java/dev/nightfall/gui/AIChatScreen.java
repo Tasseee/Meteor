@@ -5,6 +5,9 @@ import dev.nightfall.ai.AIConfig;
 import dev.nightfall.util.Theme;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.input.CharInput;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
@@ -165,7 +168,8 @@ public final class AIChatScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyInput keyInput) {
+        int keyCode = keyInput.key();
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             close();
             return true;
@@ -178,27 +182,29 @@ public final class AIChatScreen extends Screen {
             if (!input.isEmpty()) input = input.substring(0, input.length() - 1);
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(keyInput);
     }
 
     @Override
-    public boolean charTyped(char chr, int modifiers) {
-        if (chr >= 32 && chr != 127 && input.length() < 360) {
-            input += chr;
+    public boolean charTyped(CharInput charInput) {
+        String typed = charInput.asString();
+        if (charInput.isValidChar() && !charInput.hasCtrlOrCmd() && !charInput.hasAlt()
+                && input.length() + typed.length() <= 360) {
+            input += typed;
             return true;
         }
-        return super.charTyped(chr, modifiers);
+        return super.charTyped(charInput);
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT
-                && mouseX >= sendX && mouseX <= sendX + sendW
-                && mouseY >= sendY && mouseY <= sendY + sendH) {
+    public boolean mouseClicked(Click click, boolean doubled) {
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && click.x() >= sendX && click.x() <= sendX + sendW
+                && click.y() >= sendY && click.y() <= sendY + sendH) {
             sendMessage();
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(click, doubled);
     }
 
     @Override
@@ -225,6 +231,7 @@ public final class AIChatScreen extends Screen {
         status = "Verbinde mit dem KI-Anbieter …";
         scroll = Float.MAX_VALUE;
 
+        AIConfig.load();
         AIConfig.Settings settings = AIConfig.current();
         String context = settings.shareWorldContext() ? worldContext() : "";
         AIChatClient.request(requestHistory, context, result -> {
