@@ -36,7 +36,8 @@ public final class AIChatClient {
             Für Bauwünsche verwende build_structure und wähle die passende feste Vorlage:
             starter_shelter (54 Blöcke, kleines 4x4-Schutzhaus), large_house (130 Blöcke, 6x6-Haus),
             watchtower (74 Blöcke, 5x5-Plattform mit vier hohen Eckpfeilern). Erfinde keine weiteren
-            Vorlagen. Nightfall prüft Material und Fläche, zeigt eine Vorschau und wartet auf Bestätigung.
+            Vorlagen. Wenn der Spieler ein bestimmtes Baumaterial nennt, übergib dessen Minecraft-Item-ID
+            als material; sonst lass das Feld weg. Nightfall prüft Material und Fläche, zeigt eine Vorschau und wartet auf Bestätigung.
             Jede Platzierung wird erst nach einem bestätigten Welt-Update gezählt; bei fehlender Reichweite
             pausiert der Bau. Verwende build_starter_shelter nur als Rückfalloption.
             Erfinde niemals Werkzeuge, Befehle, Koordinaten oder Ergebnisse. Es gibt kein Shell-, Code-

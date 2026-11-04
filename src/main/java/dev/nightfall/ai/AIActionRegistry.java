@@ -69,9 +69,16 @@ public final class AIActionRegistry {
         tools.add(tool("run_server_command",
                 "Send one ordinary Minecraft/server command exactly as requested by the player. Nightfall previews the exact command and asks for confirmation. Server permissions remain authoritative; dangerous administration and world-edit roots are blocked.",
                 objectSchema(command, "command")));
+        JsonObject buildStructureSchema = objectSchema(
+                property("structure", "string", "Exact blueprint identifier.", enumArray(Set.of("starter_shelter", "large_house", "watchtower"))),
+                "structure");
+        JsonObject requestedMaterial = property("material", "string",
+                "Optional Minecraft item ID or localized block name already in the hotbar, for example minecraft:birch_planks. Omit to let Nightfall choose the most numerous matching full block.").get("schema").getAsJsonObject();
+        requestedMaterial.addProperty("maxLength", 64);
+        buildStructureSchema.getAsJsonObject("properties").add("material", requestedMaterial);
         tools.add(tool("build_structure",
-                "Build a validated Nightfall blueprint: starter_shelter (54 blocks), large_house (130 blocks), or watchtower (74 blocks). Validates materials and a clear level footprint, previews, asks for confirmation, then confirms each placement from a server world update.",
-                objectSchema(property("structure", "string", "Exact blueprint identifier.", enumArray(Set.of("starter_shelter", "large_house", "watchtower"))), "structure")));
+                "Build a validated Nightfall blueprint: starter_shelter (54 blocks), large_house (130 blocks), or watchtower (74 blocks). You may specify an exact block material from the hotbar; otherwise Nightfall picks the most numerous full-cube block. Validates materials and a clear level footprint, previews, asks for confirmation, then confirms each placement from a server world update.",
+                buildStructureSchema));
         tools.add(tool("build_starter_shelter",
                 "Backward-compatible alias for build_structure with structure=starter_shelter.",
                 objectSchema()));
@@ -137,7 +144,9 @@ public final class AIActionRegistry {
                 yield new Action(name, args, "Nightfall sendet nach deiner Bestätigung exakt diesen Befehl an den aktuellen Server:\n/"
                         + command + "\nDer Server entscheidet über Berechtigungen und Ausführung. Nightfall umgeht keine Rechte.");
             }
-            case "build_structure" -> new Action(name, args, AIBuilder.prepareStructure(requiredString(args, "structure", 32)));
+            case "build_structure" -> new Action(name, args, AIBuilder.prepareStructure(
+                    requiredString(args, "structure", 32),
+                    args.has("material") ? requiredString(args, "material", 64) : null));
             case "build_starter_shelter" -> new Action(name, args, AIBuilder.prepareStarterShelter());
             case "stop_build" -> new Action(name, args,
                     AIBuilder.isRunning() ? "Nightfall stoppt den laufenden Bau. Bereits gesetzte Blöcke bleiben bestehen."

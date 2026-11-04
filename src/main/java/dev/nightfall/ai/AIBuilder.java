@@ -6,6 +6,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
+import net.minecraft.registry.Registries;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
@@ -19,6 +20,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 
 public final class AIBuilder {
     private static final double REACH_SQUARED = 20.25;
@@ -71,10 +73,18 @@ public final class AIBuilder {
     public static String prepareStarterShelter() { return prepareStructure("starter_shelter"); }
 
     public static String prepareStructure(String structure) {
-        return prepareStructure(structure, null);
+        return prepareStructure(structure, null, null);
+    }
+
+    public static String prepareStructure(String structure, String preferredMaterialId) {
+        return prepareStructure(structure, null, preferredMaterialId);
     }
 
     private static String prepareStructure(String structure, BlockItem preferredMaterial) {
+        return prepareStructure(structure, preferredMaterial, null);
+    }
+
+    private static String prepareStructure(String structure, BlockItem preferredMaterial, String preferredMaterialId) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (running) throw new IllegalArgumentException("Nightfall baut bereits. Stoppe den aktuellen Bau zuerst.");
         if (mc.player == null || mc.world == null || mc.interactionManager == null || mc.getNetworkHandler() == null)
@@ -93,6 +103,23 @@ public final class AIBuilder {
         }
         BlockItem selected = preferredMaterial;
         int available = selected == null ? 0 : counts.getOrDefault(selected, 0);
+        if (selected == null && preferredMaterialId != null && !preferredMaterialId.isBlank()) {
+            String requested = preferredMaterialId.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
+            for (Map.Entry<BlockItem, Integer> entry : counts.entrySet()) {
+                Identifier itemId = Registries.ITEM.getId(entry.getKey());
+                String displayName = entry.getKey().getName().getString().toLowerCase(Locale.ROOT);
+                if (itemId.toString().equals(requested) || itemId.getPath().equals(requested)
+                        || displayName.equalsIgnoreCase(preferredMaterialId.trim())
+                        || displayName.contains(preferredMaterialId.trim().toLowerCase(Locale.ROOT))) {
+                    selected = entry.getKey();
+                    available = entry.getValue();
+                    break;
+                }
+            }
+            if (selected == null)
+                throw new IllegalArgumentException("Das gewünschte Baumaterial " + preferredMaterialId
+                        + " befindet sich nicht als voller Block in deiner Hotbar.");
+        }
         if (selected == null) {
             for (Map.Entry<BlockItem, Integer> entry : counts.entrySet()) {
                 if (entry.getValue() > available) {
@@ -209,7 +236,7 @@ public final class AIBuilder {
         }
         String id = blueprint.id;
         BlockItem approvedMaterial = material;
-        prepareStructure(id, approvedMaterial);
+        prepareStructure(id, approvedMaterial, null);
         originalSlot = mc.player.getInventory().getSelectedSlot();
         index = 0;
         delay = 0;
