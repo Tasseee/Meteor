@@ -14,6 +14,25 @@ Nightfall startet den Dienst beim Aktivieren des Moduls automatisch, sofern Pyth
 die Abhängigkeiten vorhanden sind. Das manuelle Starten ist nur nötig, wenn Auto-Start
 deaktiviert ist oder die Abhängigkeiten noch fehlen.
 
+
+Spotify verbinden
+
+Windows:
+- In der Spotify-Desktop-App anmelden und Musik abspielen oder pausieren.
+- Nightfall liest den Spotify-Titel automatisch aus der Windows-Mediensteuerung (SMTC).
+- Es ist kein Spotify-Passwort, kein API-Schlüssel und kein Spotify-Login im Client nötig.
+
+Linux:
+- Spotify-Desktop-App starten und anmelden.
+- Sicherstellen, dass playerctl Spotify als MPRIS-Player erkennt: playerctl -l
+- Nightfall bevorzugt nun explizit den Player mit "spotify" im Namen. Falls Spotify nicht
+  läuft oder keine Metadaten liefert, wird automatisch der Standard-MPRIS-Player verwendet.
+
+Hinweis:
+Nightfall steuert damit nicht dein Spotify-Konto und startet keine Wiedergabe aus Minecraft.
+Es liest nur die Metadaten und Wiedergabeposition der lokal angemeldeten Spotify-App.
+Die Lyrics selbst kommen weiterhin zeitlich synchronisiert von LRCLIB.
+
 Windows: liest die aktive Windows-Mediensteuerung (SMTC); kompatible Apps/Browsertabs
 werden automatisch erkannt. Linux: verwendet playerctl/MPRIS; Spotify, Browser und
 andere MPRIS-Player werden erkannt, sofern sie dort sichtbar sind.
