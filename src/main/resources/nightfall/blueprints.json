@@ -6,7 +6,15 @@
       "version": "1.21.11",
       "name": "4x4 starter shelter",
       "category": "structure",
-      "tags": ["starter", "haus", "schutzhaus", "shelter", "bauen", "anfang", "house"],
+      "tags": [
+        "starter",
+        "haus",
+        "schutzhaus",
+        "shelter",
+        "bauen",
+        "anfang",
+        "house"
+      ],
       "automationStatus": "SUPPORTED_TEMPLATE",
       "validation": "Im Client vorhandene deterministische Vorlage mit 54 Blockpositionen. Keine behauptete Ingame-Spieltestfreigabe; Material, Platz und Serverbestätigung werden vor und während des Baus geprüft.",
       "buildTool": "build_structure",
@@ -19,7 +27,14 @@
       "version": "1.21.11",
       "name": "6x6 großes Haus",
       "category": "structure",
-      "tags": ["haus", "house", "large house", "bauen", "base", "basis"],
+      "tags": [
+        "haus",
+        "house",
+        "large house",
+        "bauen",
+        "base",
+        "basis"
+      ],
       "automationStatus": "SUPPORTED_TEMPLATE",
       "validation": "Im Client vorhandene deterministische Vorlage mit 130 Blockpositionen. Keine behauptete Ingame-Spieltestfreigabe; Material, Platz und Serverbestätigung werden vor und während des Baus geprüft.",
       "buildTool": "build_structure",
@@ -32,7 +47,14 @@
       "version": "1.21.11",
       "name": "Wachturm",
       "category": "structure",
-      "tags": ["turm", "wachturm", "watchtower", "tower", "bauen", "basis"],
+      "tags": [
+        "turm",
+        "wachturm",
+        "watchtower",
+        "tower",
+        "bauen",
+        "basis"
+      ],
       "automationStatus": "SUPPORTED_TEMPLATE",
       "validation": "Im Client vorhandene deterministische Vorlage mit 74 Blockpositionen. Keine behauptete Ingame-Spieltestfreigabe; Material, Platz und Serverbestätigung werden vor und während des Baus geprüft.",
       "buildTool": "build_structure",
@@ -45,7 +67,17 @@
       "version": "Java 1.21.11",
       "name": "Eisenfarm für Java",
       "category": "farm",
-      "tags": ["eisen", "iron", "eisenfarm", "iron farm", "golem", "golem farm", "dorfbewohner", "villager", "metall"],
+      "tags": [
+        "eisen",
+        "iron",
+        "eisenfarm",
+        "iron farm",
+        "golem",
+        "golem farm",
+        "dorfbewohner",
+        "villager",
+        "metall"
+      ],
       "automationStatus": "GUIDE_ONLY",
       "validation": "Mechanik-Referenz, kein von Nightfall ingame getestetes Schematic. Dorf- und Spawnmechanik muss auf Serverregeln, Simulation Distance und konkreter Version geprüft werden.",
       "content": "GRUNDIDEE: Dorfbewohner erzeugen Eisengolems, die in einer getrennten Spawnplattform erscheinen und anschließend aus dem Dorfbewohnerbereich wegtransportiert werden. Java-Edition und Bedrock haben unterschiedliche Regeln; dieser Eintrag gilt nur für Java.\n\nWICHTIGE JAVA-BEDINGUNGEN: Eine Gruppe kann Golems über Panik (mindestens 3 geeignete Dorfbewohner) oder Gossip (mindestens 5 geeignete Teilnehmer) beschwören. Die beteiligten Dorfbewohner müssen in den letzten 20 Minuten geschlafen haben. Ein Golem in der Nähe (16-Block-Box) verhindert neue Beschwörungen; außerdem gelten 30-Sekunden-Sperrzeiten nach einer Beschwörung. Es muss ein gültiger Spawnpunkt im Bereich der Dorfbewohner vorhanden sein.\n\nBAUPLAN-ABSCHNITTE: (1) sichere, getrennte Unterbringung der Dorfbewohner und Betten; (2) optionale, gegen Tageslicht und Entkommen gesicherte Zombie-Panikquelle, die jeden Dorfbewohner zuverlässig sehen kann; (3) Spawnplattform mit ausreichend freiem Raum und kontrollierter Wasserführung; (4) Fall-/Transportkanal, der Golems aus dem Erkennungsbereich entfernt; (5) Lava-Klingenhöhe und Hopper-/Kisten-Sammlung. Die genauen Abstände und Ebenen müssen an einem konkreten Entwurf ausgerichtet werden.\n\nTESTREIHENFOLGE: Erst Dorfbewohner-Schlaf und Panik/Gossip prüfen, danach die Spawnplattform einzeln testen, dann Transport und Tötung ergänzen. Wenn keine Golems erscheinen, zuerst nahe vorhandene Golems, fehlenden Schlaf, nicht ausgelöste Panik oder blockierte Spawnflächen untersuchen.\n\nNIGHTFALL-GRENZE: Der vorhandene Builder setzt nur Full-Cube-BlockItems. Er kann keine Dorfbewohner, Betten, Wasser, Lava, Hopper, Falltüren, Schienen oder Redstone-Automation als funktionsfähige Farm ausführen. Dieser Datensatz darf nicht als build_custom_structure-Plan ausgegeben werden. Nightfall kann die Anleitung erklären und Materiallisten planen, aber die Eisenfarm derzeit nicht autonom fertigbauen.",
@@ -56,7 +88,14 @@
       "version": "Java 1.21.11",
       "name": "Große Tropfsteinfarm (16 Zellen)",
       "category": "farm",
-      "tags": ["tropfstein", "dripstone", "stalaktit", "farm", "megafarm", "lava"],
+      "tags": [
+        "tropfstein",
+        "dripstone",
+        "stalaktit",
+        "farm",
+        "megafarm",
+        "lava"
+      ],
       "automationStatus": "GUIDE_ONLY",
       "validation": "Mechanik-/Bauleitfaden, kein getestetes Schematic und keine bestätigte automatische Ernteschaltung.",
       "content": "KONZEPT: modulare Großfarm mit 16 unabhängigen Wachstumszellen im 4x4-Raster. Jede Zelle benötigt einen Tropfsteinblock, eine Wasserquelle oberhalb, einen spitzen Tropfstein nach unten sowie eine nicht-spülbare Einfassung. Unter den Zellen liegen getrennte Fall- und Sammelrinnen; Wartungszugang an mindestens einer Seite vorsehen.\n\nMECHANIK: Spitzer Tropfstein wächst tickbasiert nur mit passender Tropfsteinblock-/Wasser-Konfiguration. Ein Tropfsteinblock allein erzeugt keine Items. Automatische Ernte benötigt eine separat getestete Erkennung und Blockbruch-/Kolbenlogik. Wasser muss eingefasst sein, damit es die Zellen nicht wegspült. Server-Tickrate und Random-Ticks beeinflussen den Ertrag.\n\nTEST: Zuerst eine Zelle manuell errichten und Wachstum sowie Ernte auf dem Zielserver prüfen. Erst danach auf 16 Zellen erweitern. Hopper, Kisten, Kolben, Beobachter und Redstone erst ergänzen, wenn der Erntepunkt feststeht.\n\nNIGHTFALL-GRENZE: Der aktuelle Builder setzt ausschließlich Full-Cube-BlockItems aus der Hotbar und maximal 200 Positionen. Er kann keine Wasserquellen, spitzen Tropfsteine, Hopper, Kolben, Beobachter oder Redstone-Schaltungen zuverlässig als Farmmechanik aufbauen. Dieser Eintrag ist eine Anleitung und darf nicht automatisch an build_custom_structure weitergereicht werden.",
@@ -67,11 +106,167 @@
       "version": "Java 1.21.11",
       "name": "Zuckerrohr-Anbau und Ernte",
       "category": "farm",
-      "tags": ["zuckerrohr", "sugar cane", "rohr", "farm", "papier", "manual"],
+      "tags": [
+        "zuckerrohr",
+        "sugar cane",
+        "rohr",
+        "farm",
+        "papier",
+        "manual"
+      ],
       "automationStatus": "GUIDE_ONLY",
       "validation": "Einfacher manueller Anbauleitfaden; keine automatische Erntemaschine oder Ingame-Testfreigabe.",
       "content": "GRUNDLAGE: Zuckerrohr wird auf einem geeigneten angrenzenden Block direkt neben Wasser gepflanzt und wächst bis zu drei Blöcke hoch. Für eine einfache manuelle Farm eine Wasserreihe mit Pflanzplätzen anlegen und die Pflanzblöcke erreichbar halten. Beim Ernten nur die oberen Segmente abbrechen, damit das untere Segment weiterwächst.\n\nAUSBAU: Wasserkanäle abdecken oder einfassen, damit Spieler und Drops nicht hineinfallen. Sammelwege und Lagerung getrennt planen. Die Wachstumszeit ist zufalls-/tickabhängig; plane keinen garantierten Ertrag pro Minute.\n\nNIGHTFALL-GRENZE: Der automatische Builder kann keine Wasserquellen setzen und kann Zuckerrohr als nicht-full-cube BlockItem nicht zuverlässig platzieren. Redstone-/Kolben-Automatisierung wird nicht als fertiger Bauplan behauptet. Der Eintrag ist eine Anleitung, keine automatisch baubare Vorlage.",
       "source": "Kuratierter Nightfall-Technikdatensatz; vor dem Bau die aktuelle Minecraft-Java-Mechanik der Zielversion prüfen."
+    },
+    {
+      "id": "farm.cobblestone.manual",
+      "version": "Java 1.21.11",
+      "name": "Cobblestone-Generator (manuell)",
+      "category": "farm",
+      "tags": [
+        "cobblestone",
+        "cobble",
+        "kieselstein",
+        "bruchstein",
+        "stone generator",
+        "stein generator",
+        "lava",
+        "wasser",
+        "generator"
+      ],
+      "automationStatus": "GUIDE_ONLY",
+      "validation": "Mechanik durch Minecraft Wiki dokumentiert; einfacher Generator, kein von Nightfall ingame getestetes Schematic.",
+      "content": "PRINZIP: Wenn fließende Lava auf Wasser trifft, entsteht Cobblestone. Ein frisch entstandener Cobblestone-Block trennt die Ströme; nach dem Abbauen entsteht an derselben Stelle ein neuer.\\n\\nKLEINER AUFBAU: Grabe einen kurzen Graben mit einem Block Abstand zwischen den Flüssigkeiten. Platziere Wasser an einem Ende und Lava am anderen. Der Cobblestone entsteht dort, wo sich die Ströme treffen. Baue von einer sicheren Standposition mit einer Spitzhacke ab.\\n\\nWICHTIG: Fließendes Wasser darf nicht direkt den Lava-Quellblock erreichen, sonst kann der Quellblock zu Obsidian werden. Ein einfacher Wasser/Lava-Generator funktioniert nicht im Nether, weil dort Wasser verdampft. Für Stone statt Cobblestone muss Lava von oben in Wasser fließen; diese Variante ist anspruchsvoller.\\n\\nAUTOMATISIERUNG: Kolben können neu entstandene Blöcke aus dem Weg schieben. Eine automatische Variante benötigt Pistons, Redstone-Taktung oder Blockerkennung sowie Schutz vor Lava-Verlust.\\n\\nNIGHTFALL-GRENZE: Nightfall kann den Generator noch nicht mit Wasser, Lava und Redstone vollständig aufbauen. Nutze die Anleitung manuell; der vorhandene Builder unterstützt nur Full-Cube-BlockItems.",
+      "source": "Minecraft Wiki: https://minecraft.wiki/w/Tutorial:Cobblestone_farming (abgerufen 2026-11-04); technische Beschreibung, nicht ingame getestet."
+    },
+    {
+      "id": "farm.crop.basic",
+      "version": "Java 1.21.11",
+      "name": "Grundlegende Acker-/Cropfarm",
+      "category": "farm",
+      "tags": [
+        "crop farm",
+        "ackerfarm",
+        "weizen",
+        "wheat",
+        "karotte",
+        "carrot",
+        "kartoffel",
+        "potato",
+        "rote bete",
+        "beetroot",
+        "farmland",
+        "bauer"
+      ],
+      "automationStatus": "GUIDE_ONLY",
+      "validation": "Grundregeln aus Minecraft Wiki; Feldlayout ist eine Anleitung, keine getestete automatische Erntemaschine.",
+      "content": "PFLANZEN: Weizen, Karotten, Kartoffeln und Rote Bete müssen auf Ackerboden stehen. Für Wachstum benötigen die Pflanzen Lichtstufe 9 oder höher am Pflanzenblock. Fackeln reichen auch unterirdisch. In Java muss der Chunk außerdem innerhalb der Simulation Distance ticken, sonst wächst das Feld nicht normal weiter.\\n\\nBEWÄSSERUNG: Ackerboden wird hydratisiert, wenn Wasser horizontal höchstens vier Blöcke entfernt und auf gleicher Höhe oder einen Block höher liegt. Ein Wasserblock in der Mitte kann daher ein 9x9-Feld versorgen. Blöcke zwischen Wasser und Ackerboden verhindern die Hydrierung nicht.\\n\\nMANUELLE ERNTE: Lasse die Pflanzen vollständig wachsen, ernte und pflanze nach. Weizen liefert zusätzlich Samen; Karotten und Kartoffeln liefern das jeweilige Erntegut.\\n\\nAUTOMATISCHE VARIANTE: Ein Farmer-Dorfbewohner kann Pflanzen anbauen und ernten. Eine zweite Villager-Rolle und ein Auffangsystem können die überschüssigen Items aufnehmen. Die Farm muss außerhalb der unmittelbaren Dorfgrenze liegen oder klar innerhalb eines eigenen Dorfbereichs funktionieren. MobGriefing und Villager-Verhalten müssen auf dem Zielserver geprüft werden.\\n\\nNIGHTFALL-GRENZE: Der aktuelle Builder kann keine Ackererde, Pflanzen, Wasser, Dorfbewohner oder Hopper/Redstone-Automatik als vollständiges Farm-System bauen. Dies ist eine Anleitung.",
+      "source": "Minecraft Wiki: https://minecraft.wiki/w/Tutorial:Crop_farming und https://minecraft.wiki/w/Farmland (abgerufen 2026-11-04)."
+    },
+    {
+      "id": "farm.villager.breeder.java",
+      "version": "Java 1.21.11",
+      "name": "Villager-Züchter / Breeder",
+      "category": "farm",
+      "tags": [
+        "villager breeder",
+        "dorfbewohner",
+        "züchter",
+        "breeder",
+        "villager farm",
+        "beds",
+        "betten",
+        "brot",
+        "karotten",
+        "kartoffeln"
+      ],
+      "automationStatus": "GUIDE_ONLY",
+      "validation": "Mechanikreferenz aus Minecraft Wiki. Lokale Dorfgrenzen und Pfadfindung müssen in der konkreten Welt geprüft werden.",
+      "content": "GRUNDVORAUSSETZUNGEN: Mindestens zwei erwachsene Dorfbewohner, genügend gültige und erreichbare Betten und ausreichend Nahrung. Für ein Paar müssen mindestens drei Betten bereitstehen: eines pro Elternteil plus ein freies Bett für das Baby. Über jedem Bett muss genügend freier Raum vorhanden sein, damit das Baby das Bett erreichen kann.\\n\\nNAHRUNG: Ein Dorfbewohner wird typischerweise mit 3 Brot oder 12 Karotten, 12 Kartoffeln bzw. 12 Rote Bete (oder einer passenden Mischung mit insgesamt 12 Nahrungspunkten) paarungsbereit. Nahrung muss in das Villager-Inventar gelangen; geworfene Items müssen aufgehoben werden.\\n\\nAUTOMATISCHER BREEDER: Ein Farmer-Villager kann Feldfrüchte ernten und überschüssige Nahrung an andere Dorfbewohner werfen. Ein getrenntes Baby-Abtransportsystem verhindert, dass die Betten dauerhaft belegt bleiben. Die Farm muss mit Dorfgrenzen und Pfadfindung getestet werden. Wenn MobGriefing deaktiviert ist, können Dorfbewohner keine Feldfrüchte ernten und keine Nahrung aufnehmen.\\n\\nTEST: Erst Betten und freie Kopfbereiche prüfen, dann Nahrung geben und Herzpartikel beobachten. Danach Baby-Abtransport ergänzen. Ein fehlendes gültiges Bett oder blockierte Pfade verhindern die Fortpflanzung.\\n\\nNIGHTFALL-GRENZE: Der Builder setzt keine Dorfbewohner, Betten, Nahrungs-Items, Türen/Trapdoors oder Redstone-Automatik. Er kann deshalb keinen funktionsfähigen Villager-Breeder autonom errichten.",
+      "source": "Minecraft Wiki: https://minecraft.wiki/w/Tutorial:Villager_farming, https://minecraft.wiki/w/Villager und https://minecraft.wiki/w/Breed (abgerufen 2026-11-04)."
+    },
+    {
+      "id": "farm.hostile_mob.java.basic",
+      "version": "Java 1.21.11",
+      "name": "Hostile-Mob-Dropfarm (Grundkonzept)",
+      "category": "farm",
+      "tags": [
+        "mob farm",
+        "monster farm",
+        "hostile farm",
+        "creeper farm",
+        "skeleton farm",
+        "zombie farm",
+        "drops",
+        "monster",
+        "spawn"
+      ],
+      "automationStatus": "GUIDE_ONLY",
+      "validation": "Spawnregeln aus Minecraft Wiki; keine konkrete Layout-Schablone oder Ingame-Validierung.",
+      "content": "SPAWNREGELN: Viele gewöhnliche feindliche Mobs benötigen in Java seit 1.18 Blocklichtstufe 0. Zusätzlich müssen Spawnposition, freie Hitbox, Spawnradius, Simulation Distance und die lokale Mob-Cap passen. Die Spawnzone muss typischerweise außerhalb des 24-Block-Nahbereichs des Spielers und innerhalb des wirksamen Spawnradius bleiben. Die Java-Spawnmechanik wurde in 1.21.9 um die Gamerule spawn_monsters ergänzt; diese schaltet natürliches Monster-Spawnverhalten um. Server können diese Regeln oder Simulation Distance verändern.\\n\\nGRUNDLAYOUT: Eine dunkle, spawnfähige Plattform oder mehrere Ebenen; Wasserkanäle oder Falltüren leiten Mobs in einen Sammelschacht. Die Mobs werden durch Fallhöhe oder eine separate Tötungskammer geschwächt. Hopper und Kisten sammeln Drops. Lichtlecks und andere nahe Spawnflächen reduzieren oft den Ertrag.\\n\\nVARIANTEN: Creeper-only-Farmen brauchen zusätzliche Spawnflächen-/Mobfilter, etwa Falltüren und Katzennavigation. Skelett- und Zombie-Farmen können nicht einfach dieselben Filter übernehmen. Spawner-Farmen folgen eigenen Regeln und werden von `spawn_monsters` nicht in gleicher Weise gesteuert.\\n\\nTEST: Im F3-Debugscreen, mit Lichtmessung und durch Beobachtung der Spawnrate prüfen. Erst Spawnplattform, dann Transport und zuletzt Sammlung/Tötung ergänzen.\\n\\nNIGHTFALL-GRENZE: Der Builder kann weder Mob-Spawns kontrollieren noch Wasser, Falltüren, Hopper, Mobs, Lava oder Redstone als vollständige Farmmechanik bauen. Dieser Eintrag ist ausschließlich eine Anleitung und kein ausführbares Schematic.",
+      "source": "Minecraft Wiki: https://minecraft.wiki/w/Tutorial:Mob_farm, https://minecraft.wiki/w/Mob_spawning, https://minecraft.wiki/w/Mob_cap und https://minecraft.wiki/w/Gamerule (abgerufen 2026-11-04)."
+    },
+    {
+      "id": "farm.wool.java.basic",
+      "version": "Java 1.21.11",
+      "name": "Automatische Schaffarm / Wollfarm",
+      "category": "farm",
+      "tags": [
+        "wool farm",
+        "wollfarm",
+        "schaf",
+        "sheep",
+        "wolle",
+        "shears",
+        "schere",
+        "observer",
+        "dispenser"
+      ],
+      "automationStatus": "GUIDE_ONLY",
+      "validation": "Mechanik und Beispielaufbau aus Minecraft Wiki; kein importiertes oder ingame getestetes Schematic.",
+      "content": "MECHANIK: Geschorene Schafe können ihre Wolle wieder nachwachsen lassen, nachdem sie Gras gefressen haben. Bei deaktiviertem MobGriefing wächst die Wolle weiterhin nach, aber das Gras wird nicht verbraucht; eine Observer-Erkennung über den Grasblock kann dann ausbleiben.\\n\\nEINFACHES MODUL: Ein Schaf in einem kleinen, sicheren Gehege. Ein Dispenser zeigt mit einer Schere auf den Bereich, in dem das Schaf steht. Ein Observer erkennt die Änderung des Grasblocks unter dem Schaf und löst den Dispenser aus. Hopper oder Hopper-Minecarts sammeln die Wolle unter dem Grasblock. Unterschiedliche Module können mit gefärbten Schafen für verschiedene Wollfarben kombiniert werden.\\n\\nWICHTIG: Der Dispenser muss das Schaf in seiner Reichweite und Ausrichtung treffen. Die Grasschicht muss nachwachsen können; Licht und Simulation Distance beeinflussen das System. Prüfe die Scherenhaltbarkeit und den Itemtransport.\\n\\nNIGHTFALL-GRENZE: Der Builder kann keine Schafe spawnen/einfangen, keine Scheren in Dispenser legen und keine Observer-, Dispenser-, Hopper- oder Redstone-Verbindungen zuverlässig einrichten. GUIDE_ONLY.",
+      "source": "Minecraft Wiki: https://minecraft.wiki/w/Tutorial:Wool_farming (abgerufen 2026-11-04)."
+    },
+    {
+      "id": "farm.tree.java.manual",
+      "version": "Java 1.21.11",
+      "name": "Manuelle Baumfarm / Holzplantage",
+      "category": "farm",
+      "tags": [
+        "tree farm",
+        "baumfarm",
+        "holzfarm",
+        "wood",
+        "sapling",
+        "setzling",
+        "baum",
+        "tree"
+      ],
+      "automationStatus": "GUIDE_ONLY",
+      "validation": "Einfaches manuelles Pflanzschema und optionale Automationsprinzipien aus Minecraft Wiki; keine konkrete vollautomatische Schablone.",
+      "content": "MANUELLER AUFBAU: Pflanze mehrere Setzlinge desselben Typs mit ausreichendem Abstand. Eine einfache 2x2-/Rasterplantage lässt sich mit einem freien Ernteweg und einer Truhe ergänzen. Achte auf den Platzbedarf der Baumart; große Bäume wie Fichten benötigen andere Freiräume als kleine Eichen. Warte auf Wachstum oder verwende Knochenmehl. Eine Axt beschleunigt den Abbau.\\n\\nLICHT UND TICKING: Setzlinge benötigen passende Wachstumsbedingungen; die Simulation Distance muss den Chunk ticken lassen. Ein freier Raum über dem Setzling und passende Blöcke um den Stamm sind notwendig.\\n\\nAUTOMATION: Komplexere Anlagen verwenden Dispenser mit Knochenmehl, Kolben zum Verschieben des Stamms und ggf. weitere Mechanik für Blätter/Setzlinge. Diese Designs sind baumartabhängig und müssen genau getestet werden.\\n\\nNIGHTFALL-GRENZE: Der automatische Builder kann eine einfache Blockplattform bauen, aber keine Setzlinge als nicht-full-cube-Items, Knochenmehl-Dosierung, Kolbenlogik oder das sichere automatische Ernten zuverlässig ausführen. GUIDE_ONLY.",
+      "source": "Minecraft Wiki: https://minecraft.wiki/w/Tutorial:Tree_farming (abgerufen 2026-11-04)."
+    },
+    {
+      "id": "farm.pumpkin_melon.java",
+      "version": "Java 1.21.11",
+      "name": "Kürbis- und Melonenfarm",
+      "category": "farm",
+      "tags": [
+        "pumpkin farm",
+        "melon farm",
+        "kürbis",
+        "melone",
+        "stem",
+        "stängel",
+        "piston",
+        "dispenser"
+      ],
+      "automationStatus": "GUIDE_ONLY",
+      "validation": "Wachstumsmechanik aus Minecraft Wiki; automatisches Erntelayout muss auf Version/Server getestet werden.",
+      "content": "PFLANZEN: Kürbis- und Melonenkerne werden auf Ackerboden gepflanzt. Stängel brauchen Lichtstufe 9 oder höher zum Wachsen. Ein ausgewachsener Stängel erzeugt die Frucht auf einem geeigneten angrenzenden Block (z. B. Erde, Gras, Ackerboden, Podsol oder Moos). Ein Stängel kann wiederholt Früchte bilden, solange angrenzend ein gültiger freier Platz vorhanden ist. Knochenmehl beschleunigt nur das Wachstum des Stängels, nicht die Erzeugung der Frucht.\\n\\nLAYOUT: Lasse auf mindestens einer Seite jedes Stängels einen freien Fruchtblock. Wasser versorgt die Ackererde. Platziere die Stängel in einer Reihe und die möglichen Fruchtfelder daneben.\\n\\nAUTOMATISCHE ERNTE: Observer können das Erscheinen einer Frucht erkennen und Kolben sie abbrechen. Wasserkanäle oder Hopper sammeln die Drops. Verhindere, dass ein Kolben den Stängel zerstört.\\n\\nNIGHTFALL-GRENZE: Der Builder kann keine Ackererde, Stängel, Wasser, Kolben, Observer oder Hopper als vollständige Farmmechanik automatisieren. GUIDE_ONLY.",
+      "source": "Minecraft Wiki: https://minecraft.wiki/w/Pumpkin_Stem und https://minecraft.wiki/w/Tutorial:Crop_farming (abgerufen 2026-11-04)."
     }
   ]
 }
