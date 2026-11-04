@@ -223,6 +223,7 @@ public final class AIBuilder {
             case STARTER_SHELTER -> "4x4-Boden, zwei hohe Wände, Türöffnung und Dach";
             case LARGE_HOUSE -> "6x6-Boden, drei hohe Wände, Türöffnung und Dach";
             case WATCHTOWER -> "5x5-Plattform, vier sechs Blöcke hohe Eckpfeiler und Dachplattform";
+            case CUSTOM -> throw new IllegalStateException("Eigener Bauplan darf nicht über Vorlagen-Planung laufen.");
         };
         return "Bauplan geprüft: " + selectedBlueprint.label + " – " + layout + ". Material: "
                 + materialName + " × " + selectedBlueprint.blocks + " (Hotbar: " + available + "). "
@@ -390,7 +391,11 @@ public final class AIBuilder {
         }
         String id = blueprint.id;
         BlockItem approvedMaterial = material;
-        prepareStructure(id, approvedMaterial, null);
+        if (blueprint == Blueprint.CUSTOM) {
+            prepareCustomStructure(blueprintName, approvedMaterial, List.copyOf(CUSTOM_OFFSETS));
+        } else {
+            prepareStructure(id, approvedMaterial, null);
+        }
         originalSlot = mc.player.getInventory().getSelectedSlot();
         index = 0;
         delay = 0;
@@ -401,7 +406,7 @@ public final class AIBuilder {
         running = true;
         status = "Bau gestartet";
         notifyPlayer("Bau gestartet: " + blueprintName + " · 0/" + PLAN.size() + ".");
-        return "Bau gestartet: " + blueprint.label + ", " + materialName + " × " + PLAN.size()
+        return "Bau gestartet: " + blueprintName + ", " + materialName + " × " + PLAN.size()
                 + ". Ich zähle einen Block erst nach bestätigtem Welt-Update.";
     }
 
