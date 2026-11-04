@@ -69,8 +69,11 @@ public final class AIActionRegistry {
         tools.add(tool("run_server_command",
                 "Send one ordinary Minecraft/server command exactly as requested by the player. Nightfall previews the exact command and asks for confirmation. Server permissions remain authoritative; dangerous administration and world-edit roots are blocked.",
                 objectSchema(command, "command")));
+        tools.add(tool("build_structure",
+                "Build a validated Nightfall blueprint: starter_shelter (54 blocks), large_house (130 blocks), or watchtower (74 blocks). Validates materials and a clear level footprint, previews, asks for confirmation, then confirms each placement from a server world update.",
+                objectSchema(property("structure", "string", "Exact blueprint identifier.", enumArray(List.of("starter_shelter", "large_house", "watchtower"))), "structure")));
         tools.add(tool("build_starter_shelter",
-                "Plan and build a small 4x4 starter shelter from one full-cube block material already available in the hotbar. It checks a flat clear area and 54 blocks, previews the material and asks for confirmation. The player may need to move closer as the build pauses when a block is out of reach.",
+                "Backward-compatible alias for build_structure with structure=starter_shelter.",
                 objectSchema()));
         tools.add(tool("stop_build",
                 "Stop the currently running Nightfall block-by-block build. The player must confirm first.",
@@ -134,6 +137,7 @@ public final class AIActionRegistry {
                 yield new Action(name, args, "Nightfall sendet nach deiner Bestätigung exakt diesen Befehl an den aktuellen Server:\n/"
                         + command + "\nDer Server entscheidet über Berechtigungen und Ausführung. Nightfall umgeht keine Rechte.");
             }
+            case "build_structure" -> new Action(name, args, AIBuilder.prepareStructure(requiredString(args, "structure", 32)));
             case "build_starter_shelter" -> new Action(name, args, AIBuilder.prepareStarterShelter());
             case "stop_build" -> new Action(name, args,
                     AIBuilder.isRunning() ? "Nightfall stoppt den laufenden Bau. Bereits gesetzte Blöcke bleiben bestehen."
@@ -202,7 +206,7 @@ public final class AIActionRegistry {
                     yield "Der Befehl konnte nicht gesendet werden. Prüfe deine Verbindung.";
                 }
             }
-            case "build_starter_shelter" -> AIBuilder.startStarterShelter();
+            case "build_structure", "build_starter_shelter" -> AIBuilder.startPreparedStructure();
             case "stop_build" -> AIBuilder.stop();
             default -> "Aktion nicht freigegeben.";
         };
@@ -210,7 +214,8 @@ public final class AIActionRegistry {
 
     /** Discard local plan state when the player cancels the confirmation. */
     public static void cancel(Action action) {
-        if (action != null && "build_starter_shelter".equals(action.name())) AIBuilder.cancelPrepared();
+        if (action != null && ("build_starter_shelter".equals(action.name())
+                || "build_structure".equals(action.name()))) AIBuilder.cancelPrepared();
     }
 
     private static String playerStatus(MinecraftClient mc) {

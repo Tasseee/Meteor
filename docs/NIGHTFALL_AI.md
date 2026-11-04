@@ -45,7 +45,8 @@ The AI model can select from a fixed client-side allow-list:
 | `get_player_status` | Reads current dimension, coordinates, and health | Required; player state is sent to the AI provider |
 | `random_teleport` | Sends the common `/rtp` request to the server | Required; server must support it |
 | `run_server_command` | Sends one ordinary player-requested Minecraft or plugin command | Required; dangerous server administration and world-edit command roots are blocked |
-| `build_starter_shelter` | Builds a 4x4 starter shelter block by block from one full-cube block material in the hotbar | Required; validates 54 blocks and a clear, flat area before starting |
+| `build_structure` | Builds one validated blueprint: `starter_shelter` (54 blocks), `large_house` (130 blocks), or `watchtower` (74 blocks) | Required; validates material and a clear, flat footprint |
+| `build_starter_shelter` | Backward-compatible alias for the 4x4 starter shelter | Required |
 | `stop_build` | Stops the active builder queue; already placed blocks remain | Required |
 
 After a tool call, Nightfall displays a preview. The tool is executed only after the player clicks **AKTION AUSFÜHREN**. Cancelling returns a cancellation result to the model and does not execute the action.
@@ -59,8 +60,8 @@ After a tool call, Nightfall displays a preview. The tool is executed only after
 - Tool-capable OpenAI-compatible models are required. Some endpoints may reject function calling.
 - A short follow-up tool loop is supported, with one tool call at a time and a bounded number of consecutive actions.
 - The conversation is kept in memory for the current chat screen; it is not persisted.
-- The first builder creates a fixed 4x4 starter shelter: a 4x4 floor, two-block-high perimeter walls with a one-block-wide, two-block-high entrance gap, and a flat roof (54 blocks total). It does not yet add a door, windows, decoration, or arbitrary model-generated blueprints.
-- The builder chooses one full-cube block item already in the hotbar, verifies at least 54 items and a clear, level footprint, then sends genuine block-placement interactions one block at a time. The server remains authoritative. If the next placement is out of reach, the queue pauses until the player moves closer; it restores the originally selected hotbar slot when finished or stopped.
+- The builder currently offers three deterministic templates: a 4x4 starter shelter (54 blocks), a 6x6 house with three-block-high walls (130 blocks), and a 5x5 watchtower with four six-block-high corner pillars (74 blocks). Doors, windows, decoration, and arbitrary model-generated blueprints are not yet implemented.
+- The builder chooses one full-cube block item already in the hotbar, verifies the required quantity and a clear, level footprint, then sends genuine block-placement interactions one at a time. It waits for the corresponding world block state before counting a placement, retries up to two times after a timeout, and stops safely when the server rejects a placement. If a block is out of reach, the queue pauses until the player moves closer. The originally selected hotbar slot is restored when the build finishes or stops.
 - Combat targeting, autonomous navigation, voice input/output, and arbitrary code execution remain out of scope. More structures and other reviewed skills can be added to the same registry.
 - When the inventory tool is approved, its result is sent back to the configured AI provider. Do not approve it if you do not want to share that inventory snapshot.
 

@@ -33,9 +33,12 @@ public final class AIChatClient {
             frage nach, wenn ein Server-Plugin-Befehl unklar ist. Behaupte nie, ein Befehl sei erfolgreich,
             bevor der Server dies bestätigt. Keine Serververwaltung, keine Befehlsverkettung und keine
             destruktiven Welteditierbefehle.
-            Für "bau", "baue" oder "errichte" kannst du build_starter_shelter verwenden. Das ist derzeit
-            der erste feste Bauplan, kein frei erfundener Blockplan. Der Bau setzt echte Blöcke aus der
-            Hotbar, prüft Material und Baufläche und kann pausieren, wenn der Spieler näher herangehen muss.
+            Für Bauwünsche verwende build_structure und wähle die passende feste Vorlage:
+            starter_shelter (54 Blöcke, kleines 4x4-Schutzhaus), large_house (130 Blöcke, 6x6-Haus),
+            watchtower (74 Blöcke, 5x5-Plattform mit vier hohen Eckpfeilern). Erfinde keine weiteren
+            Vorlagen. Nightfall prüft Material und Fläche, zeigt eine Vorschau und wartet auf Bestätigung.
+            Jede Platzierung wird erst nach einem bestätigten Welt-Update gezählt; bei fehlender Reichweite
+            pausiert der Bau. Verwende build_starter_shelter nur als Rückfalloption.
             Erfinde niemals Werkzeuge, Befehle, Koordinaten oder Ergebnisse. Es gibt kein Shell-, Code-
             oder beliebiges Serverkommando-Werkzeug. Wenn keine passende Fähigkeit verfügbar ist,
             erkläre das offen und schlage eine sichere Alternative vor.
