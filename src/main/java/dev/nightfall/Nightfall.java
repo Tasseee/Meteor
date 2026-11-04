@@ -8,6 +8,7 @@ import dev.nightfall.gui.MapScreen;
 import dev.nightfall.gui.AIChatScreen;
 import dev.nightfall.ai.AIConfig;
 import dev.nightfall.ai.AIBuilder;
+import dev.nightfall.ai.AIPlayerController;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
@@ -58,6 +59,7 @@ public class Nightfall implements ClientModInitializer {
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             AIChatScreen.onDisconnect();
+            AIPlayerController.onDisconnect();
             ModuleManager.get(BaseFinder.class).clear();
             ModuleManager.get(TrapperBot.class).resetSession();
             Config.save();
@@ -106,6 +108,7 @@ public class Nightfall implements ClientModInitializer {
             prevGui = g; prevHud = hu; prevMap = m; prevAi = ai;
             ModuleManager.pollKeys(mc);
         }
+        AIPlayerController.tick();
         AIBuilder.tick();
         ModuleManager.tick();
     }
