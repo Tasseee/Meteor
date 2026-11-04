@@ -135,6 +135,19 @@ public final class AIActionRegistry {
         tools.add(tool("search_blueprints",
                 "Search Nightfall's local version-aware blueprint knowledge base. Returns plans, prerequisites, provenance and honest tested/automation status. This is read-only and never starts building.",
                 blueprintSearchSchema));
+        tools.add(tool("list_schematics",
+                "List locally imported schematic files and curated community schematic sources. Does not download files or start building.",
+                objectSchema()));
+        JsonObject schematicFile = property("file", "string",
+                "Exact local filename inside config/nightfall/schematics, ending in .schem or .litematic.").get("schema").getAsJsonObject();
+        schematicFile.addProperty("maxLength", 110);
+        JsonObject schematicSchema = objectSchema(schematicFile, "file");
+        tools.add(tool("inspect_schematic",
+                "Inspect one locally downloaded Sponge v2 .schem or Litematica v5-v7 .litematic file. Reports dimensions, materials, automatic-build subset and blocks requiring manual placement. Read-only.",
+                schematicSchema));
+        tools.add(tool("build_schematic",
+                "Prepare a local schematic for building after validating its palette, file size, dimensions, block states, materials, connected layout and free target positions. Only default-state full-cube blocks without block entities are automatically placed; all other blocks are explicitly excluded. The player must confirm the preview.",
+                schematicSchema));
         JsonObject walkTicks = property("ticks", "integer", "Dauer der kurzen Vorwärtsbewegung in Ticks (1 bis 100).").get("schema").getAsJsonObject();
         walkTicks.addProperty("minimum", 1);
         walkTicks.addProperty("maximum", 100);
@@ -256,6 +269,12 @@ public final class AIActionRegistry {
             case "build_starter_shelter" -> new Action(name, args, AIBuilder.prepareStarterShelter());
             case "search_blueprints" -> new Action(name, args,
                     "Nightfall durchsucht die lokale Bauplan-Datenbank nach: " + requiredString(args, "query", 96));
+            case "list_schematics" -> new Action(name, args, SchematicManager.listForAI()
+                    + "\n\n" + SchematicManager.communityCatalog());
+            case "inspect_schematic" -> new Action(name, args,
+                    SchematicManager.inspectSummary(requiredString(args, "file", 110)));
+            case "build_schematic" -> new Action(name, args,
+                    SchematicManager.prepareBuild(requiredString(args, "file", 110)));
             case "walk_forward" -> {
                 int ticks = readBoundedInteger(args, "ticks", 1, 100);
                 yield new Action(name, args, "Nightfall hält die Vorwärtstaste für höchstens " + ticks
@@ -295,7 +314,8 @@ public final class AIActionRegistry {
 
     /** Called only from the Minecraft client thread after explicit player confirmation. */
     public static boolean requiresConfirmation(String actionName) {
-        return !Set.of("search_blueprints", "get_build_status", "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
+        return !Set.of("search_blueprints", "list_schematics", "inspect_schematic",
+                "get_build_status", "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
     }
 
     public static String execute(Action action) {
@@ -359,6 +379,9 @@ public final class AIActionRegistry {
             }
             case "build_structure", "build_starter_shelter", "build_custom_structure" -> AIBuilder.startPreparedStructure();
             case "search_blueprints" -> BlueprintCatalog.search(args.get("query").getAsString());
+            case "list_schematics" -> SchematicManager.listForAI() + "\n\n" + SchematicManager.communityCatalog();
+            case "inspect_schematic" -> SchematicManager.inspectSummary(args.get("file").getAsString());
+            case "build_schematic" -> AIBuilder.startPreparedStructure();
             case "walk_forward" -> AIPlayerController.walkForward(readBoundedInteger(args, "ticks", 1, 100));
             case "stop_movement" -> AIPlayerController.stop("Auf deinen Befehl gestoppt.");
             case "navigate_to" -> AIPlayerController.navigateTo(
@@ -385,7 +408,8 @@ public final class AIActionRegistry {
     public static void cancel(Action action) {
         if (action != null && ("build_starter_shelter".equals(action.name())
                 || "build_structure".equals(action.name())
-                || "build_custom_structure".equals(action.name()))) AIBuilder.cancelPrepared();
+                || "build_custom_structure".equals(action.name())
+                || "build_schematic".equals(action.name()))) AIBuilder.cancelPrepared();
     }
 
     private static String playerStatus(MinecraftClient mc) {
