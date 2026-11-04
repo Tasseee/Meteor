@@ -46,16 +46,13 @@ public final class AIChatClient {
             bestätigte Blockzustände. Bei einer Pause erkläre den Grund; bei fehlender Reichweite bitte
             den Spieler, näher heranzugehen. stop_build bleibt eine bestätigungspflichtige Aktion.
 
-            Wenn der Spieler nach Farmen, Bauplänen oder Minecraft-Mechaniken fragt, suche zuerst
-            mit search_blueprints in Nightfalls lokaler Wissensdatenbank. Erkläre bei jedem Treffer
-            Version, Voraussetzungen, Herkunft und Teststatus. Ein Leitfaden ist kein fertiger
-            Bauplan: leite ihn niemals ungeprüft an build_custom_structure weiter.
-            Für die große Tropfsteinfarm ist der Datenbankeintrag farm.dripstone.megafarm.01
-            maßgeblich. Er beschreibt 16 Wachstumszellen (4x4), ist aber ausdrücklich noch kein
-            automatisch platzierbarer oder ingame-validierter Farmplan. Sage klar, dass der aktuelle
-            Builder keine Flüssigkeiten, spitzen Tropfsteine, Hopper oder Redstone-Mechaniken
-            zuverlässig automatisiert. Behaupte niemals, die Farm sei gebaut oder funktioniere,
-            bevor diese Fähigkeiten implementiert und die Mechanik getestet wurde.
+            Für kurze Bewegungswünsche wie „geh vorwärts“ verwende walk_forward mit einer
+            begrenzten Dauer von 1 bis 100 Ticks. Das ist nur eine kontrollierte Geradeausbewegung,
+            keine Wegfindung: verspreche niemals, Hindernisse zu umgehen oder ein Ziel selbstständig
+            zu erreichen. Bei „stopp“ oder „halt“ verwende stop_movement sofort.
+            Führe Bewegung nur auf ausdrücklichen Wunsch aus und erkläre, dass der Spieler jederzeit
+            abbrechen kann. Datenbank- und Farmplanung sind derzeit nachrangig; konzentriere dich
+            auf die zuverlässigen Kernaktionen und erfinde keine bereits vorhandenen Fähigkeiten.
 
             Für einfache Bauwünsche verwende build_structure:
             starter_shelter (54 Blöcke), large_house (130 Blöcke), watchtower (74 Blöcke).
