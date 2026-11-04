@@ -23,7 +23,7 @@ public final class AIConfig {
         static Settings defaults() {
             return new Settings("https://api.openai.com/v1/chat/completions",
                     "gpt-4o-mini", "", true,
-                    "https://api.openai.com/v1", "whisper-1", "gpt-4o-mini-tts", "alloy", false, false);
+                    "https://api.openai.com/v1", "gpt-4o-mini-transcribe", "gpt-4o-mini-tts", "alloy", false, false);
         }
     }
 
