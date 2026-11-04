@@ -44,7 +44,7 @@ The AI model can select from a fixed client-side allow-list:
 | `get_inventory` | Reads item names and counts from the player's 36 main inventory slots | Required; inventory data is sent to the AI provider |
 | `get_player_status` | Reads current dimension, coordinates, and health | Required; player state is sent to the AI provider |
 | `random_teleport` | Sends the common `/rtp` request to the server | Required; server must support it |
-| `run_server_command` | Sends one ordinary player-requested Minecraft or plugin command | Required; dangerous server administration and world-edit command roots are blocked |
+| `run_server_command` | Sends one ordinary player-requested Minecraft or plugin command and watches briefly for a related server chat response | Required; dangerous server administration and world-edit command roots are blocked |
 | `build_structure` | Builds one validated blueprint: `starter_shelter` (54 blocks), `large_house` (130 blocks), or `watchtower` (74 blocks) | Required; validates material and a clear, flat footprint |
 | `build_starter_shelter` | Backward-compatible alias for the 4x4 starter shelter | Required |
 | `stop_build` | Stops the active builder queue; already placed blocks remain | Required |
@@ -57,6 +57,7 @@ After a tool call, Nightfall displays a preview. The tool is executed only after
 - The client validates the tool name and arguments against a fixed allow-list. The model cannot invent a new action.
 - The ordinary command tool accepts a single command with no command chaining. It blocks server administration roots (for example `op`, `ban`, `stop`, `whitelist`) and high-impact world-edit roots (for example `execute`, `fill`, `clone`, `setblock`). Every command is shown exactly as it will be sent and needs confirmation. The server still decides whether the user has permission.
 - Server permissions remain authoritative. The biome search command can fail on servers that do not permit `/locate`; Nightfall does not bypass permissions or teleport the player.
+- For ordinary commands, Nightfall watches game/system chat and player chat for up to 30 seconds. It can surface a likely related response or explicit permission/unknown-command rejection, but generic plugin messages cannot always be correlated reliably. A sent command is never reported as successfully executed without a clear server response.
 - Tool-capable OpenAI-compatible models are required. Some endpoints may reject function calling.
 - A short follow-up tool loop is supported, with one tool call at a time and a bounded number of consecutive actions.
 - The conversation is kept in memory for the current chat screen; it is not persisted.

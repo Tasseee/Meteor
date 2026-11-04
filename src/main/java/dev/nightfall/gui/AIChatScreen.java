@@ -45,6 +45,9 @@ public final class AIChatScreen extends Screen {
     private boolean waitingLocate;
     private String locatingBiome = "";
     private long locateDeadline;
+    private boolean waitingCommandResponse;
+    private String trackedCommand = "";
+    private long commandDeadline;
 
     public AIChatScreen() {
         super(Text.literal("Nightfall AI"));
@@ -64,7 +67,10 @@ public final class AIChatScreen extends Screen {
     }
 
     public static void onGameMessage(String message) {
-        if (active != null) active.handleLocateMessage(message);
+        if (active != null) {
+            active.handleLocateMessage(message);
+            active.handleServerCommandMessage(message);
+        }
     }
 
     public static void onDisconnect() {
@@ -76,11 +82,18 @@ public final class AIChatScreen extends Screen {
                     "Die Suche wurde unterbrochen, weil die Serververbindung getrennt wurde."));
             active.scroll = Float.MAX_VALUE;
         }
+        if (active != null && active.waitingCommandResponse) {
+            active.waitingCommandResponse = false;
+            active.history.add(new ChatLine("assistant",
+                    "Die Verbindung wurde getrennt, bevor ich eine Servermeldung zu /" + active.trackedCommand + " erkennen konnte."));
+            active.scroll = Float.MAX_VALUE;
+        }
     }
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         expireLocateRequest();
+        expireCommandRequest();
         if (AIBuilder.isRunning()) status = AIBuilder.statusLabel();
         MinecraftClient mc = MinecraftClient.getInstance();
         ctx.fill(0, 0, width, height, 0xA9000000);
@@ -375,6 +388,11 @@ public final class AIChatScreen extends Screen {
                 waitingLocate = false;
             }
         }
+        if ("run_server_command".equals(action.name()) && result.contains("wurde an den Server gesendet")) {
+            trackedCommand = action.arguments().get("command").getAsString().replaceFirst("^/+", "").trim();
+            waitingCommandResponse = true;
+            commandDeadline = System.currentTimeMillis() + 30_000L;
+        }
         history.add(new ChatLine("assistant", "Nightfall: " + result));
         apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), result));
         actionRoundTrips++;
@@ -422,6 +440,40 @@ public final class AIChatScreen extends Screen {
         waitingLocate = false;
         status = rejected ? "Server hat den Befehl abgelehnt" : "Antwort vom Server erhalten";
         history.add(new ChatLine("assistant", "Server-Antwort: " + message));
+        scroll = Float.MAX_VALUE;
+    }
+
+    private void handleServerCommandMessage(String message) {
+        if (!waitingCommandResponse || message == null || message.isBlank()) return;
+        if (System.currentTimeMillis() > commandDeadline) {
+            expireCommandRequest();
+            return;
+        }
+        String lower = message.toLowerCase(Locale.ROOT);
+        String root = trackedCommand.split("\\s+", 2)[0].toLowerCase(Locale.ROOT);
+        boolean rejected = lower.contains("unknown command") || lower.contains("unbekannter befehl")
+                || lower.contains("unvollständiger befehl") || lower.contains("permission")
+                || lower.contains("berechtigung") || lower.contains("nicht erlaubt")
+                || lower.contains("not allowed") || lower.contains("you do not have")
+                || lower.contains("no permission") || lower.contains("keine rechte");
+        boolean relevant = rejected || lower.contains(root) || lower.contains("teleportiert")
+                || lower.contains("teleported") || lower.contains("warped") || lower.contains("home")
+                || lower.contains("spawn") || lower.contains("unknown argument") || lower.contains("ungültiges argument");
+        if (!relevant) return;
+
+        waitingCommandResponse = false;
+        status = rejected ? "Server hat den Befehl abgelehnt" : "Servermeldung empfangen · Ergebnis nicht verifiziert";
+        history.add(new ChatLine("assistant", "Servermeldung nach /" + trackedCommand + ": " + message
+                + (rejected ? "" : "\\nHinweis: Die Meldung wurde zugeordnet, Nightfall kann den serverseitigen Effekt aber nicht unabhängig prüfen.")));
+        scroll = Float.MAX_VALUE;
+    }
+
+    private void expireCommandRequest() {
+        if (!waitingCommandResponse || System.currentTimeMillis() <= commandDeadline) return;
+        waitingCommandResponse = false;
+        status = "Befehl gesendet · keine eindeutige Antwort erkannt";
+        history.add(new ChatLine("assistant", "Ich habe innerhalb von 30 Sekunden keine eindeutig zuordenbare Servermeldung zu /"
+                + trackedCommand + " erkannt. Der Befehl wurde gesendet, seine Ausführung ist damit nicht bestätigt."));
         scroll = Float.MAX_VALUE;
     }
 
