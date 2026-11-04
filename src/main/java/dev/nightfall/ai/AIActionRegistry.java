@@ -140,6 +140,26 @@ public final class AIActionRegistry {
         walkTicks.addProperty("maximum", 100);
         tools.add(tool("walk_forward", "Walk forward for a short bounded duration. This is not obstacle-aware pathfinding. Requires player confirmation.", objectSchema(walkTicks, "ticks")));
         tools.add(tool("stop_movement", "Immediately release Nightfall's movement keys and stop its active movement.", objectSchema()));
+        JsonObject targetPosition = positionSchema();
+        tools.add(tool("navigate_to",
+                "Navigate to a feet-level block position x/y/z using a bounded local A* path through already-loaded chunks. Avoids solid blocks, fluids and common hazards. Maximum search radius is 48 blocks; stops if stuck. Requires player confirmation.",
+                targetPosition));
+        tools.add(tool("mine_block",
+                "Mine one visible block at x/y/z using the currently held tool and normal vanilla block-breaking interactions. Will not break block entities/containers or unbreakable blocks; requires reach and clear line of sight. Waits for a world update. Requires player confirmation.",
+                positionSchema()));
+        JsonObject foodSchema = objectSchema();
+        JsonObject foodItem = property("item", "string", "Optional exact Minecraft item ID, item path or localized name already in the hotbar.").get("schema").getAsJsonObject();
+        foodItem.addProperty("maxLength", 64);
+        foodSchema.getAsJsonObject("properties").add("item", foodItem);
+        tools.add(tool("eat_food",
+                "Eat the best available food from the hotbar when hunger is not full. Optionally choose an exact item. Uses the normal item-consumption interaction and restores the previous hotbar slot. Requires player confirmation.",
+                foodSchema));
+        tools.add(tool("attack_nearest_hostile",
+                "Engage the nearest nearby hostile mob only (never players or passive/neutral mobs). Approaches using local pathfinding and performs normal melee attacks within reach. Bounded to 12 attacks or 45 seconds. Requires player confirmation.",
+                objectSchema()));
+        tools.add(tool("stop_current_action",
+                "Immediately stop Nightfall movement, navigation, mining, eating and combat, and release all keys controlled by Nightfall. Safe emergency stop.",
+                objectSchema()));
         tools.add(tool("get_build_status",
                 "Read the current Nightfall builder status: confirmed block count, phase, pause reason, blueprint and materials. Read-only; no confirmation required.",
                 objectSchema()));
@@ -239,6 +259,23 @@ public final class AIActionRegistry {
                         + " Ticks. Keine Hindernis-Umgehung; du kannst jederzeit „Stopp“ sagen.");
             }
             case "stop_movement" -> new Action(name, args, "Nightfall gibt sofort alle eigenen Bewegungs-Tasten frei.");
+            case "navigate_to" -> {
+                int x = readBoundedInteger(args, "x", -30_000_000, 30_000_000);
+                int y = readBoundedInteger(args, "y", -2_048, 2_048);
+                int z = readBoundedInteger(args, "z", -30_000_000, 30_000_000);
+                yield new Action(name, args, AIPlayerController.previewNavigation(x, y, z));
+            }
+            case "mine_block" -> {
+                int x = readBoundedInteger(args, "x", -30_000_000, 30_000_000);
+                int y = readBoundedInteger(args, "y", -2_048, 2_048);
+                int z = readBoundedInteger(args, "z", -30_000_000, 30_000_000);
+                yield new Action(name, args, AIPlayerController.previewMine(x, y, z));
+            }
+            case "eat_food" -> new Action(name, args, AIPlayerController.previewEat(
+                    args.has("item") ? requiredString(args, "item", 64).trim() : null));
+            case "attack_nearest_hostile" -> new Action(name, args, AICombatController.preview());
+            case "stop_current_action" -> new Action(name, args,
+                    "Nightfall stoppt sofort Navigation, Bewegung, Blockabbau, Essen und Kampf und gibt alle eigenen Tasten frei.");
             case "get_build_status" -> new Action(name, args, AIBuilder.describeStatus());
             case "pause_build" -> new Action(name, args,
                     AIBuilder.isRunning() ? "Nightfall pausiert den Bau nach einer eventuell noch ausstehenden Blockbestätigung."
@@ -254,7 +291,7 @@ public final class AIActionRegistry {
 
     /** Called only from the Minecraft client thread after explicit player confirmation. */
     public static boolean requiresConfirmation(String actionName) {
-        return !Set.of("search_blueprints", "get_build_status", "pause_build", "stop_build", "stop_movement").contains(actionName);
+        return !Set.of("search_blueprints", "get_build_status", "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
     }
 
     public static String execute(Action action) {
@@ -320,6 +357,16 @@ public final class AIActionRegistry {
             case "search_blueprints" -> BlueprintCatalog.search(args.get("query").getAsString());
             case "walk_forward" -> AIPlayerController.walkForward(readBoundedInteger(args, "ticks", 1, 100));
             case "stop_movement" -> AIPlayerController.stop("Auf deinen Befehl gestoppt.");
+            case "navigate_to" -> AIPlayerController.navigateTo(
+                    args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt());
+            case "mine_block" -> AIPlayerController.mineBlock(
+                    args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt());
+            case "eat_food" -> AIPlayerController.eatFood(args.has("item") ? args.get("item").getAsString() : null);
+            case "attack_nearest_hostile" -> AICombatController.start();
+            case "stop_current_action" -> {
+                AICombatController.stop(null);
+                yield AIPlayerController.stop("Auf deinen Befehl gestoppt.");
+            }
             case "get_build_status" -> AIBuilder.describeStatus();
             case "pause_build" -> AIBuilder.pause();
             case "resume_build" -> AIBuilder.resume();
@@ -430,6 +477,29 @@ public final class AIActionRegistry {
                     readCoordinate(block, "y"), readCoordinate(block, "z"), blockMaterial));
         }
         return result;
+    }
+
+    private static JsonObject positionSchema() {
+        JsonObject schema = objectSchema();
+        JsonObject properties = schema.getAsJsonObject("properties");
+        for (String axis : List.of("x", "z")) {
+            JsonObject coordinate = new JsonObject();
+            coordinate.addProperty("type", "integer");
+            coordinate.addProperty("minimum", -30_000_000);
+            coordinate.addProperty("maximum", 30_000_000);
+            properties.add(axis, coordinate);
+        }
+        JsonObject y = new JsonObject();
+        y.addProperty("type", "integer");
+        y.addProperty("minimum", -2_048);
+        y.addProperty("maximum", 2_048);
+        properties.add("y", y);
+        JsonArray required = new JsonArray();
+        required.add("x");
+        required.add("y");
+        required.add("z");
+        schema.add("required", required);
+        return schema;
     }
 
     private static int readBoundedInteger(JsonObject args, String key, int min, int max) {
