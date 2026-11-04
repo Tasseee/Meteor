@@ -17,13 +17,21 @@ public class PlayerEsp extends EntityScanEsp {
     protected String nameOf(Entity entity) {
         if (!(entity instanceof PlayerEntity player) || !showRank.get()) return entity.getName().getString();
         if (mc.getNetworkHandler() == null) return player.getName().getString();
-        PlayerListEntry entry = mc.getNetworkHandler().getPlayerListEntry(player.getUuid());
-        if (entry == null || entry.getDisplayName() == null) return player.getName().getString();
-
         String username = player.getName().getString();
-        String decorated = entry.getDisplayName().getString().trim();
-        if (decorated.isEmpty() || decorated.equalsIgnoreCase(username)) return username;
-        return decorated.toLowerCase(java.util.Locale.ROOT).contains(username.toLowerCase(java.util.Locale.ROOT))
-                ? decorated : decorated + " " + username;
+        PlayerListEntry entry = mc.getNetworkHandler().getPlayerListEntry(player.getUuid());
+        if (entry != null && entry.getDisplayName() != null) {
+            String decorated = entry.getDisplayName().getString().trim();
+            if (!decorated.isEmpty() && !decorated.equalsIgnoreCase(username))
+                return decorated.toLowerCase(java.util.Locale.ROOT).contains(username.toLowerCase(java.util.Locale.ROOT))
+                        ? decorated : decorated + " " + username;
+        }
+
+        // Some servers expose prefixes through scoreboard teams instead of tab display names.
+        var team = player.getScoreboardTeam();
+        if (team != null) {
+            String prefix = team.getPrefix().getString().trim();
+            if (!prefix.isEmpty()) return prefix + " " + username;
+        }
+        return username;
     }
 }
