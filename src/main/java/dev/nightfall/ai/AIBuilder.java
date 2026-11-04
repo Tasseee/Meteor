@@ -366,7 +366,48 @@ public final class AIBuilder {
         return "Eigener Bauplan geprüft: „" + blueprintName + "“, " + offsets.size() + " Blöcke, "
                 + (maxX + 1) + " × " + (maxY + 1) + " × " + (maxZ + 1)
                 + " Raster, Materialien: " + materialName
-                + ". Alle Zielpositionen sind frei und die Teile sind mit dem Boden oder bestehenden Blöcken verbunden.";
+                + ". Alle Zielpositionen sind frei und die Teile sind mit dem Boden oder bestehenden Blöcken verbunden."
+                + customLayoutPreview(offsets, offsetMaterials, maxX, maxY, maxZ);
+    }
+
+    private static String customLayoutPreview(List<RelativeBlock> offsets,
+                                               Map<RelativeBlock, BlockItem> offsetMaterials,
+                                               int maxX, int maxY, int maxZ) {
+        Map<BlockItem, Character> palette = new LinkedHashMap<>();
+        Map<String, Character> groundPlan = new LinkedHashMap<>();
+        Map<Integer, Integer> layerCounts = new LinkedHashMap<>();
+        for (RelativeBlock offset : offsets) {
+            BlockItem blockMaterial = offsetMaterials.get(offset);
+            Character symbol = palette.get(blockMaterial);
+            if (symbol == null) {
+                symbol = (char) ('A' + palette.size());
+                palette.put(blockMaterial, symbol);
+            }
+            if (offset.y() == 0) groundPlan.put(offset.x() + ":" + offset.z(), symbol);
+            layerCounts.merge(offset.y(), 1, Integer::sum);
+        }
+
+        StringBuilder preview = new StringBuilder("\\nGrundriss (y=0, vorne = deine Blickrichtung):");
+        if (groundPlan.isEmpty()) {
+            preview.append("\\n(keine Blöcke auf y=0; der Plan ist an vorhandenen Blöcken verankert)");
+        } else {
+            for (int z = 0; z <= maxZ; z++) {
+                preview.append("\\n");
+                for (int x = 0; x <= maxX; x++)
+                    preview.append(groundPlan.getOrDefault(x + ":" + z, '.'));
+            }
+        }
+        preview.append("\\nSchichten: ");
+        List<String> layers = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> entry : layerCounts.entrySet())
+            layers.add("y" + entry.getKey() + "=" + entry.getValue());
+        preview.append(String.join(", ", layers));
+        preview.append("\\nLegende: ");
+        List<String> legend = new ArrayList<>();
+        for (Map.Entry<BlockItem, Character> entry : palette.entrySet())
+            legend.add(entry.getValue() + "=" + entry.getKey().getName().getString());
+        preview.append(String.join(", ", legend));
+        return preview.toString();
     }
 
     private static Map<BlockItem, Integer> collectHotbarMaterials(MinecraftClient mc) {

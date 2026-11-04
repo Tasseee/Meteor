@@ -213,31 +213,37 @@ public final class AIChatScreen extends Screen {
 
     private List<String> wrap(String value, int maxWidth) {
         List<String> lines = new ArrayList<>();
-        StringBuilder line = new StringBuilder();
-        for (String word : value.replace('\n', ' ').split("\\s+")) {
-            if (word.isEmpty()) continue;
-            String candidate = line.isEmpty() ? word : line + " " + word;
-            if (textRenderer.getWidth(candidate) <= maxWidth) {
-                if (!line.isEmpty()) line.append(' ');
-                line.append(word);
+        for (String paragraph : value.split("\\R", -1)) {
+            if (paragraph.isEmpty()) {
+                lines.add("");
                 continue;
             }
-            if (!line.isEmpty()) {
-                lines.add(line.toString());
-                line.setLength(0);
-            }
-            StringBuilder chunk = new StringBuilder();
-            for (int i = 0; i < word.length(); i++) {
-                String next = chunk.toString() + word.charAt(i);
-                if (!chunk.isEmpty() && textRenderer.getWidth(next) > maxWidth) {
-                    lines.add(chunk.toString());
-                    chunk.setLength(0);
+            StringBuilder line = new StringBuilder();
+            for (String word : paragraph.split("\\s+")) {
+                if (word.isEmpty()) continue;
+                String candidate = line.isEmpty() ? word : line + " " + word;
+                if (textRenderer.getWidth(candidate) <= maxWidth) {
+                    if (!line.isEmpty()) line.append(' ');
+                    line.append(word);
+                    continue;
                 }
-                chunk.append(word.charAt(i));
+                if (!line.isEmpty()) {
+                    lines.add(line.toString());
+                    line.setLength(0);
+                }
+                StringBuilder chunk = new StringBuilder();
+                for (int i = 0; i < word.length(); i++) {
+                    String next = chunk.toString() + word.charAt(i);
+                    if (!chunk.isEmpty() && textRenderer.getWidth(next) > maxWidth) {
+                        lines.add(chunk.toString());
+                        chunk.setLength(0);
+                    }
+                    chunk.append(word.charAt(i));
+                }
+                line.append(chunk);
             }
-            line.append(chunk);
+            if (!line.isEmpty()) lines.add(line.toString());
         }
-        if (!line.isEmpty()) lines.add(line.toString());
         if (lines.isEmpty()) lines.add("");
         return lines;
     }
