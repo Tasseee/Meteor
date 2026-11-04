@@ -177,7 +177,7 @@ public final class Commands {
                         .then(argument("price", DoubleArgumentType.doubleArg(0)).executes(c -> {
                             String raw = str(c, "item");
                             Identifier id = Identifier.tryParse(raw);
-                            if (id == null || Registries.ITEM.get(id) == null) return say(c, "Unbekannte Item-ID: " + raw);
+                            if (id == null || !Registries.ITEM.containsId(id)) return say(c, "Unbekannte Item-ID: " + raw);
                             String canonical = Registries.ITEM.getId(Registries.ITEM.get(id)).toString();
                             double price = DoubleArgumentType.getDouble(c, "price");
                             InvSeeValue.setPrice(canonical, price);
