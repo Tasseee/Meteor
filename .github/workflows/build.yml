@@ -37,6 +37,9 @@ jobs:
           test -f src/main/resources/fabric.mod.json
           test -f src/main/resources/nightfall.mixins.json
 
+      - name: Validate Lyrics sidecar syntax
+        run: python3 -m py_compile src/main/resources/nightfall-lyrics/lyrics_sidecar.py
+
       - name: Build Nightfall
         run: gradle build --no-daemon
 
@@ -56,6 +59,13 @@ jobs:
                   names = set(jar.namelist())
                   if "fabric.mod.json" not in names:
                       raise SystemExit(f"{path} is missing fabric.mod.json")
+                  for resource in (
+                      "nightfall-lyrics/lyrics_sidecar.py",
+                      "nightfall-lyrics/requirements.txt",
+                      "nightfall-lyrics/requirements-windows.txt",
+                  ):
+                      if resource not in names:
+                          raise SystemExit(f"{path} is missing bundled resource {resource}")
                   metadata = json.loads(jar.read("fabric.mod.json"))
                   if metadata.get("id") != "nightfall":
                       raise SystemExit(f"{path} has unexpected mod id: {metadata.get('id')!r}")
