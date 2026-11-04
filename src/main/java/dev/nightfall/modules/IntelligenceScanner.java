@@ -29,6 +29,10 @@ import java.util.*;
  * (including glow item frames), villagers and armor stands; player activity is tracked separately.
  */
 public final class IntelligenceScanner extends Module {
+    private static final int MAX_QUEUED_CHUNKS = 256;
+    private static final int MAX_SNAPSHOTS = 4096;
+    private static final int MAX_PLAYER_SIGHTINGS = 2048;
+    private static final int MAX_CLUSTER_ENTITIES = 512;
     private final NumberSetting range = add(new NumberSetting("Intel-Reichweite (Chunks)", 16, 2, 32, 1));
     private final NumberSetting budgetMs = add(new NumberSetting("Deep-Scan Budget ms/Tick", 1.5, 0.2, 5.0, 0.1));
     private final NumberSetting rescanSeconds = add(new NumberSetting("Deep-Rescan (s)", 90, 15, 600, 5));
@@ -139,8 +143,8 @@ public final class IntelligenceScanner extends Module {
             if (entity == mc.player || !underground(entity)) continue;
             if (entity instanceof ItemFrameEntity || entity instanceof VillagerEntity
                     || entity instanceof ArmorStandEntity) {
-                accepted.add(entity);
-                undergroundEntities.add(entity);
+                if (accepted.size() < MAX_CLUSTER_ENTITIES) accepted.add(entity);
+                if (undergroundEntities.size() < 512) undergroundEntities.add(entity);
                 long k = key(entity.getBlockX() >> 4, entity.getBlockZ() >> 4);
                 EntityEvidence ev = next.computeIfAbsent(k, ignored -> new EntityEvidence());
                 if (entity instanceof ItemFrameEntity) ev.frames++;
@@ -149,6 +153,13 @@ public final class IntelligenceScanner extends Module {
             } else if (entity instanceof PlayerEntity player) {
                 long k = key(player.getBlockX() >> 4, player.getBlockZ() >> 4);
                 int seen = Math.min(10, playerSightings.merge(player.getUuid(), 1, Integer::sum));
+                if (playerSightings.size() > MAX_PLAYER_SIGHTINGS) {
+                    Iterator<UUID> oldest = playerSightings.keySet().iterator();
+                    if (oldest.hasNext()) {
+                        oldest.next();
+                        oldest.remove();
+                    }
+                }
                 EntityEvidence ev = next.computeIfAbsent(k, ignored -> new EntityEvidence());
                 ev.activityScore = Math.min(3.0, seen * 0.35);
                 ev.playerCount++;
@@ -195,12 +206,44 @@ public final class IntelligenceScanner extends Module {
             if (mc.world.getChunkManager().getWorldChunk(cx, cz) == null) continue;
             candidates.add(new long[]{d2, k});
         }
+        // Discard queued work and cached snapshots well outside the active scan area.
+        // This keeps memory bounded when the player travels across many regions.
+        int retention = r + 4;
+        long retentionSquared = (long) retention * retention;
+        queue.removeIf(job -> {
+            long dx = (long) job.cx - pcx, dz = (long) job.cz - pcz;
+            if (dx * dx + dz * dz <= retentionSquared) return false;
+            inQueue.remove(job.key);
+            return true;
+        });
+        Iterator<Map.Entry<Long, ScanSnapshot>> cached = snapshots.entrySet().iterator();
+        while (cached.hasNext()) {
+            Map.Entry<Long, ScanSnapshot> entry = cached.next();
+            int cx = (int) (long) entry.getKey(), cz = (int) (entry.getKey() >> 32);
+            long dx = (long) cx - pcx, dz = (long) cz - pcz;
+            if (dx * dx + dz * dz > retentionSquared) {
+                long staleKey = entry.getKey();
+                cached.remove();
+                publish(staleKey, null);
+            }
+        }
+
         candidates.sort(Comparator.comparingLong(a -> a[0]));
+        int capacity = Math.max(0, MAX_QUEUED_CHUNKS - queue.size());
         for (long[] candidate : candidates) {
+            if (capacity <= 0) break;
             long k = candidate[1];
             inQueue.add(k);
             queue.add(new ScanJob((int) k, (int) (k >> 32),
                     mc.world.getBottomY(), mc.world.getHeight()));
+            capacity--;
+        }
+        while (snapshots.size() > MAX_SNAPSHOTS) {
+            Iterator<Long> oldest = snapshots.keySet().iterator();
+            if (!oldest.hasNext()) break;
+            long staleKey = oldest.next();
+            oldest.remove();
+            publish(staleKey, null);
         }
     }
 
