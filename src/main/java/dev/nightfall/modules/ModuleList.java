@@ -29,7 +29,8 @@ public class ModuleList extends HudModule {
         int y = 0;
         for (Module m : sorted) {
             int mw = mc.textRenderer.getWidth(m.getName()) + 8;
-            ctx.fill(w - mw, y, w, y + 11, 0xA0101014);
+            ctx.fillGradient(w - mw, y, w, y + 11, 0xD51B1D29, 0xC9101119);
+            ctx.fill(w - mw, y, w - mw + 1, y + 11, 0x553FFFFF);
             ctx.fill(w - 2, y, w, y + 11, Theme.ACCENT);
             ctx.drawText(mc.textRenderer, m.getName(), w - mw + 3, y + 2, Theme.TEXT, true);
             y += 11;
