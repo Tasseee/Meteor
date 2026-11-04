@@ -456,7 +456,7 @@ public final class AIChatScreen extends Screen {
                 || lower.contains("berechtigung") || lower.contains("nicht erlaubt")
                 || lower.contains("not allowed") || lower.contains("you do not have")
                 || lower.contains("no permission") || lower.contains("keine rechte");
-        boolean relevant = rejected || lower.contains(root) || lower.contains("teleportiert")
+        boolean relevant = rejected || lower.matches("(?s).*\\\\b" + java.util.regex.Pattern.quote(root) + "\\\\b.*") || lower.contains("teleportiert")
                 || lower.contains("teleported") || lower.contains("warped") || lower.contains("home")
                 || lower.contains("spawn") || lower.contains("unknown argument") || lower.contains("ungültiges argument");
         if (!relevant) return;

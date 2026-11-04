@@ -53,6 +53,8 @@ public final class AIBuilder {
     private static Blueprint blueprint;
     private static Identifier dimension;
     private static BlockPos pendingTarget;
+    private static BlockPos preparedPlayerPos;
+    private static Direction preparedFacing;
     private static int index;
     private static int delay;
     private static int pendingTicks;
@@ -69,6 +71,10 @@ public final class AIBuilder {
     public static String prepareStarterShelter() { return prepareStructure("starter_shelter"); }
 
     public static String prepareStructure(String structure) {
+        return prepareStructure(structure, null);
+    }
+
+    private static String prepareStructure(String structure, BlockItem preferredMaterial) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (running) throw new IllegalArgumentException("Nightfall baut bereits. Stoppe den aktuellen Bau zuerst.");
         if (mc.player == null || mc.world == null || mc.interactionManager == null || mc.getNetworkHandler() == null)
@@ -85,12 +91,14 @@ public final class AIBuilder {
                     || !state.isFullCube(mc.world, sample)) continue;
             counts.merge(item, stack.getCount(), Integer::sum);
         }
-        BlockItem selected = null;
-        int available = 0;
-        for (Map.Entry<BlockItem, Integer> entry : counts.entrySet()) {
-            if (entry.getValue() > available) {
-                selected = entry.getKey();
-                available = entry.getValue();
+        BlockItem selected = preferredMaterial;
+        int available = selected == null ? 0 : counts.getOrDefault(selected, 0);
+        if (selected == null) {
+            for (Map.Entry<BlockItem, Integer> entry : counts.entrySet()) {
+                if (entry.getValue() > available) {
+                    selected = entry.getKey();
+                    available = entry.getValue();
+                }
             }
         }
         if (selected == null || available < selectedBlueprint.blocks)
@@ -161,6 +169,8 @@ public final class AIBuilder {
         PLAN.addAll(nextPlan);
         material = selected;
         blueprint = selectedBlueprint;
+        preparedPlayerPos = player.getBlockPos().toImmutable();
+        preparedFacing = forward;
         materialName = selected.getName().getString();
         dimension = mc.world.getRegistryKey().getValue();
         index = 0;
@@ -188,10 +198,18 @@ public final class AIBuilder {
     public static String startStarterShelter() { return startPreparedStructure(); }
 
     public static String startPreparedStructure() {
-        if (!prepared || blueprint == null) throw new IllegalArgumentException("Der Bauplan ist abgelaufen. Bitte fordere ihn erneut an.");
-        String id = blueprint.id;
-        prepareStructure(id);
+        if (!prepared || blueprint == null || preparedPlayerPos == null || preparedFacing == null)
+            throw new IllegalArgumentException("Der Bauplan ist abgelaufen. Bitte fordere ihn erneut an.");
         MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null
+                || !mc.player.getBlockPos().equals(preparedPlayerPos)
+                || mc.player.getHorizontalFacing() != preparedFacing
+                || !mc.world.getRegistryKey().getValue().equals(dimension)) {
+            throw new IllegalArgumentException("Du hast dich seit der Vorschau bewegt oder die Welt gewechselt. Bitte erstelle den Bauplan an deinem neuen Standort erneut.");
+        }
+        String id = blueprint.id;
+        BlockItem approvedMaterial = material;
+        prepareStructure(id, approvedMaterial);
         originalSlot = mc.player.getInventory().getSelectedSlot();
         index = 0;
         delay = 0;
@@ -326,6 +344,8 @@ public final class AIBuilder {
         material = null;
         blueprint = null;
         pendingTarget = null;
+        preparedPlayerPos = null;
+        preparedFacing = null;
     }
 
     public static String stop() {
@@ -357,5 +377,7 @@ public final class AIBuilder {
         PLAN.clear();
         material = null;
         blueprint = null;
+        preparedPlayerPos = null;
+        preparedFacing = null;
     }
 }
