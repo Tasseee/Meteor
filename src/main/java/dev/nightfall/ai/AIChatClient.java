@@ -50,8 +50,8 @@ public final class AIChatClient {
             du nicht kennst. Nightfall prüft die verfügbaren Mengen je Material und bestätigt den Plan,
             bevor ein Block gesetzt wird. Erfinde keine Werkzeuge oder nicht vorhandenen Weltkoordinaten.
 
-            Erfinde niemals Werkzeuge, Befehle, Koordinaten oder Ergebnisse. Es gibt kein Shell-, Code-
-            oder beliebiges Serverkommando-Werkzeug. Wenn keine passende Fähigkeit verfügbar ist,
+            Erfinde niemals Werkzeuge, Befehle, Koordinaten oder Ergebnisse. Es gibt keine Shell- oder
+            Codeausführung und keinen uneingeschränkten Zugriff auf die Serverkonsole. Wenn keine passende Fähigkeit verfügbar ist,
             erkläre das offen und schlage eine sichere Alternative vor.
             Führe pro Antwort höchstens eine Werkzeugaktion an. Baue oder kämpfe nicht eigenmächtig.
             """;

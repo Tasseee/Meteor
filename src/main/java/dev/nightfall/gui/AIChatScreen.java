@@ -451,14 +451,18 @@ public final class AIChatScreen extends Screen {
         }
         String lower = message.toLowerCase(Locale.ROOT);
         String root = trackedCommand.split("\\s+", 2)[0].toLowerCase(Locale.ROOT);
+        int namespaceSeparator = root.lastIndexOf(':');
+        if (namespaceSeparator >= 0) root = root.substring(namespaceSeparator + 1);
         boolean rejected = lower.contains("unknown command") || lower.contains("unbekannter befehl")
                 || lower.contains("unvollständiger befehl") || lower.contains("permission")
                 || lower.contains("berechtigung") || lower.contains("nicht erlaubt")
                 || lower.contains("not allowed") || lower.contains("you do not have")
                 || lower.contains("no permission") || lower.contains("keine rechte");
-        boolean relevant = rejected || lower.matches("(?s).*\\\\b" + java.util.regex.Pattern.quote(root) + "\\\\b.*") || lower.contains("teleportiert")
-                || lower.contains("teleported") || lower.contains("warped") || lower.contains("home")
-                || lower.contains("spawn") || lower.contains("unknown argument") || lower.contains("ungültiges argument");
+        boolean movementCommand = Set.of("rtp", "tp", "teleport", "warp", "home", "spawn").contains(root);
+        boolean relevant = rejected || lower.matches("(?s).*\\\\b" + java.util.regex.Pattern.quote(root) + "\\\\b.*")
+                || (movementCommand && (lower.contains("teleportiert") || lower.contains("teleported")
+                || lower.contains("warped"))) || lower.contains("unknown argument")
+                || lower.contains("ungültiges argument");
         if (!relevant) return;
 
         waitingCommandResponse = false;

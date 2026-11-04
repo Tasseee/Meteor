@@ -186,7 +186,9 @@ public final class AIActionRegistry {
                 if (Set.of("op", "deop", "ban", "ban-ip", "pardon", "pardon-ip", "kick",
                         "stop", "restart", "whitelist", "reload", "save-all", "save-off", "save-on",
                         "execute", "function", "fill", "clone", "setblock", "place", "data", "loot",
-                        "forceload").contains(root))
+                        "forceload", "worldedit", "we", "fawe", "fastasyncworldedit",
+                        "lp", "luckperms", "pex", "permissionsex", "groupmanager",
+                        "manuadd", "manudel").contains(root))
                     throw new IllegalArgumentException("Dieser Serververwaltungs- oder Welteditierbefehl ist aus Sicherheitsgründen gesperrt.");
                 yield new Action(name, args, "Nightfall sendet nach deiner Bestätigung exakt diesen Befehl an den aktuellen Server:\n/"
                         + command + "\nDer Server entscheidet über Berechtigungen und Ausführung. Nightfall umgeht keine Rechte.");
