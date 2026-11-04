@@ -56,11 +56,13 @@ public class Nightfall implements ClientModInitializer {
                 });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            AIChatScreen.onDisconnect();
             ModuleManager.get(BaseFinder.class).clear();
             ModuleManager.get(TrapperBot.class).resetSession();
             Config.save();
         });
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
+            AIChatScreen.onGameMessage(message.getString());
             if (!overlay) {
                 ModuleManager.get(AutoTpa.class).onMessage(message.getString());
                 InvSeeValue.onGameMessage(message.getString());

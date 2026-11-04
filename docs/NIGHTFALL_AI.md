@@ -1,6 +1,6 @@
-# Nightfall AI – Phase 1
+# Nightfall AI – Phase 2
 
-Nightfall AI adds an in-game chat companion. The first phase is **chat-only**: it can answer Minecraft questions, but it cannot place blocks, attack entities, run commands, or otherwise change the world.
+Nightfall AI adds an in-game chat companion. It can answer Minecraft questions and now supports one explicitly confirmed first world action: searching for a biome through the server's normal `/locate biome` command.
 
 ## Setup
 
@@ -35,5 +35,7 @@ When `shareWorldContext` is enabled, each request includes the current dimension
 
 - This phase requires a configured, reachable AI provider.
 - The conversation is kept in memory for the current chat screen; it is not persisted.
-- No in-game action tools are connected yet. The assistant is explicitly instructed not to claim that it has changed the world.
-- A future action system should expose narrow, permission-checked tools (for example, read inventory, preview a build plan, then request approval before placing blocks). It must not execute arbitrary model-generated code.
+- The first world action is a local, deterministic intent: requests such as “such mir einen Jungle” offer a confirmation button for `/locate biome minecraft:jungle` (and a small supported set of other biomes). The command is sent only after the user clicks **JA, BIOM SUCHEN**.
+- Server permissions remain authoritative. If the server rejects `/locate`, the command cannot make it work. Nightfall does not bypass permissions or teleport the player.
+- The command response is shown in the chat if a matching server feedback message is received. Some servers may hide or reformat command feedback, in which case Nightfall times out without inventing a result.
+- This is not yet general AI tool-calling, building, combat, or arbitrary command execution. Future actions should stay narrowly scoped, previewed, permission-checked, and explicitly confirmed; arbitrary model-generated code must never be executed.

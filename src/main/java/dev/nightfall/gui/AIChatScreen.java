@@ -2,6 +2,7 @@ package dev.nightfall.gui;
 
 import dev.nightfall.ai.AIChatClient;
 import dev.nightfall.ai.AIConfig;
+import dev.nightfall.ai.AIIntentParser;
 import dev.nightfall.util.Theme;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -15,10 +16,16 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-/** Nightfall AI chat screen. Phase 1 is intentionally chat-only. */
+/** Nightfall AI chat screen with explicit confirmation for the first world action. */
 public final class AIChatScreen extends Screen {
+    private static AIChatScreen active;
+    private static final Pattern LOCATE_COORDINATES =
+            Pattern.compile("(?s).*\\\\[\\\\s*-?\\\\d+\\\\s*,\\\\s*[^,]+\\\\s*,\\\\s*-?\\\\d+\\\\s*\\\\].*");
+
     private record ChatLine(String role, String content) {}
 
     private final List<ChatLine> history = new ArrayList<>();
@@ -28,9 +35,16 @@ public final class AIChatScreen extends Screen {
     private float scroll = Float.MAX_VALUE;
     private int panelX, panelY, panelW, panelH;
     private int sendX, sendY, sendW, sendH;
+    private String pendingBiome;
+    private int confirmX, confirmY, confirmW, confirmH;
+    private int cancelX, cancelY, cancelW;
+    private boolean waitingLocate;
+    private String locatingBiome = "";
+    private long locateDeadline;
 
     public AIChatScreen() {
         super(Text.literal("Nightfall AI"));
+        active = this;
         history.add(new ChatLine("assistant",
                 "Hey! Ich bin Nightfall AI. Frag mich alles rund um Minecraft. In dieser ersten Phase kann ich beraten, aber noch keine Aktionen in deiner Welt ausführen."));
     }
@@ -41,7 +55,27 @@ public final class AIChatScreen extends Screen {
     }
 
     @Override
+    public void removed() {
+        if (active == this) active = null;
+    }
+
+    public static void onGameMessage(String message) {
+        if (active != null) active.handleLocateMessage(message);
+    }
+
+    public static void onDisconnect() {
+        if (active != null && active.waitingLocate) {
+            active.waitingLocate = false;
+            active.status = "Verbindung getrennt";
+            active.history.add(new ChatLine("assistant",
+                    "Die Suche wurde unterbrochen, weil die Serververbindung getrennt wurde."));
+            active.scroll = Float.MAX_VALUE;
+        }
+    }
+
+    @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        expireLocateRequest();
         MinecraftClient mc = MinecraftClient.getInstance();
         ctx.fill(0, 0, width, height, 0xA9000000);
 
@@ -60,7 +94,7 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, "NIGHTFALL", panelX + 16, panelY + 12, Theme.TEXT, true);
         int titleX = panelX + 105;
         ctx.drawText(mc.textRenderer, "AI COMPANION", titleX, panelY + 13, Theme.ACCENT, true);
-        ctx.drawText(mc.textRenderer, "PHASE 1 · CHAT", panelX + panelW - 112,
+        ctx.drawText(mc.textRenderer, "PHASE 2 · ACTIONS", panelX + panelW - 125,
                 panelY + 14, Theme.TEXT_DIM, false);
 
         AIConfig.Settings settings = AIConfig.current();
@@ -73,7 +107,7 @@ public final class AIChatScreen extends Screen {
                 waiting ? Theme.ACCENT : Theme.TEXT_DIM, false);
 
         int contentTop = panelY + 65;
-        int contentBottom = panelY + panelH - 53;
+        int contentBottom = panelY + panelH - (pendingBiome == null ? 53 : 80);
         int contentHeight = Math.max(30, contentBottom - contentTop);
         int left = panelX + 14;
         int right = panelX + panelW - 14;
@@ -109,6 +143,27 @@ public final class AIChatScreen extends Screen {
             y += bubbleHeight + 4;
         }
         ctx.disableScissor();
+
+        if (pendingBiome != null) {
+            confirmY = panelY + panelH - 65;
+            confirmH = 20;
+            confirmX = panelX + 14;
+            confirmW = (panelW - 36) / 2;
+            cancelX = confirmX + confirmW + 8;
+            cancelY = confirmY;
+            cancelW = confirmW;
+
+            ctx.fill(confirmX, confirmY, confirmX + confirmW, confirmY + confirmH, Theme.ACCENT);
+            String confirmLabel = "JA, BIOM SUCHEN";
+            ctx.drawText(mc.textRenderer, confirmLabel,
+                    confirmX + (confirmW - mc.textRenderer.getWidth(confirmLabel)) / 2,
+                    confirmY + 6, 0xFF071014, true);
+            ctx.fill(cancelX, cancelY, cancelX + cancelW, cancelY + confirmH, 0xFF343848);
+            String cancelLabel = "ABBRECHEN";
+            ctx.drawText(mc.textRenderer, cancelLabel,
+                    cancelX + (cancelW - mc.textRenderer.getWidth(cancelLabel)) / 2,
+                    cancelY + 6, Theme.TEXT, true);
+        }
 
         sendY = panelY + panelH - 38;
         sendH = 23;
@@ -197,6 +252,20 @@ public final class AIChatScreen extends Screen {
 
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && pendingBiome != null
+                && click.x() >= confirmX && click.x() <= confirmX + confirmW
+                && click.y() >= confirmY && click.y() <= confirmY + confirmH) {
+            executeBiomeSearch();
+            return true;
+        }
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && pendingBiome != null
+                && click.x() >= cancelX && click.x() <= cancelX + cancelW
+                && click.y() >= cancelY && click.y() <= cancelY + confirmH) {
+            pendingBiome = null;
+            history.add(new ChatLine("assistant", "Alles klar, ich habe die Biom-Suche abgebrochen."));
+            scroll = Float.MAX_VALUE;
+            return true;
+        }
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
                 && click.x() >= sendX && click.x() <= sendX + sendW
                 && click.y() >= sendY && click.y() <= sendY + sendH) {
@@ -217,6 +286,19 @@ public final class AIChatScreen extends Screen {
         String prompt = input.trim();
         input = "";
         history.add(new ChatLine("user", prompt));
+
+        String requestedBiome = AIIntentParser.findBiomeSearch(prompt);
+        if (requestedBiome != null) {
+            pendingBiome = requestedBiome;
+            String label = AIIntentParser.biomeLabel(requestedBiome);
+            history.add(new ChatLine("assistant",
+                    "Ich kann versuchen, das Biom \"" + label + "\" zu finden. Dafür würde ich den Serverbefehl "
+                            + "/locate biome " + requestedBiome + " senden. Der Server muss den Befehl erlauben. "
+                            + "Soll ich ihn jetzt ausführen?"));
+            status = "Aktion wartet auf deine Bestätigung";
+            scroll = Float.MAX_VALUE;
+            return;
+        }
 
         List<AIChatClient.Message> requestHistory = history.stream()
                 .map(line -> new AIChatClient.Message(line.role(), line.content()))
@@ -239,6 +321,72 @@ public final class AIChatScreen extends Screen {
             status = result.success() ? "Antwort erhalten" : "Verbindung fehlgeschlagen";
             scroll = Float.MAX_VALUE;
         });
+    }
+
+    private void executeBiomeSearch() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (pendingBiome == null) return;
+        if (mc.player == null || mc.player.networkHandler == null || mc.world == null) {
+            pendingBiome = null;
+            status = "Nicht mit einer Welt verbunden";
+            history.add(new ChatLine("assistant", "Ich kann gerade keinen Serverbefehl senden, weil du nicht in einer Welt bist."));
+            scroll = Float.MAX_VALUE;
+            return;
+        }
+
+        String biome = pendingBiome;
+        pendingBiome = null;
+        locatingBiome = biome;
+        waitingLocate = true;
+        locateDeadline = System.currentTimeMillis() + 30_000L;
+        status = "Warte auf Antwort des Servers …";
+        history.add(new ChatLine("assistant",
+                "Ich sende /locate biome " + biome + ". Ich warte auf die Rückmeldung des Servers."));
+        scroll = Float.MAX_VALUE;
+        try {
+            mc.player.networkHandler.sendChatCommand("locate biome " + biome);
+        } catch (RuntimeException error) {
+            waitingLocate = false;
+            status = "Befehl konnte nicht gesendet werden";
+            history.add(new ChatLine("assistant",
+                    "Der Befehl konnte nicht gesendet werden. Möglicherweise ist die Verbindung nicht verfügbar."));
+        }
+    }
+
+    private void handleLocateMessage(String message) {
+        if (!waitingLocate || message == null || message.isBlank()) return;
+        if (System.currentTimeMillis() > locateDeadline) {
+            expireLocateRequest();
+            return;
+        }
+
+        String lower = message.toLowerCase(Locale.ROOT);
+        String biomeName = locatingBiome.substring("minecraft:".length());
+        boolean hasCoordinates = LOCATE_COORDINATES.matcher(message).matches();
+        boolean mentionsBiome = lower.contains(biomeName)
+                || lower.contains("jungle") && biomeName.equals("jungle")
+                || lower.contains("dschungel") && biomeName.equals("jungle")
+                || lower.contains("wüste") && biomeName.equals("desert")
+                || lower.contains("desert") && biomeName.equals("desert");
+        boolean rejected = lower.contains("unknown command") || lower.contains("unbekannter befehl")
+                || lower.contains("unvollständiger befehl") || lower.contains("permission")
+                || lower.contains("berechtigung") || lower.contains("nicht erlaubt")
+                || lower.contains("not allowed") || lower.contains("you do not have");
+        if (!hasCoordinates && !mentionsBiome && !rejected) return;
+
+        waitingLocate = false;
+        status = rejected ? "Server hat den Befehl abgelehnt" : "Antwort vom Server erhalten";
+        history.add(new ChatLine("assistant", "Server-Antwort: " + message));
+        scroll = Float.MAX_VALUE;
+    }
+
+    private void expireLocateRequest() {
+        if (!waitingLocate || System.currentTimeMillis() <= locateDeadline) return;
+        waitingLocate = false;
+        status = "Keine Serverantwort erhalten";
+        history.add(new ChatLine("assistant",
+                "Ich habe innerhalb von 30 Sekunden keine passende Serverantwort erhalten. Vielleicht unterstützt der Server /locate nicht oder blendet die Rückmeldung aus."));
+        scroll = Float.MAX_VALUE;
     }
 
     private String worldContext() {
