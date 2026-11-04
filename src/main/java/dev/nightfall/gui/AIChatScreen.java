@@ -484,12 +484,12 @@ public final class AIChatScreen extends Screen {
         String command = trackedCommand;
         String feedback = "Serverantwort auf den bereits gesendeten Befehl /" + command + ": " + message
                 + (rejected
-                ? "\\nDer Server scheint den Befehl abzulehnen. Erkläre dem Spieler die Meldung."
-                : "\\nDiese Meldung ist nur ein möglicher Hinweis, kein unabhängiger Beweis für den Effekt. Erkläre genau, was sie aussagt.");
-        feedback += "\\nDies ist nur eine Rückmeldung zu einem bereits gesendeten Befehl. Sende ihn nicht erneut und führe keine neue Aktion aus; interpretiere ausschließlich diese Servermeldung.";
+                ? "\nDer Server scheint den Befehl abzulehnen. Erkläre dem Spieler die Meldung."
+                : "\nDiese Meldung ist nur ein möglicher Hinweis, kein unabhängiger Beweis für den Effekt. Erkläre genau, was sie aussagt.");
+        feedback += "\nDies ist nur eine Rückmeldung zu einem bereits gesendeten Befehl. Sende ihn nicht erneut und führe keine neue Aktion aus; interpretiere ausschließlich diese Servermeldung.";
         status = rejected ? "Server hat den Befehl abgelehnt" : "Servermeldung empfangen · KI wertet aus";
         history.add(new ChatLine("assistant", "Servermeldung nach /" + command + ": " + message
-                + (rejected ? "" : "\\nHinweis: Die Meldung wurde zugeordnet, Nightfall kann den serverseitigen Effekt aber nicht unabhängig prüfen.")));
+                + (rejected ? "" : "\nHinweis: Die Meldung wurde zugeordnet, Nightfall kann den serverseitigen Effekt aber nicht unabhängig prüfen.")));
         apiHistory.add(new AIChatClient.Message("user", feedback));
         scroll = Float.MAX_VALUE;
         if (waiting) pendingCommandFeedbackAI = true;
