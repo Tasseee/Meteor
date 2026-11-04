@@ -12,7 +12,6 @@ import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.mixin.LyricsTextDisplayAccessor;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.block.Blocks;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.decoration.DisplayEntity;
@@ -57,7 +56,6 @@ public final class Lyrics extends Module {
 
     private final NumberSetting distance = add(new NumberSetting("Entfernung", 5.5, 2.0, 16.0, 0.5));
     private final NumberSetting yOffset = add(new NumberSetting("Hoehen-Offset", 0.35, -2.0, 3.0, 0.05));
-    private final NumberSetting textScale = add(new NumberSetting("Textgroesse", 1.0, 0.5, 2.5, 0.05));
     private final ColorSetting textColor = add(new ColorSetting("Textfarbe", 0xFFFFFF));
     private final ModeSetting displayMode = add(new ModeSetting("Anzeige", "Welt + HUD", "Nur Welt", "Nur HUD", "Welt + HUD"));
     private final BoolSetting followView = add(new BoolSetting("Text folgt Blickrichtung", true));
@@ -193,6 +191,8 @@ public final class Lyrics extends Module {
             }
             case "LYRIC_CLEAR" -> {
                 currentLyric = "";
+                trackTitle = "";
+                trackArtist = "";
                 fadeActive(System.currentTimeMillis());
             }
             case "PLAYBACK_STATE" -> {
