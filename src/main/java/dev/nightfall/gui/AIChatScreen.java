@@ -2,6 +2,7 @@ package dev.nightfall.gui;
 
 import dev.nightfall.ai.AIChatClient;
 import dev.nightfall.ai.AIConfig;
+import dev.nightfall.ai.AIVoiceClient;
 import dev.nightfall.ai.AIActionRegistry;
 import dev.nightfall.ai.AIBuilder;
 import dev.nightfall.util.Theme;
@@ -37,6 +38,7 @@ public final class AIChatScreen extends Screen {
     private float scroll = Float.MAX_VALUE;
     private int panelX, panelY, panelW, panelH;
     private int sendX, sendY, sendW, sendH;
+    private int micX, micY, micW, micH;
     private AIActionRegistry.Action pendingAction;
     private AIChatClient.ToolCall pendingToolCall;
     private final List<AIChatClient.Message> apiHistory = new ArrayList<>();
@@ -74,7 +76,9 @@ public final class AIChatScreen extends Screen {
 
     @Override
     public void removed() {
-        // Keep this session as the background receiver for pending server responses.
+        // Do not leave the microphone open after the player closes the voice chat.
+        AIVoiceClient.stopRecording();
+        AIVoiceClient.stopSpeaking();
     }
 
     /** Called from the client tick so command/locate deadlines continue while this screen is hidden. */
@@ -92,6 +96,8 @@ public final class AIChatScreen extends Screen {
     }
 
     public static void onDisconnect() {
+        AIVoiceClient.stopRecording();
+        AIVoiceClient.stopSpeaking();
         AIBuilder.onDisconnect();
         if (active == null) return;
 
@@ -236,8 +242,12 @@ public final class AIChatScreen extends Screen {
         sendH = 23;
         sendW = 62;
         sendX = panelX + panelW - 77;
+        micW = 28;
+        micH = 23;
+        micX = sendX - micW - 6;
+        micY = sendY;
         int inputX = panelX + 14;
-        int inputW = sendX - inputX - 8;
+        int inputW = micX - inputX - 8;
         ctx.fill(inputX, sendY, inputX + inputW, sendY + sendH, 0xE5080B12);
         ctx.fill(inputX, sendY + sendH - 1, inputX + inputW, sendY + sendH, Theme.ACCENT_DIM);
         String shownInput = input + ((System.currentTimeMillis() / 500) % 2 == 0 ? "_" : "");
@@ -247,6 +257,13 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, shownInput, inputX + 7, sendY + 7,
                 input.isEmpty() ? Theme.TEXT_DIM : Theme.TEXT, false);
 
+        int micColor = AIVoiceClient.isCapturing() ? 0xFFE0A04A : 0xFF343848;
+        ctx.fill(micX, micY, micX + micW, micY + micH, micColor);
+        String micLabel = AIVoiceClient.isCapturing() ? "STOP" : "MIC";
+        ctx.drawText(mc.textRenderer, micLabel,
+                micX + (micW - mc.textRenderer.getWidth(micLabel)) / 2,
+                micY + 7, Theme.TEXT, true);
+
         int sendColor = waiting || input.isBlank() ? 0xFF3B3E4A : Theme.ACCENT;
         ctx.fill(sendX, sendY, sendX + sendW, sendY + sendH, sendColor);
         String sendLabel = waiting ? "..." : "SEND";
@@ -254,7 +271,7 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, sendLabel, sendLabelX, sendY + 7,
                 waiting || input.isBlank() ? Theme.TEXT_DIM : 0xFF081014, true);
 
-        ctx.drawText(mc.textRenderer, "ENTER: senden  ·  ESC: schließen  ·  API: config/nightfall/ai.json",
+        ctx.drawText(mc.textRenderer, "ENTER: senden  ·  F8/MIC: Sprache aufnehmen  ·  ESC: schließen",
                 panelX + 16, panelY + panelH - 10, Theme.TEXT_DIM, false);
     }
 
@@ -306,6 +323,10 @@ public final class AIChatScreen extends Screen {
             sendMessage();
             return true;
         }
+        if (keyCode == GLFW.GLFW_KEY_F8) {
+            toggleVoiceInput();
+            return true;
+        }
         if (keyCode == GLFW.GLFW_KEY_BACKSPACE) {
             if (!input.isEmpty()) input = input.substring(0, input.length() - 1);
             return true;
@@ -338,6 +359,12 @@ public final class AIChatScreen extends Screen {
             return true;
         }
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && click.x() >= micX && click.x() <= micX + micW
+                && click.y() >= micY && click.y() <= micY + micH) {
+            toggleVoiceInput();
+            return true;
+        }
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
                 && click.x() >= sendX && click.x() <= sendX + sendW
                 && click.y() >= sendY && click.y() <= sendY + sendH) {
             sendMessage();
@@ -350,6 +377,16 @@ public final class AIChatScreen extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         scroll = Math.max(0, scroll - (float) verticalAmount * 32.0f);
         return true;
+    }
+
+    private void toggleVoiceInput() {
+        AIVoiceClient.toggleRecording(transcript -> {
+            if (MinecraftClient.getInstance().currentScreen != this) return;
+            input = input.isBlank() ? transcript : input + " " + transcript;
+            status = "Sprache erkannt · Enter zum Senden";
+        }, message -> {
+            if (MinecraftClient.getInstance().currentScreen == this) status = message;
+        });
     }
 
     private void sendMessage() {
@@ -438,6 +475,7 @@ public final class AIChatScreen extends Screen {
             history.set(responseIndex, new ChatLine("assistant", result.text()));
             apiHistory.add(new AIChatClient.Message("assistant", result.text()));
             status = "Antwort erhalten";
+            AIVoiceClient.speak(result.text());
             scroll = Float.MAX_VALUE;
         });
     }
