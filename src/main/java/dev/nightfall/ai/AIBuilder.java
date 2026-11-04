@@ -233,7 +233,8 @@ public final class AIBuilder {
         };
         return "Bauplan geprüft: " + selectedBlueprint.label + " – " + layout + ". Material: "
                 + materialName + " × " + selectedBlueprint.blocks + " (Hotbar: " + available + "). "
-                + "Fläche und Boden sind geprüft. Jede Platzierung wird erst nach Server-Weltupdate gezählt; bei fehlender Reichweite pausiere ich.";
+                + "Fläche und Boden sind geprüft. Jede Platzierung wird erst nach Server-Weltupdate gezählt; bei fehlender Reichweite pausiere ich."
+                + fixedLayoutPreview(nextPlan, origin, right, forward, baseY, selected);
     }
 
     public static String prepareCustomStructure(String name, String materialId, List<RelativeBlock> offsets) {
@@ -368,6 +369,28 @@ public final class AIBuilder {
                 + " Raster, Materialien: " + materialName
                 + ". Alle Zielpositionen sind frei und die Teile sind mit dem Boden oder bestehenden Blöcken verbunden."
                 + customLayoutPreview(offsets, offsetMaterials, maxX, maxY, maxZ);
+    }
+
+    private static String fixedLayoutPreview(List<BlockPos> positions, BlockPos origin,
+                                               Direction right, Direction forward, int baseY,
+                                               BlockItem blockMaterial) {
+        List<RelativeBlock> offsets = new ArrayList<>(positions.size());
+        Map<RelativeBlock, BlockItem> materials = new LinkedHashMap<>();
+        int maxX = 0, maxY = 0, maxZ = 0;
+        for (BlockPos position : positions) {
+            int deltaX = position.getX() - origin.getX();
+            int deltaZ = position.getZ() - origin.getZ();
+            int x = deltaX * right.getOffsetX() + deltaZ * right.getOffsetZ();
+            int z = deltaX * forward.getOffsetX() + deltaZ * forward.getOffsetZ();
+            int y = position.getY() - baseY;
+            RelativeBlock offset = new RelativeBlock(x, y, z);
+            offsets.add(offset);
+            materials.put(offset, blockMaterial);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+            maxZ = Math.max(maxZ, z);
+        }
+        return customLayoutPreview(offsets, materials, maxX, maxY, maxZ);
     }
 
     private static String customLayoutPreview(List<RelativeBlock> offsets,
