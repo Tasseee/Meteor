@@ -202,10 +202,15 @@ public final class AIActionRegistry {
             case "build_structure" -> new Action(name, args, AIBuilder.prepareStructure(
                     requiredString(args, "structure", 32),
                     args.has("material") ? requiredString(args, "material", 64) : null));
-            case "build_custom_structure" -> new Action(name, args, AIBuilder.prepareCustomStructure(
-                    requiredString(args, "name", 48),
-                    args.has("material") ? requiredString(args, "material", 64) : null,
-                    readCustomBlocks(args.getAsJsonArray("blocks"))));
+            case "build_custom_structure" -> {
+                JsonElement blockArgument = args.get("blocks");
+                if (blockArgument == null || !blockArgument.isJsonArray())
+                    throw new IllegalArgumentException("Der Bauplan benötigt ein blocks-Array.");
+                yield new Action(name, args, AIBuilder.prepareCustomStructure(
+                        requiredString(args, "name", 48),
+                        args.has("material") ? requiredString(args, "material", 64) : null,
+                        readCustomBlocks(blockArgument.getAsJsonArray())));
+            }
             case "build_starter_shelter" -> new Action(name, args, AIBuilder.prepareStarterShelter());
             case "stop_build" -> new Action(name, args,
                     AIBuilder.isRunning() ? "Nightfall stoppt den laufenden Bau. Bereits gesetzte Blöcke bleiben bestehen."
