@@ -70,7 +70,7 @@ public class Nightfall implements ClientModInitializer {
             }
         });
         ClientReceiveMessageEvents.CHAT.register((message, signedMessage, sender, params, timestamp) -> {
-            AIChatScreen.onGameMessage(message.getString());
+            if (sender == null) AIChatScreen.onGameMessage(message.getString());
             InvSeeValue.onGameMessage(message.getString());
         });
         ClientSendMessageEvents.COMMAND.register(InvSeeValue::onOutgoingCommand);

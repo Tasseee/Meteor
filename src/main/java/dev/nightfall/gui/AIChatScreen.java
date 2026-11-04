@@ -464,7 +464,7 @@ public final class AIChatScreen extends Screen {
         waitingCommandResponse = false;
         status = rejected ? "Server hat den Befehl abgelehnt" : "Servermeldung empfangen · Ergebnis nicht verifiziert";
         history.add(new ChatLine("assistant", "Servermeldung nach /" + trackedCommand + ": " + message
-                + (rejected ? "" : "\\nHinweis: Die Meldung wurde zugeordnet, Nightfall kann den serverseitigen Effekt aber nicht unabhängig prüfen.")));
+                + (rejected ? "" : "\nHinweis: Die Meldung wurde zugeordnet, Nightfall kann den serverseitigen Effekt aber nicht unabhängig prüfen.")));
         scroll = Float.MAX_VALUE;
     }
 
