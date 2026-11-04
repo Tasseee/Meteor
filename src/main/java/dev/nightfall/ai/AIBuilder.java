@@ -80,6 +80,9 @@ public final class AIBuilder {
     private static String materialName = "";
     private static String blueprintName = "";
     private static String status = "Builder bereit";
+    private static int preparedMaxBlocks = 200;
+    private static int preparedMaxHorizontal = 15;
+    private static int preparedMaxY = 10;
 
     private AIBuilder() {}
 
@@ -227,30 +230,39 @@ public final class AIBuilder {
     }
 
     public static String prepareCustomStructure(String name, String materialId, List<RelativeBlock> offsets) {
-        return prepareCustomStructure(name, null, materialId, offsets);
+        return prepareCustomStructure(name, null, materialId, offsets, 200, 15, 10);
+    }
+
+    /** Prepares the safe, automatically placeable subset of a locally imported schematic. */
+    public static String prepareImportedStructure(String name, List<RelativeBlock> offsets) {
+        return prepareCustomStructure(name, null, null, offsets, 5_000, 63, 63);
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial, List<RelativeBlock> offsets) {
-        return prepareCustomStructure(name, preferredMaterial, null, offsets);
+        return prepareCustomStructure(name, preferredMaterial, null, offsets, 200, 15, 10);
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial,
-                                                 String preferredMaterialId, List<RelativeBlock> offsets) {
+                                                 String preferredMaterialId, List<RelativeBlock> offsets,
+                                                 int maxBlocks, int maxHorizontal, int maxY) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (running) throw new IllegalArgumentException("Nightfall baut bereits. Stoppe den aktuellen Bau zuerst.");
         if (mc.player == null || mc.world == null || mc.interactionManager == null || mc.getNetworkHandler() == null)
             throw new IllegalArgumentException("Du musst dich zuerst in einer verbundenen Welt befinden.");
         if (name == null || name.isBlank() || !name.matches("[\\p{L}0-9 _.-]{1,48}"))
             throw new IllegalArgumentException("Der Bauplanname ist ungültig.");
-        if (offsets == null || offsets.isEmpty() || offsets.size() > 200)
-            throw new IllegalArgumentException("Ein eigener Bauplan muss zwischen 1 und 200 Blöcke enthalten.");
+        if (maxBlocks < 1 || maxHorizontal < 1 || maxY < 1
+                || offsets == null || offsets.isEmpty() || offsets.size() > maxBlocks)
+            throw new IllegalArgumentException("Der Bauplan überschreitet das sichere Blocklimit von " + maxBlocks + ".");
 
         Set<String> uniqueCoordinates = new HashSet<>();
         int maxX = 0, maxY = 0, maxZ = 0;
         for (RelativeBlock block : offsets) {
-            if (block == null || block.x() < 0 || block.x() > 15 || block.y() < 0 || block.y() > 10
-                    || block.z() < 0 || block.z() > 15)
-                throw new IllegalArgumentException("Der Bauplan überschreitet das erlaubte Raster (X/Z 0–15, Y 0–10).");
+            if (block == null || block.x() < 0 || block.x() > maxHorizontal
+                    || block.y() < 0 || block.y() > maxY
+                    || block.z() < 0 || block.z() > maxHorizontal)
+                throw new IllegalArgumentException("Der Bauplan überschreitet das erlaubte Raster (X/Z 0–"
+                        + maxHorizontal + ", Y 0–" + maxY + ").");
             String coordinateKey = block.x() + ":" + block.y() + ":" + block.z();
             if (!uniqueCoordinates.add(coordinateKey))
                 throw new IllegalArgumentException("Der Bauplan enthält doppelte Blockkoordinaten – auch mit unterschiedlichen Materialien sind doppelte Positionen nicht erlaubt.");
@@ -355,6 +367,9 @@ public final class AIBuilder {
         pendingTicks = 0;
         placementRetries = 0;
         prepared = true;
+        preparedMaxBlocks = maxBlocks;
+        preparedMaxHorizontal = maxHorizontal;
+        preparedMaxY = maxY;
         status = "Eigener Bauplan geprüft";
         return "Eigener Bauplan geprüft: „" + blueprintName + "“, " + offsets.size() + " Blöcke, "
                 + (maxX + 1) + " × " + (maxY + 1) + " × " + (maxZ + 1)
@@ -503,7 +518,8 @@ public final class AIBuilder {
         String id = blueprint.id;
         BlockItem approvedMaterial = material;
         if (blueprint == Blueprint.CUSTOM) {
-            prepareCustomStructure(blueprintName, approvedMaterial, List.copyOf(CUSTOM_OFFSETS));
+            prepareCustomStructure(blueprintName, approvedMaterial, null, List.copyOf(CUSTOM_OFFSETS),
+                    preparedMaxBlocks, preparedMaxHorizontal, preparedMaxY);
         } else {
             prepareStructure(id, approvedMaterial, null);
         }
