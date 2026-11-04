@@ -131,7 +131,7 @@ public final class AIActionRegistry {
                 "Create a custom connected blueprint with at most 200 blocks in a 16x16x11 grid. Coordinates are nonnegative x/y/z offsets; blocks must be connected face-to-face to solid ground or existing solid blocks. You may set an optional material item ID/name per block to create a palette; otherwise use the top-level material or Nightfall's selected full-cube hotbar block. Nightfall validates per-material counts and previews the plan before confirmation.",
                 customBlueprintSchema));
         JsonObject blueprintSearchSchema = objectSchema(property("query", "string",
-                "Search the local curated Minecraft blueprint and farm knowledge database, e.g. dripstone farm, iron farm, storage."), "query"));
+                "Search the local curated Minecraft blueprint and farm knowledge database, e.g. dripstone farm, iron farm, storage."), "query");
         tools.add(tool("search_blueprints",
                 "Search Nightfall's local version-aware blueprint knowledge base. Returns plans, prerequisites, provenance and honest tested/automation status. This is read-only and never starts building.",
                 blueprintSearchSchema));
