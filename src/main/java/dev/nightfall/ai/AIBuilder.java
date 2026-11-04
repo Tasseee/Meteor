@@ -198,12 +198,12 @@ public final class AIBuilder {
             }
         }
         for (BlockPos target : nextPlan) {
-            if (!mc.world.getBlockState(target).isReplaceable())
-                throw new IllegalArgumentException("Der Bauplatz ist nicht frei bei X=" + target.getX()
-                        + ", Y=" + target.getY() + ", Z=" + target.getZ() + ".");
             if (target.getY() < mc.world.getBottomY()
                     || target.getY() >= mc.world.getBottomY() + mc.world.getHeight())
                 throw new IllegalArgumentException("Der Bauplatz liegt außerhalb der Weltgrenzen.");
+            if (!mc.world.getBlockState(target).isReplaceable())
+                throw new IllegalArgumentException("Der Bauplatz ist nicht frei bei X=" + target.getX()
+                        + ", Y=" + target.getY() + ", Z=" + target.getZ() + ".");
         }
 
         PLAN.clear();
@@ -250,18 +250,22 @@ public final class AIBuilder {
         if (running) throw new IllegalArgumentException("Nightfall baut bereits. Stoppe den aktuellen Bau zuerst.");
         if (mc.player == null || mc.world == null || mc.interactionManager == null || mc.getNetworkHandler() == null)
             throw new IllegalArgumentException("Du musst dich zuerst in einer verbundenen Welt befinden.");
-        if (name == null || !name.matches("[\\p{L}0-9 _.-]{1,48}"))
+        if (name == null || name.isBlank() || !name.matches("[\\p{L}0-9 _.-]{1,48}"))
             throw new IllegalArgumentException("Der Bauplanname ist ungültig.");
         if (offsets == null || offsets.isEmpty() || offsets.size() > 200)
             throw new IllegalArgumentException("Ein eigener Bauplan muss zwischen 1 und 200 Blöcke enthalten.");
 
         Set<RelativeBlock> uniqueOffsets = new HashSet<>();
+        Set<String> uniqueCoordinates = new HashSet<>();
         int maxX = 0, maxY = 0, maxZ = 0;
         for (RelativeBlock block : offsets) {
             if (block == null || block.x() < 0 || block.x() > 15 || block.y() < 0 || block.y() > 10
                     || block.z() < 0 || block.z() > 15)
                 throw new IllegalArgumentException("Der Bauplan überschreitet das erlaubte Raster (X/Z 0–15, Y 0–10).");
-            if (!uniqueOffsets.add(block)) throw new IllegalArgumentException("Der Bauplan enthält doppelte Blockpositionen.");
+            String coordinateKey = block.x() + ":" + block.y() + ":" + block.z();
+            if (!uniqueCoordinates.add(coordinateKey))
+                throw new IllegalArgumentException("Der Bauplan enthält doppelte Blockkoordinaten – auch mit unterschiedlichen Materialien sind doppelte Positionen nicht erlaubt.");
+            uniqueOffsets.add(block);
             maxX = Math.max(maxX, block.x());
             maxY = Math.max(maxY, block.y());
             maxZ = Math.max(maxZ, block.z());
@@ -308,7 +312,8 @@ public final class AIBuilder {
                 throw new IllegalArgumentException("Der Bauplatz ist nicht frei bei X=" + target.getX()
                         + ", Y=" + target.getY() + ", Z=" + target.getZ() + ".");
             targets.add(target);
-            targetSet.add(target);
+            if (!targetSet.add(target))
+                throw new IllegalArgumentException("Der Bauplan enthält doppelte Zielpositionen.");
             targetMaterials.put(target, offsetMaterials.get(offset));
         }
 
@@ -484,6 +489,7 @@ public final class AIBuilder {
             }
             placementRetries++;
             pendingTarget = null;
+            pendingMaterial = null;
             pendingTicks = 0;
             notifyPlayer("Platzierung nicht bestätigt – ich versuche es erneut (" + placementRetries + "/" + MAX_PLACEMENT_RETRIES + ").");
             delay = 1;
