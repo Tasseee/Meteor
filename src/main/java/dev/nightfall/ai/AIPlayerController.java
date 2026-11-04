@@ -368,7 +368,7 @@ public final class AIPlayerController {
     }
 
     private static void validateNavigationRange(MinecraftClient mc, BlockPos target) {
-        if (target.getY() < mc.world.getBottomY() || target.getY() >= mc.world.getTopY())
+        if (target.getY() < mc.world.getBottomY() || target.getY() >= mc.world.getBottomY() + mc.world.getHeight())
             throw new IllegalArgumentException("Das Ziel liegt außerhalb der Weltgrenzen.");
         double horizontal = Math.hypot(target.getX() - mc.player.getX(), target.getZ() - mc.player.getZ());
         if (horizontal > MAX_PATH_RADIUS)
@@ -451,7 +451,7 @@ public final class AIPlayerController {
     }
 
     private static boolean canStandAt(MinecraftClient mc, BlockPos feet, PlayerEntity player) {
-        if (feet.getY() <= mc.world.getBottomY() || feet.getY() + 1 >= mc.world.getTopY()
+        if (feet.getY() <= mc.world.getBottomY() || feet.getY() + 1 >= mc.world.getBottomY() + mc.world.getHeight()
                 || !mc.world.isChunkLoaded(feet) || !mc.world.isChunkLoaded(feet.down())
                 || !mc.world.isChunkLoaded(feet.up())) return false;
 
