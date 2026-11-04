@@ -6,6 +6,8 @@ import com.google.gson.reflect.TypeToken;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import dev.nightfall.util.Storage;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -35,6 +37,13 @@ public final class InvSeeValue extends Module {
 
     private final BoolSetting showLastResult = add(new BoolSetting("Letzten Wert im HUD behalten", true));
     private final BoolSetting showUnknownCount = add(new BoolSetting("Nicht bewertete Items anzeigen", true));
+    private final BoolSetting autoOpenQueueOpponent = add(new BoolSetting("Bei RTPQ-Gegner automatisch /invsee", true));
+
+    private static final Pattern[] OPPONENT_PATTERNS = new Pattern[] {
+            Pattern.compile("(?i)(?:your\\s+opponent(?:\\s+is)?|opponent|dein(?:e)?\\s+gegner(?:\\s+ist)?|gegner(?:in)?)(?:\\s+gefunden)?\\s*[:=\\-»>]*\\s*([A-Za-z0-9_]{3,16})\\b"),
+            Pattern.compile("(?i)(?:you(?:'re|\\s+are)\\s+(?:now\\s+)?(?:matched|fighting)\\s+with|matched\\s+with|du\\s+spielst\\s+gegen|du\\s+bist\\s+gegen|du\\s+wurdest\\s+mit|match\\s+gegen|kampf\\s+gegen)\\s*[:=\\-»>]*\\s*([A-Za-z0-9_]{3,16})\\b"),
+            Pattern.compile("(?i)\\b([A-Za-z0-9_]{3,16})\\s+(?:is your opponent|ist dein gegner)\\b")
+    };
 
     private String pendingTarget;
     private int previousSyncId = -1;
@@ -104,20 +113,58 @@ public final class InvSeeValue extends Module {
         return PRICES.getOrDefault(itemId(stack), -1.0);
     }
 
-    /** Called only when the user actually sends an invsee-type server command. */
+    /** Observe the player's own queue / invsee commands; no hidden inventory requests are made. */
     public static void onOutgoingCommand(String command) {
         try {
             InvSeeValue module = dev.nightfall.module.ModuleManager.get(InvSeeValue.class);
             if (!module.isEnabled() || command == null) return;
-            String trimmed = command.trim();
+            String trimmed = command.trim().replaceFirst("^/", "");
+            if (trimmed.isEmpty()) return;
             String[] parts = trimmed.split("\\s+");
-            if (parts.length < 2) return;
             String root = parts[0].toLowerCase(Locale.ROOT);
-            if (!root.equals("invsee") && !root.equals("inventorysee") && !root.equals("openinv")) return;
-            if (mc.player == null) return;
-            module.pendingTarget = parts[1];
-            module.previousSyncId = mc.player.currentScreenHandler.syncId;
-            module.pendingUntil = System.currentTimeMillis() + 15_000L;
+            long now = System.currentTimeMillis();
+
+            if (root.equals("rtpq") || root.equals("rtpqueue")
+                    || (root.equals("trigger") && parts.length > 1 && parts[1].equalsIgnoreCase("rtpq"))) {
+                module.queueWatchUntil = now + 5 * 60_000L;
+                return;
+            }
+            if (root.equals("invsee") || root.equals("inventorysee") || root.equals("openinv")) {
+                if (parts.length < 2 || mc.player == null) return;
+                module.pendingTarget = parts[1];
+                module.previousSyncId = mc.player.currentScreenHandler.syncId;
+                module.pendingUntil = now + 15_000L;
+            }
+        } catch (IllegalStateException ignored) {
+        }
+    }
+
+    /** Called for server game/chat messages. Only a queue window opened by /rtpq arms this parser. */
+    public static void onGameMessage(String rawMessage) {
+        try {
+            InvSeeValue module = dev.nightfall.module.ModuleManager.get(InvSeeValue.class);
+            if (!module.isEnabled() || !module.autoOpenQueueOpponent.get()
+                    || rawMessage == null || System.currentTimeMillis() > module.queueWatchUntil
+                    || mc.player == null || mc.getNetworkHandler() == null) return;
+
+            String message = rawMessage.replaceAll("(?i)§[0-9A-FK-OR]", "")
+                    .replaceAll("\\[[^\\]]+\\]", " ").replaceAll("\\s+", " ").trim();
+            for (Pattern pattern : OPPONENT_PATTERNS) {
+                Matcher matcher = pattern.matcher(message);
+                if (!matcher.find()) continue;
+                String opponent = matcher.group(1);
+                if (opponent.equalsIgnoreCase(mc.player.getName().getString())) return;
+                if (!opponent.matches("[A-Za-z0-9_]{3,16}")) return;
+
+                module.pendingTarget = opponent;
+                module.previousSyncId = mc.player.currentScreenHandler.syncId;
+                module.pendingUntil = System.currentTimeMillis() + 15_000L;
+                module.queueWatchUntil = 0;
+                mc.getNetworkHandler().sendChatCommand("invsee " + opponent);
+                mc.player.sendMessage(net.minecraft.text.Text.literal(
+                        "[Nightfall] Gegner erkannt: " + opponent + " — /invsee wird geöffnet."), false);
+                return;
+            }
         } catch (IllegalStateException ignored) {
         }
     }
