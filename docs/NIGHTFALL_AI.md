@@ -1,13 +1,14 @@
-# Nightfall AI – Phase 2
+# Nightfall AI – Extensible Skills and Actions
 
-Nightfall AI adds an in-game chat companion. It can answer Minecraft questions and now supports one explicitly confirmed first world action: searching for a biome through the server's normal `/locate biome` command.
+Nightfall AI is an in-game Minecraft companion with an extensible, allow-listed tool system. The AI model may choose from the tools exposed by the client, but **the client validates every argument and controls every execution**.
 
 ## Setup
 
 1. Start Nightfall once. It creates `config/nightfall/ai.json`.
-2. Open that file and set `apiKey` to an API key from your chosen provider.
-3. Keep `baseUrl` and `model` aligned with that provider. The defaults target an OpenAI-compatible Chat Completions endpoint.
-4. Restart Minecraft or reopen the chat and send a message.
+2. Set `apiKey` to an API key from your chosen provider.
+3. Keep `baseUrl` and `model` aligned with that provider. The default points to an OpenAI-compatible Chat Completions endpoint.
+4. The model/provider must support Chat Completions function/tool calling.
+5. Restart Minecraft or reopen the chat and send a message.
 
 Example:
 
@@ -29,13 +30,30 @@ The key is stored locally as plain text in the Minecraft config folder. Do not u
 - Press **Escape** to close the chat.
 - Use the mouse wheel to scroll through the current conversation.
 
-When `shareWorldContext` is enabled, each request includes the current dimension, block position, and main-hand item. The chat UI shows whether this context is enabled. Chat messages and enabled context are sent to the configured provider.
+When `shareWorldContext` is enabled, each request includes the current dimension, block position, and main-hand item. Chat text and enabled context are sent to the configured provider.
 
-## Current limits
+## Available tools
 
-- KI-Antworten benötigen einen konfigurierten, erreichbaren Anbieter. Die lokal erkannte Biom-Suche funktioniert auch ohne API-Key.
+The AI model can select from a fixed client-side allow-list:
+
+| Tool | What it does | Confirmation |
+|---|---|---|
+| `locate_biome` | Sends the standard `/locate biome <id>` command for a supported biome | Required |
+| `add_waypoint` | Saves a waypoint at the current player position | Required |
+| `set_module_state` | Enables or disables one existing Nightfall module by exact name | Required |
+| `get_inventory` | Reads item names and counts from the player's 36 main inventory slots | Required; inventory data is sent to the AI provider |
+
+After a tool call, Nightfall displays a preview. The tool is executed only after the player clicks **AKTION AUSFÜHREN**. Cancelling returns a cancellation result to the model and does not execute the action.
+
+## Safety and current limitations
+
+- Tool calls are not arbitrary code. Nightfall never exposes shell execution, arbitrary Java, or a generic server-command tool.
+- The client validates the tool name and arguments against a fixed allow-list. The model cannot invent a new action.
+- Server permissions remain authoritative. The biome search command can fail on servers that do not permit `/locate`; Nightfall does not bypass permissions or teleport the player.
+- Tool-capable OpenAI-compatible models are required. Some endpoints may reject function calling.
+- A short follow-up tool loop is supported, with one tool call at a time and a bounded number of consecutive actions.
 - The conversation is kept in memory for the current chat screen; it is not persisted.
-- The first world action is a local, deterministic intent: requests such as “such mir einen Jungle” offer a confirmation button for `/locate biome minecraft:jungle` (and a small supported set of other biomes). The command is sent only after the user clicks **JA, BIOM SUCHEN**.
-- Server permissions remain authoritative. If the server rejects `/locate`, the command cannot make it work. Nightfall does not bypass permissions or teleport the player.
-- The command response is shown in the chat if a matching server feedback message is received. Some servers may hide or reformat command feedback, in which case Nightfall times out without inventing a result.
-- This is not yet general AI tool-calling, building, combat, or arbitrary command execution. Future actions should stay narrowly scoped, previewed, permission-checked, and explicitly confirmed; arbitrary model-generated code must never be executed.
+- This phase does not yet build structures, attack entities, navigate autonomously, use voice, or run arbitrary commands. Those capabilities can be added as separate, reviewed skills using the same interface.
+- When the inventory tool is approved, its result is sent back to the configured AI provider. Do not approve it if you do not want to share that inventory snapshot.
+
+Future skills should stay narrowly scoped, validated, previewed, and explicitly confirmed before world changes or data disclosure.

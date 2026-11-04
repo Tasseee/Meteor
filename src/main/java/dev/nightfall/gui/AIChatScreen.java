@@ -2,7 +2,7 @@ package dev.nightfall.gui;
 
 import dev.nightfall.ai.AIChatClient;
 import dev.nightfall.ai.AIConfig;
-import dev.nightfall.ai.AIIntentParser;
+import dev.nightfall.ai.AIActionRegistry;
 import dev.nightfall.util.Theme;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -35,7 +35,10 @@ public final class AIChatScreen extends Screen {
     private float scroll = Float.MAX_VALUE;
     private int panelX, panelY, panelW, panelH;
     private int sendX, sendY, sendW, sendH;
-    private String pendingBiome;
+    private AIActionRegistry.Action pendingAction;
+    private AIChatClient.ToolCall pendingToolCall;
+    private final List<AIChatClient.Message> apiHistory = new ArrayList<>();
+    private int actionRoundTrips;
     private int confirmX, confirmY, confirmW, confirmH;
     private int cancelX, cancelY, cancelW;
     private boolean waitingLocate;
@@ -107,7 +110,7 @@ public final class AIChatScreen extends Screen {
                 (waiting || waitingLocate) ? Theme.ACCENT : Theme.TEXT_DIM, false);
 
         int contentTop = panelY + 65;
-        int contentBottom = panelY + panelH - (pendingBiome == null ? 53 : 80);
+        int contentBottom = panelY + panelH - (pendingAction == null ? 53 : 80);
         int contentHeight = Math.max(30, contentBottom - contentTop);
         int left = panelX + 14;
         int right = panelX + panelW - 14;
@@ -144,7 +147,7 @@ public final class AIChatScreen extends Screen {
         }
         ctx.disableScissor();
 
-        if (pendingBiome != null) {
+        if (pendingAction != null) {
             confirmY = panelY + panelH - 65;
             confirmH = 20;
             confirmX = panelX + 14;
@@ -154,7 +157,7 @@ public final class AIChatScreen extends Screen {
             cancelW = confirmW;
 
             ctx.fill(confirmX, confirmY, confirmX + confirmW, confirmY + confirmH, Theme.ACCENT);
-            String confirmLabel = "JA, BIOM SUCHEN";
+            String confirmLabel = "AKTION AUSFÜHREN";
             ctx.drawText(mc.textRenderer, confirmLabel,
                     confirmX + (confirmW - mc.textRenderer.getWidth(confirmLabel)) / 2,
                     confirmY + 6, 0xFF071014, true);
@@ -252,18 +255,16 @@ public final class AIChatScreen extends Screen {
 
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
-        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && pendingBiome != null
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && pendingAction != null
                 && click.x() >= confirmX && click.x() <= confirmX + confirmW
                 && click.y() >= confirmY && click.y() <= confirmY + confirmH) {
-            executeBiomeSearch();
+            confirmPendingAction();
             return true;
         }
-        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && pendingBiome != null
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && pendingAction != null
                 && click.x() >= cancelX && click.x() <= cancelX + cancelW
                 && click.y() >= cancelY && click.y() <= cancelY + confirmH) {
-            pendingBiome = null;
-            history.add(new ChatLine("assistant", "Alles klar, ich habe die Biom-Suche abgebrochen."));
-            scroll = Float.MAX_VALUE;
+            cancelPendingAction();
             return true;
         }
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
@@ -282,32 +283,28 @@ public final class AIChatScreen extends Screen {
     }
 
     private void sendMessage() {
-        if (waiting || input.isBlank()) return;
+        if (waiting || pendingAction != null || input.isBlank()) return;
         String prompt = input.trim();
         input = "";
         history.add(new ChatLine("user", prompt));
+        apiHistory.add(new AIChatClient.Message("user", prompt));
+        actionRoundTrips = 0;
+        scroll = Float.MAX_VALUE;
+        requestAI();
+    }
 
-        String requestedBiome = AIIntentParser.findBiomeSearch(prompt);
-        if (requestedBiome != null) {
-            pendingBiome = requestedBiome;
-            String label = AIIntentParser.biomeLabel(requestedBiome);
+    private void requestAI() {
+        if (waiting || apiHistory.isEmpty()) return;
+        if (actionRoundTrips > 4) {
             history.add(new ChatLine("assistant",
-                    "Ich kann versuchen, das Biom \"" + label + "\" zu finden. Dafür würde ich den Serverbefehl "
-                            + "/locate biome " + requestedBiome + " senden. Der Server muss den Befehl erlauben. "
-                            + "Soll ich ihn jetzt ausführen?"));
-            status = "Aktion wartet auf deine Bestätigung";
+                    "Ich habe mehrere Aktionen nacheinander ausgeführt. Bitte gib mir den nächsten Auftrag separat."));
+            status = "Bitte nächste Aufgabe eingeben";
             scroll = Float.MAX_VALUE;
             return;
         }
 
-        List<AIChatClient.Message> requestHistory = history.stream()
-                .map(line -> new AIChatClient.Message(line.role(), line.content()))
-                .collect(Collectors.toList());
-        while (requestHistory.size() > 20) requestHistory.remove(0);
-
-        if (history.size() > 20) history.remove(0);
         int responseIndex = history.size();
-        history.add(new ChatLine("assistant", "Antwort wird geladen …"));
+        history.add(new ChatLine("assistant", "Nightfall AI denkt …"));
         waiting = true;
         status = "Verbinde mit dem KI-Anbieter …";
         scroll = Float.MAX_VALUE;
@@ -315,42 +312,84 @@ public final class AIChatScreen extends Screen {
         AIConfig.load();
         AIConfig.Settings settings = AIConfig.current();
         String context = settings.shareWorldContext() ? worldContext() : "";
-        AIChatClient.request(requestHistory, context, result -> {
-            history.set(responseIndex, new ChatLine("assistant", result.text()));
+        AIChatClient.request(new ArrayList<>(apiHistory), context, result -> {
             waiting = false;
-            status = result.success() ? "Antwort erhalten" : "Verbindung fehlgeschlagen";
+            if (!result.success()) {
+                history.set(responseIndex, new ChatLine("assistant", result.text()));
+                status = "Verbindung fehlgeschlagen";
+                scroll = Float.MAX_VALUE;
+                return;
+            }
+
+            if (result.toolCall() != null) {
+                AIChatClient.ToolCall call = result.toolCall();
+                apiHistory.add(AIChatClient.Message.assistantToolCall(result.rawAssistantMessage()));
+                try {
+                    pendingAction = AIActionRegistry.prepare(call.name(), call.arguments());
+                    pendingToolCall = call;
+                    history.set(responseIndex, new ChatLine("assistant",
+                            "Ich möchte folgende Aktion ausführen:\n" + pendingAction.preview()));
+                    status = "Aktion wartet auf deine Bestätigung";
+                    scroll = Float.MAX_VALUE;
+                } catch (IllegalArgumentException invalidAction) {
+                    apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(),
+                            "Nightfall hat die Aktion aus Sicherheitsgründen abgelehnt: " + invalidAction.getMessage()));
+                    history.set(responseIndex, new ChatLine("assistant",
+                            "Diese Aktion kann ich nicht ausführen: " + invalidAction.getMessage()));
+                    actionRoundTrips++;
+                    scroll = Float.MAX_VALUE;
+                    requestAI();
+                }
+                return;
+            }
+
+            history.set(responseIndex, new ChatLine("assistant", result.text()));
+            apiHistory.add(new AIChatClient.Message("assistant", result.text()));
+            status = "Antwort erhalten";
             scroll = Float.MAX_VALUE;
         });
     }
 
-    private void executeBiomeSearch() {
+    private void confirmPendingAction() {
+        if (pendingAction == null || pendingToolCall == null) return;
+        AIActionRegistry.Action action = pendingAction;
+        AIChatClient.ToolCall call = pendingToolCall;
+        pendingAction = null;
+        pendingToolCall = null;
+
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (pendingBiome == null) return;
-        if (mc.player == null || mc.player.networkHandler == null || mc.world == null) {
-            pendingBiome = null;
-            status = "Nicht mit einer Welt verbunden";
-            history.add(new ChatLine("assistant", "Ich kann gerade keinen Serverbefehl senden, weil du nicht in einer Welt bist."));
-            scroll = Float.MAX_VALUE;
-            return;
+        if ("locate_biome".equals(action.name())) {
+            locatingBiome = action.arguments().get("biome").getAsString();
+            waitingLocate = true;
+            locateDeadline = System.currentTimeMillis() + 30_000L;
         }
 
-        String biome = pendingBiome;
-        pendingBiome = null;
-        locatingBiome = biome;
-        waitingLocate = true;
-        locateDeadline = System.currentTimeMillis() + 30_000L;
-        status = "Warte auf Antwort des Servers …";
-        history.add(new ChatLine("assistant",
-                "Ich sende /locate biome " + biome + ". Ich warte auf die Rückmeldung des Servers."));
-        scroll = Float.MAX_VALUE;
+        String result;
         try {
-            mc.player.networkHandler.sendChatCommand("locate biome " + biome);
-        } catch (RuntimeException error) {
-            waitingLocate = false;
-            status = "Befehl konnte nicht gesendet werden";
-            history.add(new ChatLine("assistant",
-                    "Der Befehl konnte nicht gesendet werden. Möglicherweise ist die Verbindung nicht verfügbar."));
+            result = AIActionRegistry.execute(action);
+        } catch (RuntimeException | Error failure) {
+            result = "Aktion ist fehlgeschlagen: " + failure.getClass().getSimpleName();
         }
+        history.add(new ChatLine("assistant", "Nightfall: " + result));
+        apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), result));
+        actionRoundTrips++;
+        status = "Aktion ausgeführt · KI antwortet";
+        scroll = Float.MAX_VALUE;
+        requestAI();
+    }
+
+    private void cancelPendingAction() {
+        if (pendingAction == null || pendingToolCall == null) return;
+        AIChatClient.ToolCall call = pendingToolCall;
+        pendingAction = null;
+        pendingToolCall = null;
+        String result = "Der Spieler hat die Aktion vor der Ausführung abgebrochen. Es wurde nichts verändert.";
+        history.add(new ChatLine("assistant", "Alles klar. Ich habe nichts ausgeführt."));
+        apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), result));
+        actionRoundTrips++;
+        status = "Aktion abgebrochen";
+        scroll = Float.MAX_VALUE;
+        requestAI();
     }
 
     private void handleLocateMessage(String message) {
