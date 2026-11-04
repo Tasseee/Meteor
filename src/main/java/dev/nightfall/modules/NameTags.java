@@ -62,8 +62,8 @@ public final class NameTags extends Module {
                     player.getZ(), point)) continue;
 
             StringBuilder text = new StringBuilder(formattedName(player, showRank.get()));
-            if (showDistance.get()) text.append(" §7").append((int) distance).append("m");
-            if (showHealth.get()) text.append(" §c").append(Math.round(player.getHealth())).append("❤");
+            if (showDistance.get()) text.append(" ").append((int) distance).append("m");
+            if (showHealth.get()) text.append(" ").append(Math.round(player.getHealth())).append("hp");
             String label = text.toString();
             int width = mc.textRenderer.getWidth(label);
             int x = (int) point[0], y = (int) point[1];
