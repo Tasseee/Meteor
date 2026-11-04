@@ -236,6 +236,7 @@ public class ClickGuiScreen extends Screen {
         ctx.enableScissor(panelX, viewportTop, panelX + panelW, viewportBottom);
         float y = viewportTop - scroll;
         Module hovered = null;
+        hoveredModule = null;
         boolean modalOpen = editingMessages != null || editingString != null || editingColor != null;
         if (modalOpen) { clickL = false; clickM = false; }
 
