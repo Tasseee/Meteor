@@ -152,7 +152,7 @@ public final class AIBuilder {
     /** Revalidates the plan immediately before it begins. */
     public static String startStarterShelter() {
         if (!prepared) throw new IllegalArgumentException("Der Bauplan ist abgelaufen. Bitte fordere den Bau erneut an.");
-        String preview = prepareStarterShelter();
+        prepareStarterShelter();
         if (!prepared) return "Bau konnte nicht vorbereitet werden.";
         MinecraftClient mc = MinecraftClient.getInstance();
         originalSlot = mc.player.getInventory().getSelectedSlot();

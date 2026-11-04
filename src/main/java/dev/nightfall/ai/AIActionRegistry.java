@@ -131,7 +131,7 @@ public final class AIActionRegistry {
                         "execute", "function", "fill", "clone", "setblock", "place", "data", "loot",
                         "forceload").contains(root))
                     throw new IllegalArgumentException("Dieser Serververwaltungs- oder Welteditierbefehl ist aus Sicherheitsgründen gesperrt.");
-                yield new Action(name, args, "Nightfall sendet nach deiner Bestätigung exakt diesen Befehl an den aktuellen Server:\\n/"
+                yield new Action(name, args, "Nightfall sendet nach deiner Bestätigung exakt diesen Befehl an den aktuellen Server:\n/"
                         + command + "\\nDer Server entscheidet über Berechtigungen und Ausführung. Nightfall umgeht keine Rechte.");
             }
             case "build_starter_shelter" -> new Action(name, args, AIBuilder.prepareStarterShelter());
