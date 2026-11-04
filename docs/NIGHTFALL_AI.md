@@ -19,7 +19,7 @@ Example:
   "apiKey": "YOUR_API_KEY",
   "shareWorldContext": true,
   "audioBaseUrl": "https://api.openai.com/v1",
-  "transcriptionModel": "whisper-1",
+  "transcriptionModel": "gpt-4o-mini-transcribe",
   "speechModel": "gpt-4o-mini-tts",
   "speechVoice": "alloy",
   "voiceInputEnabled": false,
