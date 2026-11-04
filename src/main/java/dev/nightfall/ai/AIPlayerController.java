@@ -37,8 +37,9 @@ public final class AIPlayerController {
     private enum Mode { NONE, WALK, NAVIGATE, MINE, EAT }
 
     private static final int MAX_PATH_RADIUS = 48;
+    private static final int NAVIGATION_SEGMENT_LENGTH = 32;
     private static final int MAX_SEARCH_NODES = 8_000;
-    private static final int MAX_NAVIGATION_TICKS = 20 * 90;
+    private static final int MAX_NAVIGATION_TICKS = 20 * 60 * 5;
     private static final int MAX_MINING_TICKS = 20 * 30;
     private static final int MAX_EATING_TICKS = 80;
     private static final double MIN_PROGRESS = 0.025;
@@ -50,6 +51,7 @@ public final class AIPlayerController {
     private static int pathIndex;
     private static double lastWaypointDistance = Double.MAX_VALUE;
     private static List<BlockPos> path = List.of();
+    private static BlockPos navigationGoal;
     private static BlockPos miningPos;
     private static BlockState miningState;
     private static Direction miningSide = Direction.UP;
@@ -88,19 +90,23 @@ public final class AIPlayerController {
         MinecraftClient mc = MinecraftClient.getInstance();
         requireWorld(mc);
         BlockPos target = new BlockPos(x, y, z);
-        validateNavigationRange(mc, target);
-        List<BlockPos> planned = findPath(mc, target);
+        validateNavigationTarget(mc, target);
+        if (isAtGoal(mc, target)) return "Du bist bereits am gewünschten Ziel.";
+        List<BlockPos> planned = planNavigationSegment(mc, target);
         if (planned.isEmpty()) throw new IllegalArgumentException(
-                "Kein sicherer Weg gefunden. Ziel muss in geladenen Chunks liegen und über eine begehbare Route erreichbar sein.");
+                "Kein sicherer erster Wegabschnitt gefunden. Die Umgebung muss geladen sein und eine begehbare Route enthalten.");
         stop(null);
+        navigationGoal = target.toImmutable();
         path = List.copyOf(planned);
         pathIndex = 0;
         actionTicks = 0;
         stuckTicks = 0;
         lastWaypointDistance = Double.MAX_VALUE;
         mode = Mode.NAVIGATE;
-        notifyPlayer(mc, "Weg gefunden · " + path.size() + " Wegpunkte. Bewegung läuft; „Stopp“ bricht ab.");
-        return "Weg gefunden (" + path.size() + " Wegpunkte). Nightfall navigiert innerhalb der geladenen Umgebung zum Ziel.";
+        notifyPlayer(mc, "Erster Wegabschnitt gefunden · " + path.size()
+                + " Wegpunkte. Weitere Abschnitte werden automatisch geplant; „Stopp“ bricht ab.");
+        return "Erster Wegabschnitt gefunden (" + path.size() + " Wegpunkte). Nightfall navigiert in sicheren, "
+                + "nachgeladenen Abschnitten zum Ziel. Gesamtrouten dürfen länger als 48 Blöcke sein.";
     }
 
     /** Moves to a safe adjacent stand position; used for approaching a moving hostile. */
@@ -126,6 +132,7 @@ public final class AIPlayerController {
                 if (planned.isEmpty()) continue;
                 stop(null);
                 path = List.copyOf(planned);
+                navigationGoal = candidate.toImmutable();
                 pathIndex = 0;
                 actionTicks = 0;
                 stuckTicks = 0;
@@ -252,8 +259,19 @@ public final class AIPlayerController {
             return;
         }
         if (pathIndex >= path.size()) {
-            stop("Ziel erreicht.");
-            return;
+            if (navigationGoal == null || isAtGoal(mc, navigationGoal)) {
+                stop("Ziel erreicht.");
+                return;
+            }
+            List<BlockPos> nextSegment = planNavigationSegment(mc, navigationGoal);
+            if (nextSegment.isEmpty()) {
+                stop("Navigation gestoppt: Der nächste sichere Wegabschnitt ist noch nicht geladen oder nicht begehbar.");
+                return;
+            }
+            path = List.copyOf(nextSegment);
+            pathIndex = 0;
+            stuckTicks = 0;
+            lastWaypointDistance = Double.MAX_VALUE;
         }
         BlockPos waypoint = path.get(pathIndex);
         Vec3d destination = new Vec3d(waypoint.getX() + 0.5, waypoint.getY(), waypoint.getZ() + 0.5);
@@ -340,6 +358,7 @@ public final class AIPlayerController {
         stuckTicks = 0;
         pathIndex = 0;
         path = List.of();
+        navigationGoal = null;
         miningPos = null;
         miningState = null;
         foodSlot = -1;
@@ -368,12 +387,63 @@ public final class AIPlayerController {
     }
 
     private static void validateNavigationRange(MinecraftClient mc, BlockPos target) {
-        if (target.getY() < mc.world.getBottomY() || target.getY() >= mc.world.getBottomY() + mc.world.getHeight())
-            throw new IllegalArgumentException("Das Ziel liegt außerhalb der Weltgrenzen.");
+        validateNavigationTarget(mc, target);
         double horizontal = Math.hypot(target.getX() - mc.player.getX(), target.getZ() - mc.player.getZ());
         if (horizontal > MAX_PATH_RADIUS)
-            throw new IllegalArgumentException("Das Ziel ist weiter als " + MAX_PATH_RADIUS
-                    + " Blöcke entfernt. Nutze Zwischenziele, damit Nightfall nur geladene Umgebung plant.");
+            throw new IllegalArgumentException("Der lokale Annäherungspunkt liegt außerhalb des Suchradius.");
+    }
+
+    private static void validateNavigationTarget(MinecraftClient mc, BlockPos target) {
+        int topExclusive = mc.world.getBottomY() + mc.world.getHeight();
+        if (target.getY() < mc.world.getBottomY() || target.getY() >= topExclusive)
+            throw new IllegalArgumentException("Das Ziel liegt außerhalb der Weltgrenzen.");
+        if (Math.abs((long) target.getX()) > 30_000_000L || Math.abs((long) target.getZ()) > 30_000_000L)
+            throw new IllegalArgumentException("Das Ziel liegt außerhalb der Minecraft-Weltkoordinaten.");
+    }
+
+    private static boolean isAtGoal(MinecraftClient mc, BlockPos goal) {
+        double horizontal = Math.hypot(goal.getX() + 0.5 - mc.player.getX(),
+                goal.getZ() + 0.5 - mc.player.getZ());
+        return horizontal <= 1.0 && Math.abs(mc.player.getY() - goal.getY()) <= 1.25;
+    }
+
+    private static List<BlockPos> planNavigationSegment(MinecraftClient mc, BlockPos finalGoal) {
+        double dx = finalGoal.getX() + 0.5 - mc.player.getX();
+        double dz = finalGoal.getZ() + 0.5 - mc.player.getZ();
+        double horizontal = Math.hypot(dx, dz);
+        boolean segmented = horizontal > MAX_PATH_RADIUS - 4;
+        double step = segmented ? NAVIGATION_SEGMENT_LENGTH : horizontal;
+        double ratio = horizontal < 0.001 ? 0.0 : Math.min(1.0, step / horizontal);
+        int anchorX = (int) Math.floor(mc.player.getX() + dx * ratio);
+        int anchorZ = (int) Math.floor(mc.player.getZ() + dz * ratio);
+        int anchorY = segmented
+                ? (int) Math.round(mc.player.getY() + (finalGoal.getY() - mc.player.getY()) * ratio)
+                : finalGoal.getY();
+        BlockPos anchor = new BlockPos(anchorX, anchorY, anchorZ);
+        BlockPos start = BlockPos.ofFloored(mc.player.getX(), mc.player.getY(), mc.player.getZ());
+
+        List<BlockPos> candidates = new ArrayList<>();
+        int maxOffset = segmented ? 3 : 2;
+        for (int dy = -2; dy <= 2; dy++) {
+            for (int x = -maxOffset; x <= maxOffset; x++) {
+                for (int z = -maxOffset; z <= maxOffset; z++) {
+                    if (Math.abs(x) + Math.abs(z) > maxOffset * 2) continue;
+                    BlockPos candidate = anchor.add(x, dy, z);
+                    if (candidate.equals(start) || !canStandAt(mc, candidate, mc.player)) continue;
+                    candidates.add(candidate);
+                }
+            }
+        }
+        candidates.sort(Comparator
+                .comparingDouble((BlockPos p) -> p.getSquaredDistance(anchor))
+                .thenComparingDouble(p -> p.getSquaredDistance(finalGoal)));
+        int attempts = 0;
+        for (BlockPos candidate : candidates) {
+            List<BlockPos> planned = findPath(mc, candidate);
+            if (!planned.isEmpty()) return planned;
+            if (++attempts >= 16) break;
+        }
+        return List.of();
     }
 
     private static List<BlockPos> findPath(MinecraftClient mc, BlockPos requestedTarget) {
