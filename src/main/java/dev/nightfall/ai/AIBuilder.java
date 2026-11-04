@@ -244,14 +244,14 @@ public final class AIBuilder {
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial,
                                                  String preferredMaterialId, List<RelativeBlock> offsets,
-                                                 int maxBlocks, int maxHorizontal, int maxY) {
+                                                 int maxBlocks, int maxHorizontal, int maxVerticalLimit) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (running) throw new IllegalArgumentException("Nightfall baut bereits. Stoppe den aktuellen Bau zuerst.");
         if (mc.player == null || mc.world == null || mc.interactionManager == null || mc.getNetworkHandler() == null)
             throw new IllegalArgumentException("Du musst dich zuerst in einer verbundenen Welt befinden.");
         if (name == null || name.isBlank() || !name.matches("[\\p{L}0-9 _.-]{1,48}"))
             throw new IllegalArgumentException("Der Bauplanname ist ungültig.");
-        if (maxBlocks < 1 || maxHorizontal < 1 || maxY < 1
+        if (maxBlocks < 1 || maxHorizontal < 1 || maxVerticalLimit < 1
                 || offsets == null || offsets.isEmpty() || offsets.size() > maxBlocks)
             throw new IllegalArgumentException("Der Bauplan überschreitet das sichere Blocklimit von " + maxBlocks + ".");
 
@@ -259,10 +259,10 @@ public final class AIBuilder {
         int maxX = 0, maxY = 0, maxZ = 0;
         for (RelativeBlock block : offsets) {
             if (block == null || block.x() < 0 || block.x() > maxHorizontal
-                    || block.y() < 0 || block.y() > maxY
+                    || block.y() < 0 || block.y() > maxVerticalLimit
                     || block.z() < 0 || block.z() > maxHorizontal)
                 throw new IllegalArgumentException("Der Bauplan überschreitet das erlaubte Raster (X/Z 0–"
-                        + maxHorizontal + ", Y 0–" + maxY + ").");
+                        + maxHorizontal + ", Y 0–" + maxVerticalLimit + ").");
             String coordinateKey = block.x() + ":" + block.y() + ":" + block.z();
             if (!uniqueCoordinates.add(coordinateKey))
                 throw new IllegalArgumentException("Der Bauplan enthält doppelte Blockkoordinaten – auch mit unterschiedlichen Materialien sind doppelte Positionen nicht erlaubt.");
@@ -369,7 +369,7 @@ public final class AIBuilder {
         prepared = true;
         preparedMaxBlocks = maxBlocks;
         preparedMaxHorizontal = maxHorizontal;
-        preparedMaxY = maxY;
+        preparedMaxY = maxVerticalLimit;
         status = "Eigener Bauplan geprüft";
         return "Eigener Bauplan geprüft: „" + blueprintName + "“, " + offsets.size() + " Blöcke, "
                 + (maxX + 1) + " × " + (maxY + 1) + " × " + (maxZ + 1)
