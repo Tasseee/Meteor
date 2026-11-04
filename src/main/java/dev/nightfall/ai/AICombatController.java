@@ -71,7 +71,7 @@ public final class AICombatController {
         }
 
         if (target == null || !target.isAlive() || target.isRemoved()
-                || mc.player.getPos().squaredDistanceTo(target.getPos()) > (ACQUIRE_RANGE + 6.0) * (ACQUIRE_RANGE + 6.0)) {
+                || mc.player.squaredDistanceTo(target.getX(), target.getY(), target.getZ()) > (ACQUIRE_RANGE + 6.0) * (ACQUIRE_RANGE + 6.0)) {
             target = findNearest(mc);
             if (target == null) {
                 stop("Kein feindlicher Mob mehr in der Nähe. Kampf beendet.");
@@ -79,7 +79,7 @@ public final class AICombatController {
             }
         }
 
-        double distanceSquared = mc.player.getPos().squaredDistanceTo(target.getPos());
+        double distanceSquared = mc.player.squaredDistanceTo(target.getX(), target.getY(), target.getZ());
         if (distanceSquared > MELEE_RANGE * MELEE_RANGE) {
             if (!AIPlayerController.isNavigating()
                     && !AIPlayerController.navigateNear(target.getBlockPos(), 1)) {
@@ -125,7 +125,7 @@ public final class AICombatController {
         List<HostileEntity> hostiles = mc.world.getEntitiesByClass(HostileEntity.class,
                 mc.player.getBoundingBox().expand(ACQUIRE_RANGE), entity -> entity.isAlive() && !entity.isRemoved());
         return hostiles.stream()
-                .min(Comparator.comparingDouble(entity -> mc.player.getPos().squaredDistanceTo(entity.getPos())))
+                .min(Comparator.comparingDouble(entity -> mc.player.squaredDistanceTo(entity.getX(), entity.getY(), entity.getZ())))
                 .orElse(null);
     }
 
