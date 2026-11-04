@@ -152,8 +152,17 @@ public final class ModuleManager {
             } catch (Throwable t) {
                 Nightfall.LOGGER.error("Fehler in Modul {} - Modul wird deaktiviert", m.getName(), t);
                 errorCount++;
-                m.setEnabled(false);
+                disableAfterFailure(m);
             }
+        }
+    }
+
+    private static void disableAfterFailure(Module module) {
+        try {
+            module.setEnabled(false);
+        } catch (Throwable cleanupError) {
+            Nightfall.LOGGER.error("Cleanup-Fehler in Modul {}", module.getName(), cleanupError);
+            errorCount++;
         }
     }
 
@@ -168,7 +177,7 @@ public final class ModuleManager {
             } catch (Throwable t) {
                 Nightfall.LOGGER.error("Render-Fehler in Modul {} - Modul wird deaktiviert", m.getName(), t);
                 errorCount++;
-                m.setEnabled(false);
+                disableAfterFailure(m);
             }
         }
     }
