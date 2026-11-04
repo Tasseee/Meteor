@@ -255,7 +255,6 @@ public final class AIBuilder {
         if (offsets == null || offsets.isEmpty() || offsets.size() > 200)
             throw new IllegalArgumentException("Ein eigener Bauplan muss zwischen 1 und 200 Blöcke enthalten.");
 
-        Set<RelativeBlock> uniqueOffsets = new HashSet<>();
         Set<String> uniqueCoordinates = new HashSet<>();
         int maxX = 0, maxY = 0, maxZ = 0;
         for (RelativeBlock block : offsets) {
@@ -265,7 +264,6 @@ public final class AIBuilder {
             String coordinateKey = block.x() + ":" + block.y() + ":" + block.z();
             if (!uniqueCoordinates.add(coordinateKey))
                 throw new IllegalArgumentException("Der Bauplan enthält doppelte Blockkoordinaten – auch mit unterschiedlichen Materialien sind doppelte Positionen nicht erlaubt.");
-            uniqueOffsets.add(block);
             maxX = Math.max(maxX, block.x());
             maxY = Math.max(maxY, block.y());
             maxZ = Math.max(maxZ, block.z());
@@ -387,13 +385,21 @@ public final class AIBuilder {
 
     private static BlockItem resolveMaterial(Map<BlockItem, Integer> counts, String requestedId) {
         String requested = requestedId.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
+        String displayQuery = requestedId.trim().toLowerCase(Locale.ROOT);
+        BlockItem partialMatch = null;
         for (BlockItem item : counts.keySet()) {
             Identifier itemId = Registries.ITEM.getId(item);
             String displayName = item.getName().getString().toLowerCase(Locale.ROOT);
             if (itemId.toString().equals(requested) || itemId.getPath().equals(requested)
-                    || displayName.equals(requestedId.trim().toLowerCase(Locale.ROOT))
-                    || displayName.contains(requestedId.trim().toLowerCase(Locale.ROOT))) return item;
+                    || displayName.equals(displayQuery)) return item;
+            if (displayName.contains(displayQuery)) {
+                if (partialMatch != null && partialMatch != item)
+                    throw new IllegalArgumentException("Das Material „" + requestedId
+                            + "“ ist in deiner Hotbar mehrdeutig. Bitte nenne die genaue Minecraft-Item-ID.");
+                partialMatch = item;
+            }
         }
+        if (partialMatch != null) return partialMatch;
         throw new IllegalArgumentException("Das gewünschte Baumaterial " + requestedId
                 + " befindet sich nicht als voller Block in deiner Hotbar.");
     }
