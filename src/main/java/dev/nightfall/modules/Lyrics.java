@@ -16,7 +16,6 @@ import net.minecraft.block.Blocks;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.decoration.DisplayEntity;
-import net.minecraft.particle.ParticleTypes;
 import net.minecraft.text.Text;
 import net.minecraft.text.TextColor;
 import net.minecraft.util.hit.HitResult;
@@ -295,14 +294,7 @@ public final class Lyrics extends Module {
         if (elapsed < FADE_IN_MS) alpha = (int) Math.min(255, elapsed * 255.0 / FADE_IN_MS);
         else if (remaining < FADE_OUT_MS) alpha = (int) Math.max(0, remaining * 255.0 / FADE_OUT_MS);
         setOpacity(activeDisplay, alpha);
-        if (mc.options != null && mc.options.particles != null && mc.options.particles.getValue() != null
-                && mc.options.particles.getValue() != net.minecraft.particle.ParticlesMode.MINIMAL
-                && alpha > 180 && (now / 450L) % 3L == 0L) {
-            Vec3d p = activeDisplay.getPos();
-            mc.world.addParticleClient(ParticleTypes.END_ROD,
-                    p.x + (Math.random() - 0.5) * 0.35, p.y + 0.08,
-                    p.z + (Math.random() - 0.5) * 0.35, 0.0, 0.008, 0.0);
-        }
+
     }
 
     private void fadeActive(long now) {
