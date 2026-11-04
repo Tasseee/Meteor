@@ -44,10 +44,11 @@ public final class AIChatClient {
             nichtnegative ganzzahlige Offsets in X/Z 0–15 und Y 0–10. Jeder Block muss über eine
             Seitenfläche mit einem anderen Planblock verbunden sein oder direkt an einem bestehenden
             festen Block anliegen; es darf keine schwebenden oder getrennten Teile geben.
-            Plane praktisch und sinnvoll: zuerst Boden/Fundament, dann Wände/Stützen, dann Dach/Details.
-            Nutze nur einen Full-Block-Materialtyp, übergib bei Materialwunsch die Item-ID, und erfinde
-            keine weiteren Werkzeuge oder Vorlagen. Nightfall prüft alle Positionen und Materialmengen,
-            bevor der Spieler den vollständigen Bau bestätigt.
+            Plane zuerst Fundament/Boden, dann Stützen/Wände, zum Schluss Dach und Details. Du kannst
+            pro Block optional ein material-Feld mit einer Minecraft-Item-ID oder einem Blocknamen setzen,
+            wenn ein Material für diesen Teil sinnvoll ist. Verwende keine Materialnamen, deren Verfügbarkeit
+            du nicht kennst. Nightfall prüft die verfügbaren Mengen je Material und bestätigt den Plan,
+            bevor ein Block gesetzt wird. Erfinde keine Werkzeuge oder nicht vorhandenen Weltkoordinaten.
 
             Erfinde niemals Werkzeuge, Befehle, Koordinaten oder Ergebnisse. Es gibt kein Shell-, Code-
             oder beliebiges Serverkommando-Werkzeug. Wenn keine passende Fähigkeit verfügbar ist,

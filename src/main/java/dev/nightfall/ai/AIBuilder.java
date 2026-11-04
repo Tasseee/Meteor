@@ -54,14 +54,18 @@ public final class AIBuilder {
         }
     }
 
-    public record RelativeBlock(int x, int y, int z) {}
+    public record RelativeBlock(int x, int y, int z, String materialId) {
+        public RelativeBlock(int x, int y, int z) { this(x, y, z, null); }
+    }
 
     private static final List<BlockPos> PLAN = new ArrayList<>();
+    private static final Map<BlockPos, BlockItem> PLAN_MATERIALS = new LinkedHashMap<>();
     private static final List<RelativeBlock> CUSTOM_OFFSETS = new ArrayList<>();
     private static BlockItem material;
     private static Blueprint blueprint;
     private static Identifier dimension;
     private static BlockPos pendingTarget;
+    private static BlockItem pendingMaterial;
     private static BlockPos preparedPlayerPos;
     private static Direction preparedFacing;
     private static int index;
@@ -204,6 +208,8 @@ public final class AIBuilder {
 
         PLAN.clear();
         PLAN.addAll(nextPlan);
+        PLAN_MATERIALS.clear();
+        pendingMaterial = null;
         material = selected;
         blueprint = selectedBlueprint;
         blueprintName = selectedBlueprint.label;
@@ -261,46 +267,29 @@ public final class AIBuilder {
             maxZ = Math.max(maxZ, block.z());
         }
 
-        Map<BlockItem, Integer> counts = new LinkedHashMap<>();
-        for (int slot = 0; slot < 9; slot++) {
-            ItemStack stack = mc.player.getInventory().getStack(slot);
-            if (!(stack.getItem() instanceof BlockItem item)) continue;
-            BlockState state = item.getBlock().getDefaultState();
-            BlockPos sample = mc.player.getBlockPos();
-            if (item.getBlock() instanceof FallingBlock || state.getCollisionShape(mc.world, sample).isEmpty()
-                    || !state.isFullCube(mc.world, sample)) continue;
-            counts.merge(item, stack.getCount(), Integer::sum);
-        }
+        Map<BlockItem, Integer> counts = collectHotbarMaterials(mc);
         BlockItem selected = preferredMaterial;
-        int available = selected == null ? 0 : counts.getOrDefault(selected, 0);
-        if (selected == null && preferredMaterialId != null && !preferredMaterialId.isBlank()) {
-            String requested = preferredMaterialId.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
-            for (Map.Entry<BlockItem, Integer> entry : counts.entrySet()) {
-                Identifier itemId = Registries.ITEM.getId(entry.getKey());
-                String displayName = entry.getKey().getName().getString().toLowerCase(Locale.ROOT);
-                if (itemId.toString().equals(requested) || itemId.getPath().equals(requested)
-                        || displayName.equals(preferredMaterialId.trim().toLowerCase(Locale.ROOT))
-                        || displayName.contains(preferredMaterialId.trim().toLowerCase(Locale.ROOT))) {
-                    selected = entry.getKey();
-                    available = entry.getValue();
-                    break;
-                }
-            }
-            if (selected == null)
-                throw new IllegalArgumentException("Das gewünschte Baumaterial " + preferredMaterialId
-                        + " befindet sich nicht als voller Block in deiner Hotbar.");
+        if (selected == null && preferredMaterialId != null && !preferredMaterialId.isBlank())
+            selected = resolveMaterial(counts, preferredMaterialId);
+        if (selected == null) selected = mostAvailable(counts);
+
+        Map<BlockItem, Integer> requiredCounts = new LinkedHashMap<>();
+        Map<RelativeBlock, BlockItem> offsetMaterials = new LinkedHashMap<>();
+        for (RelativeBlock offset : offsets) {
+            BlockItem blockMaterial = offset.materialId() == null || offset.materialId().isBlank()
+                    ? selected : resolveMaterial(counts, offset.materialId());
+            if (blockMaterial == null)
+                throw new IllegalArgumentException("Für jeden Block ohne eigenes Material muss ein passender Full-Block-Typ in der Hotbar liegen.");
+            offsetMaterials.put(offset, blockMaterial);
+            requiredCounts.merge(blockMaterial, 1, Integer::sum);
         }
-        if (selected == null) {
-            for (Map.Entry<BlockItem, Integer> entry : counts.entrySet()) {
-                if (entry.getValue() > available) {
-                    selected = entry.getKey();
-                    available = entry.getValue();
-                }
-            }
+        for (Map.Entry<BlockItem, Integer> requirement : requiredCounts.entrySet()) {
+            int found = counts.getOrDefault(requirement.getKey(), 0);
+            if (found < requirement.getValue())
+                throw new IllegalArgumentException("Für " + requirement.getKey().getName().getString()
+                        + " brauche ich " + requirement.getValue() + " Blöcke, in der Hotbar liegen aber nur " + found + ".");
         }
-        if (selected == null || available < offsets.size())
-            throw new IllegalArgumentException("Für diesen Bauplan brauche ich " + offsets.size()
-                    + " volle Blöcke derselben Sorte in der Hotbar. Gefunden: " + available + ".");
+        if (selected == null) selected = offsetMaterials.values().iterator().next();
 
         ClientPlayerEntity player = mc.player;
         Direction forward = player.getHorizontalFacing();
@@ -308,6 +297,7 @@ public final class AIBuilder {
         BlockPos origin = player.getBlockPos().offset(forward, 1).offset(right, -((maxX + 1) / 2));
         List<BlockPos> targets = new ArrayList<>(offsets.size());
         Set<BlockPos> targetSet = new HashSet<>();
+        Map<BlockPos, BlockItem> targetMaterials = new LinkedHashMap<>();
         for (RelativeBlock offset : offsets) {
             BlockPos target = origin.add(right.getOffsetX() * offset.x() + forward.getOffsetX() * offset.z(),
                     offset.y(), right.getOffsetZ() * offset.x() + forward.getOffsetZ() * offset.z());
@@ -319,6 +309,7 @@ public final class AIBuilder {
                         + ", Y=" + target.getY() + ", Z=" + target.getZ() + ".");
             targets.add(target);
             targetSet.add(target);
+            targetMaterials.put(target, offsetMaterials.get(offset));
         }
 
         // Breadth-first ordering starts at blocks attached to existing solid world blocks.
@@ -350,12 +341,15 @@ public final class AIBuilder {
 
         PLAN.clear();
         PLAN.addAll(ordered);
+        PLAN_MATERIALS.clear();
+        for (BlockPos position : ordered) PLAN_MATERIALS.put(position, targetMaterials.get(position));
+        pendingMaterial = null;
         CUSTOM_OFFSETS.clear();
         CUSTOM_OFFSETS.addAll(offsets);
         material = selected;
         blueprint = Blueprint.CUSTOM;
         blueprintName = name.trim();
-        materialName = selected.getName().getString();
+        materialName = describeMaterials(requiredCounts);
         dimension = mc.world.getRegistryKey().getValue();
         preparedPlayerPos = player.getBlockPos().toImmutable();
         preparedFacing = forward;
@@ -368,8 +362,54 @@ public final class AIBuilder {
         status = "Eigener Bauplan geprüft";
         return "Eigener Bauplan geprüft: „" + blueprintName + "“, " + offsets.size() + " Blöcke, "
                 + (maxX + 1) + " × " + (maxY + 1) + " × " + (maxZ + 1)
-                + " Raster, Material: " + materialName + " × " + offsets.size()
+                + " Raster, Materialien: " + materialName
                 + ". Alle Zielpositionen sind frei und die Teile sind mit dem Boden oder bestehenden Blöcken verbunden.";
+    }
+
+    private static Map<BlockItem, Integer> collectHotbarMaterials(MinecraftClient mc) {
+        Map<BlockItem, Integer> counts = new LinkedHashMap<>();
+        BlockPos sample = mc.player.getBlockPos();
+        for (int slot = 0; slot < 9; slot++) {
+            ItemStack stack = mc.player.getInventory().getStack(slot);
+            if (!(stack.getItem() instanceof BlockItem item)) continue;
+            BlockState state = item.getBlock().getDefaultState();
+            if (item.getBlock() instanceof FallingBlock || state.getCollisionShape(mc.world, sample).isEmpty()
+                    || !state.isFullCube(mc.world, sample)) continue;
+            counts.merge(item, stack.getCount(), Integer::sum);
+        }
+        return counts;
+    }
+
+    private static BlockItem resolveMaterial(Map<BlockItem, Integer> counts, String requestedId) {
+        String requested = requestedId.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
+        for (BlockItem item : counts.keySet()) {
+            Identifier itemId = Registries.ITEM.getId(item);
+            String displayName = item.getName().getString().toLowerCase(Locale.ROOT);
+            if (itemId.toString().equals(requested) || itemId.getPath().equals(requested)
+                    || displayName.equals(requestedId.trim().toLowerCase(Locale.ROOT))
+                    || displayName.contains(requestedId.trim().toLowerCase(Locale.ROOT))) return item;
+        }
+        throw new IllegalArgumentException("Das gewünschte Baumaterial " + requestedId
+                + " befindet sich nicht als voller Block in deiner Hotbar.");
+    }
+
+    private static BlockItem mostAvailable(Map<BlockItem, Integer> counts) {
+        BlockItem selected = null;
+        int available = 0;
+        for (Map.Entry<BlockItem, Integer> entry : counts.entrySet()) {
+            if (entry.getValue() > available) {
+                selected = entry.getKey();
+                available = entry.getValue();
+            }
+        }
+        return selected;
+    }
+
+    private static String describeMaterials(Map<BlockItem, Integer> requirements) {
+        List<String> parts = new ArrayList<>();
+        for (Map.Entry<BlockItem, Integer> entry : requirements.entrySet())
+            parts.add(entry.getKey().getName().getString() + " × " + entry.getValue());
+        return String.join(", ", parts);
     }
 
     private static BlockPos at(BlockPos origin, Direction right, Direction forward, int x, int z, int y) {
@@ -423,7 +463,8 @@ public final class AIBuilder {
 
         if (pendingTarget != null) {
             BlockState pendingState = mc.world.getBlockState(pendingTarget);
-            if (pendingState.isOf(material.getBlock())) {
+            if (pendingMaterial != null && pendingState.isOf(pendingMaterial.getBlock())) {
+                pendingMaterial = null;
                 index++;
                 pendingTarget = null;
                 pendingTicks = 0;
@@ -455,14 +496,19 @@ public final class AIBuilder {
         }
         BlockPos target = PLAN.get(index);
         BlockState present = mc.world.getBlockState(target);
-        if (present.isOf(material.getBlock())) { index++; progressNotice(); return; }
+        BlockItem targetMaterial = PLAN_MATERIALS.getOrDefault(target, material);
+        if (targetMaterial == null) {
+            stopInternal("Bau gestoppt: Für den nächsten Block ist kein Baumaterial zugeordnet.", true);
+            return;
+        }
+        if (present.isOf(targetMaterial.getBlock())) { index++; progressNotice(); return; }
         if (!present.isReplaceable()) {
             stopInternal("Bau gestoppt: Bei X=" + target.getX() + ", Y=" + target.getY() + ", Z=" + target.getZ()
                     + " ist inzwischen ein anderer Block im Weg.", true);
             return;
         }
 
-        int slot = findMaterialSlot(player);
+        int slot = findMaterialSlot(player, targetMaterial);
         if (slot < 0) { stopInternal("Bau gestoppt: Das Baumaterial fehlt in der Hotbar.", true); return; }
         if (player.getInventory().getSelectedSlot() != slot) {
             player.getInventory().setSelectedSlot(slot);
@@ -484,6 +530,7 @@ public final class AIBuilder {
         mc.interactionManager.interactBlock(player, Hand.MAIN_HAND, hit);
         player.swingHand(Hand.MAIN_HAND);
         pendingTarget = target.toImmutable();
+        pendingMaterial = targetMaterial;
         pendingTicks = 0;
         delay = 2;
     }
@@ -500,10 +547,10 @@ public final class AIBuilder {
         return null;
     }
 
-    private static int findMaterialSlot(ClientPlayerEntity player) {
+    private static int findMaterialSlot(ClientPlayerEntity player, BlockItem expectedMaterial) {
         for (int slot = 0; slot < 9; slot++) {
             ItemStack stack = player.getInventory().getStack(slot);
-            if (!stack.isEmpty() && stack.isOf(material)) return slot;
+            if (!stack.isEmpty() && stack.isOf(expectedMaterial)) return slot;
         }
         return -1;
     }
@@ -527,7 +574,9 @@ public final class AIBuilder {
         if (running) return;
         prepared = false;
         PLAN.clear();
+        PLAN_MATERIALS.clear();
         material = null;
+        pendingMaterial = null;
         blueprint = null;
         blueprintName = "";
         CUSTOM_OFFSETS.clear();
@@ -558,12 +607,15 @@ public final class AIBuilder {
         waitingForReach = false;
         prepared = false;
         pendingTarget = null;
+        pendingMaterial = null;
         pendingTicks = 0;
         placementRetries = 0;
         status = message;
         if (notify) notifyPlayer(message);
         PLAN.clear();
+        PLAN_MATERIALS.clear();
         material = null;
+        pendingMaterial = null;
         blueprint = null;
         blueprintName = "";
         CUSTOM_OFFSETS.clear();

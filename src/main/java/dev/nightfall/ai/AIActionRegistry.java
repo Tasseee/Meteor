@@ -104,6 +104,11 @@ public final class AIActionRegistry {
             coordinate.addProperty("maximum", axis.equals("y") ? 10 : 15);
             coordinateProps.add(axis, coordinate);
         }
+        JsonObject blockMaterial = new JsonObject();
+        blockMaterial.addProperty("type", "string");
+        blockMaterial.addProperty("maxLength", 64);
+        blockMaterial.addProperty("description", "Optional Minecraft item ID or localized block name for this specific position.");
+        coordinateProps.add("material", blockMaterial);
         coordinateSchema.add("properties", coordinateProps);
         JsonArray coordinateRequired = new JsonArray();
         coordinateRequired.add("x");
@@ -122,7 +127,7 @@ public final class AIActionRegistry {
         customRequired.add("blocks");
         customBlueprintSchema.add("required", customRequired);
         tools.add(tool("build_custom_structure",
-                "Create a custom connected blueprint with at most 200 blocks in a 16x16x11 grid. Coordinates are nonnegative x/y/z offsets; blocks must be connected face-to-face to solid ground or existing solid blocks. Use compact practical designs and one full-cube material from the hotbar. Nightfall validates every target and previews the plan before confirmation.",
+                "Create a custom connected blueprint with at most 200 blocks in a 16x16x11 grid. Coordinates are nonnegative x/y/z offsets; blocks must be connected face-to-face to solid ground or existing solid blocks. You may set an optional material item ID/name per block to create a palette; otherwise use the top-level material or Nightfall's selected full-cube hotbar block. Nightfall validates per-material counts and previews the plan before confirmation.",
                 customBlueprintSchema));
         tools.add(tool("stop_build",
                 "Stop the currently running Nightfall block-by-block build. The player must confirm first.",
@@ -340,10 +345,19 @@ public final class AIActionRegistry {
         for (JsonElement element : blocks) {
             if (!element.isJsonObject()) throw new IllegalArgumentException("Ein Block im Bauplan ist kein Objekt.");
             JsonObject block = element.getAsJsonObject();
-            if (block.size() != 3 || !block.has("x") || !block.has("y") || !block.has("z"))
-                throw new IllegalArgumentException("Jeder Bauplan-Block muss genau x, y und z enthalten.");
+            if (block.size() < 3 || block.size() > 4 || !block.has("x") || !block.has("y") || !block.has("z")
+                    || block.keySet().stream().anyMatch(key -> !Set.of("x", "y", "z", "material").contains(key)))
+                throw new IllegalArgumentException("Jeder Bauplan-Block muss x, y, z und optional material enthalten.");
+            String blockMaterial = null;
+            if (block.has("material")) {
+                if (!block.get("material").isJsonPrimitive() || !block.getAsJsonPrimitive("material").isString()
+                        || block.get("material").getAsString().isBlank()
+                        || block.get("material").getAsString().length() > 64)
+                    throw new IllegalArgumentException("Das optionale Blockmaterial muss eine gültige Item-ID oder ein Blockname sein.");
+                blockMaterial = block.get("material").getAsString();
+            }
             result.add(new AIBuilder.RelativeBlock(readCoordinate(block, "x"),
-                    readCoordinate(block, "y"), readCoordinate(block, "z")));
+                    readCoordinate(block, "y"), readCoordinate(block, "z"), blockMaterial));
         }
         return result;
     }
