@@ -3,6 +3,7 @@ package dev.nightfall.modules;
 import dev.nightfall.Nightfall;
 import dev.nightfall.module.HudModule;
 import dev.nightfall.util.Theme;
+import dev.nightfall.util.HudStyle;
 import net.minecraft.client.gui.DrawContext;
 
 public class Watermark extends HudModule {
@@ -14,8 +15,7 @@ public class Watermark extends HudModule {
     protected void draw(DrawContext ctx) {
         String t = Nightfall.NAME + " " + Nightfall.VERSION;
         w = mc.textRenderer.getWidth(t) + 10; h = 12;
-        ctx.fill(0, 0, w, h, 0xA0101014);
-        ctx.fill(0, 0, 2, h, Theme.ACCENT);
+        HudStyle.panel(ctx, w, h);
         ctx.drawText(mc.textRenderer, t, 6, 2, Theme.TEXT, true);
     }
 }
