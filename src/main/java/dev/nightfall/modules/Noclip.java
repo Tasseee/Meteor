@@ -41,8 +41,8 @@ public final class Noclip extends Module {
         if (mc.options.sprintKey.isPressed()) velocity *= 1.75;
         double forward = (mc.options.forwardKey.isPressed() ? 1 : 0)
                 - (mc.options.backKey.isPressed() ? 1 : 0);
-        double sideways = (mc.options.leftKey.isPressed() ? 1 : 0)
-                - (mc.options.rightKey.isPressed() ? 1 : 0);
+        double sideways = (mc.options.rightKey.isPressed() ? 1 : 0)
+                - (mc.options.leftKey.isPressed() ? 1 : 0);
         double vertical = (mc.options.jumpKey.isPressed() ? 1 : 0)
                 - (mc.options.sneakKey.isPressed() ? 1 : 0);
         double yaw = Math.toRadians(player.getYaw());
