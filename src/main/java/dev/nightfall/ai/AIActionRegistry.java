@@ -188,6 +188,11 @@ public final class AIActionRegistry {
                         "stop", "restart", "whitelist", "reload", "save-all", "save-off", "save-on",
                         "execute", "function", "fill", "clone", "setblock", "place", "data", "loot",
                         "forceload", "worldedit", "we", "fawe", "fastasyncworldedit",
+                        "set", "replace", "walls", "outline", "sphere", "hsphere", "cyl", "hcyl",
+                        "pyramid", "hpyramid", "brush", "mask", "sel", "pos1", "pos2",
+                        "copy", "cut", "paste", "undo", "redo", "schem", "schematic",
+                        "stack", "move", "rotate", "flip", "naturalize", "regen", "deform",
+                        "sudo", "console", "servercmd",
                         "lp", "luckperms", "pex", "permissionsex", "groupmanager",
                         "manuadd", "manudel").contains(root))
                     throw new IllegalArgumentException("Dieser Serververwaltungs- oder Welteditierbefehl ist aus Sicherheitsgründen gesperrt.");
