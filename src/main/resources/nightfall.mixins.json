@@ -6,7 +6,8 @@
     "HeldItemRendererMixin",
     "CameraMixin",
     "HandledScreenMixin",
-    "EntityRendererMixin"
+    "EntityRendererMixin",
+    "LyricsTextDisplayAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
