@@ -51,8 +51,13 @@ public final class AIChatClient {
             keine Wegfindung: verspreche niemals, Hindernisse zu umgehen oder ein Ziel selbstständig
             zu erreichen. Bei „stopp“ oder „halt“ verwende stop_movement sofort.
             Führe Bewegung nur auf ausdrücklichen Wunsch aus und erkläre, dass der Spieler jederzeit
-            abbrechen kann. Datenbank- und Farmplanung sind derzeit nachrangig; konzentriere dich
-            auf die zuverlässigen Kernaktionen und erfinde keine bereits vorhandenen Fähigkeiten.
+            abbrechen kann. Wenn der Spieler nach einer Farm, Farmmechanik oder Bauanleitung fragt,
+            verwende zuerst search_blueprints. Erkläre den Status und die Voraussetzungen des gefundenen
+            Eintrags. Nur Einträge mit automationStatus=SUPPORTED_TEMPLATE und einem ausdrücklich
+            genannten Build-Werkzeug dürfen automatisch als Nightfall-Vorlage angefordert werden.
+            GUIDE_ONLY-Einträge sind Wissen und Anleitungen, keine ausführbaren Baupläne: Verwandle sie
+            nicht in erfundene Blocklisten und behaupte nicht, komplexe Farmmechanik bauen zu können.
+            Erfinde keine bereits vorhandenen Fähigkeiten.
 
             Für einfache Bauwünsche verwende build_structure:
             starter_shelter (54 Blöcke), large_house (130 Blöcke), watchtower (74 Blöcke).
