@@ -117,6 +117,38 @@ public final class SchematicManager {
         }
     }
 
+    public static String communityCatalog() {
+        try (var stream = SchematicManager.class.getResourceAsStream("/nightfall/community_schematics.json")) {
+            if (stream == null) return "Community-Schematic-Index fehlt im Mod-JAR.";
+            com.google.gson.JsonObject root = com.google.gson.JsonParser.parseReader(
+                    new java.io.InputStreamReader(stream, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+            var sources = root.getAsJsonArray("sources");
+            StringBuilder out = new StringBuilder("COMMUNITY-SCHEMATIC-QUELLEN");
+            for (var element : sources) {
+                if (!element.isJsonObject()) continue;
+                var item = element.getAsJsonObject();
+                out.append("\n\n- ").append(item.get("title").getAsString())
+                        .append("\n  Ersteller: ").append(item.has("creator") ? item.get("creator").getAsString() : "Community")
+                        .append("\n  Quelle: ").append(item.get("url").getAsString())
+                        .append("\n  Format: ").append(item.get("downloadFormat").getAsString())
+                        .append("\n  Version: ").append(item.get("minecraftVersion").getAsString())
+                        .append("\n  Maße: ").append(item.get("pageDimensions").getAsString())
+                        .append("\n  Prüfung: ").append(item.get("validation").getAsString());
+                if (item.has("materials") && item.getAsJsonObject("materials").size() > 0) {
+                    out.append("\n  Materialliste:");
+                    for (var entry : item.getAsJsonObject("materials").entrySet())
+                        out.append("\n    ").append(entry.getKey()).append(" × ").append(entry.getValue().getAsInt());
+                }
+            }
+            out.append("\n\nDie Liste enthält nur Quellen und Listing-Metadaten, keine fremden Dateien. "
+                    + "Lade eine Schematic regulär auf der Quellseite herunter, lege sie in ")
+                    .append(DIRECTORY).append(" und nutze inspect_schematic.");
+            return out.toString();
+        } catch (Exception failure) {
+            return "Community-Schematic-Index konnte nicht gelesen werden: " + failure.getClass().getSimpleName();
+        }
+    }
+
     public static String listForAI() {
         List<String> files = listFiles();
         StringBuilder out = new StringBuilder("LOKALE SCHEMATICS\nOrdner: ").append(DIRECTORY);
