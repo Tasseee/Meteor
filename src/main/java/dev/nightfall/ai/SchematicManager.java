@@ -404,7 +404,8 @@ public final class SchematicManager {
     private static BlockItem safeBuildItem(BlockState state, MinecraftClient mc, int x, int y, int z) {
         if (state == null || state.isAir() || !state.getFluidState().isEmpty() || state.hasBlockEntity())
             return null;
-        if (state.getBlock() instanceof FallingBlock || !state.equals(state.getBlock().getDefaultState()))
+        if (state.getBlock() instanceof FallingBlock || !state.equals(state.getBlock().getDefaultState())
+                || !state.getEntries().isEmpty())
             return null;
         if (!state.isFullCube(mc.world, new BlockPos(x, y, z)))
             return null;
