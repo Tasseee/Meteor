@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public final class AIChatScreen extends Screen {
     private static AIChatScreen active;
     private static final Pattern LOCATE_COORDINATES =
-            Pattern.compile("(?s).*\\\\[\\\\s*-?\\\\d+\\\\s*,\\\\s*[^,]+\\\\s*,\\\\s*-?\\\\d+\\\\s*\\\\].*");
+            Pattern.compile("(?s).*\\[\\s*-?\\d+\\s*,\\s*[^,]+\\s*,\\s*-?\\d+\\s*\\].*");
 
     private record ChatLine(String role, String content) {}
 
@@ -46,7 +46,7 @@ public final class AIChatScreen extends Screen {
         super(Text.literal("Nightfall AI"));
         active = this;
         history.add(new ChatLine("assistant",
-                "Hey! Ich bin Nightfall AI. Frag mich alles rund um Minecraft. In dieser ersten Phase kann ich beraten, aber noch keine Aktionen in deiner Welt ausführen."));
+                "Hey! Ich bin Nightfall AI. Frag mich alles rund um Minecraft – oder bitte mich, ein Biom zu suchen. Weltaktionen frage ich immer vorher bei dir an."));
     }
 
     @Override
@@ -104,7 +104,7 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, contextState, panelX + 16, panelY + 34,
                 settings.shareWorldContext() ? Theme.ACCENT : Theme.TEXT_DIM, false);
         ctx.drawText(mc.textRenderer, status, panelX + 16, panelY + 47,
-                waiting ? Theme.ACCENT : Theme.TEXT_DIM, false);
+                (waiting || waitingLocate) ? Theme.ACCENT : Theme.TEXT_DIM, false);
 
         int contentTop = panelY + 65;
         int contentBottom = panelY + panelH - (pendingBiome == null ? 53 : 80);

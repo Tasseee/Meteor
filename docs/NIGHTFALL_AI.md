@@ -33,7 +33,7 @@ When `shareWorldContext` is enabled, each request includes the current dimension
 
 ## Current limits
 
-- This phase requires a configured, reachable AI provider.
+- KI-Antworten benötigen einen konfigurierten, erreichbaren Anbieter. Die lokal erkannte Biom-Suche funktioniert auch ohne API-Key.
 - The conversation is kept in memory for the current chat screen; it is not persisted.
 - The first world action is a local, deterministic intent: requests such as “such mir einen Jungle” offer a confirmation button for `/locate biome minecraft:jungle` (and a small supported set of other biomes). The command is sent only after the user clicks **JA, BIOM SUCHEN**.
 - Server permissions remain authoritative. If the server rejects `/locate`, the command cannot make it work. Nightfall does not bypass permissions or teleport the player.
