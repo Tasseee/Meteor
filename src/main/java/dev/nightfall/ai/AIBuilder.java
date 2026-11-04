@@ -457,7 +457,10 @@ public final class AIBuilder {
         running = true;
         status = "Bau gestartet";
         notifyPlayer("Bau gestartet: " + blueprintName + " · 0/" + PLAN.size() + ".");
-        return "Bau gestartet: " + blueprintName + ", " + materialName + " × " + PLAN.size()
+        String materialSummary = blueprint == Blueprint.CUSTOM
+                ? "Materialien: " + materialName
+                : "Material: " + materialName + " × " + PLAN.size();
+        return "Bau gestartet: " + blueprintName + ". " + materialSummary
                 + ". Ich zähle einen Block erst nach bestätigtem Welt-Update.";
     }
 
