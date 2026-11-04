@@ -34,10 +34,35 @@ public abstract class Module {
     public void setKey(int k) { key = k; }
 
     public void toggle() { setEnabled(!enabled); }
+
+    /**
+     * Changes the enabled state only after the corresponding lifecycle hook succeeds.
+     * If activation fails, the module is marked disabled and its cleanup hook is attempted.
+     * A failed deactivation still leaves the module disabled so it cannot keep ticking.
+     */
     public void setEnabled(boolean e) {
         if (e == enabled) return;
-        enabled = e;
-        if (e) onEnable(); else onDisable();
+
+        if (e) {
+            enabled = true;
+            try {
+                onEnable();
+            } catch (RuntimeException | Error failure) {
+                enabled = false;
+                try {
+                    onDisable();
+                } catch (RuntimeException | Error cleanupFailure) {
+                    failure.addSuppressed(cleanupFailure);
+                }
+                throw failure;
+            }
+        } else {
+            // Mark disabled before cleanup: even a failing cleanup must not leave the
+            // module eligible for another tick or render callback.
+            enabled = false;
+            onDisable();
+        }
+
         if (mc.player != null) NotificationCenter.push(name, e ? "Aktiviert" : "Deaktiviert");
     }
 
