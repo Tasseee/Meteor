@@ -187,6 +187,10 @@ public class BaseFinder extends Module {
         WorldChunk ch = w.getChunkManager().getWorldChunk(cx, cz);
         if (ch == null) return;
 
+        // A manually confirmed FakeBase teaches its block-entity layout. Later scans
+        // recognize matching layouts even when their chunk contents are rotated.
+        FakeBases.processChunk(ch, cx, cz);
+
         int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0;
         Map<Integer, Integer> cells = new HashMap<>();
 
@@ -277,10 +281,13 @@ public class BaseFinder extends Module {
                 + (res.farmScore > 0 ? 1 : 0)
                 + (res.activityScore > 0 ? 1 : 0);
 
-        if (FakeBases.isMarkedChunk(res.cx, res.cz)) {
+        if (FakeBases.isKnownFakeChunk(res.cx, res.cz)) {
             next = Status.DECOY;
-            if (!res.reasons.contains("Manuell als FakeBase/Decoy markiert — normaler SUS-Alarm unterdrückt"))
-                res.reasons.add("Manuell als FakeBase/Decoy markiert — normaler SUS-Alarm unterdrückt");
+            String label = FakeBases.matchLabel(res.cx, res.cz);
+            String reason = label == null
+                    ? "FakeBase/Decoy markiert — normaler SUS-Alarm unterdrückt"
+                    : "Automatisch als FakeBase '" + label + "' erkannt — normaler SUS-Alarm unterdrückt";
+            if (!res.reasons.contains(reason)) res.reasons.add(reason);
         } else if (res.score >= threshold.get() && signalKinds >= minSignals.getInt()) {
             next = Status.SUS;
             if (previous != Status.SUS) {
