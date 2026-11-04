@@ -58,6 +58,10 @@ public final class AIActionRegistry {
                 moduleStateSchema()));
         tools.add(tool("get_inventory", "Read the player's inventory and summarize item names and counts. This data is sent to the configured AI provider; the player must confirm first.",
                 objectSchema()));
+        tools.add(tool("get_player_status", "Read the player's current dimension, coordinates and health. This data is sent to the configured AI provider; the player must confirm first.",
+                objectSchema()));
+        tools.add(tool("random_teleport", "Request the server's random teleport using its common /rtp command. The player must confirm first; the server must support it.",
+                objectSchema()));
         return tools;
     }
 
@@ -96,6 +100,10 @@ public final class AIActionRegistry {
             }
             case "get_inventory" -> new Action(name, args,
                     "Nightfall liest dein Inventar und sendet Itemnamen und Mengen an den konfigurierten KI-Anbieter.");
+            case "get_player_status" -> new Action(name, args,
+                    "Nightfall liest Dimension, Position und Lebenspunkte und sendet diese Daten an den konfigurierten KI-Anbieter.");
+            case "random_teleport" -> new Action(name, args,
+                    "Nightfall sendet nach deiner Bestätigung den Serverbefehl /rtp. Der Server muss diesen Befehl anbieten; Nightfall kann den Teleport nicht erzwingen.");
             default -> throw new IllegalArgumentException("Diese Aktion ist nicht freigegeben.");
         };
     }
@@ -139,8 +147,27 @@ public final class AIActionRegistry {
                 }
             }
             case "get_inventory" -> inventorySummary(mc);
+            case "get_player_status" -> playerStatus(mc);
+            case "random_teleport" -> {
+                if (mc.player.networkHandler == null) yield "Aktion fehlgeschlagen: Keine Serververbindung.";
+                try {
+                    mc.player.networkHandler.sendChatCommand("rtp");
+                    yield "Der Befehl /rtp wurde gesendet. Ob der Server ihn unterstützt und wohin er teleportiert, entscheidet ausschließlich der Server.";
+                } catch (RuntimeException error) {
+                    yield "Der /rtp-Befehl konnte nicht gesendet werden. Prüfe deine Verbindung.";
+                }
+            }
             default -> "Aktion nicht freigegeben.";
         };
+    }
+
+    private static String playerStatus(MinecraftClient mc) {
+        var pos = mc.player.getBlockPos();
+        return "Spielerstatus:"
+                + "\\nDimension: " + mc.world.getRegistryKey().getValue()
+                + "\\nPosition: X=" + pos.getX() + ", Y=" + pos.getY() + ", Z=" + pos.getZ()
+                + "\\nLeben: " + String.format(Locale.ROOT, "%.1f", mc.player.getHealth())
+                + " / " + String.format(Locale.ROOT, "%.1f", mc.player.getMaxHealth());
     }
 
     private static String inventorySummary(MinecraftClient mc) {

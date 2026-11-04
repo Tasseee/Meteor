@@ -42,6 +42,8 @@ The AI model can select from a fixed client-side allow-list:
 | `add_waypoint` | Saves a waypoint at the current player position | Required |
 | `set_module_state` | Enables or disables one existing Nightfall module by exact name | Required |
 | `get_inventory` | Reads item names and counts from the player's 36 main inventory slots | Required; inventory data is sent to the AI provider |
+| `get_player_status` | Reads current dimension, coordinates, and health | Required; player state is sent to the AI provider |
+| `random_teleport` | Sends the common `/rtp` request to the server | Required; server must support it |
 
 After a tool call, Nightfall displays a preview. The tool is executed only after the player clicks **AKTION AUSFÜHREN**. Cancelling returns a cancellation result to the model and does not execute the action.
 
