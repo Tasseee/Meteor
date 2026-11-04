@@ -76,6 +76,7 @@ public final class AIBuilder {
     private static boolean prepared;
     private static boolean running;
     private static boolean waitingForReach;
+    private static boolean pausedByUser;
     private static String materialName = "";
     private static String blueprintName = "";
     private static String status = "Builder bereit";
@@ -513,6 +514,7 @@ public final class AIBuilder {
         pendingTicks = 0;
         placementRetries = 0;
         waitingForReach = false;
+        pausedByUser = false;
         running = true;
         status = "Bau gestartet";
         notifyPlayer("Bau gestartet: " + blueprintName + " · 0/" + PLAN.size() + ".");
@@ -563,6 +565,8 @@ public final class AIBuilder {
             delay = 1;
             return;
         }
+
+        if (pausedByUser) return;
 
         if (index >= PLAN.size()) {
             stopInternal("Bau abgeschlossen: " + blueprintName + " wurde vom Server bestätigt.", true);
@@ -649,6 +653,7 @@ public final class AIBuilder {
             int total = PLAN.size();
             int percent = total == 0 ? 0 : Math.min(100, index * 100 / total);
             String phase = pendingTarget != null ? "warte auf Serverbestätigung"
+                    : pausedByUser ? "vom Spieler pausiert"
                     : waitingForReach ? "pausiert: nächster Block außerhalb der Reichweite"
                     : "läuft";
             return "Builder aktiv: " + blueprintName + ". Bestätigte Blöcke: " + index + "/" + total
@@ -677,6 +682,25 @@ public final class AIBuilder {
         preparedFacing = null;
     }
 
+    public static String pause() {
+        if (!running) throw new IllegalArgumentException("Aktuell läuft kein Bau, den ich pausieren könnte.");
+        if (pausedByUser) return "Der Bau ist bereits pausiert.";
+        pausedByUser = true;
+        status = "Vom Spieler pausiert · " + index + "/" + PLAN.size();
+        notifyPlayer("Bau pausiert. Bereits gesetzte Blöcke bleiben bestehen.");
+        return "Bau pausiert bei " + index + "/" + PLAN.size() + " bestätigten Blöcken. Bereits gesetzte Blöcke bleiben bestehen.";
+    }
+
+    public static String resume() {
+        if (!running) throw new IllegalArgumentException("Es läuft kein pausierter Bau.");
+        if (!pausedByUser) throw new IllegalArgumentException("Der Bau wurde nicht manuell pausiert. Bei fehlender Reichweite setzt er automatisch fort, sobald du näher kommst.");
+        pausedByUser = false;
+        waitingForReach = false;
+        status = "Bau fortgesetzt · " + index + "/" + PLAN.size();
+        notifyPlayer("Bau fortgesetzt.");
+        return "Bau wird ab Block " + (index + 1) + "/" + PLAN.size() + " fortgesetzt.";
+    }
+
     public static String stop() {
         if (!running) {
             cancelPrepared();
@@ -697,6 +721,7 @@ public final class AIBuilder {
         originalSlot = -1;
         running = false;
         waitingForReach = false;
+        pausedByUser = false;
         prepared = false;
         pendingTarget = null;
         pendingMaterial = null;

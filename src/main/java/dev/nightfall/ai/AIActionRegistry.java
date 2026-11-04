@@ -133,8 +133,14 @@ public final class AIActionRegistry {
         tools.add(tool("get_build_status",
                 "Read the current Nightfall builder status: confirmed block count, phase, pause reason, blueprint and materials. Read-only; no confirmation required.",
                 objectSchema()));
+        tools.add(tool("pause_build",
+                "Pause the running Nightfall build safely. A pending block is still checked for server confirmation, but no new placement starts until resumed.",
+                objectSchema()));
+        tools.add(tool("resume_build",
+                "Resume a Nightfall build that the player manually paused. New block placements require the player to confirm this action.",
+                objectSchema()));
         tools.add(tool("stop_build",
-                "Stop the currently running Nightfall block-by-block build. The player must confirm first.",
+                "Stop the currently running Nightfall block-by-block build. Already placed blocks remain in the world.",
                 objectSchema()));
         return tools;
     }
@@ -216,6 +222,11 @@ public final class AIActionRegistry {
             }
             case "build_starter_shelter" -> new Action(name, args, AIBuilder.prepareStarterShelter());
             case "get_build_status" -> new Action(name, args, AIBuilder.describeStatus());
+            case "pause_build" -> new Action(name, args,
+                    AIBuilder.isRunning() ? "Nightfall pausiert den Bau nach einer eventuell noch ausstehenden Blockbestätigung."
+                            : "Aktuell läuft kein Nightfall-Bau.");
+            case "resume_build" -> new Action(name, args,
+                    "Nightfall setzt den bestätigten Bauplan fort und platziert danach wieder echte Blöcke.");
             case "stop_build" -> new Action(name, args,
                     AIBuilder.isRunning() ? "Nightfall stoppt den laufenden Bau. Bereits gesetzte Blöcke bleiben bestehen."
                             : "Aktuell läuft kein Nightfall-Bau.");
@@ -289,6 +300,8 @@ public final class AIActionRegistry {
             }
             case "build_structure", "build_starter_shelter", "build_custom_structure" -> AIBuilder.startPreparedStructure();
             case "get_build_status" -> AIBuilder.describeStatus();
+            case "pause_build" -> AIBuilder.pause();
+            case "resume_build" -> AIBuilder.resume();
             case "stop_build" -> AIBuilder.stop();
             default -> "Aktion nicht freigegeben.";
         };

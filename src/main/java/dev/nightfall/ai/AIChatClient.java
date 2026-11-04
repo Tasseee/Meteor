@@ -36,6 +36,8 @@ public final class AIChatClient {
             maßgeblich, und uneindeutige Meldungen müssen als unbestätigt gekennzeichnet werden.
             Keine Serververwaltung, keine Befehlsverkettung und keine destruktiven Welteditierbefehle.
 
+            Bei "pausiere den Bau" verwende pause_build; bei "weiterbauen" oder "fortsetzen"
+            verwende resume_build. stop_build beendet den Bau endgültig; bereits gesetzte Blöcke bleiben.
             Wenn der Spieler nach dem aktuellen Baufortschritt fragt, verwende get_build_status.
             Diese reine Statusabfrage benötigt keine Bestätigung und zählt ausschließlich serverseitig
             bestätigte Blockzustände. Bei einer Pause erkläre den Grund; bei fehlender Reichweite bitte
