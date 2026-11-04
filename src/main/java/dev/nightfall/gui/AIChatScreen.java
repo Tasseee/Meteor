@@ -357,18 +357,20 @@ public final class AIChatScreen extends Screen {
         pendingAction = null;
         pendingToolCall = null;
 
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if ("locate_biome".equals(action.name())) {
-            locatingBiome = action.arguments().get("biome").getAsString();
-            waitingLocate = true;
-            locateDeadline = System.currentTimeMillis() + 30_000L;
-        }
-
         String result;
         try {
             result = AIActionRegistry.execute(action);
         } catch (RuntimeException | Error failure) {
             result = "Aktion ist fehlgeschlagen: " + failure.getClass().getSimpleName();
+        }
+        if ("locate_biome".equals(action.name())) {
+            if (result.contains("wurde gesendet")) {
+                locatingBiome = action.arguments().get("biome").getAsString();
+                waitingLocate = true;
+                locateDeadline = System.currentTimeMillis() + 30_000L;
+            } else {
+                waitingLocate = false;
+            }
         }
         history.add(new ChatLine("assistant", "Nightfall: " + result));
         apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), result));
