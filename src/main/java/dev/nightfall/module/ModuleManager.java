@@ -47,6 +47,7 @@ public final class ModuleManager {
         // Visuals
         MODULES.add(new PlayerEsp());
         MODULES.add(new NameTags());
+        MODULES.add(new Lyrics());
         MODULES.add(new EntityEsp());
         MODULES.add(new ItemEsp());
         MODULES.add(new StorageEsp());
