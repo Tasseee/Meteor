@@ -40,6 +40,9 @@ jobs:
       - name: Validate Lyrics sidecar syntax
         run: python3 -m py_compile src/main/resources/nightfall-lyrics/lyrics_sidecar.py
 
+      - name: Validate bundled blueprint database
+        run: python3 -m json.tool src/main/resources/nightfall/blueprints.json > /dev/null
+
       - name: Build Nightfall
         run: gradle build --no-daemon
 
@@ -63,10 +66,18 @@ jobs:
                       "nightfall-lyrics/lyrics_sidecar.py",
                       "nightfall-lyrics/requirements.txt",
                       "nightfall-lyrics/requirements-windows.txt",
+                      "nightfall/blueprints.json",
                   ):
                       if resource not in names:
                           raise SystemExit(f"{path} is missing bundled resource {resource}")
                   metadata = json.loads(jar.read("fabric.mod.json"))
+                  if "dev/nightfall/ai/AIVoiceClient.class" not in names:
+                      raise SystemExit(f"{path} is missing the Nightfall voice client")
+                  database = json.loads(jar.read("nightfall/blueprints.json"))
+                  entries = database.get("entries", [])
+                  ids = [entry.get("id") for entry in entries]
+                  if database.get("schemaVersion") != 1 or not entries or len(ids) != len(set(ids)):
+                      raise SystemExit(f"{path} contains an invalid blueprint database")
                   if metadata.get("id") != "nightfall":
                       raise SystemExit(f"{path} has unexpected mod id: {metadata.get('id')!r}")
                   if "dev.nightfall.Nightfall" not in metadata.get("entrypoints", {}).get("client", []):
