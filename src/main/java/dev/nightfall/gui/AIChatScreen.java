@@ -475,7 +475,7 @@ public final class AIChatScreen extends Screen {
             history.set(responseIndex, new ChatLine("assistant", result.text()));
             apiHistory.add(new AIChatClient.Message("assistant", result.text()));
             status = "Antwort erhalten";
-            AIVoiceClient.speak(result.text());
+            if (MinecraftClient.getInstance().currentScreen == this) AIVoiceClient.speak(result.text());
             scroll = Float.MAX_VALUE;
         });
     }
