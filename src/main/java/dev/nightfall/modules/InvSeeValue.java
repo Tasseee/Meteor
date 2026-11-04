@@ -40,8 +40,8 @@ public final class InvSeeValue extends Module {
     private final BoolSetting autoOpenQueueOpponent = add(new BoolSetting("Bei RTPQ-Gegner automatisch /invsee", true));
 
     private static final Pattern[] OPPONENT_PATTERNS = new Pattern[] {
-            Pattern.compile("(?i)(?:your\\s+opponent(?:\\s+is)?|opponent|dein(?:e)?\\s+gegner(?:\\s+ist)?|gegner(?:in)?)(?:\\s+gefunden)?\\s*[:=\\-»>]*\\s*([A-Za-z0-9_]{3,16})\\b"),
-            Pattern.compile("(?i)(?:you(?:'re|\\s+are)\\s+(?:now\\s+)?(?:matched|fighting)\\s+with|matched\\s+with|du\\s+spielst\\s+gegen|du\\s+bist\\s+gegen|du\\s+wurdest\\s+mit|match\\s+gegen|kampf\\s+gegen)\\s*[:=\\-»>]*\\s*([A-Za-z0-9_]{3,16})\\b"),
+            Pattern.compile("(?i)(?:your\\s+opponent(?:\\s+is)?|opponent(?:\\s+(?:found|gefunden))?|dein(?:e)?\\s+gegner(?:\\s+ist)?|gegner(?:in)?(?:\\s+(?:gefunden|wurde\\s+gefunden))?)\\s*[:=\\-»>]*\\s*([A-Za-z0-9_]{3,16})\\b"),
+            Pattern.compile("(?i)(?:you(?:'re|\\s+are)\\s+(?:now\\s+)?(?:matched|fighting)\\s+with|you\\s+were\\s+paired\\s+with|paired\\s+with|matched\\s+with|du\\s+spielst\\s+gegen|du\\s+bist\\s+gegen|du\\s+wurdest\\s+(?:mit|gegen)\\s+|du\\s+wurdest\\s+gepaart\\s+mit|match\\s+gegen|kampf\\s+gegen)\\s*[:=\\-»>]*\\s*([A-Za-z0-9_]{3,16})\\b"),
             Pattern.compile("(?i)\\b([A-Za-z0-9_]{3,16})\\s+(?:is your opponent|ist dein gegner)\\b")
     };
 
@@ -126,6 +126,7 @@ public final class InvSeeValue extends Module {
             long now = System.currentTimeMillis();
 
             if (root.equals("rtpq") || root.equals("rtpqueue")
+                    || (root.equals("rtp") && parts.length > 1 && parts[1].equalsIgnoreCase("queue"))
                     || (root.equals("trigger") && parts.length > 1 && parts[1].equalsIgnoreCase("rtpq"))) {
                 module.queueWatchUntil = now + 5 * 60_000L;
                 return;
