@@ -342,6 +342,8 @@ public final class AIChatScreen extends Screen {
             waiting = false;
             if (pendingCommandFeedbackAI) {
                 pendingCommandFeedbackAI = false;
+                history.set(responseIndex, new ChatLine("assistant", "Die Servermeldung ist eingegangen. Ich ordne sie ein …"));
+                scroll = Float.MAX_VALUE;
                 requestAI();
                 return;
             }
