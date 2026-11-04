@@ -122,6 +122,7 @@ public final class ModuleManager {
 
     /** @return Fehlertext bei Konflikt, sonst null (Tastenzuweisung erfolgreich). */
     public static String assignKey(Module m, int key) {
+        if (key < -1 || key > GLFW.GLFW_KEY_LAST) return "Ungueltige Taste";
         if (key >= 0) {
             if (key == Config.guiKey || key == Config.hudKey || key == Config.mapKey) return "Taste ist bereits fuer GUI/HUD/Karte belegt";
             for (Module o : MODULES) if (o != m && o.getKey() == key) return "Taste bereits belegt von " + o.getName();
@@ -133,12 +134,19 @@ public final class ModuleManager {
     public static void pollKeys(MinecraftClient mc) {
         if (mc.getWindow() == null) return;
         long h = mc.getWindow().getHandle();
-        for (Module m : MODULES) {
-            int k = m.getKey();
-            if (k < 0 || k > GLFW.GLFW_KEY_LAST) continue;
-            boolean d = GLFW.glfwGetKey(h, k) == GLFW.GLFW_PRESS;
-            if (d && !KEY_DOWN[k] && mc.currentScreen == null && mc.player != null) m.toggle();
-            KEY_DOWN[k] = d;
+        boolean[] checked = new boolean[KEY_DOWN.length];
+        for (Module module : MODULES) {
+            int key = module.getKey();
+            if (key < 0 || key > GLFW.GLFW_KEY_LAST || checked[key]) continue;
+            checked[key] = true;
+
+            boolean down = GLFW.glfwGetKey(h, key) == GLFW.GLFW_PRESS;
+            if (down && !KEY_DOWN[key] && mc.currentScreen == null && mc.player != null) {
+                // Toggle every module sharing a key. Config loading also rejects
+                // collisions, but handling them here keeps polling deterministic.
+                for (Module target : MODULES) if (target.getKey() == key) target.toggle();
+            }
+            KEY_DOWN[key] = down;
         }
     }
 
