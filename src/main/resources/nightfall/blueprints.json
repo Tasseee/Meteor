@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "structure.starter_shelter",
+      "version": "1.21.11",
+      "name": "4x4 starter shelter",
+      "category": "structure",
+      "tags": ["starter", "haus", "schutzhaus", "shelter", "bauen", "anfang", "house"],
+      "automationStatus": "SUPPORTED_TEMPLATE",
+      "validation": "Im Client vorhandene deterministische Vorlage mit 54 Blockpositionen. Keine behauptete Ingame-Spieltestfreigabe; Material, Platz und Serverbestätigung werden vor und während des Baus geprüft.",
+      "buildTool": "build_structure",
+      "buildId": "starter_shelter",
+      "content": "Kleines 4x4-Schutzhaus mit Boden, zwei hohen Außenwänden, Türöffnung und Dach. Benötigt 54 Full-Cube-Blöcke derselben Sorte in der Hotbar (im Kreativmodus genügt ein passender Stapel). Der Bauplatz muss eben, fest und frei sein. Nightfall platziert Block für Block und zählt nur vom Client bestätigte Weltupdates. Der Spieler muss in Reichweite bleiben; die Vorschau muss vor dem Start bestätigt werden.",
+      "source": "Nightfall interner, deterministischer AIBuilder-Templatecode."
+    },
+    {
+      "id": "structure.large_house",
+      "version": "1.21.11",
+      "name": "6x6 großes Haus",
+      "category": "structure",
+      "tags": ["haus", "house", "large house", "bauen", "base", "basis"],
+      "automationStatus": "SUPPORTED_TEMPLATE",
+      "validation": "Im Client vorhandene deterministische Vorlage mit 130 Blockpositionen. Keine behauptete Ingame-Spieltestfreigabe; Material, Platz und Serverbestätigung werden vor und während des Baus geprüft.",
+      "buildTool": "build_structure",
+      "buildId": "large_house",
+      "content": "6x6-Haus mit Boden, drei Block hohen Außenwänden, Türöffnung und Dach. Benötigt 130 Full-Cube-Blöcke derselben Sorte in der Hotbar (im Kreativmodus genügt ein passender Stapel). Vor dem Start prüft Nightfall einen ebenen festen Untergrund und freie Zielpositionen. Der Bau startet erst nach Vorschau und Bestätigung.",
+      "source": "Nightfall interner, deterministischer AIBuilder-Templatecode."
+    },
+    {
+      "id": "structure.watchtower",
+      "version": "1.21.11",
+      "name": "Wachturm",
+      "category": "structure",
+      "tags": ["turm", "wachturm", "watchtower", "tower", "bauen", "basis"],
+      "automationStatus": "SUPPORTED_TEMPLATE",
+      "validation": "Im Client vorhandene deterministische Vorlage mit 74 Blockpositionen. Keine behauptete Ingame-Spieltestfreigabe; Material, Platz und Serverbestätigung werden vor und während des Baus geprüft.",
+      "buildTool": "build_structure",
+      "buildId": "watchtower",
+      "content": "5x5-Plattform mit vier Eckpfeilern über sechs Blöcke Höhe und einer Dachplattform. Benötigt 74 Full-Cube-Blöcke derselben Sorte in der Hotbar (im Kreativmodus genügt ein passender Stapel). Der Bauplatz muss eben, fest und frei sein. Der Spieler muss den Bauvorgang begleiten und in Reichweite bleiben.",
+      "source": "Nightfall interner, deterministischer AIBuilder-Templatecode."
+    },
+    {
+      "id": "farm.iron.java.basic",
+      "version": "Java 1.21.11",
+      "name": "Eisenfarm für Java",
+      "category": "farm",
+      "tags": ["eisen", "iron", "eisenfarm", "iron farm", "golem", "golem farm", "dorfbewohner", "villager", "metall"],
+      "automationStatus": "GUIDE_ONLY",
+      "validation": "Mechanik-Referenz, kein von Nightfall ingame getestetes Schematic. Dorf- und Spawnmechanik muss auf Serverregeln, Simulation Distance und konkreter Version geprüft werden.",
+      "content": "GRUNDIDEE: Dorfbewohner erzeugen Eisengolems, die in einer getrennten Spawnplattform erscheinen und anschließend aus dem Dorfbewohnerbereich wegtransportiert werden. Java-Edition und Bedrock haben unterschiedliche Regeln; dieser Eintrag gilt nur für Java.\n\nWICHTIGE JAVA-BEDINGUNGEN: Eine Gruppe kann Golems über Panik (mindestens 3 geeignete Dorfbewohner) oder Gossip (mindestens 5 geeignete Teilnehmer) beschwören. Die beteiligten Dorfbewohner müssen in den letzten 20 Minuten geschlafen haben. Ein Golem in der Nähe (16-Block-Box) verhindert neue Beschwörungen; außerdem gelten 30-Sekunden-Sperrzeiten nach einer Beschwörung. Es muss ein gültiger Spawnpunkt im Bereich der Dorfbewohner vorhanden sein.\n\nBAUPLAN-ABSCHNITTE: (1) sichere, getrennte Unterbringung der Dorfbewohner und Betten; (2) optionale, gegen Tageslicht und Entkommen gesicherte Zombie-Panikquelle, die jeden Dorfbewohner zuverlässig sehen kann; (3) Spawnplattform mit ausreichend freiem Raum und kontrollierter Wasserführung; (4) Fall-/Transportkanal, der Golems aus dem Erkennungsbereich entfernt; (5) Lava-Klingenhöhe und Hopper-/Kisten-Sammlung. Die genauen Abstände und Ebenen müssen an einem konkreten Entwurf ausgerichtet werden.\n\nTESTREIHENFOLGE: Erst Dorfbewohner-Schlaf und Panik/Gossip prüfen, danach die Spawnplattform einzeln testen, dann Transport und Tötung ergänzen. Wenn keine Golems erscheinen, zuerst nahe vorhandene Golems, fehlenden Schlaf, nicht ausgelöste Panik oder blockierte Spawnflächen untersuchen.\n\nNIGHTFALL-GRENZE: Der vorhandene Builder setzt nur Full-Cube-BlockItems. Er kann keine Dorfbewohner, Betten, Wasser, Lava, Hopper, Falltüren, Schienen oder Redstone-Automation als funktionsfähige Farm ausführen. Dieser Datensatz darf nicht als build_custom_structure-Plan ausgegeben werden. Nightfall kann die Anleitung erklären und Materiallisten planen, aber die Eisenfarm derzeit nicht autonom fertigbauen.",
+      "source": "Minecraft Wiki: https://minecraft.wiki/w/Iron_golem und https://minecraft.wiki/w/Tutorial:Iron_golem_farming (Mechanikreferenz, Zugriff 2026-11-04); Nightfall-Status intern."
+    },
+    {
+      "id": "farm.dripstone.megafarm.01",
+      "version": "Java 1.21.11",
+      "name": "Große Tropfsteinfarm (16 Zellen)",
+      "category": "farm",
+      "tags": ["tropfstein", "dripstone", "stalaktit", "farm", "megafarm", "lava"],
+      "automationStatus": "GUIDE_ONLY",
+      "validation": "Mechanik-/Bauleitfaden, kein getestetes Schematic und keine bestätigte automatische Ernteschaltung.",
+      "content": "KONZEPT: modulare Großfarm mit 16 unabhängigen Wachstumszellen im 4x4-Raster. Jede Zelle benötigt einen Tropfsteinblock, eine Wasserquelle oberhalb, einen spitzen Tropfstein nach unten sowie eine nicht-spülbare Einfassung. Unter den Zellen liegen getrennte Fall- und Sammelrinnen; Wartungszugang an mindestens einer Seite vorsehen.\n\nMECHANIK: Spitzer Tropfstein wächst tickbasiert nur mit passender Tropfsteinblock-/Wasser-Konfiguration. Ein Tropfsteinblock allein erzeugt keine Items. Automatische Ernte benötigt eine separat getestete Erkennung und Blockbruch-/Kolbenlogik. Wasser muss eingefasst sein, damit es die Zellen nicht wegspült. Server-Tickrate und Random-Ticks beeinflussen den Ertrag.\n\nTEST: Zuerst eine Zelle manuell errichten und Wachstum sowie Ernte auf dem Zielserver prüfen. Erst danach auf 16 Zellen erweitern. Hopper, Kisten, Kolben, Beobachter und Redstone erst ergänzen, wenn der Erntepunkt feststeht.\n\nNIGHTFALL-GRENZE: Der aktuelle Builder setzt ausschließlich Full-Cube-BlockItems aus der Hotbar und maximal 200 Positionen. Er kann keine Wasserquellen, spitzen Tropfsteine, Hopper, Kolben, Beobachter oder Redstone-Schaltungen zuverlässig als Farmmechanik aufbauen. Dieser Eintrag ist eine Anleitung und darf nicht automatisch an build_custom_structure weitergereicht werden.",
+      "source": "Kuratierter Nightfall-Technikdatensatz auf Basis der Vanilla-Mechanik; kein Community-Schematic und keine behauptete Ingame-Testfreigabe."
+    },
+    {
+      "id": "farm.sugar_cane.manual",
+      "version": "Java 1.21.11",
+      "name": "Zuckerrohr-Anbau und Ernte",
+      "category": "farm",
+      "tags": ["zuckerrohr", "sugar cane", "rohr", "farm", "papier", "manual"],
+      "automationStatus": "GUIDE_ONLY",
+      "validation": "Einfacher manueller Anbauleitfaden; keine automatische Erntemaschine oder Ingame-Testfreigabe.",
+      "content": "GRUNDLAGE: Zuckerrohr wird auf einem geeigneten angrenzenden Block direkt neben Wasser gepflanzt und wächst bis zu drei Blöcke hoch. Für eine einfache manuelle Farm eine Wasserreihe mit Pflanzplätzen anlegen und die Pflanzblöcke erreichbar halten. Beim Ernten nur die oberen Segmente abbrechen, damit das untere Segment weiterwächst.\n\nAUSBAU: Wasserkanäle abdecken oder einfassen, damit Spieler und Drops nicht hineinfallen. Sammelwege und Lagerung getrennt planen. Die Wachstumszeit ist zufalls-/tickabhängig; plane keinen garantierten Ertrag pro Minute.\n\nNIGHTFALL-GRENZE: Der automatische Builder kann keine Wasserquellen setzen und kann Zuckerrohr als nicht-full-cube BlockItem nicht zuverlässig platzieren. Redstone-/Kolben-Automatisierung wird nicht als fertiger Bauplan behauptet. Der Eintrag ist eine Anleitung, keine automatisch baubare Vorlage.",
+      "source": "Kuratierter Nightfall-Technikdatensatz; vor dem Bau die aktuelle Minecraft-Java-Mechanik der Zielversion prüfen."
+    }
+  ]
+}
