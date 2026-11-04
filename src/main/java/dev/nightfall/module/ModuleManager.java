@@ -150,6 +150,19 @@ public final class ModuleManager {
         }
     }
 
+    /** Releases resources owned by enabled modules while preserving saved enabled states. */
+    public static void shutdown() {
+        for (Module module : MODULES) {
+            if (!module.isEnabled()) continue;
+            try {
+                module.onDisable();
+            } catch (Throwable t) {
+                Nightfall.LOGGER.error("Fehler beim Beenden von Modul {}", module.getName(), t);
+                errorCount++;
+            }
+        }
+    }
+
     public static void tick() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null) return;
