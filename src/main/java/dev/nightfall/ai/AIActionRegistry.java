@@ -19,8 +19,8 @@ import java.util.Set;
 /**
  * Explicit allow-list of actions the model may request.
  *
- * Never add a generic command/code execution tool here. Every action must validate
- * its arguments locally and be previewed/confirmed by the player before execution.
+ * Never add shell/code execution or unrestricted server administration here. Every action
+ * must validate its arguments locally and be previewed/confirmed before execution.
  */
 public final class AIActionRegistry {
     private static final Map<String, String> BIOMES = new LinkedHashMap<>();

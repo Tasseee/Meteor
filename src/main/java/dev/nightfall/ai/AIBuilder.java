@@ -124,7 +124,7 @@ public final class AIBuilder {
             if (!mc.world.getBlockState(target).isReplaceable())
                 throw new IllegalArgumentException("Der Bauplatz ist nicht frei: Bei " + target.getX() + ", "
                         + target.getY() + ", " + target.getZ() + " steht bereits ein Block oder eine Entity im Weg.");
-            if (target.getY() < mc.world.getBottomY() || target.getY() >= mc.world.getTopY())
+            if (target.getY() < mc.world.getBottomY() || target.getY() >= mc.world.getBottomY() + mc.world.getHeight())
                 throw new IllegalArgumentException("Der Bauplatz liegt außerhalb der Weltgrenzen.");
         }
 
