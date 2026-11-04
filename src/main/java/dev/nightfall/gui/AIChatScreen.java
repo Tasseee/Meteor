@@ -50,6 +50,7 @@ public final class AIChatScreen extends Screen {
     private String trackedCommand = "";
     private long commandDeadline;
     private boolean pendingCommandFeedbackAI;
+    private int sessionGeneration;
 
     public AIChatScreen() {
         super(Text.literal("Nightfall AI"));
@@ -85,21 +86,51 @@ public final class AIChatScreen extends Screen {
 
     public static void onDisconnect() {
         AIBuilder.onDisconnect();
-        if (active != null && active.waitingLocate) {
-            active.waitingLocate = false;
-            active.status = "Verbindung getrennt";
-            active.history.add(new ChatLine("assistant",
-                    "Die Suche wurde unterbrochen, weil die Serververbindung getrennt wurde."));
-            active.scroll = Float.MAX_VALUE;
+        if (active == null) return;
+
+        AIChatScreen session = active;
+        session.sessionGeneration++;
+        session.waiting = false;
+        session.pendingCommandFeedbackAI = false;
+
+        if (session.pendingAction != null) {
+            AIActionRegistry.cancel(session.pendingAction);
+            session.pendingAction = null;
+            session.pendingToolCall = null;
+            session.history.add(new ChatLine("assistant",
+                    "Eine noch nicht bestätigte Aktion wurde beim Verlassen des Servers verworfen. Es wurde nichts ausgeführt."));
+        } else if (session.pendingToolCall != null) {
+            session.pendingToolCall = null;
         }
-        if (active != null && active.waitingCommandResponse) {
-            active.waitingCommandResponse = false;
-            String feedback = "Verbindung getrennt, bevor eine Servermeldung zu /" + active.trackedCommand
-                    + " erkannt wurde. Der Befehl wurde möglicherweise gesendet, seine Ausführung ist nicht bestätigt.";
-            active.history.add(new ChatLine("assistant", feedback));
-            active.apiHistory.add(new AIChatClient.Message("user", feedback));
-            active.scroll = Float.MAX_VALUE;
+
+        if (session.waitingLocate) {
+            session.history.add(new ChatLine("assistant",
+                    "Die Biom-Suche wurde durch den Verbindungsabbruch unterbrochen."));
         }
+        if (session.waitingCommandResponse) {
+            session.history.add(new ChatLine("assistant",
+                    "Keine eindeutige Serverantwort zu /" + session.trackedCommand
+                            + " vor dem Verbindungsabbruch. Die Ausführung ist nicht bestätigt."));
+        }
+
+        session.waitingLocate = false;
+        session.waitingCommandResponse = false;
+        session.locatingBiome = "";
+        session.trackedCommand = "";
+        session.apiHistory.clear();
+        session.actionRoundTrips = 0;
+        session.status = "Server getrennt · KI-Kontext zurückgesetzt";
+
+        if (!session.history.isEmpty()) {
+            int lastIndex = session.history.size() - 1;
+            ChatLine last = session.history.get(lastIndex);
+            if ("assistant".equals(last.role()) && last.content().equals("Nightfall AI denkt …"))
+                session.history.set(lastIndex, new ChatLine("assistant",
+                        "Die Anfrage wurde durch den Verbindungsabbruch unterbrochen."));
+        }
+        session.history.add(new ChatLine("assistant",
+                "Dein Chatverlauf bleibt sichtbar. Beim nächsten Auftrag starte ich mit einem frischen KI-Kontext, damit keine Welt- oder Inventardaten vom vorherigen Server übernommen werden."));
+        session.scroll = Float.MAX_VALUE;
     }
 
     @Override
@@ -346,7 +377,9 @@ public final class AIChatScreen extends Screen {
         AIConfig.load();
         AIConfig.Settings settings = AIConfig.current();
         String context = settings.shareWorldContext() ? worldContext() : "";
+        int requestGeneration = sessionGeneration;
         AIChatClient.request(new ArrayList<>(apiHistory), context, result -> {
+            if (requestGeneration != sessionGeneration) return;
             waiting = false;
             if (pendingCommandFeedbackAI) {
                 pendingCommandFeedbackAI = false;
