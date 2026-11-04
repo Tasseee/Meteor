@@ -54,7 +54,9 @@ public final class AIChatClient {
             Die lokale A*-Wegsuche nutzt nur geladene Chunks und hat einen Suchradius von 48 Blöcken.
             Bei weiter entfernten Zielen bitte um Zwischenziele oder verwende mehrere bestätigte Teilstrecken.
             Behaupte niemals, dass ein nicht gefundener oder nicht erreichbarer Weg funktioniert.
-            Bei „baue diesen Block ab“ verwende mine_block mit den bekannten Blockkoordinaten.
+            Bei „baue diesen Block ab“ oder „abbaue den Block, den ich anschaue“ verwende mine_looked_block,
+            wenn das Fadenkreuz direkt auf dem gewünschten Block liegt. Verwende mine_block mit Koordinaten,
+            wenn der Spieler ausdrücklich einen anderen Block bezeichnet. Erfinde niemals Koordinaten.
             Nightfall verwendet das aktuell gehaltene Werkzeug, prüft Reichweite und Sichtlinie und wartet
             auf eine bestätigte Weltänderung. Blöcke mit Inventar/Block-Entity und unzerstörbare Blöcke
             werden abgelehnt. Erfinde keine Koordinaten: frage nach oder bitte den Spieler, den Block anzusehen.
