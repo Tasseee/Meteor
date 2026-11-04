@@ -101,7 +101,6 @@ public final class Lyrics extends Module {
     protected void onEnable() {
         stopping = false;
         ensureSidecarFiles();
-        if (autoStart.get()) startSidecarIfNeeded();
         reconnectExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "nightfall-lyrics-connect");
             t.setDaemon(true);
@@ -109,11 +108,6 @@ public final class Lyrics extends Module {
         });
         reconnectExecutor.scheduleWithFixedDelay(() -> {
             if (stopping) return;
-            if (autoStart.get() && !sidecarAvailable()
-                    && (sidecarProcess == null || !sidecarProcess.isAlive())
-                    && System.currentTimeMillis() - lastSidecarAttempt > 10_000L) {
-                startSidecarIfNeeded();
-            }
             connect();
         }, 0, 3, TimeUnit.SECONDS);
     }
@@ -128,6 +122,11 @@ public final class Lyrics extends Module {
         if (lastWorld != mc.world) {
             clearDisplays();
             lastWorld = mc.world;
+        }
+        if (autoStart.get() && !sidecarAvailable()
+                && (sidecarProcess == null || !sidecarProcess.isAlive())
+                && System.currentTimeMillis() - lastSidecarAttempt > 10_000L) {
+            startSidecarIfNeeded();
         }
 
         int consumed = 0;
