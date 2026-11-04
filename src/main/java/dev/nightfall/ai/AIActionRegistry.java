@@ -142,11 +142,14 @@ public final class AIActionRegistry {
         tools.add(tool("stop_movement", "Immediately release Nightfall's movement keys and stop its active movement.", objectSchema()));
         JsonObject targetPosition = positionSchema();
         tools.add(tool("navigate_to",
-                "Navigate to a feet-level block position x/y/z using a bounded local A* path through already-loaded chunks. Avoids solid blocks, fluids and common hazards. Maximum search radius is 48 blocks; stops if stuck. Requires player confirmation.",
+                "Navigate to a feet-level block position x/y/z using A* paths through already-loaded chunks in automatic 32-block segments. Replans after each segment as new chunks load. Avoids solid blocks, fluids and common hazards. Stops if stuck or no safe next segment is available. Requires player confirmation.",
                 targetPosition));
         tools.add(tool("mine_block",
                 "Mine one visible block at x/y/z using the currently held tool and normal vanilla block-breaking interactions. Will not break block entities/containers or unbreakable blocks; requires reach and clear line of sight. Waits for a world update. Requires player confirmation.",
                 positionSchema()));
+        tools.add(tool("mine_looked_block",
+                "Mine the exact block currently under the player's crosshair using the currently held tool and normal vanilla block-breaking interactions. Rejects containers, unbreakable or out-of-reach blocks. Requires player confirmation.",
+                objectSchema()));
         JsonObject foodSchema = objectSchema();
         JsonObject foodItem = property("item", "string", "Optional exact Minecraft item ID, item path or localized name already in the hotbar.").get("schema").getAsJsonObject();
         foodItem.addProperty("maxLength", 64);
@@ -271,6 +274,7 @@ public final class AIActionRegistry {
                 int z = readBoundedInteger(args, "z", -30_000_000, 30_000_000);
                 yield new Action(name, args, AIPlayerController.previewMine(x, y, z));
             }
+            case "mine_looked_block" -> new Action(name, args, AIPlayerController.previewLookedBlock());
             case "eat_food" -> new Action(name, args, AIPlayerController.previewEat(
                     args.has("item") ? requiredString(args, "item", 64).trim() : null));
             case "attack_nearest_hostile" -> new Action(name, args, AICombatController.preview());
@@ -361,10 +365,12 @@ public final class AIActionRegistry {
                     args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt());
             case "mine_block" -> AIPlayerController.mineBlock(
                     args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt());
+            case "mine_looked_block" -> AIPlayerController.mineLookedBlock();
             case "eat_food" -> AIPlayerController.eatFood(args.has("item") ? args.get("item").getAsString() : null);
             case "attack_nearest_hostile" -> AICombatController.start();
             case "stop_current_action" -> {
                 AICombatController.stop(null);
+                AIBuilder.stop();
                 yield AIPlayerController.stop("Auf deinen Befehl gestoppt.");
             }
             case "get_build_status" -> AIBuilder.describeStatus();
