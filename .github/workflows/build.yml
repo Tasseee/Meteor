@@ -42,6 +42,8 @@ jobs:
 
       - name: Validate bundled blueprint database
         run: python3 -m json.tool src/main/resources/nightfall/blueprints.json > /dev/null
+      - name: Validate bundled community schematic index
+        run: python3 -m json.tool src/main/resources/nightfall/community_schematics.json > /dev/null
 
       - name: Build Nightfall
         run: gradle build --no-daemon
@@ -67,12 +69,20 @@ jobs:
                       "nightfall-lyrics/requirements.txt",
                       "nightfall-lyrics/requirements-windows.txt",
                       "nightfall/blueprints.json",
+                      "nightfall/community_schematics.json",
                   ):
                       if resource not in names:
                           raise SystemExit(f"{path} is missing bundled resource {resource}")
                   metadata = json.loads(jar.read("fabric.mod.json"))
                   if "dev/nightfall/ai/AIVoiceClient.class" not in names:
                       raise SystemExit(f"{path} is missing the Nightfall voice client")
+                  if "dev/nightfall/ai/SchematicManager.class" not in names:
+                      raise SystemExit(f"{path} is missing the schematic importer")
+                  community = json.loads(jar.read("nightfall/community_schematics.json"))
+                  sources = community.get("sources", [])
+                  source_ids = [entry.get("id") for entry in sources]
+                  if community.get("schemaVersion") != 1 or not sources or len(source_ids) != len(set(source_ids)):
+                      raise SystemExit(f"{path} contains an invalid community schematic index")
                   database = json.loads(jar.read("nightfall/blueprints.json"))
                   entries = database.get("entries", [])
                   ids = [entry.get("id") for entry in entries]
