@@ -75,11 +75,30 @@ def run_playerctl(*args: str) -> str:
 def linux_snapshot() -> Track | None:
     if shutil.which("playerctl") is None:
         raise RuntimeError("playerctl fehlt. Installiere playerctl und starte Musik mit einem MPRIS-kompatiblen Player.")
+
+    # Prefer Spotify's own MPRIS session when the desktop app is running.
+    # Otherwise use playerctl's default session (e.g. browser, VLC, other players).
+    players = run_playerctl("-l").splitlines()
+    spotify_player = next((name for name in players if "spotify" in name.casefold()), "")
+
+    def player_args(*args: str) -> tuple[str, ...]:
+        return ("-p", spotify_player, *args) if spotify_player else args
+
     metadata = run_playerctl(
-        "metadata",
-        "--format",
-        "{{title}}\n{{artist}}\n{{album}}\n{{mpris:length}}",
+        *player_args(
+            "metadata",
+            "--format",
+            "{{title}}\\n{{artist}}\\n{{album}}\\n{{mpris:length}}",
+        )
     )
+    if not metadata and spotify_player:
+        # Spotify is installed but idle: fall back to the active/default player.
+        spotify_player = ""
+        metadata = run_playerctl(
+            "metadata",
+            "--format",
+            "{{title}}\\n{{artist}}\\n{{album}}\\n{{mpris:length}}",
+        )
     if not metadata:
         return None
     parts = metadata.splitlines()
@@ -95,14 +114,13 @@ def linux_snapshot() -> Track | None:
         except (TypeError, ValueError):
             duration_us = 0
     try:
-        position = float(run_playerctl("position") or "0")
+        position = float(run_playerctl(*player_args("position")) or "0")
     except ValueError:
         position = 0.0
-    status = run_playerctl("status").casefold()
+    status = run_playerctl(*player_args("status")).casefold()
     if not title:
         return None
     return Track(title, artist, album, duration_us / 1_000_000.0, position, status == "playing")
-
 
 class WindowsMediaReader:
     def __init__(self) -> None:
