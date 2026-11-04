@@ -9,6 +9,7 @@ import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.TrapperBot;
+import dev.nightfall.modules.InvSeeValue;
 import dev.nightfall.scanner.WaypointManager;
 import dev.nightfall.render.SkyVisualRenderer;
 import net.fabricmc.api.ClientModInitializer;
@@ -16,6 +17,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
@@ -56,8 +58,12 @@ public class Nightfall implements ClientModInitializer {
             Config.save();
         });
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-            if (!overlay) ModuleManager.get(AutoTpa.class).onMessage(message.getString());
+            if (!overlay) {
+                ModuleManager.get(AutoTpa.class).onMessage(message.getString());
+                InvSeeValue.onGameMessage(message.getString());
+            }
         });
+        ClientSendMessageEvents.COMMAND.register(InvSeeValue::onOutgoingCommand);
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> Commands.register(dispatcher));
         ClientLifecycleEvents.CLIENT_STOPPING.register(c -> {
             ModuleManager.get(BaseFinder.class).saveMarks();
