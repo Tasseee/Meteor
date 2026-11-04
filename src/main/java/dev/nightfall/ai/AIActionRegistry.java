@@ -130,6 +130,9 @@ public final class AIActionRegistry {
         tools.add(tool("build_custom_structure",
                 "Create a custom connected blueprint with at most 200 blocks in a 16x16x11 grid. Coordinates are nonnegative x/y/z offsets; blocks must be connected face-to-face to solid ground or existing solid blocks. You may set an optional material item ID/name per block to create a palette; otherwise use the top-level material or Nightfall's selected full-cube hotbar block. Nightfall validates per-material counts and previews the plan before confirmation.",
                 customBlueprintSchema));
+        tools.add(tool("get_build_status",
+                "Read the current Nightfall builder status: confirmed block count, phase, pause reason, blueprint and materials. Read-only; no confirmation required.",
+                objectSchema()));
         tools.add(tool("stop_build",
                 "Stop the currently running Nightfall block-by-block build. The player must confirm first.",
                 objectSchema()));
@@ -212,6 +215,7 @@ public final class AIActionRegistry {
                         readCustomBlocks(blockArgument.getAsJsonArray())));
             }
             case "build_starter_shelter" -> new Action(name, args, AIBuilder.prepareStarterShelter());
+            case "get_build_status" -> new Action(name, args, AIBuilder.describeStatus());
             case "stop_build" -> new Action(name, args,
                     AIBuilder.isRunning() ? "Nightfall stoppt den laufenden Bau. Bereits gesetzte Blöcke bleiben bestehen."
                             : "Aktuell läuft kein Nightfall-Bau.");
@@ -220,6 +224,10 @@ public final class AIActionRegistry {
     }
 
     /** Called only from the Minecraft client thread after explicit player confirmation. */
+    public static boolean requiresConfirmation(String actionName) {
+        return !"get_build_status".equals(actionName);
+    }
+
     public static String execute(Action action) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null) return "Aktion fehlgeschlagen: Du bist nicht in einer Welt.";
@@ -280,6 +288,7 @@ public final class AIActionRegistry {
                 }
             }
             case "build_structure", "build_starter_shelter", "build_custom_structure" -> AIBuilder.startPreparedStructure();
+            case "get_build_status" -> AIBuilder.describeStatus();
             case "stop_build" -> AIBuilder.stop();
             default -> "Aktion nicht freigegeben.";
         };

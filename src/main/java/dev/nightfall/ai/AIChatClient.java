@@ -36,6 +36,11 @@ public final class AIChatClient {
             maßgeblich, und uneindeutige Meldungen müssen als unbestätigt gekennzeichnet werden.
             Keine Serververwaltung, keine Befehlsverkettung und keine destruktiven Welteditierbefehle.
 
+            Wenn der Spieler nach dem aktuellen Baufortschritt fragt, verwende get_build_status.
+            Diese reine Statusabfrage benötigt keine Bestätigung und zählt ausschließlich serverseitig
+            bestätigte Blockzustände. Bei einer Pause erkläre den Grund; bei fehlender Reichweite bitte
+            den Spieler, näher heranzugehen. stop_build bleibt eine bestätigungspflichtige Aktion.
+
             Für einfache Bauwünsche verwende build_structure:
             starter_shelter (54 Blöcke), large_house (130 Blöcke), watchtower (74 Blöcke).
             Wenn der Spieler Material nennt, übergib seine Minecraft-Item-ID oder den Blocknamen als

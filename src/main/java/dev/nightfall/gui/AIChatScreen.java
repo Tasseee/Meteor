@@ -407,7 +407,17 @@ public final class AIChatScreen extends Screen {
                 try {
                     if ("run_server_command".equals(call.name()) && waitingCommandResponse)
                         throw new IllegalArgumentException("Ein Serverbefehl wartet noch auf eine Rückmeldung. Warte auf die Serverantwort oder den 30-Sekunden-Timeout, bevor du den nächsten Befehl sendest.");
-                    pendingAction = AIActionRegistry.prepare(call.name(), call.arguments());
+                    AIActionRegistry.Action prepared = AIActionRegistry.prepare(call.name(), call.arguments());
+                    if (!AIActionRegistry.requiresConfirmation(call.name())) {
+                        String toolResult = AIActionRegistry.execute(prepared);
+                        apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), toolResult));
+                        history.set(responseIndex, new ChatLine("assistant", "Builder-Status abgerufen …"));
+                        actionRoundTrips++;
+                        scroll = Float.MAX_VALUE;
+                        requestAI();
+                        return;
+                    }
+                    pendingAction = prepared;
                     pendingToolCall = call;
                     history.set(responseIndex, new ChatLine("assistant",
                             "Ich möchte folgende Aktion ausführen:\n" + pendingAction.preview()));

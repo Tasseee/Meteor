@@ -644,6 +644,24 @@ public final class AIBuilder {
     public static boolean isRunning() { return running; }
     public static String statusLabel() { return running ? "Builder · " + status : status; }
 
+    public static String describeStatus() {
+        if (running) {
+            int total = PLAN.size();
+            int percent = total == 0 ? 0 : Math.min(100, index * 100 / total);
+            String phase = pendingTarget != null ? "warte auf Serverbestätigung"
+                    : waitingForReach ? "pausiert: nächster Block außerhalb der Reichweite"
+                    : "läuft";
+            return "Builder aktiv: " + blueprintName + ". Bestätigte Blöcke: " + index + "/" + total
+                    + " (" + percent + "%). Phase: " + phase + ". Materialien: " + materialName
+                    + ". Ein noch nicht bestätigter Block wird nicht zum Fortschritt gezählt.";
+        }
+        if (prepared) {
+            return "Bauplan wartet auf Bestätigung: " + blueprintName + ", " + PLAN.size()
+                    + " Blöcke. Materialien: " + materialName + ". Noch wurde kein Block gesetzt.";
+        }
+        return "Kein Bau läuft. Letzter Builder-Status: " + status;
+    }
+
     public static void cancelPrepared() {
         if (running) return;
         prepared = false;
