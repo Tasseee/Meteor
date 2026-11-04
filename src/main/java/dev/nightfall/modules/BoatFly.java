@@ -45,8 +45,8 @@ public final class BoatFly extends Module {
 
         double forward = (mc.options.forwardKey.isPressed() ? 1 : 0)
                 - (mc.options.backKey.isPressed() ? 1 : 0);
-        double sideways = (mc.options.leftKey.isPressed() ? 1 : 0)
-                - (mc.options.rightKey.isPressed() ? 1 : 0);
+        double sideways = (mc.options.rightKey.isPressed() ? 1 : 0)
+                - (mc.options.leftKey.isPressed() ? 1 : 0);
         double vertical = (mc.options.jumpKey.isPressed() ? 1 : 0)
                 - (mc.options.sneakKey.isPressed() ? 1 : 0);
 
