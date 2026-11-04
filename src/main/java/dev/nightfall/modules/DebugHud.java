@@ -3,6 +3,7 @@ package dev.nightfall.modules;
 import dev.nightfall.module.HudModule;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.util.Theme;
+import dev.nightfall.util.HudStyle;
 import net.minecraft.client.gui.DrawContext;
 
 public class DebugHud extends HudModule {
@@ -24,8 +25,7 @@ public class DebugHud extends HudModule {
         int mw = 0;
         for (String l : lines) mw = Math.max(mw, mc.textRenderer.getWidth(l));
         w = mw + 10; h = lines.length * 10 + 4;
-        ctx.fill(0, 0, w, h, 0xA0101014);
-        ctx.fill(0, 0, 2, h, Theme.ACCENT);
+        HudStyle.panel(ctx, w, h);
         for (int i = 0; i < lines.length; i++) ctx.drawText(mc.textRenderer, lines[i], 6, 3 + i * 10, Theme.TEXT, false);
     }
 }
