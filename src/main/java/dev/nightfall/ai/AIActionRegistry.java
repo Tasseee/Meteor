@@ -71,7 +71,7 @@ public final class AIActionRegistry {
                 objectSchema(command, "command")));
         tools.add(tool("build_structure",
                 "Build a validated Nightfall blueprint: starter_shelter (54 blocks), large_house (130 blocks), or watchtower (74 blocks). Validates materials and a clear level footprint, previews, asks for confirmation, then confirms each placement from a server world update.",
-                objectSchema(property("structure", "string", "Exact blueprint identifier.", enumArray(List.of("starter_shelter", "large_house", "watchtower"))), "structure")));
+                objectSchema(property("structure", "string", "Exact blueprint identifier.", enumArray(Set.of("starter_shelter", "large_house", "watchtower"))), "structure")));
         tools.add(tool("build_starter_shelter",
                 "Backward-compatible alias for build_structure with structure=starter_shelter.",
                 objectSchema()));
