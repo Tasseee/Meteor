@@ -109,6 +109,25 @@ public final class Config {
         }
     }
 
+    private static boolean readBoolean(JsonObject root, String name, boolean fallback) {
+        try {
+            return root.has(name) ? root.get(name).getAsBoolean() : fallback;
+        } catch (RuntimeException invalidValue) {
+            Nightfall.LOGGER.warn("Ungueltiger Config-Wert '{}' - Standardwert wird verwendet", name);
+            return fallback;
+        }
+    }
+
+    private static int readInt(JsonObject root, String name, int fallback, int min, int max) {
+        try {
+            int value = root.has(name) ? root.get(name).getAsInt() : fallback;
+            return Math.max(min, Math.min(max, value));
+        } catch (RuntimeException invalidValue) {
+            Nightfall.LOGGER.warn("Ungueltiger Config-Wert '{}' - Standardwert wird verwendet", name);
+            return fallback;
+        }
+    }
+
     public static void load() {
         if (!Files.exists(FILE)) return;
         try {
@@ -119,9 +138,9 @@ public final class Config {
             guiKey = readKey(root, "guiKey", GLFW.GLFW_KEY_RIGHT_SHIFT);
             hudKey = readKey(root, "hudKey", GLFW.GLFW_KEY_H);
             mapKey = readKey(root, "mapKey", GLFW.GLFW_KEY_M);
-            if (root.has("snapGrid")) snapGrid = root.get("snapGrid").getAsBoolean();
-            if (root.has("keySounds")) keySounds = root.get("keySounds").getAsBoolean();
-            if (root.has("gridSize")) gridSize = Math.max(1, Math.min(64, root.get("gridSize").getAsInt()));
+            snapGrid = readBoolean(root, "snapGrid", true);
+            keySounds = readBoolean(root, "keySounds", true);
+            gridSize = readInt(root, "gridSize", 4, 1, 64);
 
             JsonObject mods = root.has("modules") && root.get("modules").isJsonObject()
                     ? root.getAsJsonObject("modules") : new JsonObject();
