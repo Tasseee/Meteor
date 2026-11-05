@@ -33,9 +33,9 @@ The key is stored locally as plain text in the Minecraft config folder. Do not u
 
 - Press **J** to open Nightfall AI (default; configurable as `aiKey` in `config/nightfall.json`).
 - Press **Enter** or click **SEND** to send a message.
-- Press **F8** or click **CALL** to start the persistent voice call; press F8 or **STOP** again to end it.
+- Press **F8** or click **CALL** to start the persistent voice call; press F8 or **STOP** again to end it. Press **F9** to mute/unmute the microphone without ending the call. While muted, microphone audio is not sent to the provider; the audio input device remains open until the call is stopped with F8.
 - Spoken messages are handled directly by the live voice agent; typed messages sent while the call is active join the same conversation.
-- The call remains active when the chat screen closes and is shown by a small HUD indicator. Disconnecting or exiting Minecraft stops the microphone and speaker.
+- The call remains active when the chat screen closes and is shown by a small HUD indicator that also shows whether the microphone is muted or Nightfall is speaking. F9 works outside the chat screen too. Disconnecting or exiting Minecraft stops the microphone and speaker.
 - Press **Escape** to close the chat.
 - Use the mouse wheel to scroll through the current conversation.
 
