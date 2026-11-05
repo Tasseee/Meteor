@@ -25,6 +25,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.StandardCopyOption;
 
 import java.util.ArrayList;
 import java.util.ArrayDeque;
@@ -1141,7 +1143,15 @@ public final class AIBuilder {
             root.add("excavation", excavation);
             Path file = checkpointPath();
             Files.createDirectories(file.getParent());
-            Files.writeString(file, root.toString());
+            Path temporaryFile = file.resolveSibling(file.getFileName().toString() + ".tmp");
+            Files.writeString(temporaryFile, root.toString());
+            try {
+                Files.move(temporaryFile, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException unsupported) {
+                Files.move(temporaryFile, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+            checkpointLoadAttempted = true;
+            checkpointScanKey = currentCheckpointScanKey(mc);
         } catch (Exception error) {
             status = "Baufortschritt konnte nicht lokal gespeichert werden: " + error.getMessage();
         }
