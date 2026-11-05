@@ -238,24 +238,45 @@ public final class AIBuilder {
                     throw new IllegalArgumentException("Der Bauplatz braucht einen durchgehend ebenen, festen Boden.");
             }
         }
+        List<BlockPos> nextExcavation = new ArrayList<>();
+        Map<BlockPos, Identifier> nextExcavationExpected = new LinkedHashMap<>();
+        BlockState desiredState = selected.getBlock().getDefaultState();
         for (BlockPos target : nextPlan) {
             if (target.getY() < mc.world.getBottomY()
                     || target.getY() >= mc.world.getBottomY() + mc.world.getHeight())
                 throw new IllegalArgumentException("Der Bauplatz liegt außerhalb der Weltgrenzen.");
-            if (!mc.world.getBlockState(target).isReplaceable())
-                throw new IllegalArgumentException("Der Bauplatz ist nicht frei bei X=" + target.getX()
-                        + ", Y=" + target.getY() + ", Z=" + target.getZ() + ".");
+            BlockState present = mc.world.getBlockState(target);
+            if (present.equals(desiredState) || present.isReplaceable()) continue;
+            if (present.getBlock() instanceof FallingBlock || present.hasBlockEntity()
+                    || !present.getFluidState().isEmpty() || present.getHardness(mc.world, target) < 0.0f)
+                throw new IllegalArgumentException("Nightfall kann das Hindernis bei X=" + target.getX()
+                        + ", Y=" + target.getY() + ", Z=" + target.getZ()
+                        + " nicht sicher entfernen (fallender Block, Block-Entity, Flüssigkeit oder unzerstörbarer Block).");
+            nextExcavation.add(target.toImmutable());
+            nextExcavationExpected.put(target.toImmutable(), Registries.BLOCK.getId(present.getBlock()));
         }
+        if (nextExcavation.size() > MAX_EXCAVATION_BLOCKS)
+            throw new IllegalArgumentException("Für diesen Bau müssten mehr als " + MAX_EXCAVATION_BLOCKS
+                    + " Hindernisblöcke entfernt werden.");
+        nextExcavation.sort(Comparator.comparingInt(BlockPos::getY).reversed()
+                .thenComparingInt(BlockPos::getX).thenComparingInt(BlockPos::getZ));
 
         PLAN.clear();
         PLAN.addAll(nextPlan);
         PLAN_MATERIALS.clear();
         PLAN_STATES.clear();
         EXCAVATION_PLAN.clear();
+        EXCAVATION_PLAN.addAll(nextExcavation);
         EXCAVATION_EXPECTED_BLOCKS.clear();
+        EXCAVATION_EXPECTED_BLOCKS.putAll(nextExcavationExpected);
         excavationIndex = 0;
         excavationRetries = 0;
-        for (BlockPos target : nextPlan) PLAN_STATES.put(target, selected.getBlock().getDefaultState());
+        pendingExcavationTarget = null;
+        excavationMinePending = false;
+        excavationNavigationPending = false;
+        excavationApproachAttempts = 0;
+        excavationWaitingNotice = false;
+        for (BlockPos target : nextPlan) PLAN_STATES.put(target, desiredState);
         pendingMaterial = null;
         pendingExpectedState = null;
         queuedPlacementHit = null;
@@ -283,7 +304,9 @@ public final class AIBuilder {
         saveCheckpoint();
         return "Bauplan geprüft: " + selectedBlueprint.label + " – " + layout + ". Material: "
                 + materialName + " × " + (creative ? "unbegrenzt (Kreativmodus)" : selectedBlueprint.blocks + " (Inventar: " + available + ")") + ". "
-                + "Fläche und Boden sind geprüft. Jede Platzierung wird erst nach Server-Weltupdate gezählt; bei fehlender Reichweite pausiere ich.";
+                + "Ebener, fester Boden ist geprüft. Entfernbare Hindernisse im Bauvolumen: " + nextExcavation.size()
+                + ". Block-Entities, Flüssigkeiten, fallende und unzerstörbare Blöcke bleiben geschützt. "
+                + "Jede Platzierung wird erst nach Server-Weltupdate gezählt; bei fehlender Reichweite pausiere ich.";
     }
 
     public static String prepareCustomStructure(String name, String materialId, List<RelativeBlock> offsets) {
