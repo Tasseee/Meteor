@@ -215,6 +215,23 @@ public final class AIActionRegistry {
         tools.add(tool("gather_ore",
                 "Gather a target total amount (1–64) of a supported ore drop item: coal, raw iron, raw copper, raw gold, redstone, lapis lazuli, diamond, emerald, quartz, gold nuggets from nether gold ore, or ancient debris. Includes stone and deepslate ore variants where applicable. It scans only already-loaded chunks within 16 horizontal blocks and 24 below/12 above the player, does not tunnel through rock, and only mines visible/reachable ore blocks with a tool that Minecraft marks suitable for correct drops. This enforces the ore's minimum pickaxe tier through the vanilla ItemStack.isSuitableFor check (wood/stone/iron/diamond as required). Uses normal mining, waits for world updates and confirms item pickup. At most 32 ore blocks per confirmed request; fortune may increase the amount received. Rejects silk-touch-only expectations, unlisted ores, fluids, block entities, unreachable blocks and missing tool tiers. Requires player confirmation.",
                 gatherOreSchema));
+        JsonObject smeltSchema = objectSchema();
+        JsonObject smeltItem = property("item", "string",
+                "Raw smeltable item ID: minecraft:raw_iron, minecraft:raw_gold, minecraft:raw_copper or minecraft:ancient_debris.").get("schema").getAsJsonObject();
+        smeltItem.addProperty("maxLength", 64);
+        JsonObject smeltCount = property("count", "integer",
+                "Number of raw items to smelt in this single furnace batch (1–16).").get("schema").getAsJsonObject();
+        smeltCount.addProperty("minimum", 1);
+        smeltCount.addProperty("maximum", 16);
+        smeltSchema.getAsJsonObject("properties").add("item", smeltItem);
+        smeltSchema.getAsJsonObject("properties").add("count", smeltCount);
+        JsonArray smeltRequired = new JsonArray();
+        smeltRequired.add("item");
+        smeltRequired.add("count");
+        smeltSchema.add("required", smeltRequired);
+        tools.add(tool("smelt_item",
+                "Smelt 1–16 of minecraft:raw_iron, raw_gold, raw_copper or ancient_debris in the empty furnace/blast furnace directly under the player's crosshair. Requires enough matching raw input and coal/charcoal already in the player's inventory. Computes the fuel amount for the chosen furnace type, inserts only the requested batch with normal furnace slot interactions, waits for server-confirmed output and takes outputs one at a time. Never opens or modifies a non-empty furnace, never removes existing contents, and stops if the GUI closes, the inventory lacks room or output cannot be confirmed. Requires player confirmation.",
+                smeltSchema));
         JsonObject craftSchema = objectSchema(property("item", "string",
                 "Exact Minecraft item ID, item path or localized item name to craft."), "item");
         JsonObject craftCount = property("count", "integer",
@@ -236,7 +253,7 @@ public final class AIActionRegistry {
                 "Engage the nearest nearby hostile mob only (never players or passive/neutral mobs). Approaches using local pathfinding and performs normal melee attacks within reach. Bounded to 12 attacks or 45 seconds. Requires player confirmation.",
                 objectSchema()));
         tools.add(tool("stop_current_action",
-                "Immediately stop Nightfall movement, navigation, mining, wood/resource gathering, crafting, eating and combat, and release all keys controlled by Nightfall. Safe emergency stop.",
+                "Immediately stop Nightfall movement, navigation, mining, wood/resource gathering, crafting, smelting, eating and combat, and release all keys controlled by Nightfall. Safe emergency stop.",
                 objectSchema()));
         tools.add(tool("get_build_status",
                 "Read the current Nightfall builder status: confirmed block count, phase, pause reason, blueprint and materials. Read-only; no confirmation required.",
@@ -365,6 +382,9 @@ public final class AIActionRegistry {
             case "gather_ore" -> new Action(name, args,
                     AIPlayerController.previewGatherOre(requiredString(args, "item", 64),
                             readBoundedInteger(args, "count", 1, 64)));
+            case "smelt_item" -> new Action(name, args,
+                    AIPlayerController.previewSmeltItem(requiredString(args, "item", 64),
+                            readBoundedInteger(args, "count", 1, 16)));
             case "craft_item" -> new Action(name, args,
                     AIPlayerController.previewCraftItem(requiredString(args, "item", 64),
                             args.has("count") ? readBoundedInteger(args, "count", 1, 256) : 1));
@@ -372,7 +392,7 @@ public final class AIActionRegistry {
                     args.has("item") ? requiredString(args, "item", 64).trim() : null));
             case "attack_nearest_hostile" -> new Action(name, args, AICombatController.preview());
             case "stop_current_action" -> new Action(name, args,
-                    "Nightfall stoppt sofort Navigation, Bewegung, Blockabbau, Holz- und Rohstoffsammlung, Crafting, Essen und Kampf und gibt alle eigenen Tasten frei.");
+                    "Nightfall stoppt sofort Navigation, Bewegung, Blockabbau, Holz- und Rohstoffsammlung, Crafting, Schmelzen, Essen und Kampf und gibt alle eigenen Tasten frei.");
             case "get_build_status" -> new Action(name, args, AIBuilder.describeStatus());
             case "pause_build" -> new Action(name, args,
                     AIBuilder.isRunning() ? "Nightfall pausiert den Bau nach einer eventuell noch ausstehenden Blockbestätigung."
@@ -469,6 +489,8 @@ public final class AIActionRegistry {
                     readBoundedInteger(args, "count", 1, 64));
             case "gather_ore" -> AIPlayerController.gatherOre(args.get("item").getAsString(),
                     readBoundedInteger(args, "count", 1, 64));
+            case "smelt_item" -> AIPlayerController.smeltItem(args.get("item").getAsString(),
+                    readBoundedInteger(args, "count", 1, 16));
             case "craft_item" -> AIPlayerController.craftItem(args.get("item").getAsString(),
                     args.has("count") ? readBoundedInteger(args, "count", 1, 256) : 1);
             case "eat_food" -> AIPlayerController.eatFood(args.has("item") ? args.get("item").getAsString() : null);
