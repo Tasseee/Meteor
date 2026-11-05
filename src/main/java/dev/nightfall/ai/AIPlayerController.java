@@ -733,6 +733,12 @@ public final class AIPlayerController {
         return true;
     }
 
+    private static boolean isAtExactTunnelCell(MinecraftClient mc, BlockPos cell) {
+        double horizontal = Math.hypot(cell.getX() + 0.5 - mc.player.getX(),
+                cell.getZ() + 0.5 - mc.player.getZ());
+        return horizontal < 0.28 && Math.abs(mc.player.getY() - cell.getY()) < 0.65;
+    }
+
     private static boolean isSafeAncientTunnelCell(MinecraftClient mc, BlockPos feet) {
         BlockPos head = feet.up();
         BlockPos floor = feet.down();
@@ -818,7 +824,7 @@ public final class AIPlayerController {
                     skipAncientTunnelTarget(mc, "Der nächste Tunnelblock konnte nicht sicher abgebaut werden.");
                 return;
             }
-            if (isAtGoal(mc, cell)) {
+            if (isAtExactTunnelCell(mc, cell)) {
                 gatherTunnelCellIndex++;
                 continue;
             }
