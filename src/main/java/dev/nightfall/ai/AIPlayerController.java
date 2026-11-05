@@ -310,6 +310,10 @@ public final class AIPlayerController {
         if (missing > MAX_GATHER_BLOCKS)
             throw new IllegalArgumentException("Ein einzelner Sammelauftrag darf höchstens "
                     + MAX_GATHER_BLOCKS + " zusätzliche Blöcke abbauen.");
+        int inventoryCapacity = availableInventoryCapacity(mc, item);
+        if (inventoryCapacity <= 0)
+            throw new IllegalArgumentException("Dein Inventar hat keinen freien Platz für "
+                    + item.getName().getString() + ". Räume zuerst einen Slot frei.");
 
         List<BlockPos> candidates = findGatherableBlocks(mc, item);
         if (candidates.isEmpty())
@@ -320,15 +324,16 @@ public final class AIPlayerController {
         if (toolEligible == 0)
             throw new IllegalArgumentException("Ich habe " + candidates.size() + " passende Blöcke gefunden, "
                     + "aber für diese Blöcke fehlt ein geeignetes Werkzeug. Lege das passende Werkzeug in dein Inventar.");
-        int available = Math.min(missing, toolEligible);
+        int available = Math.min(Math.min(missing, toolEligible), inventoryCapacity);
         String kind = woodOnly ? "Holzblöcke" : "freigegebene Rohstoffblöcke";
-        return "Nightfall sammelt nach deiner Bestätigung bis zu " + missing + " zusätzliche "
+        return "Nightfall sammelt nach deiner Bestätigung bis zu " + available + " zusätzliche "
                 + item.getName().getString() + " (Ziel: " + targetCount + " im Inventar). "
                 + "Gefunden: " + candidates.size() + " passende " + kind + " im bereits geladenen Umkreis; "
                 + toolEligible + " davon haben ein verfügbares passendes Werkzeug. "
                 + "Höchstens " + MAX_GATHER_BLOCKS + " zusätzliche Blöcke pro Auftrag. "
                 + "Nightfall sucht sichere Standpunkte, nutzt bei toolpflichtigen Blöcken nur ein geeignetes Werkzeug "
-                + "und wartet auf Block- und Item-Updates. Es werden höchstens " + available + " Ziele eingeplant.";
+                + "und wartet auf Block- und Item-Updates. Freier Inventarplatz für " + inventoryCapacity
+                + " weitere Items. Es werden höchstens " + available + " Ziele eingeplant.";
     }
 
     private static String gatherResource(String requestedItem, int targetCount, boolean woodOnly) {
@@ -460,6 +465,11 @@ public final class AIPlayerController {
         if (currentCount >= gatherGoalCount) {
             stop("Materialsammlung abgeschlossen: " + currentCount + "/" + gatherGoalCount
                     + " " + gatherMaterialName + " im Inventar.");
+            return;
+        }
+        if (availableInventoryCapacity(mc, gatherMaterial) <= 0) {
+            stop("Materialsammlung gestoppt: Dein Inventar ist voll. Im Inventar liegen "
+                    + currentCount + "/" + gatherGoalCount + " " + gatherMaterialName + ".");
             return;
         }
         if (gatherAwaitingPickup) {
@@ -929,6 +939,21 @@ public final class AIPlayerController {
             if (!stack.isEmpty() && stack.isOf(item)) count += stack.getCount();
         }
         return count;
+    }
+
+    /** Counts how many additional items of the requested type fit in the 36 normal inventory slots. */
+    private static int availableInventoryCapacity(MinecraftClient mc, Item item) {
+        int capacity = 0;
+        int emptySlotCapacity = new ItemStack(item).getMaxCount();
+        for (int slot = 0; slot < 36; slot++) {
+            ItemStack stack = mc.player.getInventory().getStack(slot);
+            if (stack.isEmpty()) {
+                capacity += emptySlotCapacity;
+            } else if (stack.isOf(item)) {
+                capacity += Math.max(0, stack.getMaxCount() - stack.getCount());
+            }
+        }
+        return capacity;
     }
 
     /** Returns a PlayerScreenHandler slot ID able to store the whole output stack, or -1. */
