@@ -87,6 +87,7 @@ public final class AIPlayerController {
     private static final int GATHER_ORE_VERTICAL_ABOVE = 12;
     private static final int MAX_ANCIENT_TUNNEL_LENGTH = 8;
     private static final int MAX_ANCIENT_TUNNEL_BLOCKS = 16;
+    private static final int MAX_ANCIENT_DEBRIS_RESCANS = 6;
     private static final Set<String> ANCIENT_TUNNEL_BLOCKS = Set.of("netherrack", "basalt", "blackstone");
     private static final Map<String, String> GATHERABLE_ORE_DROPS = Map.ofEntries(
             Map.entry("minecraft:coal_ore", "minecraft:coal"),
@@ -150,6 +151,8 @@ public final class AIPlayerController {
     private static int gatherGoalCount;
     private static List<BlockPos> gatherTargets = List.of();
     private static int gatherIndex;
+    private static Set<BlockPos> gatherVisitedTargets = new HashSet<>();
+    private static int gatherRescanCount;
     private static boolean gatherAwaitingPickup;
     private static int gatherPickupTicks;
     private static int gatherCountBeforeBreak;
@@ -492,6 +495,11 @@ public final class AIPlayerController {
     }
 
     private static List<BlockPos> findGatherableBlocks(MinecraftClient mc, Item targetItem, boolean oreOnly) {
+        return findGatherableBlocks(mc, targetItem, oreOnly, Set.of());
+    }
+
+    private static List<BlockPos> findGatherableBlocks(MinecraftClient mc, Item targetItem, boolean oreOnly,
+                                                        Set<BlockPos> excludedTargets) {
         BlockPos center = mc.player.getBlockPos();
         int minX = center.getX() - GATHER_HORIZONTAL_RADIUS;
         int maxX = center.getX() + GATHER_HORIZONTAL_RADIUS;
@@ -506,7 +514,7 @@ public final class AIPlayerController {
             for (int z = minZ; z <= maxZ; z++) {
                 for (int y = minY; y <= maxY; y++) {
                     cursor.set(x, y, z);
-                    if (!mc.world.isChunkLoaded(cursor)) continue;
+                    if (excludedTargets.contains(cursor) || !mc.world.isChunkLoaded(cursor)) continue;
                     BlockState state = mc.world.getBlockState(cursor);
                     if (!isGatherableSourceBlock(state, targetItem, oreOnly) || state.hasBlockEntity()
                             || state.getBlock() instanceof net.minecraft.block.FallingBlock
@@ -562,13 +570,13 @@ public final class AIPlayerController {
             if (currentCount > gatherCountBeforeBreak) {
                 gatherAwaitingPickup = false;
                 gatherPickupTicks = 0;
-                gatherIndex++;
+                advanceGatherTarget();
                 return;
             }
             if (++gatherPickupTicks > 40) {
                 gatherAwaitingPickup = false;
                 gatherPickupTicks = 0;
-                gatherIndex++;
+                advanceGatherTarget();
                 statusNotice(mc, "Der letzte Holzblock wurde abgebaut, aber sein Drop kam nicht im Inventar an. Ich überspringe ihn.");
             } else {
                 return;
@@ -583,7 +591,7 @@ public final class AIPlayerController {
                     || !state.getFluidState().isEmpty() || state.getHardness(mc.world, target) < 0.0f
                     || (isAncientDebrisItem(gatherMaterial) && !isSafeAncientDebrisTarget(mc, target))
                     || !hasSuitableMiningTool(mc, state, gatherRequiresSuitableTool)) {
-                gatherIndex++;
+                advanceGatherTarget();
                 continue;
             }
 
@@ -594,7 +602,7 @@ public final class AIPlayerController {
             if (hit == null) {
                 if (startGatherApproach(mc, target)) return;
                 if (isAncientDebrisItem(gatherMaterial) && startAncientDebrisTunnel(mc, target)) return;
-                gatherIndex++;
+                advanceGatherTarget();
                 continue;
             }
 
@@ -607,7 +615,7 @@ public final class AIPlayerController {
                 if (hit == null || !mc.interactionManager.attackBlock(target, hit.getSide())) {
                     restoreMiningTool(mc);
                     restoreHotbar(mc);
-                    gatherIndex++;
+                    advanceGatherTarget();
                     continue;
                 }
             } catch (RuntimeException failure) {
@@ -628,10 +636,38 @@ public final class AIPlayerController {
             return;
         }
 
+        if (isAncientDebrisItem(gatherMaterial) && refreshAncientDebrisTargets(mc)) return;
         stop("Materialsammlung beendet: " + currentCount + "/" + gatherGoalCount + " "
                 + gatherMaterialName + " im Inventar. Im geladenen Nahbereich sind keine weiteren passenden Rohstoffblöcke erreichbar.");
     }
 
+
+    private static void advanceGatherTarget() {
+        if (gatherIndex < gatherTargets.size())
+            gatherVisitedTargets.add(gatherTargets.get(gatherIndex).toImmutable());
+        gatherIndex++;
+    }
+
+    /** Refreshes a bounded local Ancient Debris scan around the player's updated position. */
+    private static boolean refreshAncientDebrisTargets(MinecraftClient mc) {
+        if (!isInNether(mc) || !isAncientDebrisItem(gatherMaterial)
+                || gatherRescanCount >= MAX_ANCIENT_DEBRIS_RESCANS) return false;
+
+        gatherRescanCount++;
+        List<BlockPos> candidates = findGatherableBlocks(mc, gatherMaterial, true, gatherVisitedTargets);
+        List<BlockPos> usableTargets = new ArrayList<>();
+        for (BlockPos pos : candidates) {
+            BlockState state = mc.world.getBlockState(pos);
+            if (hasSuitableMiningTool(mc, state, true)) usableTargets.add(pos);
+        }
+        if (usableTargets.isEmpty()) return false;
+
+        gatherTargets = List.copyOf(usableTargets);
+        gatherIndex = 0;
+        statusNotice(mc, "Suche weiter nach Ancient Debris rund um deine aktuelle Position (Nachsuche "
+                + gatherRescanCount + "/" + MAX_ANCIENT_DEBRIS_RESCANS + ").");
+        return true;
+    }
 
     private static boolean isAncientDebrisItem(Item item) {
         return item != null && "minecraft:ancient_debris".equals(Registries.ITEM.getId(item).toString());
@@ -862,7 +898,7 @@ public final class AIPlayerController {
         restoreHotbar(mc);
         miningPos = null;
         miningState = null;
-        gatherIndex++;
+        advanceGatherTarget();
         gatherTunnelCells = List.of();
         gatherTunnelOreTarget = null;
         gatherTunnelCellIndex = 0;
@@ -989,6 +1025,8 @@ public final class AIPlayerController {
         gatherGoalCount = 0;
         gatherTargets = List.of();
         gatherIndex = 0;
+        gatherVisitedTargets = new HashSet<>();
+        gatherRescanCount = 0;
         gatherAwaitingPickup = false;
         gatherPickupTicks = 0;
         gatherCountBeforeBreak = 0;
