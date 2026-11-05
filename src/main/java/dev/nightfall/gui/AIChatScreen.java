@@ -831,7 +831,7 @@ public final class AIChatScreen extends Screen {
             String detail = failure.getMessage() == null ? "Kein sicherer Wegabschnitt verfügbar." : failure.getMessage();
             history.add(new ChatLine("assistant", "Strukturkoordinaten erhalten (" + x + ", " + y + ", " + z
                     + "), aber Nightfall konnte keinen sicheren Weg starten: " + detail
-                    + " Gehe näher heran oder lade die Umgebung.");
+                    + " Gehe näher heran oder lade die Umgebung."));
             status = "Struktur gefunden · Weg nicht verfügbar";
         }
         scroll = Float.MAX_VALUE;
