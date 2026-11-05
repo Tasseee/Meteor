@@ -182,10 +182,18 @@ AI actions:
 - `build_schematic`: prepares the automatically supported subset and displays a normal Nightfall
   placement preview. It requires player confirmation before the first placement.
 
-**Important limitations:** Automatic placement currently accepts only static default-state full
-cube BlockItems without fluid, falling behavior, block entities or state properties. Therefore
-oriented blocks (pistons, observers, hoppers, stairs, etc.), containers, inventories, entities,
-villagers, water/lava, redstone states and block-entity data are excluded from the automatic
-subset. They are reported as manual-only/skipped. A partially placed schematic is not necessarily
-a functioning farm. Check the summary before approving it, and test community schematics in a
-copy of the world first. No creator's downloaded schematic file is bundled by Nightfall.
+**Aushub und Aufbau:** Bei lokalen Schematics liest Nightfall nun auch alle Luftzellen innerhalb
+des Vorlagen-Volumens. Vor dem Setzen räumt es dort vorhandenes Gelände ab und entfernt feste
+Hindernisse an Zielpositionen. Dafür nutzt es den normalen clientseitigen Abbau, wartet auf das
+Server-Weltupdate und versucht, sich über geladene, begehbare Wege an nahe Aushubziele zu bewegen.
+Der Aushub ist auf 20.000 Blöcke begrenzt. Block-Entities/Container, Flüssigkeiten und unzerstörbare
+Blöcke werden nicht angerührt. Wenn Nightfall keine sichere Route oder Sichtlinie findet, pausiert
+es und fordert dich auf, näher heranzugehen. Materialien müssen weiterhin in der Hotbar liegen.
+
+**Wichtige verbleibende Grenzen:** Automatisch platziert werden weiterhin nur statische Standard-
+Full-Cube-BlockItems ohne Block-Entity und ohne Zustands-Properties. Daher sind orientierte Blöcke
+(Kolben, Beobachter, Hopper, Treppen usw.), Behälter/Inventare, Entities, Dorfbewohner, Wasser/Lava,
+Redstone-Zustände und Block-Entity-NBT noch nicht vollständig reproduzierbar. Der Aushub selbst
+macht eine Farm nicht funktionsfähig, wenn ihre Mechanik nicht unterstützt wird. Prüfe die Vorschau
+und teste Community-Schematics in einer Weltkopie. Keine heruntergeladene Creator-Datei wird durch
+Nightfall mitgeliefert.
