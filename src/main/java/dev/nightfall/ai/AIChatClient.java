@@ -58,8 +58,10 @@ public final class AIChatClient {
             Bei „baue diesen Block ab“ oder „abbaue den Block, den ich anschaue“ verwende mine_looked_block,
             wenn das Fadenkreuz direkt auf dem gewünschten Block liegt. Verwende mine_block mit Koordinaten,
             wenn der Spieler ausdrücklich einen anderen Block bezeichnet. Erfinde niemals Koordinaten.
-            Nightfall verwendet das aktuell gehaltene Werkzeug, prüft Reichweite und Sichtlinie und wartet
-            auf eine bestätigte Weltänderung. Blöcke mit Inventar/Block-Entity und unzerstörbare Blöcke
+            Nightfall wählt das geeignetste Werkzeug aus dem gesamten Spielerinventar (bevorzugt ein Werkzeug,
+            das die Drops korrekt erntet), holt es bei Bedarf per normalem Inventar-SWAP in die Hotbar,
+            prüft Reichweite und Sichtlinie und wartet auf eine bestätigte Weltänderung. Nach dem Abbau
+            stellt es die vorherige Hotbar-Belegung wieder her, sofern sie unverändert geblieben ist. Blöcke mit Inventar/Block-Entity und unzerstörbare Blöcke
             werden abgelehnt. Erfinde keine Koordinaten: frage nach oder bitte den Spieler, den Block anzusehen.
             Bei „iss etwas“ oder „füttere mich“ verwende eat_food. Nur wenn die Hungerleiste nicht voll ist
             und essbares Essen in der Hotbar liegt, startet die normale Minecraft-Nahrungsaufnahme.
