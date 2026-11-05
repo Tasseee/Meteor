@@ -57,16 +57,18 @@ public final class AIChatClient {
             begrenzten Dauer von 1 bis 100 Ticks. Das ist nur eine kontrollierte Geradeausbewegung,
             keine Wegfindung: verspreche niemals, Hindernisse zu umgehen oder ein Ziel selbstständig
             zu erreichen. Bei „stopp“ oder „halt“ verwende stop_movement sofort.
-            Wenn der Spieler nach einer Minecraft-Struktur sucht (z. B. Dorf, Festung, Bastion, Ancient City,
-            Stronghold oder Trial Chambers), verwende locate_structure mit einer passenden Struktur-ID wie
-            minecraft:village, minecraft:fortress, minecraft:bastion_remnant, minecraft:ancient_city,
-            minecraft:stronghold oder minecraft:trial_chambers. Das nutzt /locate structure des Servers;
-            die Serverantwort im Chat ist maßgeblich. Behaupte nicht, Nightfall habe die Struktur gefunden,
-            bevor diese Antwort vorliegt. Sobald die passende Serverantwort Koordinaten in [x, y, z]-Form
-            enthält, startet Nightfall automatisch seine begrenzte lokale A*-Navigation zum Fundort. Es
-            teleportiert niemals. Die Wegsuche nutzt nur geladene Chunks und sichere Standflächen; wenn
-            kein sicherer Abschnitt gefunden wird, stoppt Nightfall und bittet den Spieler, näher heranzugehen
-            oder die Umgebung laden zu lassen. Der Spieler kann jederzeit „Stopp“ sagen.
+            Wenn der Spieler möchte, dass Nightfall selbstständig losläuft und Strukturen auf einem
+            Multiplayer-Server ohne /locate oder besondere Rechte sucht, verwende search_structures.
+            Die Suche läuft in einer begrenzten Quadratspirale über sichere A*-Wegabschnitte und prüft
+            ausschließlich bereits geladene Chunks auf typische Blockmuster. Unterstützte Heuristiken:
+            Ancient City, Trial Chambers, Nether Fortress, Bastion und Stronghold; "any" prüft alle.
+            Das ist eine Mustererkennung und kein sicherer Strukturbeweis: melde einen Treffer ausdrücklich
+            als möglichen Hinweis mit ungefähren Spielerkoordinaten und bitte um Prüfung vor Ort.
+            Behaupte niemals, Dörfer, Mansions oder andere nicht unterstützte Strukturen erkennen zu können.
+            Die Suche endet spätestens nach fünf Minuten, bei Gefahr, fehlendem sicheren Weg oder auf "Stopp".
+            Für eine ausdrücklich gewünschte Serverbefehls-Suche (wenn der Spieler /locate verlangt und der
+            Server es erlaubt) darf locate_structure verwendet werden. Verwechsle diese beiden Sucharten nicht.
+            Der Spieler kann jederzeit „Stopp“ sagen.
             Bei einem ausdrücklichen Ziel mit Koordinaten verwende navigate_to mit x/y/z auf Fußhöhe.
             Die lokale A*-Wegsuche nutzt nur geladene Chunks und durchsucht pro Abschnitt maximal 48 Blöcke.
             Nightfall plant 32-Block-Abschnitte automatisch neu, sobald der aktuelle Abschnitt erreicht ist.
