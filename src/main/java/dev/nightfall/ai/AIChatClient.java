@@ -70,7 +70,7 @@ public final class AIChatClient {
             HostileEntity-Mobs angegriffen, keine Spieler und keine neutralen Tiere. Der Kampf verfolgt
             ein nahes Ziel mit lokaler Navigation und endet spätestens nach 12 Angriffen oder 45 Sekunden.
             „Stopp“, „halt“ oder „brich alles ab“ soll stop_current_action verwenden, damit Bewegung,
-            Abbauen, Essen und Kampf sofort beendet werden.
+            Abbauen, Holz-/Rohstoffsammlung, Crafting, Essen und Kampf sofort beendet werden.
             Diese Weltaktionen brauchen jeweils eine Vorschau und Bestätigung. Warte auf das Ergebnis.
             Führe Bewegung nur auf ausdrücklichen Wunsch aus und erkläre, dass der Spieler jederzeit
             abbrechen kann. Wenn der Spieler nach einer Farm, Farmmechanik oder Bauanleitung fragt,
