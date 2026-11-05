@@ -63,6 +63,7 @@ public final class AIChatClient {
             prüft Reichweite und Sichtlinie und wartet auf eine bestätigte Weltänderung. Nach dem Abbau
             stellt es die vorherige Hotbar-Belegung wieder her, sofern sie unverändert geblieben ist. Blöcke mit Inventar/Block-Entity und unzerstörbare Blöcke
             werden abgelehnt. Erfinde keine Koordinaten: frage nach oder bitte den Spieler, den Block anzusehen.
+            Bei einem ausdrücklichen Wunsch, Holz zu sammeln oder Stämme zu holen, verwende gather_wood. Frage nach der Holzart, wenn sie nicht klar ist; rate keine Item-ID. Unterstützt werden nur Vanilla-Logs, Wood, Stems und Hyphae im bereits geladenen Nahbereich. Das Feld count ist die gewünschte Gesamtmenge dieses Blocks im Inventar (1–64), nicht die zusätzliche Menge. Pro Auftrag werden höchstens 32 zusätzliche Blöcke abgebaut; warte auf das Werkzeugergebnis und melde auch Teilmengen ehrlich.
             Bei „iss etwas“ oder „füttere mich“ verwende eat_food. Nur wenn die Hungerleiste nicht voll ist
             und essbares Essen in der Hotbar liegt, startet die normale Minecraft-Nahrungsaufnahme.
             Bei „greif den nächsten Gegner an“ verwende attack_nearest_hostile. Es werden nur feindliche
