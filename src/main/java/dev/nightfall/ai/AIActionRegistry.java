@@ -199,7 +199,7 @@ public final class AIActionRegistry {
                 "Exact vanilla wood block item ID, e.g. minecraft:oak_log or minecraft:crimson_stem.").get("schema").getAsJsonObject();
         gatherWoodItem.addProperty("maxLength", 64);
         JsonObject gatherWoodCount = property("count", "integer",
-                "Target total amount of this item in the player's inventory (1–64).").get("schema").getAsJsonObject();
+                "Target total amount of this item in the player's inventory (1–256).").get("schema").getAsJsonObject();
         gatherWoodCount.addProperty("minimum", 1);
         gatherWoodCount.addProperty("maximum", 64);
         gatherWoodSchema.getAsJsonObject("properties").add("item", gatherWoodItem);
@@ -218,7 +218,7 @@ public final class AIActionRegistry {
         JsonObject gatherBlockCount = property("count", "integer",
                 "Target total amount of this item in the player's inventory (1–64).").get("schema").getAsJsonObject();
         gatherBlockCount.addProperty("minimum", 1);
-        gatherBlockCount.addProperty("maximum", 64);
+        gatherBlockCount.addProperty("maximum", 256);
         gatherBlockSchema.getAsJsonObject("properties").add("item", gatherBlockItem);
         gatherBlockSchema.getAsJsonObject("properties").add("count", gatherBlockCount);
         JsonArray gatherBlockRequired = new JsonArray();
@@ -226,7 +226,7 @@ public final class AIActionRegistry {
         gatherBlockRequired.add("count");
         gatherBlockSchema.add("required", gatherBlockRequired);
         tools.add(tool("gather_block",
-                "Gather a target total amount (1–64) of a whitelisted vanilla block item from the loaded nearby area. Supports wood blocks plus a conservative list of same-item self-dropping blocks such as dirt, coarse dirt, cobblestone, granite, diorite, andesite, tuff, calcite, moss block, sandstone, netherrack, end stone, blackstone, basalt, cobbled deepslate, stone bricks and selected masonry. It rejects falling blocks, fluids, block entities, unbreakable blocks, unknown IDs and blocks requiring a tool that the player does not own. Only mines blocks with a verified requested-item drop: the requested block itself for the self-drop allowlist, stone/cobblestone for cobblestone, or deepslate/cobbled deepslate for cobbled deepslate. It does not mine stone to claim a stone item (Silk Touch is not automated). Scans already-loaded chunks within 16 horizontal blocks and 4 below/16 above the player, uses safe nearby A* paths and normal vanilla block breaking, and waits for confirmed drops. At most 32 additional blocks per request. Requires player confirmation.",
+                "Gather a target total amount (1–256) of a whitelisted vanilla block item from the loaded nearby area. Supports wood blocks plus a conservative list of same-item self-dropping blocks such as dirt, coarse dirt, cobblestone, granite, diorite, andesite, tuff, calcite, moss block, sandstone, netherrack, end stone, blackstone, basalt, cobbled deepslate, stone bricks and selected masonry. It rejects falling blocks, fluids, block entities, unbreakable blocks, unknown IDs and blocks requiring a tool that the player does not own. Only mines blocks with a verified requested-item drop: the requested block itself for the self-drop allowlist, stone/cobblestone for cobblestone, or deepslate/cobbled deepslate for cobbled deepslate. It does not mine stone to claim a stone item (Silk Touch is not automated). Scans already-loaded chunks within 16 horizontal blocks and 4 below/16 above the player, uses safe nearby A* paths and normal vanilla block breaking, and waits for confirmed drops. At most 32 additional blocks per request. Requires player confirmation.",
                 gatherBlockSchema));
         JsonObject gatherOreSchema = objectSchema();
         JsonObject gatherOreItem = property("item", "string",
@@ -436,7 +436,7 @@ public final class AIActionRegistry {
                             readBoundedInteger(args, "count", 1, 64)));
             case "gather_block" -> new Action(name, args,
                     AIPlayerController.previewGatherBlock(requiredString(args, "item", 64),
-                            readBoundedInteger(args, "count", 1, 64)));
+                            readBoundedInteger(args, "count", 1, 256)));
             case "gather_ore" -> new Action(name, args,
                     AIPlayerController.previewGatherOre(requiredString(args, "item", 64),
                             readBoundedInteger(args, "count", 1, 64)));
@@ -569,7 +569,7 @@ public final class AIActionRegistry {
             case "gather_wood" -> AIPlayerController.gatherWood(args.get("item").getAsString(),
                     readBoundedInteger(args, "count", 1, 64));
             case "gather_block" -> AIPlayerController.gatherBlock(args.get("item").getAsString(),
-                    readBoundedInteger(args, "count", 1, 64));
+                    readBoundedInteger(args, "count", 1, 256));
             case "gather_ore" -> AIPlayerController.gatherOre(args.get("item").getAsString(),
                     readBoundedInteger(args, "count", 1, 64));
             case "smelt_item" -> AIPlayerController.smeltItem(args.get("item").getAsString(),
