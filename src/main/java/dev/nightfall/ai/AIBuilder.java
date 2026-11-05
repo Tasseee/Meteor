@@ -185,7 +185,10 @@ public final class AIBuilder {
             throw new IllegalArgumentException(creative
                     ? "Lege mindestens einen passenden Full-Block in dein Inventar."
                     : "Für " + selectedBlueprint.label + " brauche ich " + selectedBlueprint.blocks
-                    + " volle Blöcke derselben Sorte in deinem Inventar. Gefunden: " + available + ".");
+                    + " volle Blöcke derselben Sorte in deinem Inventar. Material-ID: "
+                    + (selected == null ? "unbekannt" : Registries.ITEM.getId(selected))
+                    + ". Gefunden: " + available + ", fehlen: "
+                    + Math.max(0, selectedBlueprint.blocks - available) + ".");
 
         ClientPlayerEntity player = mc.player;
         Direction forward = player.getHorizontalFacing();
