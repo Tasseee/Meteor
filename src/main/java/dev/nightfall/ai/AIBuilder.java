@@ -277,9 +277,7 @@ public final class AIBuilder {
         saveCheckpoint();
         return "Bauplan geprüft: " + selectedBlueprint.label + " – " + layout + ". Material: "
                 + materialName + " × " + (creative ? "unbegrenzt (Kreativmodus)" : selectedBlueprint.blocks + " (Inventar: " + available + ")") + ". "
-                + "Fläche und Boden sind geprüft. Jede Platzierung wird erst nach Server-Weltupdate gezählt; bei fehlender Reichweite pausiere ich."
-        saveCheckpoint();
-                + fixedLayoutPreview(nextPlan, origin, right, forward, baseY, selected);
+                + "Fläche und Boden sind geprüft. Jede Platzierung wird erst nach Server-Weltupdate gezählt; bei fehlender Reichweite pausiere ich.";
     }
 
     public static String prepareCustomStructure(String name, String materialId, List<RelativeBlock> offsets) {
