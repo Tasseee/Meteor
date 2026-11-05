@@ -47,7 +47,7 @@ public final class SchematicManager {
     private static final long MAX_NBT_BYTES = 64L * 1024L * 1024L;
     private static final int MAX_DIMENSION = 64;
     private static final long MAX_VOLUME = 262_144L;
-    private static final int MAX_BUILDABLE_BLOCKS = 5_000;
+    private static final int MAX_BUILDABLE_BLOCKS = 10_000;
     private static final Pattern SAFE_FILE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._ -]{0,100}\\.(?i:schem|litematic)");
 
     public record Imported(String fileName, String format, String sourceName,
