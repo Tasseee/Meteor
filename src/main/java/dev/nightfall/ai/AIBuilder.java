@@ -722,17 +722,8 @@ public final class AIBuilder {
                     > mc.player.getBlockInteractionRange() * mc.player.getBlockInteractionRange())
                 throw new IllegalArgumentException("Der gespeicherte Bau ist bereit, aber du bist noch zu weit vom nächsten Arbeitsschritt entfernt. Geh bitte zum Bauplatz und sage danach erneut „Bau fortsetzen“.");
         }
-        String id = blueprint.id;
-        BlockItem approvedMaterial = material;
-        if (!restoredCheckpoint) {
-            if (blueprint == Blueprint.CUSTOM) {
-                prepareCustomStructure(blueprintName, approvedMaterial, null, List.copyOf(CUSTOM_OFFSETS),
-                        List.copyOf(CUSTOM_CLEAR_OFFSETS), preparedMaxBlocks, preparedMaxHorizontal, preparedMaxY,
-                        absoluteSchematicOrientation);
-            } else {
-                prepareStructure(id, approvedMaterial, null);
-            }
-        }
+        // The player confirmed this exact in-memory plan. Never silently rebuild or
+        // expand its excavation list after confirmation; tick() validates each target.
         originalSlot = mc.player.getInventory().getSelectedSlot();
         originalYaw = mc.player.getYaw();
         originalPitch = mc.player.getPitch();
@@ -752,8 +743,9 @@ public final class AIBuilder {
         restoredCheckpoint = false;
         status = "Bau gestartet";
         saveCheckpoint();
-        notifyPlayer("Bau gestartet: " + blueprintName + " · Aushub " + EXCAVATION_PLAN.size()
-                + " · Bau 0/" + PLAN.size() + ".");
+        notifyPlayer("Bau gestartet: " + blueprintName + " · Aushub "
+                + excavationIndex + "/" + EXCAVATION_PLAN.size() + " · Bau "
+                + index + "/" + PLAN.size() + ".");
         String materialSummary = blueprint == Blueprint.CUSTOM
                 ? "Materialien: " + materialName
                 : "Material: " + materialName + " × " + PLAN.size();
