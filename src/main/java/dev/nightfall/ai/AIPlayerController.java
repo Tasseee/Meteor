@@ -153,6 +153,7 @@ public final class AIPlayerController {
     private static BlockPos smeltFurnacePos;
     private static Item smeltInput;
     private static Item smeltOutput;
+    private static Item smeltFuelItem;
     private static int smeltAmount;
     private static int smeltFuelRequired;
     private static int smeltOutputCountBefore;
@@ -724,17 +725,15 @@ public final class AIPlayerController {
             throw new IllegalArgumentException("Du hast nur " + availableInput + " × " + input.getName().getString()
                     + " im Inventar; angefordert sind " + inputCount + ".");
         int fuelRequired = requiredSmeltFuel(inputCount, furnaceState);
-        int availableFuel = countInventoryItem(mc, Items.COAL) + countInventoryItem(mc, Items.CHARCOAL);
-        if (availableFuel < fuelRequired)
-            throw new IllegalArgumentException("Für " + inputCount + " Schmelzvorgänge brauche ich mindestens "
-                    + fuelRequired + " Kohle/Holzkohle; vorhanden sind " + availableFuel + ".");
+        Item fuelItem = resolveSmeltFuel(mc, fuelRequired);
         if (availableInventoryCapacity(mc, output) < inputCount)
             throw new IllegalArgumentException("Dein Inventar hat nicht genug Platz für " + inputCount
                     + " × " + output.getName().getString() + ". Räume zuerst Platz frei.");
         return "Nach deiner Bestätigung öffnet Nightfall den "
                 + (furnaceState.isOf(Blocks.BLAST_FURNACE) ? "Hochofen" : "Ofen")
                 + " bei " + hit.getBlockPos().toShortString() + ", legt " + inputCount + " × "
-                + input.getName().getString() + " und " + fuelRequired + " Kohle/Holzkohle ein, "
+                + input.getName().getString() + " und " + fuelRequired + " × "
+                + fuelItem.getName().getString() + " ein, "
                 + "wartet auf das echte Schmelzergebnis und sammelt bis zu " + inputCount + " × "
                 + output.getName().getString() + " ein. Der Ofen muss leer sein; vorhandene Ofeninhalte werden nicht angerührt. "
                 + "Pro Auftrag höchstens " + MAX_SMELT_ITEMS + " Eingabestücke.";
@@ -750,11 +749,13 @@ public final class AIPlayerController {
         Item input = resolveSmeltItem(requestedItem);
         Item output = resolveSmeltOutput(input);
         int fuelRequired = requiredSmeltFuel(inputCount, furnaceState);
+        Item fuelItem = resolveSmeltFuel(mc, fuelRequired);
 
         stop(null);
         smeltFurnacePos = hit.getBlockPos().toImmutable();
         smeltInput = input;
         smeltOutput = output;
+        smeltFuelItem = fuelItem;
         smeltAmount = inputCount;
         smeltFuelRequired = fuelRequired;
         smeltOutputCountBefore = countInventoryItem(mc, output);
@@ -804,6 +805,16 @@ public final class AIPlayerController {
         return (inputCount + itemsPerFuel - 1) / itemsPerFuel;
     }
 
+    private static Item resolveSmeltFuel(MinecraftClient mc, int required) {
+        if (countInventoryItem(mc, Items.COAL) >= required) return Items.COAL;
+        if (countInventoryItem(mc, Items.CHARCOAL) >= required) return Items.CHARCOAL;
+        throw new IllegalArgumentException("Für diese Schmelzcharge brauche ich entweder "
+                + required + " Kohle oder " + required + " Holzkohle am Stück. Gemischte Brennstoffe "
+                + "werden im Ofenslot nicht kombiniert; vorhanden sind "
+                + countInventoryItem(mc, Items.COAL) + " Kohle und "
+                + countInventoryItem(mc, Items.CHARCOAL) + " Holzkohle.");
+    }
+
     private static void tickSmelting(MinecraftClient mc) {
         if (++smeltTicks > MAX_SMELT_TICKS || mc.interactionManager == null) {
             int produced = Math.max(0, countInventoryItem(mc, smeltOutput) - smeltOutputCountBefore);
@@ -841,11 +852,7 @@ public final class AIPlayerController {
                         + " Eingabestücke sicher in den Ofen gelegt werden.");
                 return;
             }
-            int fuelMoved = moveItemsToFurnaceSlot(mc, handler, Items.COAL, 1, smeltFuelRequired);
-            if (fuelMoved < smeltFuelRequired) {
-                fuelMoved += moveItemsToFurnaceSlot(mc, handler, Items.CHARCOAL, 1,
-                        smeltFuelRequired - fuelMoved);
-            }
+            int fuelMoved = moveItemsToFurnaceSlot(mc, handler, smeltFuelItem, 1, smeltFuelRequired);
             if (fuelMoved < smeltFuelRequired) {
                 stop("Schmelzen gestoppt: Es konnten nur " + fuelMoved + "/" + smeltFuelRequired
                         + " Brennstoffstücke sicher eingelegt werden. Die Eingabe kann im Ofen liegen bleiben.");
@@ -936,6 +943,7 @@ public final class AIPlayerController {
         smeltFurnacePos = null;
         smeltInput = null;
         smeltOutput = null;
+        smeltFuelItem = null;
         smeltAmount = 0;
         smeltFuelRequired = 0;
         smeltOutputCountBefore = 0;
