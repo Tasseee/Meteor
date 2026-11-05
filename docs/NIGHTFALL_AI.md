@@ -69,7 +69,7 @@ The AI model can select from a fixed client-side allow-list:
 | `random_teleport` | Sends the common `/rtp` request to the server | Required; server must support it |
 | `run_server_command` | Sends one ordinary player-requested Minecraft or plugin command and watches briefly for a related server chat response | Required; dangerous server administration and world-edit command roots are blocked |
 | `build_structure` | Builds one of three validated templates and accepts an optional material ID/name | Required |
-| `build_custom_structure` | Builds an AI-generated connected plan of up to 200 blocks in a bounded 16x16x11 grid; supports an optional per-block material palette | Required; validates connectivity, per-material inventory counts, height, and replaceable targets |
+| `build_custom_structure` | Builds an AI-generated connected plan of up to 512 blocks in a bounded 32x32x32 grid; supports an optional per-block material palette | Required; validates connectivity, per-material inventory counts, height, and replaceable targets |
 | `build_starter_shelter` | Backward-compatible alias for the 4x4 starter shelter | Required |
 | `get_build_status` | Reads confirmed builder progress, current phase, pause reason, blueprint and material palette | Read-only; no confirmation |
 | `pause_build` | Pauses after any in-flight placement has been confirmed | No; safe control action |
