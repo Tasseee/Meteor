@@ -16,12 +16,16 @@ import java.util.List;
  */
 public final class AICombatController {
     private static final double ACQUIRE_RANGE = 12.0;
+    private static final double GUARD_RANGE = 10.0;
     private static final double MELEE_RANGE = 3.35;
     private static final int MAX_ACTIVE_TICKS = 20 * 45;
     private static final int MAX_ATTACKS = 12;
+    private static final int MAX_GUARD_TICKS = 20 * 90;
+    private static final int MAX_GUARD_ATTACKS = 24;
 
     private static HostileEntity target;
     private static boolean active;
+    private static boolean guardMode;
     private static int activeTicks;
     private static int attacks;
 
@@ -41,6 +45,36 @@ public final class AICombatController {
                 + "Spieler und neutrale Tiere werden nicht angegriffen.";
     }
 
+    /** Preview a short, bounded escort-defense mode around the player's current position. */
+    public static String previewGuard() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null || mc.interactionManager == null)
+            throw new IllegalArgumentException("Du musst dich in einer verbundenen Welt befinden.");
+        HostileEntity nearest = findNearest(mc, GUARD_RANGE);
+        if (nearest == null)
+            throw new IllegalArgumentException("Kein feindlicher Mob innerhalb von " + (int) GUARD_RANGE + " Blöcken gefunden.");
+        return "Nightfall übernimmt nach deiner Bestätigung vorübergehend deine Bewegung und wehrt feindliche Mobs "
+                + "im Umkreis von " + (int) GUARD_RANGE + " Blöcken ab. Erstes Ziel: "
+                + nearest.getType().getName().getString() + ". Der Wachmodus endet nach höchstens 90 Sekunden "
+                + "oder 24 Angriffen. Es werden ausschließlich HostileEntity-Mobs angegriffen, niemals Spieler "
+                + "oder neutrale/passive Tiere. Deine manuelle Bewegung ist währenddessen vorübergehend eingeschränkt; „Stopp“ beendet den Modus sofort.";
+    }
+
+    /** Start a confirmed, bounded nearby-hostile defense mode. */
+    public static String startGuard() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        previewGuard();
+        stop(null);
+        target = findNearest(mc, GUARD_RANGE);
+        if (target == null) throw new IllegalArgumentException("Es ist kein feindlicher Mob mehr in Reichweite.");
+        active = true;
+        guardMode = true;
+        activeTicks = 0;
+        attacks = 0;
+        notifyPlayer(mc, "Wachmodus gestartet · wehre nahe Gegner ab. „Stopp“ beendet ihn.");
+        return "Wachmodus gestartet. Nightfall verteidigt dich bis zu 90 Sekunden oder 24 Angriffe lang und greift ausschließlich nahe feindliche Mobs an.";
+    }
+
     public static String start() {
         MinecraftClient mc = MinecraftClient.getInstance();
         preview();
@@ -48,6 +82,7 @@ public final class AICombatController {
         target = findNearest(mc);
         if (target == null) throw new IllegalArgumentException("Das Ziel ist nicht mehr in Reichweite.");
         active = true;
+        guardMode = false;
         activeTicks = 0;
         attacks = 0;
         notifyPlayer(mc, "Kampf gestartet · " + target.getType().getName().getString()
@@ -65,14 +100,17 @@ public final class AICombatController {
             stop("Kampf aus Sicherheitsgründen gestoppt.");
             return;
         }
-        if (++activeTicks > MAX_ACTIVE_TICKS || attacks >= MAX_ATTACKS) {
+        int tickLimit = guardMode ? MAX_GUARD_TICKS : MAX_ACTIVE_TICKS;
+        int attackLimit = guardMode ? MAX_GUARD_ATTACKS : MAX_ATTACKS;
+        double acquireRange = guardMode ? GUARD_RANGE : ACQUIRE_RANGE;
+        if (++activeTicks > tickLimit || attacks >= attackLimit) {
             stop("Kampf beendet · Sicherheitslimit erreicht.");
             return;
         }
 
         if (target == null || !target.isAlive() || target.isRemoved()
-                || mc.player.squaredDistanceTo(target.getX(), target.getY(), target.getZ()) > (ACQUIRE_RANGE + 6.0) * (ACQUIRE_RANGE + 6.0)) {
-            target = findNearest(mc);
+                || mc.player.squaredDistanceTo(target.getX(), target.getY(), target.getZ()) > (acquireRange + 6.0) * (acquireRange + 6.0)) {
+            target = findNearest(mc, acquireRange);
             if (target == null) {
                 stop("Kein feindlicher Mob mehr in der Nähe. Kampf beendet.");
                 return;
@@ -111,6 +149,7 @@ public final class AICombatController {
         target = null;
         activeTicks = 0;
         attacks = 0;
+        guardMode = false;
         if (AIPlayerController.isNavigating()) AIPlayerController.stop(null);
         MinecraftClient mc = MinecraftClient.getInstance();
         if (wasActive && mc.player != null && reason != null) notifyPlayer(mc, reason);
@@ -121,9 +160,13 @@ public final class AICombatController {
     public static boolean isActive() { return active; }
 
     private static HostileEntity findNearest(MinecraftClient mc) {
+        return findNearest(mc, ACQUIRE_RANGE);
+    }
+
+    private static HostileEntity findNearest(MinecraftClient mc, double range) {
         if (mc.player == null || mc.world == null) return null;
         List<HostileEntity> hostiles = mc.world.getEntitiesByClass(HostileEntity.class,
-                mc.player.getBoundingBox().expand(ACQUIRE_RANGE), entity -> entity.isAlive() && !entity.isRemoved());
+                mc.player.getBoundingBox().expand(range), entity -> entity.isAlive() && !entity.isRemoved());
         return hostiles.stream()
                 .min(Comparator.comparingDouble(entity -> mc.player.squaredDistanceTo(entity.getX(), entity.getY(), entity.getZ())))
                 .orElse(null);
