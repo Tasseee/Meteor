@@ -311,7 +311,7 @@ public final class AIBuilder {
     }
 
     public static String prepareCustomStructure(String name, String materialId, List<RelativeBlock> offsets) {
-        return prepareCustomStructure(name, null, materialId, offsets, List.of(), 200, 15, 10);
+        return prepareCustomStructure(name, null, materialId, offsets, List.of(), 512, 31, 31);
     }
 
     /** Prepares the safe subset and the air volume that must be cleared for an imported schematic. */
