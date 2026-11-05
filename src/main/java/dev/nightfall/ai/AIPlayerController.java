@@ -503,8 +503,9 @@ public final class AIPlayerController {
                                                 boolean woodOnly, boolean oreOnly) {
         MinecraftClient mc = MinecraftClient.getInstance();
         requireWorld(mc);
-        if (targetCount < 1 || targetCount > 64)
-            throw new IllegalArgumentException("Die Zielmenge muss zwischen 1 und 64 liegen.");
+        int maxTargetCount = woodOnly || oreOnly ? 64 : 256;
+        if (targetCount < 1 || targetCount > maxTargetCount)
+            throw new IllegalArgumentException("Die Zielmenge muss zwischen 1 und " + maxTargetCount + " liegen.");
         if (mc.player.currentScreenHandler != mc.player.playerScreenHandler)
             throw new IllegalArgumentException("Schließe zuerst den geöffneten Container.");
         Item item = resolveGatherableItem(requestedItem, woodOnly, oreOnly);
