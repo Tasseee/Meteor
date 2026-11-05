@@ -709,6 +709,7 @@ public final class AIBuilder {
 
     private static void tickExcavation(MinecraftClient mc, ClientPlayerEntity player) {
         if (AIPlayerController.isBusy()) return;
+        if (excavationNavigationPending) excavationNavigationPending = false;
 
         if (excavationMinePending) {
             excavationMinePending = false;
