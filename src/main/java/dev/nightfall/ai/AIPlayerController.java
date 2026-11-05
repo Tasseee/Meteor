@@ -160,7 +160,8 @@ public final class AIPlayerController {
         if (mc.player.getEyePos().squaredDistanceTo(pos.toCenterPos()) > reach * reach)
             throw new IllegalArgumentException("Der Block liegt außerhalb deiner Abbaureichweite. Gehe näher heran.");
         return "Nightfall baut nach deiner Bestätigung " + state.getBlock().getName().getString()
-                + " bei X=" + x + ", Y=" + y + ", Z=" + z + " mit dem aktuell gehaltenen Werkzeug ab. "
+                + " bei X=" + x + ", Y=" + y + ", Z=" + z + " mit dem geeignetsten Werkzeug aus der Hotbar ab. "
+                + "Es bevorzugt ein Werkzeug, das die Blockdrops korrekt ernten kann, und stellt danach deinen vorherigen Slot wieder her. "
                 + "Der Abbau wird abgebrochen, falls der Server keine Blockänderung bestätigt.";
     }
 
@@ -188,12 +189,20 @@ public final class AIPlayerController {
         BlockPos pos = new BlockPos(x, y, z);
         previewMine(x, y, z);
         stop(null);
+        originalSlot = mc.player.getInventory().getSelectedSlot();
+        int toolSlot = findBestMiningToolSlot(mc.player, mc.world.getBlockState(pos));
+        mc.player.getInventory().setSelectedSlot(toolSlot);
         aimAt(mc.player, pos.toCenterPos());
         BlockHitResult hit = raycastBlock(mc, pos);
-        if (hit == null) throw new IllegalArgumentException(
-                "Der Block ist nicht direkt sichtbar. Entferne das Hindernis oder stelle dich so hin, dass Nightfall ihn erreichen kann.");
-        if (!mc.interactionManager.attackBlock(pos, hit.getSide()))
+        if (hit == null) {
+            restoreHotbar(mc);
+            throw new IllegalArgumentException(
+                    "Der Block ist nicht direkt sichtbar. Entferne das Hindernis oder stelle dich so hin, dass Nightfall ihn erreichen kann.");
+        }
+        if (!mc.interactionManager.attackBlock(pos, hit.getSide())) {
+            restoreHotbar(mc);
             throw new IllegalArgumentException("Der Minecraft-Client konnte den Abbau nicht starten.");
+        }
         miningPos = pos.toImmutable();
         miningState = mc.world.getBlockState(pos);
         miningSide = hit.getSide();
@@ -370,6 +379,7 @@ public final class AIPlayerController {
             try { mc.player.stopUsingItem(); } catch (RuntimeException ignored) {}
             restoreHotbar(mc);
         }
+        if (previous == Mode.MINE && mc.player != null) restoreHotbar(mc);
         mode = Mode.NONE;
         forwardTicks = 0;
         actionTicks = 0;
@@ -599,6 +609,27 @@ public final class AIPlayerController {
         return mc.world.raycast(new RaycastContext(eye, end, RaycastContext.ShapeType.OUTLINE,
                 RaycastContext.FluidHandling.NONE, mc.player)) instanceof BlockHitResult hit
                 && hit.getBlockPos().equals(pos) ? hit : null;
+    }
+
+    private static int findBestMiningToolSlot(ClientPlayerEntity player, BlockState targetState) {
+        int selectedSlot = player.getInventory().getSelectedSlot();
+        int bestSlot = selectedSlot;
+        ItemStack held = player.getInventory().getStack(selectedSlot);
+        boolean bestSuitable = !held.isEmpty() && held.isSuitableFor(targetState);
+        float bestSpeed = held.isEmpty() ? 1.0f : held.getMiningSpeedMultiplier(targetState);
+
+        for (int slot = 0; slot < 9; slot++) {
+            ItemStack candidate = player.getInventory().getStack(slot);
+            if (candidate.isEmpty()) continue;
+            boolean suitable = candidate.isSuitableFor(targetState);
+            float speed = candidate.getMiningSpeedMultiplier(targetState);
+            if ((suitable && !bestSuitable) || (suitable == bestSuitable && speed > bestSpeed)) {
+                bestSlot = slot;
+                bestSuitable = suitable;
+                bestSpeed = speed;
+            }
+        }
+        return bestSlot;
     }
 
     private static int findFoodSlot(ClientPlayerEntity player, String preferredItem) {
