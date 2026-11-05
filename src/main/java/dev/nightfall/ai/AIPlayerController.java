@@ -3,6 +3,7 @@ package dev.nightfall.ai;
 import dev.nightfall.gui.AIChatScreen;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.AbstractFurnaceBlock;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -12,12 +13,14 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.recipe.RecipeDisplayEntry;
 import net.minecraft.recipe.RecipeFinder;
 import net.minecraft.recipe.display.RecipeDisplay;
 import net.minecraft.recipe.display.ShapedCraftingRecipeDisplay;
 import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
+import net.minecraft.screen.AbstractFurnaceScreenHandler;
 import net.minecraft.screen.PlayerScreenHandler;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.screen.slot.SlotActionType;
@@ -51,7 +54,7 @@ import java.util.Set;
  * the server remains authoritative for every result.
  */
 public final class AIPlayerController {
-    private enum Mode { NONE, WALK, NAVIGATE, MINE, EAT, CRAFT, GATHER, GATHER_MINE }
+    private enum Mode { NONE, WALK, NAVIGATE, MINE, EAT, CRAFT, GATHER, GATHER_MINE, SMELT }
 
     private static final int MAX_PATH_RADIUS = 48;
     private static final int NAVIGATION_SEGMENT_LENGTH = 32;
@@ -63,6 +66,9 @@ public final class AIPlayerController {
     private static final int MAX_CRAFTING_TICKS = 20 * 30;
     private static final int MAX_CRAFTING_IDLE_TICKS = 20;
     private static final int MAX_GATHER_BLOCKS = 32;
+    private static final int MAX_SMELT_ITEMS = 16;
+    private static final int MAX_SMELT_TICKS = 20 * 60 * 4;
+    private static final int MAX_SMELT_OPEN_TICKS = 40;
     private static final int MAX_GATHER_TARGETS = 96;
     private static final int GATHER_HORIZONTAL_RADIUS = 16;
     private static final int GATHER_VERTICAL_BELOW = 4;
@@ -99,6 +105,11 @@ public final class AIPlayerController {
             Map.entry("minecraft:nether_quartz_ore", "minecraft:quartz"),
             Map.entry("minecraft:nether_gold_ore", "minecraft:gold_nugget"),
             Map.entry("minecraft:ancient_debris", "minecraft:ancient_debris"));
+    private static final Map<String, String> SMELT_INPUT_OUTPUT = Map.of(
+            "minecraft:raw_iron", "minecraft:iron_ingot",
+            "minecraft:raw_gold", "minecraft:gold_ingot",
+            "minecraft:raw_copper", "minecraft:copper_ingot",
+            "minecraft:ancient_debris", "minecraft:netherite_scrap");
     private static final ContextParameterMap EMPTY_RECIPE_CONTEXT =
             new ContextParameterMap.Builder().build(new ContextType.Builder().build());
 
@@ -139,6 +150,15 @@ public final class AIPlayerController {
     private static boolean gatherAwaitingPickup;
     private static int gatherPickupTicks;
     private static int gatherCountBeforeBreak;
+    private static BlockPos smeltFurnacePos;
+    private static Item smeltInput;
+    private static Item smeltOutput;
+    private static int smeltAmount;
+    private static int smeltFuelRequired;
+    private static int smeltOutputCountBefore;
+    private static int smeltTicks;
+    private static int smeltOpenTicks;
+    private static boolean smeltItemsLoaded;
 
     private AIPlayerController() {}
 
@@ -678,6 +698,230 @@ public final class AIPlayerController {
         gatherCountBeforeBreak = 0;
     }
 
+
+    /** Preview a bounded raw-metal/ancient-debris smelt in the furnace under the crosshair. */
+    public static String previewSmeltItem(String requestedItem, int inputCount) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        if (inputCount < 1 || inputCount > MAX_SMELT_ITEMS)
+            throw new IllegalArgumentException("Ein Schmelzauftrag verarbeitet 1 bis " + MAX_SMELT_ITEMS + " Rohmaterialien.");
+        if (mc.player.currentScreenHandler != mc.player.playerScreenHandler)
+            throw new IllegalArgumentException("Schließe zuerst den geöffneten Container.");
+        if (!mc.player.playerScreenHandler.getCursorStack().isEmpty())
+            throw new IllegalArgumentException("Dein Maus-Cursor hält noch einen Gegenstand. Lege ihn zuerst ins Inventar.");
+        if (!(mc.crosshairTarget instanceof BlockHitResult hit))
+            throw new IllegalArgumentException("Sieh direkt auf einen vorhandenen Ofen oder Hochofen.");
+        BlockState furnaceState = mc.world.getBlockState(hit.getBlockPos());
+        if (!(furnaceState.getBlock() instanceof AbstractFurnaceBlock) || furnaceState.isOf(Blocks.SMOKER))
+            throw new IllegalArgumentException("Nightfall benötigt einen normalen Ofen oder Hochofen direkt unter deinem Fadenkreuz. Räucheröfen werden nicht unterstützt.");
+        Item input = resolveSmeltItem(requestedItem);
+        Item output = resolveSmeltOutput(input);
+        int availableInput = countInventoryItem(mc, input);
+        if (availableInput < inputCount)
+            throw new IllegalArgumentException("Du hast nur " + availableInput + " × " + input.getName().getString()
+                    + " im Inventar; angefordert sind " + inputCount + ".");
+        int fuelRequired = requiredSmeltFuel(inputCount, furnaceState);
+        int availableFuel = countInventoryItem(mc, Items.COAL) + countInventoryItem(mc, Items.CHARCOAL);
+        if (availableFuel < fuelRequired)
+            throw new IllegalArgumentException("Für " + inputCount + " Schmelzvorgänge brauche ich mindestens "
+                    + fuelRequired + " Kohle/Holzkohle; vorhanden sind " + availableFuel + ".");
+        if (availableInventoryCapacity(mc, output) < inputCount)
+            throw new IllegalArgumentException("Dein Inventar hat nicht genug Platz für " + inputCount
+                    + " × " + output.getName().getString() + ". Räume zuerst Platz frei.");
+        return "Nach deiner Bestätigung öffnet Nightfall den "
+                + (furnaceState.isOf(Blocks.BLAST_FURNACE) ? "Hochofen" : "Ofen")
+                + " bei " + hit.getBlockPos().toShortString() + ", legt " + inputCount + " × "
+                + input.getName().getString() + " und " + fuelRequired + " Kohle/Holzkohle ein, "
+                + "wartet auf das echte Schmelzergebnis und sammelt bis zu " + inputCount + " × "
+                + output.getName().getString() + " ein. Der Ofen muss leer sein; vorhandene Ofeninhalte werden nicht angerührt. "
+                + "Pro Auftrag höchstens " + MAX_SMELT_ITEMS + " Eingabestücke.";
+    }
+
+    /** Starts the confirmed normal furnace interaction and then manages only the selected input/fuel batch. */
+    public static String smeltItem(String requestedItem, int inputCount) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        previewSmeltItem(requestedItem, inputCount);
+        BlockHitResult hit = (BlockHitResult) mc.crosshairTarget;
+        BlockState furnaceState = mc.world.getBlockState(hit.getBlockPos());
+        Item input = resolveSmeltItem(requestedItem);
+        Item output = resolveSmeltOutput(input);
+        int fuelRequired = requiredSmeltFuel(inputCount, furnaceState);
+
+        stop(null);
+        smeltFurnacePos = hit.getBlockPos().toImmutable();
+        smeltInput = input;
+        smeltOutput = output;
+        smeltAmount = inputCount;
+        smeltFuelRequired = fuelRequired;
+        smeltOutputCountBefore = countInventoryItem(mc, output);
+        smeltTicks = 0;
+        smeltOpenTicks = 0;
+        smeltItemsLoaded = false;
+
+        try {
+            mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);
+        } catch (RuntimeException failure) {
+            resetSmeltingState();
+            throw new IllegalArgumentException("Minecraft konnte den Ofen nicht normal öffnen. Prüfe Reichweite und Serverrechte.");
+        }
+        mode = Mode.SMELT;
+        notifyPlayer(mc, "Öffne " + (furnaceState.isOf(Blocks.BLAST_FURNACE) ? "Hochofen" : "Ofen")
+                + " und bereite " + inputCount + " × " + input.getName().getString() + " zum Schmelzen vor.");
+        return "Schmelzen gestartet. Nightfall öffnet den anvisierten Ofen, lädt nur die bestätigte Charge und wartet auf serverseitig bestätigte Ausgaben.";
+    }
+
+    private static Item resolveSmeltItem(String requestedItem) {
+        if (requestedItem == null || requestedItem.isBlank() || requestedItem.length() > 64)
+            throw new IllegalArgumentException("Gib eine exakte Item-ID wie minecraft:raw_iron an.");
+        Identifier id = Identifier.tryParse(requestedItem.trim());
+        if (id == null || !id.getNamespace().equals("minecraft")
+                || !SMELT_INPUT_OUTPUT.containsKey(id.toString()))
+            throw new IllegalArgumentException("Nightfall schmilzt derzeit nur minecraft:raw_iron, minecraft:raw_gold, minecraft:raw_copper und minecraft:ancient_debris.");
+        Item item = Registries.ITEM.get(id);
+        if (!Registries.ITEM.getId(item).equals(id))
+            throw new IllegalArgumentException("Diese Schmelz-Item-ID ist nicht in Minecraft registriert.");
+        return item;
+    }
+
+    private static Item resolveSmeltOutput(Item input) {
+        String outputId = SMELT_INPUT_OUTPUT.get(Registries.ITEM.getId(input).toString());
+        Identifier id = Identifier.tryParse(outputId);
+        Item output = Registries.ITEM.get(id);
+        if (!Registries.ITEM.getId(output).equals(id))
+            throw new IllegalArgumentException("Das erwartete Schmelzergebnis ist in dieser Minecraft-Version nicht registriert.");
+        return output;
+    }
+
+    private static int requiredSmeltFuel(int inputCount, BlockState furnaceState) {
+        int itemsPerFuel = furnaceState.isOf(Blocks.BLAST_FURNACE) ? 16 : 8;
+        return (inputCount + itemsPerFuel - 1) / itemsPerFuel;
+    }
+
+    private static void tickSmelting(MinecraftClient mc) {
+        if (++smeltTicks > MAX_SMELT_TICKS || mc.interactionManager == null) {
+            int produced = Math.max(0, countInventoryItem(mc, smeltOutput) - smeltOutputCountBefore);
+            stop("Schmelzen gestoppt: Zeitlimit erreicht. Hergestellt: " + produced + "/" + smeltAmount + " "
+                    + smeltOutput.getName().getString() + ". Bereits eingelegte Ofeninhalte können im Ofen weiterverarbeiten.");
+            return;
+        }
+        if (smeltFurnacePos == null || !(mc.world.getBlockState(smeltFurnacePos).getBlock() instanceof AbstractFurnaceBlock)
+                || mc.world.getBlockState(smeltFurnacePos).isOf(Blocks.SMOKER)) {
+            stop("Schmelzen gestoppt: Der anvisierte Ofen ist nicht mehr vorhanden.");
+            return;
+        }
+        if (!(mc.player.currentScreenHandler instanceof AbstractFurnaceScreenHandler handler)) {
+            if (!smeltItemsLoaded && ++smeltOpenTicks <= MAX_SMELT_OPEN_TICKS) return;
+            stop(smeltItemsLoaded
+                    ? "Schmelzen unterbrochen: Das Ofenfenster wurde geschlossen. Bereits eingelegte Stücke können im Ofen weiterbrennen."
+                    : "Schmelzen gestoppt: Der Ofen hat sich nicht geöffnet. Prüfe Reichweite und Serverrechte.");
+            return;
+        }
+        if (!handler.getCursorStack().isEmpty()) {
+            stop("Schmelzen gestoppt: Der Maus-Cursor ist nicht leer. Lege den Gegenstand zuerst ins Inventar.");
+            return;
+        }
+
+        if (!smeltItemsLoaded) {
+            if (!handler.getSlot(0).getStack().isEmpty()
+                    || !handler.getSlot(1).getStack().isEmpty()
+                    || !handler.getOutputSlot().getStack().isEmpty()) {
+                stop("Schmelzen abgebrochen: Der Ofen enthält bereits Gegenstände. Nightfall hat nichts daran verändert.");
+                return;
+            }
+            int inputMoved = moveItemsToFurnaceSlot(mc, handler, smeltInput, 0, smeltAmount);
+            if (inputMoved != smeltAmount) {
+                stop("Schmelzen gestoppt: Es konnten nur " + inputMoved + "/" + smeltAmount
+                        + " Eingabestücke sicher in den Ofen gelegt werden.");
+                return;
+            }
+            int fuelMoved = moveItemsToFurnaceSlot(mc, handler, Items.COAL, 1, smeltFuelRequired);
+            if (fuelMoved < smeltFuelRequired) {
+                fuelMoved += moveItemsToFurnaceSlot(mc, handler, Items.CHARCOAL, 1,
+                        smeltFuelRequired - fuelMoved);
+            }
+            if (fuelMoved < smeltFuelRequired) {
+                stop("Schmelzen gestoppt: Es konnten nur " + fuelMoved + "/" + smeltFuelRequired
+                        + " Brennstoffstücke sicher eingelegt werden. Die Eingabe kann im Ofen liegen bleiben.");
+                return;
+            }
+            smeltItemsLoaded = true;
+            statusNotice(mc, "Ofen befüllt: " + smeltAmount + " Eingabestücke, " + fuelMoved + " Brennstoffstücke. Warte auf Schmelzergebnisse.");
+            return;
+        }
+
+        ItemStack outputStack = handler.getOutputSlot().getStack();
+        if (!outputStack.isEmpty()) {
+            if (!outputStack.isOf(smeltOutput)) {
+                stop("Schmelzen gestoppt: Der Ofen zeigte ein anderes Ergebnis als erwartet.");
+                return;
+            }
+            if (availableInventoryCapacity(mc, smeltOutput) < outputStack.getCount()) {
+                stop("Schmelzen pausiert: Dein Inventar hat keinen Platz für das Ofenergebnis. Räume Platz frei und entnimm es manuell.");
+                return;
+            }
+            mc.interactionManager.clickSlot(handler.syncId, handler.getOutputSlot().id,
+                    0, SlotActionType.QUICK_MOVE, mc.player);
+            return;
+        }
+
+        int produced = Math.max(0, countInventoryItem(mc, smeltOutput) - smeltOutputCountBefore);
+        boolean inputEmpty = handler.getSlot(0).getStack().isEmpty();
+        if (produced >= smeltAmount && inputEmpty && !handler.isBurning()) {
+            stop("Schmelzen abgeschlossen: " + produced + "/" + smeltAmount + " "
+                    + smeltOutput.getName().getString() + " liegen jetzt im Inventar.");
+            return;
+        }
+        if (inputEmpty && !handler.isBurning() && handler.getOutputSlot().getStack().isEmpty()) {
+            stop("Schmelzen beendet: " + produced + "/" + smeltAmount + " "
+                    + smeltOutput.getName().getString() + " wurden im Inventar bestätigt.");
+        }
+    }
+
+    /**
+     * Moves exactly the requested number of a matching player-inventory item into a furnace slot.
+     * Left-picks the original stack, right-clicks the requested units into the machine, and returns
+     * the remaining cursor stack to the same inventory slot.
+     */
+    private static int moveItemsToFurnaceSlot(MinecraftClient mc, AbstractFurnaceScreenHandler handler,
+                                               Item item, int furnaceSlot, int amount) {
+        int remaining = amount;
+        int moved = 0;
+        for (int inventoryIndex = 0; inventoryIndex < 36 && remaining > 0; inventoryIndex++) {
+            ItemStack source = mc.player.getInventory().getStack(inventoryIndex);
+            if (source.isEmpty() || !source.isOf(item)) continue;
+            int requestedFromStack = Math.min(remaining, source.getCount());
+            int screenSlot = inventoryIndex < 9 ? 30 + inventoryIndex : inventoryIndex - 6;
+            int before = handler.getSlot(furnaceSlot).getStack().getCount();
+            mc.interactionManager.clickSlot(handler.syncId, screenSlot, 0, SlotActionType.PICKUP, mc.player);
+            if (!handler.getCursorStack().isOf(item)) return moved;
+            for (int unit = 0; unit < requestedFromStack; unit++) {
+                mc.interactionManager.clickSlot(handler.syncId, furnaceSlot, 1, SlotActionType.PICKUP, mc.player);
+            }
+            if (!handler.getCursorStack().isEmpty()) {
+                mc.interactionManager.clickSlot(handler.syncId, screenSlot, 0, SlotActionType.PICKUP, mc.player);
+            }
+            if (!handler.getCursorStack().isEmpty()) return moved;
+            int deposited = handler.getSlot(furnaceSlot).getStack().getCount() - before;
+            if (deposited <= 0) return moved;
+            moved += deposited;
+            remaining -= deposited;
+        }
+        return moved;
+    }
+
+    private static void resetSmeltingState() {
+        smeltFurnacePos = null;
+        smeltInput = null;
+        smeltOutput = null;
+        smeltAmount = 0;
+        smeltFuelRequired = 0;
+        smeltOutputCountBefore = 0;
+        smeltTicks = 0;
+        smeltOpenTicks = 0;
+        smeltItemsLoaded = false;
+    }
+
     public static String previewEat(String preferredItem) {
         MinecraftClient mc = MinecraftClient.getInstance();
         requireWorld(mc);
@@ -722,7 +966,7 @@ public final class AIPlayerController {
         if (mode == Mode.NONE) return;
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null || mc.player.isDead()
-                || (mc.currentScreen != null && !(mc.currentScreen instanceof AIChatScreen))) {
+                || (mode != Mode.SMELT && mc.currentScreen != null && !(mc.currentScreen instanceof AIChatScreen))) {
             stop("Aktion aus Sicherheitsgründen gestoppt.");
             return;
         }
@@ -735,6 +979,7 @@ public final class AIPlayerController {
             case CRAFT -> tickCrafting(mc);
             case GATHER -> tickGather(mc);
             case GATHER_MINE -> tickGatherMining(mc);
+            case SMELT -> tickSmelting(mc);
             case NONE -> { }
         }
     }
@@ -1172,6 +1417,7 @@ public final class AIPlayerController {
         foodName = "";
         resetCraftingState();
         resetGatherState();
+        resetSmeltingState();
         if (previous != Mode.NONE && mc.player != null && reason != null)
             notifyPlayer(mc, reason);
         return previous == Mode.NONE ? "Nightfall führt gerade keine Bewegung oder Interaktion aus." : "Nightfall-Aktion gestoppt.";
@@ -1194,7 +1440,8 @@ public final class AIPlayerController {
             case EAT -> "Nahrungsaufnahme · " + foodName;
             case CRAFT -> "Crafting · " + craftingName;
             case GATHER -> "Sammle " + gatherMaterialName + " · " + gatherIndex + "/" + gatherTargets.size();
-            case GATHER_MINE -> "Baue Holz ab · " + (miningPos == null ? "" : miningPos.toShortString());
+            case GATHER_MINE -> "Baue Rohstoff ab · " + (miningPos == null ? "" : miningPos.toShortString());
+            case SMELT -> "Schmelze " + (smeltInput == null ? "" : smeltInput.getName().getString());
         };
     }
 
