@@ -514,6 +514,8 @@ public final class AIChatScreen extends Screen {
                     history.set(responseIndex, new ChatLine("assistant",
                             "Ich möchte folgende Aktion ausführen:\n" + pendingAction.preview()));
                     status = "Aktion wartet auf deine Bestätigung";
+                    AIVoiceClient.speak("Ich möchte folgende Aktion ausführen. " + pendingAction.preview()
+                            + ". Bitte bestätige sie im Nightfall-Fenster oder brich sie ab.");
                     scroll = Float.MAX_VALUE;
                 } catch (IllegalArgumentException invalidAction) {
                     apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(),
