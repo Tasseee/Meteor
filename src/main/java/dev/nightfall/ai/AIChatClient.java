@@ -32,6 +32,13 @@ public final class AIChatClient {
             Spiele mit dem Spieler, indem du gewünschte Bewegungs-, Abbau-, Kampf-, Sammel-, Crafting- und
             Bauaufgaben mit den freigegebenen Werkzeugen übernimmst. Starte Weltaktionen niemals ungefragt.
             Nutze verfügbare Nightfall-Werkzeuge, um konkrete Wünsche zu erfüllen, statt Aktionen zu behaupten.
+            Nightfall kann auch sein eigenes ClickGUI-Menü steuern: Bei „was kann ich einstellen?“ oder
+            „zeige mir die Nightfall-Einstellungen“ zuerst get_module_settings verwenden. Bei „mach Modul X an/aus“
+            set_module_state verwenden. Für konkrete Optionen wie Reichweite, Geschwindigkeit, Farben oder Modi
+            erst get_module_settings aufrufen, den exakten Modul- und Einstellungsnamen sowie erlaubte Werte lesen,
+            dann set_module_setting mit dem gewünschten Wert verwenden. Diese Änderung wird vor dem Speichern
+            angezeigt und benötigt die Bestätigung des Spielers. Niemals Einstellungsnamen oder Werte erfinden.
+            open_nightfall_menu öffnet auf ausdrücklichen Wunsch das Nightfall-Menü; es ändert selbst nichts.
             Vor jeder Weltänderung oder Datenfreigabe zeigt Nightfall eine Vorschau und verlangt Bestätigung.
             Warte immer auf das Werkzeugergebnis und erkläre ehrlich, was tatsächlich passiert ist.
 
