@@ -38,7 +38,7 @@ public class Nightfall implements ClientModInitializer {
     public static final String VERSION = "2.0.0";
     public static final Logger LOGGER = LoggerFactory.getLogger("nightfall");
 
-    private boolean prevGui, prevHud, prevMap, prevAi;
+    private boolean prevGui, prevHud, prevMap, prevAi, prevVoice;
 
     @Override
     public void onInitializeClient() {
@@ -56,6 +56,7 @@ public class Nightfall implements ClientModInitializer {
                     MinecraftClient mc = MinecraftClient.getInstance();
                     if (mc.options.hudHidden || mc.world == null) return;
                     ModuleManager.renderHud(ctx);
+                    AIChatScreen.renderVoiceIndicator(ctx);
                 });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
@@ -85,6 +86,7 @@ public class Nightfall implements ClientModInitializer {
             // Persist the user's desired enabled states before modules release
             // external resources such as sidecar processes and executors.
             Config.save();
+            AIChatScreen.onClientStopping();
             ModuleManager.shutdown();
         });
 
@@ -101,13 +103,15 @@ public class Nightfall implements ClientModInitializer {
             boolean hu = GLFW.glfwGetKey(h, Config.hudKey) == GLFW.GLFW_PRESS;
             boolean m = GLFW.glfwGetKey(h, Config.mapKey) == GLFW.GLFW_PRESS;
             boolean ai = GLFW.glfwGetKey(h, Config.aiKey) == GLFW.GLFW_PRESS;
+            boolean voice = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_F8) == GLFW.GLFW_PRESS;
             if (mc.currentScreen == null && mc.player != null) {
                 if (g && !prevGui) open(mc, new ClickGuiScreen());
                 else if (hu && !prevHud) open(mc, new HudEditorScreen());
                 else if (m && !prevMap) open(mc, new MapScreen());
                 else if (ai && !prevAi) open(mc, AIChatScreen.getOrCreate());
+                else if (voice && !prevVoice) AIChatScreen.toggleVoiceCall();
             }
-            prevGui = g; prevHud = hu; prevMap = m; prevAi = ai;
+            prevGui = g; prevHud = hu; prevMap = m; prevAi = ai; prevVoice = voice;
             ModuleManager.pollKeys(mc);
         }
         AIPlayerController.tick();
