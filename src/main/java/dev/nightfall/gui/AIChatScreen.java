@@ -29,7 +29,7 @@ public final class AIChatScreen extends Screen {
     private static AIChatScreen active;
     private static final int MAX_ACTION_ROUND_TRIPS = 10;
     private static final Pattern LOCATE_COORDINATES =
-            Pattern.compile("(?s).*\\[\\s*(-?\\d+)\\s*,\\s*(-?\\d+)\\s*,\\s*(-?\\d+)\\s*\\].*");
+            Pattern.compile("(?s).*\\[\\s*(-?\\d+)\\s*,\\s*(~|-?\\d+)\\s*,\\s*(-?\\d+)\\s*\\].*");
 
     private record ChatLine(String role, String content) {}
 
@@ -807,7 +807,8 @@ public final class AIChatScreen extends Screen {
         int x, y, z;
         try {
             x = Integer.parseInt(coordinates.group(1));
-            y = Integer.parseInt(coordinates.group(2));
+            y = "~".equals(coordinates.group(2)) ? MinecraftClient.getInstance().player.getBlockY()
+                    : Integer.parseInt(coordinates.group(2));
             z = Integer.parseInt(coordinates.group(3));
         } catch (NumberFormatException invalid) {
             locatingStructure = "";
