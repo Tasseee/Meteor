@@ -112,13 +112,14 @@ mit `GUIDE_ONLY` dürfen deshalb nicht automatisch in Blockpläne umgewandelt we
 
 ## Voice: Push-to-talk und gesprochene Antworten
 
-Sprache ist standardmäßig deaktiviert. Aktiviere `voiceInputEnabled` und/oder
-`voiceOutputEnabled` in `config/nightfall/ai.json`. Das Mikrofon wird nur nach F8 oder einem
-Klick auf MIC geöffnet. F8 beendet die Aufnahme; maximal 20 Sekunden werden erfasst. Nightfall
+Sprache ist standardmäßig deaktiviert. Trage zuerst einen gültigen API-Key in
+`config/nightfall/ai.json` ein. Beim ersten Klick auf **MIC** oder Drücken von **F8** aktiviert
+Nightfall die Push-to-talk-Eingabe dauerhaft in der Konfiguration und öffnet das Mikrofon nur für
+diese Aufnahme. F8/MIC beendet die Aufnahme; maximal 20 Sekunden werden erfasst. Nightfall
 speichert keine Audiodatei dauerhaft. Die Aufnahme wird als WAV an `audioBaseUrl` unter
-`/audio/transcriptions` übertragen. Erkannter Text wird in das Eingabefeld eingefügt und muss
-vom Spieler geprüft und mit Enter gesendet werden. Der Chat spricht finale KI-Antworten über
-`/audio/speech`, wenn `voiceOutputEnabled` aktiv ist.
+`/audio/transcriptions` übertragen. Nach der Transkription sendet Nightfall den erkannten Satz
+automatisch an den Chat. Mit **TTS ON/OFF** schaltest du gesprochene Antworten um; aktivierte
+Sprachausgabe spricht finale Antworten und Aktionsvorschauen über `/audio/speech`.
 
 Die Sprachschnittstelle verwendet `transcriptionModel`, `speechModel` und `speechVoice`.
 Der Standard-Endpunkt ist OpenAI API v1. Andere Anbieter müssen beide Audio-Endpunkte und die
