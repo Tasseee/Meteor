@@ -122,6 +122,7 @@ public final class AIBuilder {
     private static int preparedMaxY = 10;
     private static boolean restoredCheckpoint;
     private static boolean preserveCheckpointOnStop;
+    private static boolean keepCheckpointDuringCancel;
     private static boolean checkpointLoadAttempted;
     private static String savedServerKey = "";
 
@@ -1228,7 +1229,7 @@ public final class AIBuilder {
 
     public static void cancelPrepared() {
         if (running) return;
-        deleteCheckpoint();
+        if (!keepCheckpointDuringCancel) deleteCheckpoint();
         restoredCheckpoint = false;
         prepared = false;
         PLAN.clear();
@@ -1293,7 +1294,10 @@ public final class AIBuilder {
             preserveCheckpointOnStop = true;
         }
         if (running) stopInternal("Bau bei Verbindungsabbruch gestoppt.", false);
+        keepCheckpointDuringCancel = true;
         cancelPrepared();
+        keepCheckpointDuringCancel = false;
+        checkpointLoadAttempted = false;
     }
 
     private static void stopInternal(String message, boolean notify) {
