@@ -7,6 +7,7 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.item.ItemStack;
+import net.minecraft.screen.slot.SlotActionType;
 import dev.nightfall.mixin.BlockItemPlacementAccessor;
 import net.minecraft.registry.Registries;
 import net.minecraft.text.Text;
@@ -31,6 +32,7 @@ public final class AIBuilder {
     private static final double REACH_SQUARED = 20.25;
     private static final int CONFIRMATION_TIMEOUT_TICKS = 30;
     private static final int MAX_PLACEMENT_RETRIES = 2;
+    private static final int MATERIAL_SWAP_PENDING = -2;
 
     private enum Blueprint {
         STARTER_SHELTER("starter_shelter", "4x4-Schutzhaus", 4, 54),
@@ -92,6 +94,10 @@ public final class AIBuilder {
     private static float originalYaw;
     private static float originalPitch;
     private static boolean absoluteSchematicOrientation;
+    private static BlockItem pendingInventoryMaterial;
+    private static int pendingInventoryHotbarSlot = -1;
+    private static int pendingInventorySourceSlot = -1;
+    private static int pendingInventorySwapTicks;
     private static BlockPos preparedPlayerPos;
     private static Direction preparedFacing;
     private static int index;
@@ -136,7 +142,7 @@ public final class AIBuilder {
         if (selectedBlueprint == Blueprint.CUSTOM)
             throw new IllegalArgumentException("Eigene Pläne müssen über build_custom_structure validiert werden.");
         Map<BlockItem, Integer> counts = new LinkedHashMap<>();
-        for (int slot = 0; slot < 9; slot++) {
+        for (int slot = 0; slot < 36; slot++) {
             ItemStack stack = mc.player.getInventory().getStack(slot);
             if (!(stack.getItem() instanceof BlockItem item)) continue;
             BlockState state = item.getBlock().getDefaultState();
@@ -573,7 +579,7 @@ public final class AIBuilder {
     private static Map<BlockItem, Integer> collectHotbarMaterials(MinecraftClient mc, boolean requireFullCube) {
         Map<BlockItem, Integer> counts = new LinkedHashMap<>();
         BlockPos sample = mc.player.getBlockPos();
-        for (int slot = 0; slot < 9; slot++) {
+        for (int slot = 0; slot < 36; slot++) {
             ItemStack stack = mc.player.getInventory().getStack(slot);
             if (!(stack.getItem() instanceof BlockItem item)) continue;
             BlockState state = item.getBlock().getDefaultState();
@@ -603,7 +609,7 @@ public final class AIBuilder {
         }
         if (partialMatch != null) return partialMatch;
         throw new IllegalArgumentException("Das gewünschte Baumaterial " + requestedId
-                + " befindet sich nicht als platzierbarer Block in deiner Hotbar.");
+                + " befindet sich nicht als platzierbarer Block in deinem Inventar.");
     }
 
     private static BlockItem mostAvailable(Map<BlockItem, Integer> counts) {
@@ -781,8 +787,17 @@ public final class AIBuilder {
             return;
         }
 
-        int slot = findMaterialSlot(player, targetMaterial);
-        if (slot < 0) { stopInternal("Bau gestoppt: Das Baumaterial fehlt in der Hotbar.", true); return; }
+        int slot = findMaterialSlot(mc, player, targetMaterial);
+        if (slot == MATERIAL_SWAP_PENDING) {
+            delay = 1;
+            status = "Hole " + targetMaterial.getName().getString() + " aus dem Inventar";
+            return;
+        }
+        if (slot < 0) {
+            stopInternal("Bau gestoppt: " + targetMaterial.getName().getString()
+                    + " ist nicht mehr im Spielerinventar vorhanden.", true);
+            return;
+        }
         if (player.getInventory().getSelectedSlot() != slot) {
             player.getInventory().setSelectedSlot(slot);
             delay = 1;
@@ -931,12 +946,73 @@ public final class AIBuilder {
         return null;
     }
 
-    private static int findMaterialSlot(ClientPlayerEntity player, BlockItem expectedMaterial) {
+    /**
+     * Finds a block in the hotbar or moves one stack from the main inventory with a normal
+     * vanilla SWAP click. No item is created or discarded; a displaced hotbar stack moves back
+     * into the source inventory slot.
+     */
+    private static int findMaterialSlot(MinecraftClient mc, ClientPlayerEntity player,
+                                        BlockItem expectedMaterial) {
+        if (pendingInventoryMaterial != null) {
+            if (pendingInventoryMaterial != expectedMaterial) {
+                pendingInventoryMaterial = null;
+                pendingInventoryHotbarSlot = -1;
+                pendingInventorySourceSlot = -1;
+                pendingInventorySwapTicks = 0;
+            } else {
+                ItemStack staged = player.getInventory().getStack(pendingInventoryHotbarSlot);
+                if (!staged.isEmpty() && staged.isOf(expectedMaterial)) {
+                    int readySlot = pendingInventoryHotbarSlot;
+                    pendingInventoryMaterial = null;
+                    pendingInventoryHotbarSlot = -1;
+                    pendingInventorySourceSlot = -1;
+                    pendingInventorySwapTicks = 0;
+                    return readySlot;
+                }
+                if (++pendingInventorySwapTicks < 20) return MATERIAL_SWAP_PENDING;
+                pendingInventoryMaterial = null;
+                pendingInventoryHotbarSlot = -1;
+                pendingInventorySourceSlot = -1;
+                pendingInventorySwapTicks = 0;
+                return -1;
+            }
+        }
+
         for (int slot = 0; slot < 9; slot++) {
             ItemStack stack = player.getInventory().getStack(slot);
             if (!stack.isEmpty() && stack.isOf(expectedMaterial)) return slot;
         }
-        return -1;
+
+        int sourceSlot = -1;
+        for (int slot = 9; slot < 36; slot++) {
+            ItemStack stack = player.getInventory().getStack(slot);
+            if (!stack.isEmpty() && stack.isOf(expectedMaterial)) {
+                sourceSlot = slot;
+                break;
+            }
+        }
+        if (sourceSlot < 0) return -1;
+        if (player.currentScreenHandler != player.playerScreenHandler)
+            throw new IllegalArgumentException("Schließe zuerst das geöffnete Inventar/den Container. Danach kann Nightfall Material ins Baumenü holen.");
+
+        int hotbarSlot = -1;
+        for (int slot = 0; slot < 9; slot++) {
+            if (player.getInventory().getStack(slot).isEmpty()) {
+                hotbarSlot = slot;
+                break;
+            }
+        }
+        if (hotbarSlot < 0) hotbarSlot = originalSlot >= 0 ? originalSlot : player.getInventory().getSelectedSlot();
+
+        mc.interactionManager.clickSlot(player.playerScreenHandler.syncId, sourceSlot, hotbarSlot,
+                SlotActionType.SWAP, player);
+        pendingInventoryMaterial = expectedMaterial;
+        pendingInventoryHotbarSlot = hotbarSlot;
+        pendingInventorySourceSlot = sourceSlot;
+        pendingInventorySwapTicks = 0;
+        notifyPlayer("Material aus dem Inventar geholt: " + expectedMaterial.getName().getString()
+                + " (Inventarslot " + (sourceSlot + 1) + " → Hotbar " + (hotbarSlot + 1) + ").");
+        return MATERIAL_SWAP_PENDING;
     }
 
     private static void progressNotice() {
@@ -983,6 +1059,10 @@ public final class AIBuilder {
         PLAN.clear();
         PLAN_MATERIALS.clear();
         PLAN_STATES.clear();
+        pendingInventoryMaterial = null;
+        pendingInventoryHotbarSlot = -1;
+        pendingInventorySourceSlot = -1;
+        pendingInventorySwapTicks = 0;
         material = null;
         pendingMaterial = null;
         blueprint = null;
@@ -1060,6 +1140,10 @@ public final class AIBuilder {
         PLAN.clear();
         PLAN_MATERIALS.clear();
         PLAN_STATES.clear();
+        pendingInventoryMaterial = null;
+        pendingInventoryHotbarSlot = -1;
+        pendingInventorySourceSlot = -1;
+        pendingInventorySwapTicks = 0;
         material = null;
         pendingMaterial = null;
         pendingExpectedState = null;
