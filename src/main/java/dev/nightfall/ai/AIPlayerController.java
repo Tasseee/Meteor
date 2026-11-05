@@ -77,6 +77,28 @@ public final class AIPlayerController {
             "cracked_stone_bricks", "chiseled_stone_bricks", "bricks", "mud_bricks",
             "nether_bricks", "red_nether_bricks", "end_stone_bricks",
             "terracotta", "purpur_block", "quartz_block", "quartz_bricks");
+    private static final int GATHER_ORE_VERTICAL_BELOW = 24;
+    private static final int GATHER_ORE_VERTICAL_ABOVE = 12;
+    private static final Map<String, String> GATHERABLE_ORE_DROPS = Map.ofEntries(
+            Map.entry("minecraft:coal_ore", "minecraft:coal"),
+            Map.entry("minecraft:deepslate_coal_ore", "minecraft:coal"),
+            Map.entry("minecraft:iron_ore", "minecraft:raw_iron"),
+            Map.entry("minecraft:deepslate_iron_ore", "minecraft:raw_iron"),
+            Map.entry("minecraft:copper_ore", "minecraft:raw_copper"),
+            Map.entry("minecraft:deepslate_copper_ore", "minecraft:raw_copper"),
+            Map.entry("minecraft:gold_ore", "minecraft:raw_gold"),
+            Map.entry("minecraft:deepslate_gold_ore", "minecraft:raw_gold"),
+            Map.entry("minecraft:redstone_ore", "minecraft:redstone"),
+            Map.entry("minecraft:deepslate_redstone_ore", "minecraft:redstone"),
+            Map.entry("minecraft:lapis_ore", "minecraft:lapis_lazuli"),
+            Map.entry("minecraft:deepslate_lapis_ore", "minecraft:lapis_lazuli"),
+            Map.entry("minecraft:diamond_ore", "minecraft:diamond"),
+            Map.entry("minecraft:deepslate_diamond_ore", "minecraft:diamond"),
+            Map.entry("minecraft:emerald_ore", "minecraft:emerald"),
+            Map.entry("minecraft:deepslate_emerald_ore", "minecraft:emerald"),
+            Map.entry("minecraft:nether_quartz_ore", "minecraft:quartz"),
+            Map.entry("minecraft:nether_gold_ore", "minecraft:gold_nugget"),
+            Map.entry("minecraft:ancient_debris", "minecraft:ancient_debris"));
     private static final ContextParameterMap EMPTY_RECIPE_CONTEXT =
             new ContextParameterMap.Builder().build(new ContextType.Builder().build());
 
@@ -108,7 +130,8 @@ public final class AIPlayerController {
     private static int craftingBatchesTaken;
     private static boolean craftingNeedsRefill;
     private static RecipeDisplayEntry craftingRecipe;
-    private static BlockItem gatherMaterial;
+    private static Item gatherMaterial;
+    private static boolean gatherRequiresSuitableTool;
     private static String gatherMaterialName = "";
     private static int gatherGoalCount;
     private static List<BlockPos> gatherTargets = List.of();
@@ -277,31 +300,42 @@ public final class AIPlayerController {
      * Only vanilla log/wood/stem/hyphae block-items whose block and item IDs match are accepted.
      */
     public static String previewGatherWood(String requestedItem, int targetCount) {
-        return previewGatherResource(requestedItem, targetCount, true);
+        return previewGatherResource(requestedItem, targetCount, true, false);
     }
 
     public static String gatherWood(String requestedItem, int targetCount) {
-        return gatherResource(requestedItem, targetCount, true);
+        return gatherResource(requestedItem, targetCount, true, false);
     }
 
     /** Preview a bounded collection request for a whitelisted vanilla self-dropping block. */
     public static String previewGatherBlock(String requestedItem, int targetCount) {
-        return previewGatherResource(requestedItem, targetCount, false);
+        return previewGatherResource(requestedItem, targetCount, false, false);
     }
 
     /** Start a confirmed, bounded collection task for a whitelisted vanilla self-dropping block. */
     public static String gatherBlock(String requestedItem, int targetCount) {
-        return gatherResource(requestedItem, targetCount, false);
+        return gatherResource(requestedItem, targetCount, false, false);
     }
 
-    private static String previewGatherResource(String requestedItem, int targetCount, boolean woodOnly) {
+    /** Preview collection of known ore drops using vanilla-correct tool requirements. */
+    public static String previewGatherOre(String requestedItem, int targetCount) {
+        return previewGatherResource(requestedItem, targetCount, false, true);
+    }
+
+    /** Start a confirmed, bounded collection task for a known ore drop. */
+    public static String gatherOre(String requestedItem, int targetCount) {
+        return gatherResource(requestedItem, targetCount, false, true);
+    }
+
+    private static String previewGatherResource(String requestedItem, int targetCount,
+                                                boolean woodOnly, boolean oreOnly) {
         MinecraftClient mc = MinecraftClient.getInstance();
         requireWorld(mc);
         if (targetCount < 1 || targetCount > 64)
             throw new IllegalArgumentException("Die Zielmenge muss zwischen 1 und 64 liegen.");
         if (mc.player.currentScreenHandler != mc.player.playerScreenHandler)
             throw new IllegalArgumentException("Schließe zuerst den geöffneten Container.");
-        BlockItem item = resolveGatherableItem(requestedItem, woodOnly);
+        Item item = resolveGatherableItem(requestedItem, woodOnly, oreOnly);
         int current = countInventoryItem(mc, item);
         int missing = targetCount - current;
         if (missing <= 0)
@@ -315,17 +349,17 @@ public final class AIPlayerController {
             throw new IllegalArgumentException("Dein Inventar hat keinen freien Platz für "
                     + item.getName().getString() + ". Räume zuerst einen Slot frei.");
 
-        List<BlockPos> candidates = findGatherableBlocks(mc, item);
+        List<BlockPos> candidates = findGatherableBlocks(mc, item, oreOnly);
         if (candidates.isEmpty())
             throw new IllegalArgumentException("Im geladenen Umkreis von " + GATHER_HORIZONTAL_RADIUS
                     + " Blöcken habe ich keine passenden " + item.getName().getString()
                     + " gefunden. Erkunde zuerst die Gegend oder gehe näher an passende Blöcke.");
-        int toolEligible = countToolEligibleTargets(mc, candidates);
+        int toolEligible = countToolEligibleTargets(mc, candidates, oreOnly);
         if (toolEligible == 0)
             throw new IllegalArgumentException("Ich habe " + candidates.size() + " passende Blöcke gefunden, "
                     + "aber für diese Blöcke fehlt ein geeignetes Werkzeug. Lege das passende Werkzeug in dein Inventar.");
         int available = Math.min(Math.min(missing, toolEligible), inventoryCapacity);
-        String kind = woodOnly ? "Holzblöcke" : "freigegebene Rohstoffblöcke";
+        String kind = woodOnly ? "Holzblöcke" : oreOnly ? "Erzblöcke" : "freigegebene Rohstoffblöcke";
         return "Nightfall sammelt nach deiner Bestätigung bis zu " + available + " zusätzliche "
                 + item.getName().getString() + " (Ziel: " + targetCount + " im Inventar). "
                 + "Gefunden: " + candidates.size() + " passende " + kind + " im bereits geladenen Umkreis; "
@@ -336,16 +370,17 @@ public final class AIPlayerController {
                 + " weitere Items. Es werden höchstens " + available + " Ziele eingeplant.";
     }
 
-    private static String gatherResource(String requestedItem, int targetCount, boolean woodOnly) {
+    private static String gatherResource(String requestedItem, int targetCount,
+                                         boolean woodOnly, boolean oreOnly) {
         MinecraftClient mc = MinecraftClient.getInstance();
         requireWorld(mc);
-        previewGatherResource(requestedItem, targetCount, woodOnly);
-        BlockItem item = resolveGatherableItem(requestedItem, woodOnly);
-        List<BlockPos> candidates = findGatherableBlocks(mc, item);
+        previewGatherResource(requestedItem, targetCount, woodOnly, oreOnly);
+        Item item = resolveGatherableItem(requestedItem, woodOnly, oreOnly);
+        List<BlockPos> candidates = findGatherableBlocks(mc, item, oreOnly);
         List<BlockPos> usableTargets = new ArrayList<>();
         for (BlockPos pos : candidates) {
             BlockState state = mc.world.getBlockState(pos);
-            if (!state.isToolRequired() || hasSuitableMiningTool(mc, state))
+            if (hasSuitableMiningTool(mc, state, oreOnly))
                 usableTargets.add(pos);
         }
         if (usableTargets.isEmpty())
@@ -353,6 +388,7 @@ public final class AIPlayerController {
 
         stop(null);
         gatherMaterial = item;
+        gatherRequiresSuitableTool = oreOnly;
         gatherMaterialName = item.getName().getString();
         gatherGoalCount = targetCount;
         gatherTargets = List.copyOf(usableTargets);
@@ -363,19 +399,25 @@ public final class AIPlayerController {
         mode = Mode.GATHER;
         statusNotice(mc, "Sammle " + gatherMaterialName + " · Ziel " + targetCount
                 + " im Inventar. Ich baue nur freigegebene Blöcke im geladenen Nahbereich ab.");
-        return (woodOnly ? "Holzsammeln" : "Materialsammlung") + " gestartet. Nightfall sucht passende Blöcke, "
+        return (woodOnly ? "Holzsammeln" : oreOnly ? "Erzabbau" : "Materialsammlung") + " gestartet. Nightfall sucht passende Blöcke, "
                 + "navigiert über sichere geladene Wege, verwendet erforderliche Werkzeuge und wartet auf bestätigte Drops. „Stopp“ bricht ab.";
     }
 
-    private static BlockItem resolveGatherableItem(String requestedItem, boolean woodOnly) {
+    private static Item resolveGatherableItem(String requestedItem, boolean woodOnly, boolean oreOnly) {
         if (requestedItem == null || requestedItem.isBlank() || requestedItem.length() > 64)
             throw new IllegalArgumentException("Gib eine exakte Vanilla-Item-ID wie minecraft:oak_log oder minecraft:cobblestone an.");
         Identifier id = Identifier.tryParse(requestedItem.trim());
         if (id == null || !id.getNamespace().equals("minecraft"))
             throw new IllegalArgumentException("Bitte gib eine gültige Vanilla-Item-ID an.");
         Item item = Registries.ITEM.get(id);
-        if (!(item instanceof BlockItem blockItem) || !Registries.ITEM.getId(item).equals(id)
-                || !Registries.BLOCK.getId(blockItem.getBlock()).equals(id)
+        if (!Registries.ITEM.getId(item).equals(id))
+            throw new IllegalArgumentException("Diese Item-ID ist in Minecraft nicht registriert.");
+        if (oreOnly) {
+            if (!GATHERABLE_ORE_DROPS.containsValue(id.toString()))
+                throw new IllegalArgumentException("Diese Erz-Drop-ID wird noch nicht unterstützt. Nutze z. B. minecraft:coal, minecraft:raw_iron, minecraft:raw_copper, minecraft:raw_gold, minecraft:redstone, minecraft:lapis_lazuli, minecraft:diamond, minecraft:emerald, minecraft:quartz, minecraft:gold_nugget oder minecraft:ancient_debris.");
+            return item;
+        }
+        if (!(item instanceof BlockItem blockItem) || !Registries.BLOCK.getId(blockItem.getBlock()).equals(id)
                 || !isGatherableResourcePath(id.getPath(), woodOnly))
             throw new IllegalArgumentException(woodOnly
                     ? "Nightfall sammelt derzeit nur Vanilla-Holzblöcke, die als derselbe Itemtyp droppen (z. B. minecraft:oak_log oder minecraft:crimson_stem)."
@@ -393,8 +435,8 @@ public final class AIPlayerController {
                 || path.endsWith("_stem") || path.endsWith("_hyphae");
     }
 
-    private static boolean hasSuitableMiningTool(MinecraftClient mc, BlockState state) {
-        if (!state.isToolRequired()) return true;
+    private static boolean hasSuitableMiningTool(MinecraftClient mc, BlockState state, boolean enforceTool) {
+        if (!enforceTool && !state.isToolRequired()) return true;
         for (int slot = 0; slot < 36; slot++) {
             ItemStack stack = mc.player.getInventory().getStack(slot);
             if (!stack.isEmpty() && stack.isSuitableFor(state)) return true;
@@ -402,24 +444,24 @@ public final class AIPlayerController {
         return false;
     }
 
-    private static int countToolEligibleTargets(MinecraftClient mc, List<BlockPos> candidates) {
+    private static int countToolEligibleTargets(MinecraftClient mc, List<BlockPos> candidates, boolean enforceTool) {
         int count = 0;
         for (BlockPos pos : candidates) {
             BlockState state = mc.world.getBlockState(pos);
-            if (!state.isToolRequired() || hasSuitableMiningTool(mc, state)) count++;
+            if (hasSuitableMiningTool(mc, state, enforceTool)) count++;
         }
         return count;
     }
 
-    private static List<BlockPos> findGatherableBlocks(MinecraftClient mc, BlockItem targetItem) {
+    private static List<BlockPos> findGatherableBlocks(MinecraftClient mc, Item targetItem, boolean oreOnly) {
         BlockPos center = mc.player.getBlockPos();
         int minX = center.getX() - GATHER_HORIZONTAL_RADIUS;
         int maxX = center.getX() + GATHER_HORIZONTAL_RADIUS;
         int minZ = center.getZ() - GATHER_HORIZONTAL_RADIUS;
         int maxZ = center.getZ() + GATHER_HORIZONTAL_RADIUS;
-        int minY = Math.max(mc.world.getBottomY(), center.getY() - GATHER_VERTICAL_BELOW);
+        int minY = Math.max(mc.world.getBottomY(), center.getY() - (oreOnly ? GATHER_ORE_VERTICAL_BELOW : GATHER_VERTICAL_BELOW));
         int maxY = Math.min(mc.world.getBottomY() + mc.world.getHeight() - 1,
-                center.getY() + GATHER_VERTICAL_ABOVE);
+                center.getY() + (oreOnly ? GATHER_ORE_VERTICAL_ABOVE : GATHER_VERTICAL_ABOVE));
         List<BlockPos> found = new ArrayList<>();
         BlockPos.Mutable cursor = new BlockPos.Mutable();
         for (int x = minX; x <= maxX; x++) {
@@ -428,7 +470,7 @@ public final class AIPlayerController {
                     cursor.set(x, y, z);
                     if (!mc.world.isChunkLoaded(cursor)) continue;
                     BlockState state = mc.world.getBlockState(cursor);
-                    if (!isGatherableSourceBlock(state, targetItem) || state.hasBlockEntity()
+                    if (!isGatherableSourceBlock(state, targetItem, oreOnly) || state.hasBlockEntity()
                             || state.getBlock() instanceof net.minecraft.block.FallingBlock
                             || !state.getFluidState().isEmpty()
                             || state.getHardness(mc.world, cursor) < 0.0f) continue;
@@ -444,16 +486,21 @@ public final class AIPlayerController {
     }
 
     /**
-     * Resolves only explicitly supported direct drops and two common stone conversions.
-     * Cobblestone comes from stone/cobblestone; cobbled deepslate comes from deepslate or itself.
+     * Resolves only explicitly supported drops. Ore targets are items (not necessarily blocks)
+     * and are matched against a fixed source-block to drop-item table.
      */
-    private static boolean isGatherableSourceBlock(BlockState state, BlockItem targetItem) {
+    private static boolean isGatherableSourceBlock(BlockState state, Item targetItem, boolean oreOnly) {
         String itemId = Registries.ITEM.getId(targetItem).toString();
+        if (oreOnly) {
+            String sourceId = Registries.BLOCK.getId(state.getBlock()).toString();
+            return itemId.equals(GATHERABLE_ORE_DROPS.get(sourceId));
+        }
+        if (!(targetItem instanceof BlockItem blockItem)) return false;
         if ("minecraft:cobblestone".equals(itemId)
                 && (state.isOf(Blocks.STONE) || state.isOf(Blocks.COBBLESTONE))) return true;
         if ("minecraft:cobbled_deepslate".equals(itemId)
                 && (state.isOf(Blocks.DEEPSLATE) || state.isOf(Blocks.COBBLED_DEEPSLATE))) return true;
-        return state.isOf(targetItem.getBlock());
+        return state.isOf(blockItem.getBlock());
     }
 
     private static void tickGather(MinecraftClient mc) {
@@ -495,7 +542,7 @@ public final class AIPlayerController {
             if (!isGatherableSourceBlock(state, gatherMaterial) || state.hasBlockEntity()
                     || state.getBlock() instanceof net.minecraft.block.FallingBlock
                     || !state.getFluidState().isEmpty() || state.getHardness(mc.world, target) < 0.0f
-                    || !hasSuitableMiningTool(mc, state)) {
+                    || !hasSuitableMiningTool(mc, state, gatherRequiresSuitableTool)) {
                 gatherIndex++;
                 continue;
             }
@@ -621,6 +668,7 @@ public final class AIPlayerController {
 
     private static void resetGatherState() {
         gatherMaterial = null;
+        gatherRequiresSuitableTool = false;
         gatherMaterialName = "";
         gatherGoalCount = 0;
         gatherTargets = List.of();
