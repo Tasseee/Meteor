@@ -696,13 +696,7 @@ public final class AIActionRegistry {
     }
 
     private static String[] modeOptions(ModeSetting setting) {
-        try {
-            var field = ModeSetting.class.getDeclaredField("modes");
-            field.setAccessible(true);
-            return (String[]) field.get(setting);
-        } catch (ReflectiveOperationException failure) {
-            throw new IllegalStateException("Die Modusoptionen konnten nicht gelesen werden.", failure);
-        }
+        return setting.getModes();
     }
 
     private static String applyModuleSetting(String moduleName, String settingName, String raw) {
