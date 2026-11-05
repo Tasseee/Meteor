@@ -42,6 +42,7 @@ public final class AIBuilder {
     private static final double REACH_SQUARED = 20.25;
     private static final int CONFIRMATION_TIMEOUT_TICKS = 30;
     private static final int MAX_PLACEMENT_RETRIES = 2;
+    private static final int CHECKPOINT_PROGRESS_INTERVAL = 25;
     private static final int MATERIAL_SWAP_PENDING = -2;
 
     private enum Blueprint {
@@ -292,7 +293,7 @@ public final class AIBuilder {
     /** Prepares the safe subset and the air volume that must be cleared for an imported schematic. */
     public static String prepareImportedStructure(String name, List<RelativeBlock> offsets,
                                                   List<RelativeBlock> clearOffsets) {
-        return prepareCustomStructure(name, null, null, offsets, clearOffsets, 5_000, 63, 63, true);
+        return prepareCustomStructure(name, null, null, offsets, clearOffsets, 10_000, 63, 63, true);
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial, List<RelativeBlock> offsets) {
@@ -791,7 +792,7 @@ public final class AIBuilder {
             if (pendingExpectedState != null && pendingState.equals(pendingExpectedState)) {
                 pendingMaterial = null;
                 index++;
-                saveCheckpoint();
+                saveCheckpointProgress(index, PLAN.size());
                 pendingTarget = null;
                 pendingTicks = 0;
                 placementRetries = 0;
@@ -845,7 +846,12 @@ public final class AIBuilder {
             return;
         }
         BlockState expectedState = PLAN_STATES.getOrDefault(target, targetMaterial.getBlock().getDefaultState());
-        if (present.equals(expectedState)) { index++; saveCheckpoint(); progressNotice(); return; }
+        if (present.equals(expectedState)) {
+            index++;
+            saveCheckpointProgress(index, PLAN.size());
+            progressNotice();
+            return;
+        }
         if (!present.isReplaceable()) {
             stopInternal("Bau gestoppt: Bei X=" + target.getX() + ", Y=" + target.getY() + ", Z=" + target.getZ()
                     + " ist inzwischen ein anderer Block im Weg.", true);
@@ -899,7 +905,7 @@ public final class AIBuilder {
             BlockState after = mined == null ? null : mc.world.getBlockState(mined);
             if (after != null && after.isAir()) {
                 excavationIndex++;
-                saveCheckpoint();
+                saveCheckpointProgress(excavationIndex, EXCAVATION_PLAN.size());
                 excavationRetries = 0;
                 excavationApproachAttempts = 0;
                 excavationWaitingNotice = false;
@@ -931,7 +937,7 @@ public final class AIBuilder {
         }
         if (state.isAir()) {
             excavationIndex++;
-            saveCheckpoint();
+            saveCheckpointProgress(excavationIndex, EXCAVATION_PLAN.size());
             excavationRetries = 0;
             excavationApproachAttempts = 0;
             excavationWaitingNotice = false;
@@ -1104,6 +1110,11 @@ public final class AIBuilder {
         return currentServerKey(mc) + "|" + mc.world.getRegistryKey().getValue();
     }
 
+    private static void saveCheckpointProgress(int completed, int total) {
+        if (completed >= total || completed % CHECKPOINT_PROGRESS_INTERVAL == 0)
+            saveCheckpoint();
+    }
+
     private static void saveCheckpoint() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if ((!running && !prepared) || mc.world == null || blueprint == null) return;
@@ -1182,7 +1193,7 @@ public final class AIBuilder {
             int checkpointVersion = root.get("version").getAsInt();
             if ((checkpointVersion != 2 && checkpointVersion != 3)
                     || !root.has("blocks") || !root.get("blocks").isJsonArray()
-                    || root.getAsJsonArray("blocks").isEmpty() || root.getAsJsonArray("blocks").size() > 5_000
+                    || root.getAsJsonArray("blocks").isEmpty() || root.getAsJsonArray("blocks").size() > 10_000
                     || !root.has("excavation") || !root.get("excavation").isJsonArray()
                     || root.getAsJsonArray("excavation").size() > MAX_EXCAVATION_BLOCKS)
                 throw new IllegalArgumentException("Ungültiges oder nicht unterstütztes Speicherformat.");
@@ -1263,7 +1274,7 @@ public final class AIBuilder {
             savedServerKey = storedServer;
             preparedPlayerPos = mc.player.getBlockPos().toImmutable();
             preparedFacing = mc.player.getHorizontalFacing();
-            preparedMaxBlocks = 5_000; preparedMaxHorizontal = 63; preparedMaxY = 63;
+            preparedMaxBlocks = 10_000; preparedMaxHorizontal = 63; preparedMaxY = 63;
             prepared = true; running = false; restoredCheckpoint = true;
             pendingTarget = null; pendingExcavationTarget = null; pendingMaterial = null; queuedPlacementHit = null;
             status = "Gespeicherter Bau wartet auf deine Bestätigung";
