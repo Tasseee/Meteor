@@ -53,6 +53,9 @@ public final class AIActionRegistry {
     /** OpenAI-compatible function definitions. The model can suggest, never execute, these tools. */
     public static JsonArray toolDefinitions() {
         JsonArray tools = new JsonArray();
+        tools.add(tool("locate_structure",
+                "Search for the nearest Minecraft structure using the server's native /locate structure command. Accepts a structure ID such as minecraft:village, minecraft:ancient_city, minecraft:fortress, minecraft:bastion_remnant, minecraft:trial_chambers, minecraft:stronghold or minecraft:woodland_mansion. The server must support and permit the command. It reports coordinates in chat but does not teleport or automatically walk there.",
+                objectSchema(property("structure", "string", "Structure registry ID, for example minecraft:village or minecraft:ancient_city."), "structure")));
         tools.add(tool("locate_biome", "Find a biome using the server's normal /locate biome command. The player must confirm first.",
                 objectSchema(
                         property("biome", "string", "Minecraft biome identifier. Choose one of the supported identifiers.", enumArray(BIOMES.keySet())),
@@ -284,6 +287,13 @@ public final class AIActionRegistry {
         }
 
         return switch (name) {
+            case "locate_structure" -> {
+                String structure = requiredString(args, "structure", 96).trim().toLowerCase(Locale.ROOT);
+                if (!structure.matches("[a-z0-9_.-]+:[a-z0-9_./-]+"))
+                    throw new IllegalArgumentException("Bitte eine gültige Struktur-ID wie minecraft:village angeben.");
+                yield new Action(name, args, "Nightfall fragt nach deiner Bestätigung den Server mit /locate structure "
+                        + structure + " nach der nächstgelegenen passenden Struktur. Die Koordinaten erscheinen in der Serverantwort; Nightfall teleportiert dich nicht.");
+            }
             case "locate_biome" -> {
                 String biome = requiredString(args, "biome", 64).toLowerCase(Locale.ROOT);
                 if (!BIOMES.containsKey(biome)) throw new IllegalArgumentException("Dieses Biom wird von Nightfall noch nicht unterstützt.");
@@ -422,6 +432,17 @@ public final class AIActionRegistry {
         JsonObject args = action.arguments();
 
         return switch (action.name()) {
+            case "locate_structure" -> {
+                if (mc.player.networkHandler == null) yield "Aktion fehlgeschlagen: Keine Serververbindung.";
+                String structure = args.get("structure").getAsString();
+                try {
+                    mc.player.networkHandler.sendChatCommand("locate structure " + structure);
+                    yield "Der Befehl /locate structure " + structure
+                            + " wurde gesendet. Prüfe die Serverantwort im Chat; die Suche hängt von Serverversion und Berechtigungen ab. Nightfall ist noch nicht automatisch zum Fundort gelaufen.";
+                } catch (RuntimeException error) {
+                    yield "Der Struktur-Suchbefehl konnte nicht gesendet werden. Prüfe deine Verbindung.";
+                }
+            }
             case "locate_biome" -> {
                 if (mc.player.networkHandler == null) yield "Aktion fehlgeschlagen: Keine Serververbindung.";
                 String biome = args.get("biome").getAsString();
