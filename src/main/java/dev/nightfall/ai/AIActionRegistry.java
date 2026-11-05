@@ -166,7 +166,7 @@ public final class AIActionRegistry {
         tools.add(tool("craft_item",
                 "Craft one batch of an exact item using a recipe already unlocked in the connected server's recipe book. Nightfall checks ingredients in the player's inventory, supports only shaped recipes up to 2x2 and shapeless recipes with up to four ingredients, places the recipe with the normal recipe-book interaction and waits for the output to appear in the inventory. It never creates ingredients or bypasses server recipe rules. Requires player confirmation.",
                 objectSchema(property("item", "string",
-                        "Exact Minecraft item ID, item path or localized item name to craft.").get("schema").getAsJsonObject(), "item"));
+                        "Exact Minecraft item ID, item path or localized item name to craft."), "item"));
         JsonObject foodSchema = objectSchema();
         JsonObject foodItem = property("item", "string", "Optional exact Minecraft item ID, item path or localized name already in the hotbar.").get("schema").getAsJsonObject();
         foodItem.addProperty("maxLength", 64);
