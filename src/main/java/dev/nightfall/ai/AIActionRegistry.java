@@ -111,7 +111,7 @@ public final class AIActionRegistry {
         requestedMaterial.addProperty("maxLength", 64);
         buildStructureSchema.getAsJsonObject("properties").add("material", requestedMaterial);
         tools.add(tool("build_structure",
-                "Build a validated Nightfall blueprint: starter_shelter (54 blocks), large_house (130 blocks), or watchtower (74 blocks). You may specify an exact block material from the full player inventory; otherwise Nightfall picks the most numerous full-cube block. Requires level solid ground; safely excavates ordinary removable obstacles within planned block positions, but refuses block entities, fluids, falling blocks and unbreakable blocks. Previews the excavation count and build plan, requires confirmation, then confirms each excavation and placement from world updates.",
+                "Build a validated Nightfall blueprint: starter_shelter (54 blocks), large_house (130 blocks), or watchtower (74 blocks). You may specify an exact block material from the full player inventory; otherwise Nightfall picks the most numerous full-cube block. Requires level solid ground; safely excavates ordinary removable obstacles within planned block positions, but refuses block entities, fluids, falling blocks and unbreakable blocks. Previews the excavation count, block IDs and build plan, requires confirmation, then confirms each excavation and placement from world updates.",
                 buildStructureSchema));
         tools.add(tool("build_starter_shelter",
                 "Backward-compatible alias for build_structure with structure=starter_shelter.",
