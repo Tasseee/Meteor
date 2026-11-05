@@ -245,6 +245,10 @@ public final class AIBuilder {
         PLAN.addAll(nextPlan);
         PLAN_MATERIALS.clear();
         PLAN_STATES.clear();
+        EXCAVATION_PLAN.clear();
+        EXCAVATION_EXPECTED_BLOCKS.clear();
+        excavationIndex = 0;
+        excavationRetries = 0;
         for (BlockPos target : nextPlan) PLAN_STATES.put(target, selected.getBlock().getDefaultState());
         pendingMaterial = null;
         pendingExpectedState = null;
