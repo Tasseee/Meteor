@@ -61,6 +61,16 @@ public final class AIBuilder {
     private static final List<BlockPos> PLAN = new ArrayList<>();
     private static final Map<BlockPos, BlockItem> PLAN_MATERIALS = new LinkedHashMap<>();
     private static final List<RelativeBlock> CUSTOM_OFFSETS = new ArrayList<>();
+    private static final List<RelativeBlock> CUSTOM_CLEAR_OFFSETS = new ArrayList<>();
+    private static final List<BlockPos> EXCAVATION_PLAN = new ArrayList<>();
+    private static int excavationIndex;
+    private static int excavationRetries;
+    private static BlockPos pendingExcavationTarget;
+    private static boolean excavationMinePending;
+    private static boolean excavationNavigationPending;
+    private static int excavationApproachAttempts;
+    private static boolean excavationWaitingNotice;
+    private static final int MAX_EXCAVATION_BLOCKS = 20_000;
     private static BlockItem material;
     private static Blueprint blueprint;
     private static Identifier dimension;
@@ -230,20 +240,22 @@ public final class AIBuilder {
     }
 
     public static String prepareCustomStructure(String name, String materialId, List<RelativeBlock> offsets) {
-        return prepareCustomStructure(name, null, materialId, offsets, 200, 15, 10);
+        return prepareCustomStructure(name, null, materialId, offsets, List.of(), 200, 15, 10);
     }
 
-    /** Prepares the safe, automatically placeable subset of a locally imported schematic. */
-    public static String prepareImportedStructure(String name, List<RelativeBlock> offsets) {
-        return prepareCustomStructure(name, null, null, offsets, 5_000, 63, 63);
+    /** Prepares the safe subset and the air volume that must be cleared for an imported schematic. */
+    public static String prepareImportedStructure(String name, List<RelativeBlock> offsets,
+                                                  List<RelativeBlock> clearOffsets) {
+        return prepareCustomStructure(name, null, null, offsets, clearOffsets, 5_000, 63, 63);
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial, List<RelativeBlock> offsets) {
-        return prepareCustomStructure(name, preferredMaterial, null, offsets, 200, 15, 10);
+        return prepareCustomStructure(name, preferredMaterial, null, offsets, List.of(), 200, 15, 10);
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial,
                                                  String preferredMaterialId, List<RelativeBlock> offsets,
+                                                 List<RelativeBlock> clearOffsets,
                                                  int maxBlocks, int maxHorizontal, int maxVerticalLimit) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (running) throw new IllegalArgumentException("Nightfall baut bereits. Stoppe den aktuellen Bau zuerst.");
@@ -252,8 +264,9 @@ public final class AIBuilder {
         if (name == null || name.isBlank() || !name.matches("[\\p{L}0-9 _.-]{1,48}"))
             throw new IllegalArgumentException("Der Bauplanname ist ungültig.");
         if (maxBlocks < 1 || maxHorizontal < 1 || maxVerticalLimit < 1
-                || offsets == null || offsets.isEmpty() || offsets.size() > maxBlocks)
-            throw new IllegalArgumentException("Der Bauplan überschreitet das sichere Blocklimit von " + maxBlocks + ".");
+                || offsets == null || offsets.isEmpty() || offsets.size() > maxBlocks
+                || clearOffsets == null || clearOffsets.size() > 262_144)
+            throw new IllegalArgumentException("Der Bauplan oder sein Aushub überschreitet das sichere Volumenlimit.");
 
         Set<String> uniqueCoordinates = new HashSet<>();
         int maxX = 0, maxY = 0, maxZ = 0;
@@ -269,6 +282,19 @@ public final class AIBuilder {
             maxX = Math.max(maxX, block.x());
             maxY = Math.max(maxY, block.y());
             maxZ = Math.max(maxZ, block.z());
+        }
+        Set<String> uniqueClearCoordinates = new HashSet<>();
+        for (RelativeBlock clear : clearOffsets) {
+            if (clear == null || clear.x() < 0 || clear.x() > maxHorizontal
+                    || clear.y() < 0 || clear.y() > maxVerticalLimit
+                    || clear.z() < 0 || clear.z() > maxHorizontal)
+                throw new IllegalArgumentException("Der Aushub überschreitet das erlaubte Schematic-Raster.");
+            String key = clear.x() + ":" + clear.y() + ":" + clear.z();
+            if (!uniqueClearCoordinates.add(key) || uniqueCoordinates.contains(key))
+                throw new IllegalArgumentException("Der Aushub enthält doppelte Positionen oder überschneidet sich mit Bau-Blöcken.");
+            maxX = Math.max(maxX, clear.x());
+            maxY = Math.max(maxY, clear.y());
+            maxZ = Math.max(maxZ, clear.z());
         }
 
         Map<BlockItem, Integer> counts = collectHotbarMaterials(mc);
@@ -305,20 +331,50 @@ public final class AIBuilder {
         List<BlockPos> targets = new ArrayList<>(offsets.size());
         Set<BlockPos> targetSet = new HashSet<>();
         Map<BlockPos, BlockItem> targetMaterials = new LinkedHashMap<>();
+        Set<BlockPos> excavationSet = new HashSet<>();
         for (RelativeBlock offset : offsets) {
             BlockPos target = origin.add(right.getOffsetX() * offset.x() + forward.getOffsetX() * offset.z(),
                     offset.y(), right.getOffsetZ() * offset.x() + forward.getOffsetZ() * offset.z());
             if (target.getY() < mc.world.getBottomY()
                     || target.getY() >= mc.world.getBottomY() + mc.world.getHeight())
                 throw new IllegalArgumentException("Der Bauplan liegt außerhalb der Weltgrenzen.");
-            if (!mc.world.getBlockState(target).isReplaceable())
-                throw new IllegalArgumentException("Der Bauplatz ist nicht frei bei X=" + target.getX()
-                        + ", Y=" + target.getY() + ", Z=" + target.getZ() + ".");
+            if (!mc.world.isChunkLoaded(target))
+                throw new IllegalArgumentException("Schematic-Ziel liegt in einem nicht geladenen Chunk bei " + target.toShortString() + ".");
+            BlockState present = mc.world.getBlockState(target);
+            if (!present.isReplaceable() && !present.isOf(offsetMaterials.get(offset).getBlock())) {
+                if (present.hasBlockEntity() || !present.getFluidState().isEmpty() || present.getHardness(mc.world, target) < 0.0f)
+                    throw new IllegalArgumentException("Nightfall darf das Hindernis bei " + target.toShortString()
+                            + " nicht automatisch entfernen (Block-Entity, Flüssigkeit oder unzerstörbarer Block).");
+                excavationSet.add(target.toImmutable());
+            }
             targets.add(target);
             if (!targetSet.add(target))
                 throw new IllegalArgumentException("Der Bauplan enthält doppelte Zielpositionen.");
             targetMaterials.put(target, offsetMaterials.get(offset));
         }
+
+        // Air cells in the schematic volume are real clearance instructions: remove terrain
+        // there before placing the blueprint. Never mine block entities, fluids or bedrock.
+        for (RelativeBlock clear : clearOffsets) {
+            BlockPos target = origin.add(right.getOffsetX() * clear.x() + forward.getOffsetX() * clear.z(),
+                    clear.y(), right.getOffsetZ() * clear.x() + forward.getOffsetZ() * clear.z());
+            if (target.getY() < mc.world.getBottomY()
+                    || target.getY() >= mc.world.getBottomY() + mc.world.getHeight()
+                    || !mc.world.isChunkLoaded(target))
+                throw new IllegalArgumentException("Aushub-Ziel liegt außerhalb der Welt oder in einem nicht geladenen Chunk: " + target.toShortString());
+            BlockState present = mc.world.getBlockState(target);
+            if (present.isAir()) continue;
+            if (present.hasBlockEntity() || !present.getFluidState().isEmpty() || present.getHardness(mc.world, target) < 0.0f)
+                throw new IllegalArgumentException("Aushub bei " + target.toShortString()
+                        + " würde eine Block-Entity, Flüssigkeit oder einen unzerstörbaren Block betreffen. Bitte zuerst manuell sichern/entfernen.");
+            excavationSet.add(target.toImmutable());
+        }
+        if (excavationSet.size() > MAX_EXCAVATION_BLOCKS)
+            throw new IllegalArgumentException("Nightfall müsste mehr als " + MAX_EXCAVATION_BLOCKS
+                    + " Blöcke ausgraben. Teile die Schematic oder räume einen Teil manuell frei.");
+        List<BlockPos> nextExcavation = new ArrayList<>(excavationSet);
+        nextExcavation.sort(Comparator.comparingInt(BlockPos::getY).reversed()
+                .thenComparingInt(BlockPos::getX).thenComparingInt(BlockPos::getZ));
 
         // Breadth-first ordering starts at blocks attached to existing solid world blocks.
         // Every other block must be face-connected to one of these anchors.
@@ -327,7 +383,7 @@ public final class AIBuilder {
         for (BlockPos target : targets) {
             for (Direction face : Direction.values()) {
                 BlockPos neighbor = target.offset(face);
-                if (targetSet.contains(neighbor)) continue;
+                if (targetSet.contains(neighbor) || excavationSet.contains(neighbor)) continue;
                 BlockState support = mc.world.getBlockState(neighbor);
                 if (!support.getCollisionShape(mc.world, neighbor).isEmpty()) {
                     if (visited.add(target)) queue.addLast(target);
@@ -350,6 +406,17 @@ public final class AIBuilder {
         PLAN.clear();
         PLAN.addAll(ordered);
         PLAN_MATERIALS.clear();
+        EXCAVATION_PLAN.clear();
+        EXCAVATION_PLAN.addAll(nextExcavation);
+        excavationIndex = 0;
+        excavationRetries = 0;
+        pendingExcavationTarget = null;
+        excavationMinePending = false;
+        excavationNavigationPending = false;
+        excavationApproachAttempts = 0;
+        excavationWaitingNotice = false;
+        CUSTOM_CLEAR_OFFSETS.clear();
+        CUSTOM_CLEAR_OFFSETS.addAll(clearOffsets);
         for (BlockPos position : ordered) PLAN_MATERIALS.put(position, targetMaterials.get(position));
         pendingMaterial = null;
         CUSTOM_OFFSETS.clear();
@@ -374,7 +441,9 @@ public final class AIBuilder {
         return "Eigener Bauplan geprüft: „" + blueprintName + "“, " + offsets.size() + " Blöcke, "
                 + (maxX + 1) + " × " + (maxY + 1) + " × " + (maxZ + 1)
                 + " Raster, Materialien: " + materialName
-                + ". Alle Zielpositionen sind frei und die Teile sind mit dem Boden oder bestehenden Blöcken verbunden."
+                + ". Aushub: " + nextExcavation.size() + " vorhandene Blöcke werden vor dem Bau entfernt. "
+                + "Block-Entities, Flüssigkeiten und unzerstörbare Blöcke bleiben geschützt."
+                + " Teile sind mit festen vorhandenen Blöcken oder dem Boden verbunden."
                 + customLayoutPreview(offsets, offsetMaterials, maxX, maxY, maxZ);
     }
 
@@ -508,6 +577,8 @@ public final class AIBuilder {
     public static String startPreparedStructure() {
         if (!prepared || blueprint == null || preparedPlayerPos == null || preparedFacing == null)
             throw new IllegalArgumentException("Der Bauplan ist abgelaufen. Bitte fordere ihn erneut an.");
+        if (AIPlayerController.isBusy())
+            throw new IllegalArgumentException("Nightfall führt gerade eine andere Bewegung oder Abbauaktion aus. Stoppe sie zuerst.");
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null
                 || !mc.player.getBlockPos().equals(preparedPlayerPos)
@@ -519,7 +590,7 @@ public final class AIBuilder {
         BlockItem approvedMaterial = material;
         if (blueprint == Blueprint.CUSTOM) {
             prepareCustomStructure(blueprintName, approvedMaterial, null, List.copyOf(CUSTOM_OFFSETS),
-                    preparedMaxBlocks, preparedMaxHorizontal, preparedMaxY);
+                    List.copyOf(CUSTOM_CLEAR_OFFSETS), preparedMaxBlocks, preparedMaxHorizontal, preparedMaxY);
         } else {
             prepareStructure(id, approvedMaterial, null);
         }
@@ -533,12 +604,14 @@ public final class AIBuilder {
         pausedByUser = false;
         running = true;
         status = "Bau gestartet";
-        notifyPlayer("Bau gestartet: " + blueprintName + " · 0/" + PLAN.size() + ".");
+        notifyPlayer("Bau gestartet: " + blueprintName + " · Aushub " + EXCAVATION_PLAN.size()
+                + " · Bau 0/" + PLAN.size() + ".");
         String materialSummary = blueprint == Blueprint.CUSTOM
                 ? "Materialien: " + materialName
                 : "Material: " + materialName + " × " + PLAN.size();
         return "Bau gestartet: " + blueprintName + ". " + materialSummary
-                + ". Ich zähle einen Block erst nach bestätigtem Welt-Update.";
+                + ". Zuerst entferne ich " + EXCAVATION_PLAN.size()
+                + " Hindernis-/Luftzellen-Blöcke, danach setze ich den Bauplan. Jeder Schritt wird serverseitig geprüft.";
     }
 
     public static void tick() {
@@ -583,6 +656,11 @@ public final class AIBuilder {
         }
 
         if (pausedByUser) return;
+
+        if (excavationIndex < EXCAVATION_PLAN.size() || excavationMinePending || excavationNavigationPending) {
+            tickExcavation(mc, player);
+            return;
+        }
 
         if (index >= PLAN.size()) {
             stopInternal("Bau abgeschlossen: " + blueprintName + " wurde vom Server bestätigt.", true);
@@ -629,6 +707,88 @@ public final class AIBuilder {
         delay = 2;
     }
 
+    private static void tickExcavation(MinecraftClient mc, ClientPlayerEntity player) {
+        if (AIPlayerController.isBusy()) return;
+
+        if (excavationMinePending) {
+            excavationMinePending = false;
+            BlockPos mined = pendingExcavationTarget;
+            pendingExcavationTarget = null;
+            BlockState after = mined == null ? null : mc.world.getBlockState(mined);
+            if (after != null && (after.isAir() || (after.isReplaceable() && after.getFluidState().isEmpty()))) {
+                excavationIndex++;
+                excavationRetries = 0;
+                excavationApproachAttempts = 0;
+                excavationWaitingNotice = false;
+                status = "Ausgraben " + excavationIndex + "/" + EXCAVATION_PLAN.size();
+                if (excavationIndex == 1 || excavationIndex % 10 == 0 || excavationIndex == EXCAVATION_PLAN.size())
+                    notifyPlayer("Aushub bestätigt: " + excavationIndex + "/" + EXCAVATION_PLAN.size() + " Blöcke.");
+                delay = 1;
+            } else {
+                if (++excavationRetries > MAX_PLACEMENT_RETRIES) {
+                    stopInternal("Bau gestoppt: Der Server hat den Aushub bei "
+                            + (mined == null ? "unbekannt" : mined.toShortString()) + " nicht bestätigt.", true);
+                    return;
+                }
+                notifyPlayer("Aushub nicht bestätigt – erneuter Versuch " + excavationRetries + "/" + MAX_PLACEMENT_RETRIES + ".");
+                delay = 5;
+            }
+            return;
+        }
+
+        if (excavationIndex >= EXCAVATION_PLAN.size()) return;
+        BlockPos target = EXCAVATION_PLAN.get(excavationIndex);
+        BlockState state = mc.world.getBlockState(target);
+        if (state.isAir() || (state.isReplaceable() && state.getFluidState().isEmpty())) {
+            excavationIndex++;
+            excavationRetries = 0;
+            excavationApproachAttempts = 0;
+            excavationWaitingNotice = false;
+            return;
+        }
+        if (state.hasBlockEntity() || !state.getFluidState().isEmpty() || state.getHardness(mc.world, target) < 0.0f) {
+            stopInternal("Bau gestoppt: Der Aushub würde bei " + target.toShortString()
+                    + " eine geschützte Block-Entity, Flüssigkeit oder einen unzerstörbaren Block treffen.", true);
+            return;
+        }
+
+        double reach = player.getBlockInteractionRange();
+        if (player.getEyePos().squaredDistanceTo(target.toCenterPos()) > reach * reach) {
+            approachExcavationTarget(target);
+            return;
+        }
+        try {
+            AIPlayerController.mineBlock(target.getX(), target.getY(), target.getZ());
+            pendingExcavationTarget = target.toImmutable();
+            excavationMinePending = true;
+            status = "Ausgraben " + (excavationIndex + 1) + "/" + EXCAVATION_PLAN.size();
+        } catch (IllegalArgumentException notReachable) {
+            approachExcavationTarget(target);
+        }
+    }
+
+    private static void approachExcavationTarget(BlockPos target) {
+        if (excavationApproachAttempts >= 3) {
+            if (!excavationWaitingNotice) {
+                excavationWaitingNotice = true;
+                notifyPlayer("Aushub pausiert: Ich erreiche " + target.toShortString()
+                        + " nicht sicher. Geh näher an die Stelle oder schaffe freie Sicht; Nightfall setzt danach fort.");
+            }
+            return;
+        }
+        if (AIPlayerController.navigateNear(target, 2)) {
+            excavationApproachAttempts++;
+            excavationNavigationPending = true;
+            status = "Gehe zum Aushub " + target.toShortString();
+            return;
+        }
+        if (!excavationWaitingNotice) {
+            excavationWaitingNotice = true;
+            notifyPlayer("Aushub wartet auf deine Position bei " + target.toShortString()
+                    + ". Geh näher heran; danach grabe ich automatisch weiter.");
+        }
+    }
+
     private static BlockHitResult findReachableSupport(MinecraftClient mc, ClientPlayerEntity player, BlockPos target) {
         for (Direction face : Direction.values()) {
             BlockPos support = target.offset(face.getOpposite());
@@ -672,9 +832,13 @@ public final class AIBuilder {
                     : pausedByUser ? "vom Spieler pausiert"
                     : waitingForReach ? "pausiert: nächster Block außerhalb der Reichweite"
                     : "läuft";
-            return "Builder aktiv: " + blueprintName + ". Bestätigte Blöcke: " + index + "/" + total
-                    + " (" + percent + "%). Phase: " + phase + ". Materialien: " + materialName
-                    + ". Ein noch nicht bestätigter Block wird nicht zum Fortschritt gezählt.";
+            String buildPhase = excavationIndex < EXCAVATION_PLAN.size() || excavationMinePending
+                    ? "Ausgraben " + excavationIndex + "/" + EXCAVATION_PLAN.size()
+                    : phase;
+            return "Builder aktiv: " + blueprintName + ". Aushub: " + excavationIndex + "/"
+                    + EXCAVATION_PLAN.size() + ". Bestätigte Blöcke: " + index + "/" + total
+                    + " (" + percent + "%). Phase: " + buildPhase + ". Materialien: " + materialName
+                    + ". Ein noch nicht bestätigter Schritt wird nicht zum Fortschritt gezählt.";
         }
         if (prepared) {
             return "Bauplan wartet auf Bestätigung: " + blueprintName + ", " + PLAN.size()
@@ -693,6 +857,13 @@ public final class AIBuilder {
         blueprint = null;
         blueprintName = "";
         CUSTOM_OFFSETS.clear();
+        CUSTOM_CLEAR_OFFSETS.clear();
+        EXCAVATION_PLAN.clear();
+        excavationIndex = 0;
+        excavationRetries = 0;
+        pendingExcavationTarget = null;
+        excavationMinePending = false;
+        excavationNavigationPending = false;
         pendingTarget = null;
         preparedPlayerPos = null;
         preparedFacing = null;
@@ -734,6 +905,7 @@ public final class AIBuilder {
     private static void stopInternal(String message, boolean notify) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (originalSlot >= 0 && mc.player != null) mc.player.getInventory().setSelectedSlot(originalSlot);
+        if (AIPlayerController.isBusy()) AIPlayerController.stop(null);
         originalSlot = -1;
         running = false;
         waitingForReach = false;
@@ -752,6 +924,8 @@ public final class AIBuilder {
         blueprint = null;
         blueprintName = "";
         CUSTOM_OFFSETS.clear();
+        CUSTOM_CLEAR_OFFSETS.clear();
+        EXCAVATION_PLAN.clear();
         preparedPlayerPos = null;
         preparedFacing = null;
     }
