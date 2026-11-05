@@ -6,6 +6,7 @@ import dev.nightfall.ai.AIVoiceClient;
 import dev.nightfall.ai.AIRealtimeVoiceClient;
 import dev.nightfall.ai.AIActionRegistry;
 import dev.nightfall.ai.AIBuilder;
+import dev.nightfall.ai.AIPlayerController;
 import dev.nightfall.util.Theme;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
