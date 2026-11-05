@@ -479,7 +479,7 @@ public final class AIBuilder {
         materialName = describeMaterials(requiredCounts);
         dimension = mc.world.getRegistryKey().getValue();
         preparedPlayerPos = player.getBlockPos().toImmutable();
-        preparedFacing = forward;
+        preparedFacing = playerForward;
         index = 0;
         delay = 0;
         pendingTarget = null;
