@@ -363,9 +363,11 @@ public final class AIBuilder {
         Direction playerForward = player.getHorizontalFacing();
         Direction forward = preserveSchematicOrientation ? Direction.SOUTH : playerForward;
         Direction right = preserveSchematicOrientation ? Direction.EAST : forward.rotateYClockwise();
+        int forwardSpan = playerForward.getAxis() == Direction.Axis.X ? maxX : maxZ;
+        BlockPos schematicCenter = player.getBlockPos().offset(playerForward, 1 + (forwardSpan + 1) / 2);
         BlockPos origin = preserveSchematicOrientation
-                ? player.getBlockPos().offset(playerForward, 1)
-                    .offset(Direction.WEST, (maxX + 1) / 2).offset(Direction.NORTH, (maxZ + 1) / 2)
+                ? schematicCenter.offset(Direction.WEST, (maxX + 1) / 2)
+                    .offset(Direction.NORTH, (maxZ + 1) / 2)
                 : player.getBlockPos().offset(forward, 1).offset(right, -((maxX + 1) / 2));
         List<BlockPos> targets = new ArrayList<>(offsets.size());
         Set<BlockPos> targetSet = new HashSet<>();
@@ -722,16 +724,19 @@ public final class AIBuilder {
                 delay = 1;
                 return;
             }
-            if (!pendingState.isReplaceable()) {
-                String mismatch = pendingMaterial != null && pendingState.isOf(pendingMaterial.getBlock())
-                        ? "Der Server hat den Block mit einer anderen Ausrichtung/einem anderen Zustand platziert."
-                        : "Der Server meldet an der Zielposition einen anderen Block.";
-                stopInternal("Bau gestoppt: " + mismatch + " Erwartet: "
-                        + (pendingExpectedState == null ? "unbekannt" : pendingExpectedState)
+            if (!pendingState.isReplaceable()
+                    && (pendingMaterial == null || !pendingState.isOf(pendingMaterial.getBlock()))) {
+                stopInternal("Bau gestoppt: Der Server meldet an der Zielposition einen anderen Block. "
+                        + "Erwartet: " + (pendingExpectedState == null ? "unbekannt" : pendingExpectedState)
                         + ", erhalten: " + pendingState + ".", true);
                 return;
             }
             if (++pendingTicks < CONFIRMATION_TIMEOUT_TICKS) { delay = 1; return; }
+            if (pendingMaterial != null && pendingState.isOf(pendingMaterial.getBlock())) {
+                stopInternal("Bau gestoppt: Der Block wurde platziert, aber die vom Server bestätigte Ausrichtung/Zustandskombination stimmt nicht. "
+                        + "Erwartet: " + pendingExpectedState + ", erhalten: " + pendingState + ".", true);
+                return;
+            }
             if (placementRetries >= MAX_PLACEMENT_RETRIES) {
                 stopInternal("Bau gestoppt: Der Server hat die Platzierung wiederholt nicht bestätigt.", true);
                 return;
