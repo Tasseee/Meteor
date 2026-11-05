@@ -321,7 +321,7 @@ public final class AIBuilder {
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial, List<RelativeBlock> offsets) {
-        return prepareCustomStructure(name, preferredMaterial, null, offsets, List.of(), 200, 15, 10, false);
+        return prepareCustomStructure(name, preferredMaterial, null, offsets, List.of(), 512, 31, 31, false);
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial,
@@ -595,7 +595,7 @@ public final class AIBuilder {
             BlockItem blockMaterial = offsetMaterials.get(offset);
             Character symbol = palette.get(blockMaterial);
             if (symbol == null) {
-                symbol = (char) ('A' + palette.size());
+                symbol = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(palette.size());
                 palette.put(blockMaterial, symbol);
             }
             if (offset.y() == 0) groundPlan.put(offset.x() + ":" + offset.z(), symbol);
