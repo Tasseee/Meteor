@@ -252,6 +252,9 @@ public final class AIActionRegistry {
         tools.add(tool("attack_nearest_hostile",
                 "Engage the nearest nearby hostile mob only (never players or passive/neutral mobs). Approaches using local pathfinding and performs normal melee attacks within reach. Bounded to 12 attacks or 45 seconds. Requires player confirmation.",
                 objectSchema()));
+        tools.add(tool("guard_nearby_hostiles",
+                "Temporarily take control of the player's movement to defend them from nearby vanilla HostileEntity mobs within 10 blocks. Uses local safe pathfinding and normal melee attacks, reacquires nearby hostile mobs, and never attacks players, passive mobs or neutral mobs. Stops after 90 seconds or 24 attacks; the player can stop immediately with stop_current_action. This controls the player's avatar, so manual movement is limited during the guard. Requires player confirmation.",
+                objectSchema()));
         tools.add(tool("stop_current_action",
                 "Immediately stop Nightfall movement, navigation, mining, wood/resource gathering, crafting, smelting, eating and combat, and release all keys controlled by Nightfall. Safe emergency stop.",
                 objectSchema()));
@@ -391,6 +394,7 @@ public final class AIActionRegistry {
             case "eat_food" -> new Action(name, args, AIPlayerController.previewEat(
                     args.has("item") ? requiredString(args, "item", 64).trim() : null));
             case "attack_nearest_hostile" -> new Action(name, args, AICombatController.preview());
+            case "guard_nearby_hostiles" -> new Action(name, args, AICombatController.previewGuard());
             case "stop_current_action" -> new Action(name, args,
                     "Nightfall stoppt sofort Navigation, Bewegung, Blockabbau, Holz- und Rohstoffsammlung, Crafting, Schmelzen, Essen und Kampf und gibt alle eigenen Tasten frei.");
             case "get_build_status" -> new Action(name, args, AIBuilder.describeStatus());
@@ -495,6 +499,7 @@ public final class AIActionRegistry {
                     args.has("count") ? readBoundedInteger(args, "count", 1, 256) : 1);
             case "eat_food" -> AIPlayerController.eatFood(args.has("item") ? args.get("item").getAsString() : null);
             case "attack_nearest_hostile" -> AICombatController.start();
+            case "guard_nearby_hostiles" -> AICombatController.startGuard();
             case "stop_current_action" -> {
                 AICombatController.stop(null);
                 AIBuilder.stop();
