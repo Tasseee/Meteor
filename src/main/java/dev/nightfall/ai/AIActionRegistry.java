@@ -6,6 +6,14 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.ModuleManager;
+import dev.nightfall.module.setting.BoolSetting;
+import dev.nightfall.module.setting.ColorSetting;
+import dev.nightfall.module.setting.ModeSetting;
+import dev.nightfall.module.setting.NumberSetting;
+import dev.nightfall.module.setting.Setting;
+import dev.nightfall.module.setting.StringSetting;
+import dev.nightfall.config.Config;
+import dev.nightfall.gui.ClickGuiScreen;
 import dev.nightfall.scanner.Waypoint;
 import dev.nightfall.scanner.WaypointManager;
 import net.minecraft.client.MinecraftClient;
@@ -68,6 +76,12 @@ public final class AIActionRegistry {
                 objectSchema(property("name", "string", "Short waypoint name, max 32 characters."), "name")));
         tools.add(tool("set_module_state", "Enable or disable an existing Nightfall client module. The player must confirm first.",
                 moduleStateSchema()));
+        JsonObject moduleQuery = objectSchema();
+        moduleQuery.getAsJsonObject("properties").add("module", property("module", "string", "Optional exact Nightfall module name. Omit to list settings for all modules.").get("schema"));
+        tools.add(tool("get_module_settings", "Read the live Nightfall ClickGUI module list and their editable settings, current values, ranges and allowed modes. Read-only; no confirmation required. Do not guess setting names; inspect first.", moduleQuery));
+        tools.add(tool("set_module_setting", "Change one existing Nightfall ClickGUI setting by exact module and setting name. Supports boolean toggles, bounded numbers, allowed mode choices, text settings and colors (#RRGGBB). The client validates the setting type and range, shows a preview and requires player confirmation. Unsupported list settings cannot be edited by AI.",
+                objectSchema(property("module", "string", "Exact Nightfall module name."), property("setting", "string", "Exact setting name as returned by get_module_settings."), property("value", "string", "New value: true/false, number, allowed mode text, string text, or #RRGGBB for colors."), "module", "setting", "value")));
+        tools.add(tool("open_nightfall_menu", "Open Nightfall's own ClickGUI menu on the client. Does not change any setting.", objectSchema()));
         tools.add(tool("get_inventory", "Read the player's inventory and summarize item names and counts. This data is sent to the configured AI provider; the player must confirm first.",
                 objectSchema()));
         tools.add(tool("get_player_status", "Read the player's current dimension, coordinates and health. This data is sent to the configured AI provider; the player must confirm first.",
@@ -324,6 +338,19 @@ public final class AIActionRegistry {
                         + (enabled ? "aktivieren" : "deaktivieren") + "."
                         + (module.isEnabled() == enabled ? "\nDas Modul hat diesen Zustand bereits." : ""));
             }
+            case "get_module_settings" -> new Action(name, args, moduleSettingsSummary(
+                    args.has("module") ? requiredString(args, "module", 64) : null));
+            case "set_module_setting" -> {
+                String moduleName = requiredString(args, "module", 64);
+                String settingName = requiredString(args, "setting", 64);
+                String value = requiredString(args, "value", 256);
+                Module module = findModule(moduleName);
+                if (module == null) throw new IllegalArgumentException("Dieses Nightfall-Modul existiert nicht.");
+                Setting<?> setting = findSetting(module, settingName);
+                if (setting == null) throw new IllegalArgumentException("Diese Einstellung existiert in diesem Modul nicht.");
+                yield new Action(name, args, previewSettingChange(module, setting, value));
+            }
+            case "open_nightfall_menu" -> new Action(name, args, "Öffnet das Nightfall-Menü auf deinem Bildschirm. Es werden keine Einstellungen geändert.");
             case "get_inventory" -> new Action(name, args,
                     "Nightfall liest dein Inventar und sendet Itemnamen und Mengen an den konfigurierten KI-Anbieter.");
             case "get_player_status" -> new Action(name, args,
@@ -430,7 +457,7 @@ public final class AIActionRegistry {
 
     /** Called only from the Minecraft client thread after explicit player confirmation. */
     public static boolean requiresConfirmation(String actionName) {
-        return !Set.of("search_blueprints", "list_schematics", "inspect_schematic",
+        return !Set.of("search_blueprints", "list_schematics", "inspect_schematic", "get_module_settings", "open_nightfall_menu",
                 "get_build_status", "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
     }
 
@@ -478,11 +505,18 @@ public final class AIActionRegistry {
                         + (enabled ? "aktiv" : "inaktiv") + ".";
                 try {
                     module.setEnabled(enabled);
-                    yield "Modul „" + module.getName() + "“ wurde " + (enabled ? "aktiviert" : "deaktiviert") + ".";
+                    Config.save();
+                    yield "Modul „" + module.getName() + "“ wurde " + (enabled ? "aktiviert" : "deaktiviert") + " und gespeichert.";
                 } catch (RuntimeException | Error failure) {
                     yield "Nightfall konnte das Modul nicht " + (enabled ? "aktivieren" : "deaktivieren")
                             + ": " + failure.getClass().getSimpleName() + ".";
                 }
+            }
+            case "get_module_settings" -> moduleSettingsSummary(args.has("module") ? args.get("module").getAsString() : null);
+            case "set_module_setting" -> applyModuleSetting(args.get("module").getAsString(), args.get("setting").getAsString(), args.get("value").getAsString());
+            case "open_nightfall_menu" -> {
+                mc.setScreen(new ClickGuiScreen());
+                yield "Nightfall-Menü geöffnet. Du kannst es auch mit deiner GUI-Taste öffnen.";
             }
             case "get_inventory" -> inventorySummary(mc);
             case "get_player_status" -> playerStatus(mc);
@@ -592,6 +626,100 @@ public final class AIActionRegistry {
             }
         }
         return out.toString();
+    }
+
+    private static Setting<?> findSetting(Module module, String name) {
+        for (Setting<?> setting : module.getSettings())
+            if (setting.getName().equalsIgnoreCase(name)) return setting;
+        return null;
+    }
+
+    private static String moduleSettingsSummary(String moduleName) {
+        StringBuilder out = new StringBuilder("Nightfall ClickGUI-Einstellungen:");
+        int modules = 0;
+        for (Module module : ModuleManager.all()) {
+            if (moduleName != null && !module.getName().equalsIgnoreCase(moduleName)) continue;
+            if (++modules > 80) { out.append("\\n(weitere Module ausgelassen)"); break; }
+            out.append("\\n\\n").append(module.getName()).append(" [").append(module.isEnabled() ? "AN" : "AUS").append("]");
+            for (Setting<?> setting : module.getSettings()) {
+                out.append("\\n- ").append(setting.getName()).append(" = ");
+                if (setting instanceof BoolSetting bool) out.append(bool.get());
+                else if (setting instanceof NumberSetting number) out.append(number.display()).append(" (").append(number.min).append(" bis ").append(number.max).append(", Schritt ").append(number.step).append(")");
+                else if (setting instanceof ModeSetting mode) out.append(mode.get()).append(" (Modusauswahl nur aus den erlaubten Optionen)");
+                else if (setting instanceof ColorSetting color) out.append(String.format(Locale.ROOT, "#%06X", color.rgb()));
+                else if (setting instanceof StringSetting string) out.append(string.get());
+                else out.append("(nicht direkt durch KI editierbar)");
+                if (out.length() > 12000) return out.append("\\n(gekürzt)").toString();
+            }
+        }
+        if (modules == 0) return "Kein passendes Nightfall-Modul gefunden.";
+        return out.toString();
+    }
+
+    private static String previewSettingChange(Module module, Setting<?> setting, String raw) {
+        String value = raw.trim();
+        if (setting instanceof BoolSetting) {
+            if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")
+                    && !value.equalsIgnoreCase("an") && !value.equalsIgnoreCase("aus")
+                    && !value.equalsIgnoreCase("on") && !value.equalsIgnoreCase("off"))
+                throw new IllegalArgumentException("Bitte true/false oder an/aus für diese Einstellung verwenden.");
+            return "Nightfall ändert nach deiner Bestätigung „" + module.getName() + "“ → „" + setting.getName()
+                    + "“ von " + setting.get() + " auf " + (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("an") || value.equalsIgnoreCase("on"));
+        }
+        if (setting instanceof NumberSetting number) {
+            double parsed;
+            try { parsed = Double.parseDouble(value.replace(',', '.')); }
+            catch (NumberFormatException invalid) { throw new IllegalArgumentException("Bitte eine Zahl für diese Einstellung angeben."); }
+            if (!Double.isFinite(parsed)) throw new IllegalArgumentException("Ungültiger Zahlenwert.");
+            double bounded = Math.max(number.min, Math.min(number.max, parsed));
+            double stepped = Math.max(number.min, Math.min(number.max, Math.round(bounded / number.step) * number.step));
+            return "Nightfall ändert nach deiner Bestätigung „" + module.getName() + "“ → „" + setting.getName()
+                    + "“ von " + number.display() + " auf " + stepped + " (erlaubt: " + number.min + " bis " + number.max + ").";
+        }
+        if (setting instanceof ModeSetting mode) {
+            String[] options = modeOptions(mode);
+            if (java.util.Arrays.stream(options).noneMatch(option -> option.equalsIgnoreCase(value)))
+                throw new IllegalArgumentException("Ungültiger Modus. Erlaubt: " + String.join(", ", options));
+            return "Nightfall ändert nach deiner Bestätigung „" + module.getName() + "“ → „" + setting.getName()
+                    + "“ von " + mode.get() + " auf " + value + ".";
+        }
+        if (setting instanceof StringSetting) {
+            if (value.length() > 256) throw new IllegalArgumentException("Der Text ist zu lang.");
+            return "Nightfall ändert nach deiner Bestätigung „" + module.getName() + "“ → „" + setting.getName() + "“ auf: " + value;
+        }
+        if (setting instanceof ColorSetting) {
+            String hex = value.startsWith("#") ? value.substring(1) : value;
+            if (!hex.matches("[0-9a-fA-F]{6}")) throw new IllegalArgumentException("Farbe bitte als #RRGGBB angeben.");
+            return "Nightfall ändert nach deiner Bestätigung „" + module.getName() + "“ → „" + setting.getName() + "“ auf #" + hex.toUpperCase(Locale.ROOT) + ".";
+        }
+        throw new IllegalArgumentException("Dieser Einstellungstyp wird noch nicht von Nightfall AI unterstützt.");
+    }
+
+    private static String[] modeOptions(ModeSetting setting) {
+        try {
+            var field = ModeSetting.class.getDeclaredField("modes");
+            field.setAccessible(true);
+            return (String[]) field.get(setting);
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException("Die Modusoptionen konnten nicht gelesen werden.", failure);
+        }
+    }
+
+    private static String applyModuleSetting(String moduleName, String settingName, String raw) {
+        Module module = findModule(moduleName);
+        if (module == null) return "Modul nicht mehr verfügbar.";
+        Setting<?> setting = findSetting(module, settingName);
+        if (setting == null) return "Einstellung nicht mehr verfügbar.";
+        previewSettingChange(module, setting, raw);
+        String value = raw.trim();
+        if (setting instanceof BoolSetting bool) bool.set(value.equalsIgnoreCase("true") || value.equalsIgnoreCase("an") || value.equalsIgnoreCase("on"));
+        else if (setting instanceof NumberSetting number) number.set(Double.parseDouble(value.replace(',', '.')));
+        else if (setting instanceof ModeSetting mode) mode.set(value);
+        else if (setting instanceof StringSetting string) string.set(value);
+        else if (setting instanceof ColorSetting color) color.set(Integer.parseInt(value.startsWith("#") ? value.substring(1) : value, 16));
+        else return "Dieser Einstellungstyp wird nicht unterstützt.";
+        Config.save();
+        return "Einstellung „" + module.getName() + "“ → „" + setting.getName() + "“ wurde auf " + setting.get() + " gesetzt und in Nightfall gespeichert.";
     }
 
     private static Module findModule(String name) {
