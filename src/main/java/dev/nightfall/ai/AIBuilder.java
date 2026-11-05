@@ -571,11 +571,11 @@ public final class AIBuilder {
         return mc.player != null && mc.player.getAbilities().creativeMode;
     }
 
-    private static Map<BlockItem, Integer> collectHotbarMaterials(MinecraftClient mc) {
-        return collectHotbarMaterials(mc, true);
+    private static Map<BlockItem, Integer> collectInventoryMaterials(MinecraftClient mc) {
+        return collectInventoryMaterials(mc, true);
     }
 
-    private static Map<BlockItem, Integer> collectHotbarMaterials(MinecraftClient mc, boolean requireFullCube) {
+    private static Map<BlockItem, Integer> collectInventoryMaterials(MinecraftClient mc, boolean requireFullCube) {
         Map<BlockItem, Integer> counts = new LinkedHashMap<>();
         BlockPos sample = mc.player.getBlockPos();
         for (int slot = 0; slot < 36; slot++) {
@@ -1062,7 +1062,6 @@ public final class AIBuilder {
         PLAN_STATES.clear();
         pendingInventoryMaterial = null;
         pendingInventoryHotbarSlot = -1;
-        pendingInventorySourceSlot = -1;
         pendingInventorySwapTicks = 0;
         material = null;
         pendingMaterial = null;
@@ -1143,7 +1142,6 @@ public final class AIBuilder {
         PLAN_STATES.clear();
         pendingInventoryMaterial = null;
         pendingInventoryHotbarSlot = -1;
-        pendingInventorySourceSlot = -1;
         pendingInventorySwapTicks = 0;
         material = null;
         pendingMaterial = null;
