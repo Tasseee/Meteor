@@ -249,7 +249,7 @@ public final class AIPlayerController {
         structureSearchDirection = (structureSearchDirection + 1) & 3;
         if (++structureSearchLegsAtLength >= 2) {
             structureSearchLegsAtLength = 0;
-            structureSearchLegLength = Math.min(48, structureSearchLegLength + 16);
+            structureSearchLegLength = Math.min(256, structureSearchLegLength + 16);
         }
         return true;
     }
