@@ -77,11 +77,11 @@ public final class AIActionRegistry {
                 property("structure", "string", "Exact blueprint identifier.", enumArray(Set.of("starter_shelter", "large_house", "watchtower"))),
                 "structure");
         JsonObject requestedMaterial = property("material", "string",
-                "Optional Minecraft item ID or localized block name already in the hotbar, for example minecraft:birch_planks. Omit to let Nightfall choose the most numerous matching full block.").get("schema").getAsJsonObject();
+                "Optional Minecraft item ID or localized block name already in the player's inventory, for example minecraft:birch_planks. Omit to let Nightfall choose the most numerous matching full block.").get("schema").getAsJsonObject();
         requestedMaterial.addProperty("maxLength", 64);
         buildStructureSchema.getAsJsonObject("properties").add("material", requestedMaterial);
         tools.add(tool("build_structure",
-                "Build a validated Nightfall blueprint: starter_shelter (54 blocks), large_house (130 blocks), or watchtower (74 blocks). You may specify an exact block material from the hotbar; otherwise Nightfall picks the most numerous full-cube block. Validates materials and a clear level footprint, previews, asks for confirmation, then confirms each placement from a server world update.",
+                "Build a validated Nightfall blueprint: starter_shelter (54 blocks), large_house (130 blocks), or watchtower (74 blocks). You may specify an exact block material from the full player inventory; otherwise Nightfall picks the most numerous full-cube block. Validates materials and a clear level footprint, previews, asks for confirmation, then confirms each placement from a server world update.",
                 buildStructureSchema));
         tools.add(tool("build_starter_shelter",
                 "Backward-compatible alias for build_structure with structure=starter_shelter.",
@@ -92,7 +92,7 @@ public final class AIActionRegistry {
         customName.addProperty("maxLength", 48);
         customProps.add("name", customName);
         JsonObject customMaterial = property("material", "string",
-                "Optional Minecraft item ID or localized block name in the hotbar. Omit to auto-select.").get("schema").getAsJsonObject();
+                "Optional Minecraft item ID or localized block name in the player's inventory. Omit to auto-select.").get("schema").getAsJsonObject();
         customMaterial.addProperty("maxLength", 64);
         customProps.add("material", customMaterial);
         JsonObject coordinateSchema = new JsonObject();
@@ -128,7 +128,7 @@ public final class AIActionRegistry {
         customRequired.add("blocks");
         customBlueprintSchema.add("required", customRequired);
         tools.add(tool("build_custom_structure",
-                "Create a custom connected blueprint with at most 200 blocks in a 16x16x11 grid. Coordinates are nonnegative x/y/z offsets; blocks must be connected face-to-face to solid ground or existing solid blocks. You may set an optional material item ID/name per block to create a palette; otherwise use the top-level material or Nightfall's selected full-cube hotbar block. Nightfall validates per-material counts and previews the plan before confirmation.",
+                "Create a custom connected blueprint with at most 200 blocks in a 16x16x11 grid. Coordinates are nonnegative x/y/z offsets; blocks must be connected face-to-face to solid ground or existing solid blocks. You may set an optional material item ID/name per block to create a palette; otherwise use the top-level material or Nightfall's selected full-cube block from the player inventory. Nightfall validates per-material counts and previews the plan before confirmation.",
                 customBlueprintSchema));
         JsonObject blueprintSearchSchema = objectSchema(property("query", "string",
                 "Search the local curated Minecraft blueprint and farm knowledge database, e.g. dripstone farm, iron farm, storage."), "query");
@@ -422,7 +422,7 @@ public final class AIActionRegistry {
     }
 
     private static String inventorySummary(MinecraftClient mc) {
-        StringBuilder out = new StringBuilder("Inventar des Spielers. Der Builder kann nur Material aus den Slots 1–9 (Hotbar) direkt verwenden.");
+        StringBuilder out = new StringBuilder("Inventar des Spielers. Der Builder kann die Hotbar und alle 27 Hauptinventar-Slots verwenden. Bei Bedarf holt er Stacks per normalem SWAP-Klick in die Hotbar.");
         boolean any = false;
         out.append("\nHotbar:");
         for (int slot = 0; slot < 9; slot++) {
