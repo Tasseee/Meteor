@@ -331,7 +331,7 @@ public final class AIBuilder {
             maxZ = Math.max(maxZ, clear.z());
         }
 
-        Map<BlockItem, Integer> counts = collectInventoryMaterialsmc, false);
+        Map<BlockItem, Integer> counts = collectInventoryMaterials(mc, false);
         BlockItem selected = preferredMaterial;
         if (selected == null && preferredMaterialId != null && !preferredMaterialId.isBlank())
             selected = resolveMaterial(counts, preferredMaterialId);
