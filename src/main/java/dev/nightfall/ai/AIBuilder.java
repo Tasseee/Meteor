@@ -237,7 +237,7 @@ public final class AIBuilder {
         blueprintName = selectedBlueprint.label;
         CUSTOM_OFFSETS.clear();
         preparedPlayerPos = player.getBlockPos().toImmutable();
-        preparedFacing = playerForward;
+        preparedFacing = forward;
         materialName = selected.getName().getString();
         dimension = mc.world.getRegistryKey().getValue();
         index = 0;
@@ -463,6 +463,7 @@ public final class AIBuilder {
         excavationWaitingNotice = false;
         CUSTOM_CLEAR_OFFSETS.clear();
         CUSTOM_CLEAR_OFFSETS.addAll(clearOffsets);
+        preparedFacing = playerForward;
         for (RelativeBlock offset : offsets) {
             BlockPos target = origin.add(right.getOffsetX() * offset.x() + forward.getOffsetX() * offset.z(),
                     offset.y(), right.getOffsetZ() * offset.x() + forward.getOffsetZ() * offset.z());
