@@ -53,10 +53,12 @@ public final class SchematicManager {
                            int width, int height, int length, int totalBlocks,
                            int buildableBlocks, int manualOnlyBlocks,
                            List<AIBuilder.RelativeBlock> buildPlan,
+                           List<AIBuilder.RelativeBlock> clearPlan,
                            Map<String, Integer> materials, List<String> examples,
                            boolean containsBlockEntities, boolean containsEntities) {
         public Imported {
             buildPlan = List.copyOf(buildPlan);
+            clearPlan = List.copyOf(clearPlan);
             materials = Map.copyOf(materials);
             examples = List.copyOf(examples);
         }
@@ -67,6 +69,7 @@ public final class SchematicManager {
                     .append("\nName: ").append(sourceName.isBlank() ? fileName : sourceName)
                     .append("\nAbmessungen: ").append(width).append(" × ").append(height).append(" × ").append(length)
                     .append("\nNicht-Luft-Blöcke: ").append(totalBlocks)
+                    .append("\nLuftzellen für automatische Geländefreimachung: ").append(clearPlan.size())
                     .append("\nAutomatisch platzierbar: ").append(buildableBlocks)
                     .append("\nManuell erforderlich/übersprungen: ").append(manualOnlyBlocks)
                     .append("\nBlock-Entities enthalten: ").append(containsBlockEntities ? "ja (NBT wird nicht übernommen)" : "nein")
@@ -80,9 +83,10 @@ public final class SchematicManager {
                 out.append("\nBeispiele nicht automatisch platzierbarer Blöcke:");
                 examples.forEach(value -> out.append("\n- ").append(value));
             }
-            out.append("\n\nSICHERHEIT: Nightfall baut nur die aufgeführten automatisch platzierbaren Standard-Blöcke. "
-                    + "Ausrichtungen, Wasser/Lava, Block-Entities/Inventare, Entities und Redstone-Zustände werden nicht erfunden. "
-                    + "Der Bauort, Materialbestand, freie Zielpositionen und die Blockverbindungen werden vor dem Bau geprüft.");
+            out.append("\n\nSICHERHEIT: Nightfall räumt vor dem Setzen die als Luft markierten Zellen im Schematic-Volumen frei "
+                    + "und entfernt ersetzte Blöcke an Bauzielen. Block-Entities, Flüssigkeiten und unzerstörbare Blöcke bleiben geschützt. "
+                    + "Derzeit werden weiterhin nur Standard-BlockItems ohne Block-Entity oder Zustands-Properties automatisch platziert; "
+                    + "Ausrichtungen, Inventar-NBT, Entities und komplexe Redstone-/Flüssigkeitsmechaniken sind noch nicht vollständig reproduziert.");
             return out.toString();
         }
     }
@@ -201,7 +205,7 @@ public final class SchematicManager {
             throw new IllegalArgumentException("Diese Schematic enthält keine sicher automatisch platzierbaren Standard-Blöcke.");
         String preview = AIBuilder.prepareImportedStructure(imported.sourceName().isBlank()
                         ? stripExtension(imported.fileName()) : imported.sourceName(),
-                imported.buildPlan());
+                imported.buildPlan(), imported.clearPlan());
         return imported.summary() + "\n\n" + preview;
     }
 
@@ -254,6 +258,7 @@ public final class SchematicManager {
         int buildable = 0;
         int unsupported = 0;
         List<AIBuilder.RelativeBlock> buildPlan = new ArrayList<>();
+        List<AIBuilder.RelativeBlock> clearPlan = new ArrayList<>();
         Map<String, Integer> materials = new TreeMap<>();
         List<String> examples = new ArrayList<>();
         int[] cursor = {0};
@@ -265,11 +270,14 @@ public final class SchematicManager {
             if (!parsed.valid() || parsed.state() == null)
                 throw new IllegalArgumentException("Die Schematic nutzt einen Block, der in dieser Minecraft-Installation unbekannt ist.");
             BlockState state = parsed.state();
-            if (state.isAir()) continue;
-            total++;
             int x = i % width;
             int z = (i / width) % length;
             int y = i / (width * length);
+            if (state.isAir()) {
+                clearPlan.add(new AIBuilder.RelativeBlock(x, y, z));
+                continue;
+            }
+            total++;
             BlockItem item = safeBuildItem(state, mc, x, y, z);
             if (item == null) {
                 unsupported++;
@@ -286,7 +294,7 @@ public final class SchematicManager {
         NbtList blockEntities = root.getListOrEmpty("BlockEntities");
         NbtList entities = root.getListOrEmpty("Entities");
         return new Imported(fileName, "Sponge .schem v2", "", width, height, length, total,
-                buildable, unsupported, buildPlan, materials, examples,
+                buildable, unsupported, buildPlan, clearPlan, materials, examples,
                 !blockEntities.isEmpty(), !entities.isEmpty());
     }
 
@@ -367,6 +375,7 @@ public final class SchematicManager {
         validateDimensions(width, height, length);
 
         List<AIBuilder.RelativeBlock> buildPlan = new ArrayList<>();
+        List<AIBuilder.RelativeBlock> clearPlan = new ArrayList<>();
         Map<String, Integer> materials = new TreeMap<>();
         List<String> examples = new ArrayList<>();
         int total = 0, buildable = 0, unsupported = 0;
@@ -378,11 +387,14 @@ public final class SchematicManager {
                 if (paletteIndex < 0 || paletteIndex >= region.palette().size())
                     throw new IllegalArgumentException("Litematic-BlockStateIndex außerhalb der Palette.");
                 BlockState state = region.palette().get(paletteIndex);
-                if (state.isAir()) continue;
-                total++;
                 int x = region.x() - minX + i % region.width();
                 int z = region.z() - minZ + (i / region.width()) % region.length();
                 int y = region.y() - minY + i / (region.width() * region.length());
+                if (state.isAir()) {
+                    clearPlan.add(new AIBuilder.RelativeBlock(x, y, z));
+                    continue;
+                }
+                total++;
                 BlockItem item = safeBuildItem(state, mc, x, y, z);
                 if (item == null) {
                     unsupported++;
@@ -398,7 +410,7 @@ public final class SchematicManager {
         String name = metadata.getString("Name", "");
         return new Imported(fileName, "Litematica .litematic v" + version, name,
                 width, height, length, total, buildable, unsupported,
-                buildPlan, materials, examples, containsBlockEntities, containsEntities);
+                buildPlan, clearPlan, materials, examples, containsBlockEntities, containsEntities);
     }
 
     private static BlockItem safeBuildItem(BlockState state, MinecraftClient mc, int x, int y, int z) {
