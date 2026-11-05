@@ -8,6 +8,7 @@ import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.FoodComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
@@ -55,6 +56,9 @@ public final class AIPlayerController {
     private static BlockPos miningPos;
     private static BlockState miningState;
     private static Direction miningSide = Direction.UP;
+    private static int miningToolSourceSlot = -1;
+    private static int miningToolHotbarSlot = -1;
+    private static ItemStack miningDisplacedStack = ItemStack.EMPTY;
     private static int originalSlot = -1;
     private static int foodSlot = -1;
     private static int foodCountBefore;
@@ -160,9 +164,9 @@ public final class AIPlayerController {
         if (mc.player.getEyePos().squaredDistanceTo(pos.toCenterPos()) > reach * reach)
             throw new IllegalArgumentException("Der Block liegt außerhalb deiner Abbaureichweite. Gehe näher heran.");
         return "Nightfall baut nach deiner Bestätigung " + state.getBlock().getName().getString()
-                + " bei X=" + x + ", Y=" + y + ", Z=" + z + " mit dem geeignetsten Werkzeug aus der Hotbar ab. "
-                + "Es bevorzugt ein Werkzeug, das die Blockdrops korrekt ernten kann, und stellt danach deinen vorherigen Slot wieder her. "
-                + "Der Abbau wird abgebrochen, falls der Server keine Blockänderung bestätigt.";
+                + " bei X=" + x + ", Y=" + y + ", Z=" + z + " mit dem geeignetsten Werkzeug aus deinem Inventar ab. "
+                + "Es bevorzugt ein Werkzeug, das die Blockdrops korrekt ernten kann, holt es bei Bedarf per normalem Inventar-SWAP in die Hotbar "
+                + "und stellt danach die vorherige Belegung wieder her. Der Abbau wird abgebrochen, falls der Server keine Blockänderung bestätigt.";
     }
 
     public static String previewLookedBlock() {
@@ -190,16 +194,18 @@ public final class AIPlayerController {
         previewMine(x, y, z);
         stop(null);
         originalSlot = mc.player.getInventory().getSelectedSlot();
-        int toolSlot = findBestMiningToolSlot(mc.player, mc.world.getBlockState(pos));
+        int toolSlot = findBestMiningToolSlot(mc, mc.player, mc.world.getBlockState(pos));
         mc.player.getInventory().setSelectedSlot(toolSlot);
         aimAt(mc.player, pos.toCenterPos());
         BlockHitResult hit = raycastBlock(mc, pos);
         if (hit == null) {
+            restoreMiningTool(mc);
             restoreHotbar(mc);
             throw new IllegalArgumentException(
                     "Der Block ist nicht direkt sichtbar. Entferne das Hindernis oder stelle dich so hin, dass Nightfall ihn erreichen kann.");
         }
         if (!mc.interactionManager.attackBlock(pos, hit.getSide())) {
+            restoreMiningTool(mc);
             restoreHotbar(mc);
             throw new IllegalArgumentException("Der Minecraft-Client konnte den Abbau nicht starten.");
         }
@@ -379,7 +385,10 @@ public final class AIPlayerController {
             try { mc.player.stopUsingItem(); } catch (RuntimeException ignored) {}
             restoreHotbar(mc);
         }
-        if (previous == Mode.MINE && mc.player != null) restoreHotbar(mc);
+        if (previous == Mode.MINE && mc.player != null) {
+            restoreMiningTool(mc);
+            restoreHotbar(mc);
+        }
         mode = Mode.NONE;
         forwardTicks = 0;
         actionTicks = 0;
@@ -611,14 +620,15 @@ public final class AIPlayerController {
                 && hit.getBlockPos().equals(pos) ? hit : null;
     }
 
-    private static int findBestMiningToolSlot(ClientPlayerEntity player, BlockState targetState) {
+    private static int findBestMiningToolSlot(MinecraftClient mc, ClientPlayerEntity player,
+                                              BlockState targetState) {
         int selectedSlot = player.getInventory().getSelectedSlot();
         int bestSlot = selectedSlot;
         ItemStack held = player.getInventory().getStack(selectedSlot);
         boolean bestSuitable = !held.isEmpty() && held.isSuitableFor(targetState);
         float bestSpeed = held.isEmpty() ? 1.0f : held.getMiningSpeedMultiplier(targetState);
 
-        for (int slot = 0; slot < 9; slot++) {
+        for (int slot = 0; slot < 36; slot++) {
             ItemStack candidate = player.getInventory().getStack(slot);
             if (candidate.isEmpty()) continue;
             boolean suitable = candidate.isSuitableFor(targetState);
@@ -629,7 +639,38 @@ public final class AIPlayerController {
                 bestSpeed = speed;
             }
         }
-        return bestSlot;
+        if (bestSlot < 9) return bestSlot;
+        if (player.currentScreenHandler != player.playerScreenHandler)
+            throw new IllegalArgumentException("Schließe zuerst den geöffneten Container, damit Nightfall das passende Werkzeug wechseln kann.");
+
+        int hotbarSlot = -1;
+        for (int slot = 0; slot < 9; slot++) {
+            if (player.getInventory().getStack(slot).isEmpty()) {
+                hotbarSlot = slot;
+                break;
+            }
+        }
+        if (hotbarSlot < 0) hotbarSlot = originalSlot >= 0 ? originalSlot : selectedSlot;
+        miningToolSourceSlot = bestSlot;
+        miningToolHotbarSlot = hotbarSlot;
+        miningDisplacedStack = player.getInventory().getStack(hotbarSlot).copy();
+        mc.interactionManager.clickSlot(player.playerScreenHandler.syncId, bestSlot, hotbarSlot,
+                SlotActionType.SWAP, player);
+        notifyPlayer(mc, "Passendes Werkzeug aus dem Inventar geholt: "
+                + player.getInventory().getStack(hotbarSlot).getName().getString() + ".");
+        return hotbarSlot;
+    }
+
+    private static void restoreMiningTool(MinecraftClient mc) {
+        if (mc.player != null && miningToolSourceSlot >= 9 && miningToolHotbarSlot >= 0
+                && mc.player.currentScreenHandler == mc.player.playerScreenHandler
+                && ItemStack.areEqual(mc.player.getInventory().getStack(miningToolSourceSlot), miningDisplacedStack)) {
+            mc.interactionManager.clickSlot(mc.player.playerScreenHandler.syncId, miningToolSourceSlot,
+                    miningToolHotbarSlot, SlotActionType.SWAP, mc.player);
+        }
+        miningToolSourceSlot = -1;
+        miningToolHotbarSlot = -1;
+        miningDisplacedStack = ItemStack.EMPTY;
     }
 
     private static int findFoodSlot(ClientPlayerEntity player, String preferredItem) {
