@@ -158,6 +158,7 @@ public final class AIPlayerController {
     private static int gatherGoalCount;
     private static List<BlockPos> gatherTargets = List.of();
     private static int gatherIndex;
+    private static int gatherBlocksBrokenThisRequest;
     private static Set<BlockPos> gatherVisitedTargets = new HashSet<>();
     private static int gatherRescanCount;
     private static boolean gatherAwaitingPickup;
@@ -516,9 +517,6 @@ public final class AIPlayerController {
         if (missing <= 0)
             throw new IllegalArgumentException("Du hast bereits " + current + " × " + item.getName().getString()
                     + " im Inventar. Die gewünschte Zielmenge ist erreicht.");
-        if (missing > MAX_GATHER_BLOCKS)
-            throw new IllegalArgumentException("Ein einzelner Sammelauftrag darf höchstens "
-                    + MAX_GATHER_BLOCKS + " zusätzliche Blöcke abbauen.");
         int inventoryCapacity = availableInventoryCapacity(mc, item);
         if (inventoryCapacity <= 0)
             throw new IllegalArgumentException("Dein Inventar hat keinen freien Platz für "
@@ -533,7 +531,7 @@ public final class AIPlayerController {
         if (toolEligible == 0)
             throw new IllegalArgumentException("Ich habe " + candidates.size() + " passende Blöcke gefunden, "
                     + "aber für diese Blöcke fehlt ein geeignetes Werkzeug. Lege das passende Werkzeug in dein Inventar.");
-        int available = Math.min(Math.min(missing, toolEligible), inventoryCapacity);
+        int available = Math.min(Math.min(Math.min(missing, MAX_GATHER_BLOCKS), toolEligible), inventoryCapacity);
         String kind = woodOnly ? "Holzblöcke" : oreOnly ? "Erzblöcke" : "freigegebene Rohstoffblöcke";
         String ancientNote = isAncientDebrisItem(item)
                 ? " Für Ancient Debris prüft Nightfall zusätzlich kurze horizontale Stollen (max. "
@@ -574,6 +572,7 @@ public final class AIPlayerController {
         gatherGoalCount = targetCount;
         gatherTargets = List.copyOf(usableTargets);
         gatherIndex = 0;
+        gatherBlocksBrokenThisRequest = 0;
         gatherAwaitingPickup = false;
         gatherPickupTicks = 0;
         gatherCountBeforeBreak = 0;
@@ -721,6 +720,13 @@ public final class AIPlayerController {
             } else {
                 return;
             }
+        }
+
+        if (gatherBlocksBrokenThisRequest >= MAX_GATHER_BLOCKS) {
+            stop("Sammelauftrag beendet: " + currentCount + "/" + gatherGoalCount + " "
+                    + gatherMaterialName + " im Inventar. Pro bestätigtem Auftrag werden höchstens "
+                    + MAX_GATHER_BLOCKS + " Blöcke abgebaut; du kannst die verbleibende Menge erneut anfordern.");
+            return;
         }
 
         while (gatherIndex < gatherTargets.size()) {
@@ -1124,6 +1130,7 @@ public final class AIPlayerController {
             restoreHotbar(mc);
             miningPos = null;
             miningState = null;
+            gatherBlocksBrokenThisRequest++;
             gatherAwaitingPickup = true;
             gatherPickupTicks = 0;
 
@@ -1165,6 +1172,7 @@ public final class AIPlayerController {
         gatherGoalCount = 0;
         gatherTargets = List.of();
         gatherIndex = 0;
+        gatherBlocksBrokenThisRequest = 0;
         gatherVisitedTargets = new HashSet<>();
         gatherRescanCount = 0;
         gatherAwaitingPickup = false;
