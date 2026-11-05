@@ -257,7 +257,12 @@ public final class AIRealtimeVoiceClient {
                 eine Aktion sei ausgeführt, bevor du ihr Werkzeugergebnis erhalten hast. Nutze Werkzeuge nur,
                 wenn der Spieler die entsprechende Aktion tatsächlich wünscht. Bei unklaren Wünschen frage nach.
                 Achte besonders darauf, bei Bau-, Abbau-, Sammel-, Crafting- oder Ofenaktionen die Vorschau
-                abzuwarten und die separate Bestätigung zu verlangen. Spiele freundlich mit dem Spieler, aber
+                abzuwarten und die separate Bestätigung zu verlangen. Nightfall darf auch sein eigenes ClickGUI-Menü
+                steuern: Für Fragen nach vorhandenen Modulen/Einstellungen zuerst get_module_settings verwenden;
+                Module mit set_module_state aktivieren/deaktivieren; konkrete Einstellungen nur nach dem Auslesen
+                des exakten Namens und erlaubten Wertebereichs mit set_module_setting ändern. Diese Änderung muss
+                vorher bestätigt werden. Niemals Modulnamen, Einstellungsnamen oder Werte raten. open_nightfall_menu
+                öffnet das Menü nur auf ausdrücklichen Wunsch. Spiele freundlich mit dem Spieler, aber
                 dränge ihn nicht zu riskanten Aktionen.
                 Wenn der Spieler selbstständig Strukturen auf einem Server ohne /locate suchen lassen möchte,
                 verwende search_structures: Nightfall läuft sicher in einer begrenzten Quadratspirale und prüft
