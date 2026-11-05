@@ -104,7 +104,7 @@ public final class AIConfig {
         root.addProperty("speechVoice", value.speechVoice());
         root.addProperty("voiceInputEnabled", value.voiceInputEnabled());
         root.addProperty("voiceOutputEnabled", value.voiceOutputEnabled());
-        Files.writeString(FILE, root.toString().replace(",", ",\\n  ").replace("{", "{\\n  ").replace("}", "\\n}"));
+        Files.writeString(FILE, root.toString());
     }
 
     private static boolean readBoolean(JsonObject root, String key, boolean fallback) {
