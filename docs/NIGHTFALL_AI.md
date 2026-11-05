@@ -8,10 +8,13 @@ Nightfall bietet die bestätigungspflichtige Aktion `locate_structure`. Sie send
 `minecraft:village`, `minecraft:fortress`, `minecraft:bastion_remnant`, `minecraft:ancient_city`,
 `minecraft:stronghold` oder `minecraft:trial_chambers` an den nativen Serverbefehl
 `/locate structure`. Der Server muss den Befehl unterstützen und erlauben; Koordinaten werden in dessen
-Chatantwort angezeigt. Die Aktion teleportiert den Spieler nicht und läuft in dieser Version noch nicht
-automatisch zur Struktur. Für die Navigation kann anschließend `navigate_to` mit den bestätigten
-Koordinaten verwendet werden. Eine Serverantwort muss abgewartet werden; das Senden eines Befehls ist
-kein Beweis, dass eine Struktur gefunden wurde.
+Chatantwort angezeigt. Sobald eine passende Koordinatenantwort im Format `[x, y, z]` erkannt wird,
+startet Nightfall automatisch die begrenzte lokale A*-Navigation zum gemeldeten Fundort. Es teleportiert
+niemals. Die Wegsuche nutzt ausschließlich geladene Chunks, sichere Standflächen und abschnittsweise
+Routenplanung. Wenn kein sicherer Wegabschnitt gefunden wird, stoppt Nightfall und fordert den Spieler
+auf, näher heranzugehen oder die Umgebung laden zu lassen. Der Spieler kann die Bewegung jederzeit stoppen.
+Eine Serverantwort muss abgewartet werden; das Senden eines Befehls ist kein Beweis, dass eine Struktur
+gefunden wurde.
 
 ## Setup
 
