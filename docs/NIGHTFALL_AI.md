@@ -199,9 +199,10 @@ durch normale Platzierung nicht reproduzierbar, stoppt Nightfall mit einer konkr
 statt eine falsch ausgerichtete Farm als fertig zu melden. Materialien müssen weiterhin in der
 Hotbar liegen.
 
-**Wichtige verbleibende Grenzen:** Block-Entity-NBT/Inventarinhalte, Entities, Flüssigkeitsquellen,
-fallende Blöcke und komplexe, dynamische Redstone-/Nachbarschaftszustände werden noch nicht
-vollständig rekonstruiert. Insbesondere kann eine Schematic, deren Block-States von Nachbarblöcken
+**Wichtige verbleibende Grenzen:** Block-Entity-Blöcke wie Hopper und Truhen können mit frischen
+Standarddaten platziert werden. Inventarinhalte und benutzerdefiniertes Block-Entity-NBT werden
+aber nicht aus der Vorlage übernommen. Entities, Flüssigkeitsquellen, fallende Blöcke und komplexe,
+dynamische Redstone-/Nachbarschaftszustände werden noch nicht vollständig rekonstruiert. Insbesondere kann eine Schematic, deren Block-States von Nachbarblöcken
 oder Redstone-Signalen abhängen, trotz korrekter Grundausrichtung noch Abweichungen enthalten.
 Der Aushub selbst macht eine Farm nicht funktionsfähig, wenn ihre Mechanik nicht unterstützt wird.
 Prüfe die Vorschau und teste Community-Schematics in einer Weltkopie. Keine heruntergeladene
