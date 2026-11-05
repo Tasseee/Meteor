@@ -35,9 +35,10 @@ import java.util.regex.Pattern;
  * - Sponge Schematic v2 (.schem)
  * - Litematica v5-v7 (.litematic), positive-sized regions only
  *
- * NBT is parsed with a strict byte/file/volume limit. Only default-state, full-cube,
- * non-falling BlockItems without block entities are automatically buildable. Everything
- * else is reported as manual-only instead of silently losing orientation or tile data.
+ * NBT is parsed with strict byte/file/volume limits. Non-falling BlockItems without
+ * fluids or block entities keep their complete BlockState. The builder tests vanilla placement
+ * contexts for a matching state and refuses placements it cannot reproduce. Block-entity NBT,
+ * entities and fluid blocks are not recreated.
  */
 public final class SchematicManager {
     private static final Path DIRECTORY = net.fabricmc.loader.api.FabricLoader.getInstance()
@@ -84,9 +85,11 @@ public final class SchematicManager {
                 examples.forEach(value -> out.append("\n- ").append(value));
             }
             out.append("\n\nSICHERHEIT: Nightfall räumt vor dem Setzen die als Luft markierten Zellen im Schematic-Volumen frei "
-                    + "und entfernt ersetzte Blöcke an Bauzielen. Block-Entities, Flüssigkeiten und unzerstörbare Blöcke bleiben geschützt. "
-                    + "Derzeit werden weiterhin nur Standard-BlockItems ohne Block-Entity oder Zustands-Properties automatisch platziert; "
-                    + "Ausrichtungen, Inventar-NBT, Entities und komplexe Redstone-/Flüssigkeitsmechaniken sind noch nicht vollständig reproduziert.");
+                    + "und entfernt ersetzte Blöcke an Bauzielen. Es übernimmt die gespeicherten BlockStates und sucht mit Minecrafts "
+                    + "normaler BlockItem-Platzierlogik nach einer passenden Ansetzfläche und Blickrichtung. Ein Block zählt erst nach "
+                    + "exakter Serverbestätigung als gebaut; nicht reproduzierbare Zustände brechen den Bau ab. Block-Entities samt NBT, "
+                    + "Flüssigkeiten, fallende Blöcke und Entities werden nicht automatisch rekonstruiert; dynamische Redstone-/Nachbarschafts-"
+                    + "Zustände können vom Weltkontext abhängen.");
             return out.toString();
         }
     }
