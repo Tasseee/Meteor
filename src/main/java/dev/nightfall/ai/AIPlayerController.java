@@ -539,7 +539,7 @@ public final class AIPlayerController {
         while (gatherIndex < gatherTargets.size()) {
             BlockPos target = gatherTargets.get(gatherIndex);
             BlockState state = mc.world.getBlockState(target);
-            if (!isGatherableSourceBlock(state, gatherMaterial) || state.hasBlockEntity()
+            if (!isGatherableSourceBlock(state, gatherMaterial, gatherRequiresSuitableTool) || state.hasBlockEntity()
                     || state.getBlock() instanceof net.minecraft.block.FallingBlock
                     || !state.getFluidState().isEmpty() || state.getHardness(mc.world, target) < 0.0f
                     || !hasSuitableMiningTool(mc, state, gatherRequiresSuitableTool)) {
