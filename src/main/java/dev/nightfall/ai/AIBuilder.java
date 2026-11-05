@@ -240,6 +240,7 @@ public final class AIBuilder {
         }
         List<BlockPos> nextExcavation = new ArrayList<>();
         Map<BlockPos, Identifier> nextExcavationExpected = new LinkedHashMap<>();
+        Map<Identifier, Integer> nextExcavationMaterials = new LinkedHashMap<>();
         BlockState desiredState = selected.getBlock().getDefaultState();
         for (BlockPos target : nextPlan) {
             if (target.getY() < mc.world.getBottomY()
@@ -252,8 +253,10 @@ public final class AIBuilder {
                 throw new IllegalArgumentException("Nightfall kann das Hindernis bei X=" + target.getX()
                         + ", Y=" + target.getY() + ", Z=" + target.getZ()
                         + " nicht sicher entfernen (fallender Block, Block-Entity, Flüssigkeit oder unzerstörbarer Block).");
+            Identifier obstacleId = Registries.BLOCK.getId(present.getBlock());
             nextExcavation.add(target.toImmutable());
-            nextExcavationExpected.put(target.toImmutable(), Registries.BLOCK.getId(present.getBlock()));
+            nextExcavationExpected.put(target.toImmutable(), obstacleId);
+            nextExcavationMaterials.merge(obstacleId, 1, Integer::sum);
         }
         if (nextExcavation.size() > MAX_EXCAVATION_BLOCKS)
             throw new IllegalArgumentException("Für diesen Bau müssten mehr als " + MAX_EXCAVATION_BLOCKS
@@ -303,10 +306,19 @@ public final class AIBuilder {
             case CUSTOM -> throw new IllegalStateException("Eigener Bauplan darf nicht über Vorlagen-Planung laufen.");
         };
         saveCheckpoint();
+        List<String> obstacleSummary = new ArrayList<>();
+        for (Map.Entry<Identifier, Integer> obstacle : nextExcavationMaterials.entrySet()) {
+            if (obstacleSummary.size() == 8) break;
+            obstacleSummary.add(obstacle.getKey() + " × " + obstacle.getValue());
+        }
+        if (nextExcavationMaterials.size() > obstacleSummary.size())
+            obstacleSummary.add("+" + (nextExcavationMaterials.size() - obstacleSummary.size()) + " weitere Blockarten");
+        String obstacleDetails = nextExcavation.isEmpty() ? "keine" : String.join(", ", obstacleSummary);
         return "Bauplan geprüft: " + selectedBlueprint.label + " – " + layout + ". Material: "
                 + materialName + " × " + (creative ? "unbegrenzt (Kreativmodus)" : selectedBlueprint.blocks + " (Inventar: " + available + ")") + ". "
-                + "Ebener, fester Boden ist geprüft. Entfernbare Hindernisse im Bauvolumen: " + nextExcavation.size()
-                + ". Block-Entities, Flüssigkeiten, fallende und unzerstörbare Blöcke bleiben geschützt. "
+                + "Ebener, fester Boden ist geprüft. Entfernbare Hindernisse im Bauvolumen: "
+                + nextExcavation.size() + " (" + obstacleDetails + "). "
+                + "Block-Entities, Flüssigkeiten, fallende und unzerstörbare Blöcke bleiben geschützt. "
                 + "Jede Platzierung wird erst nach Server-Weltupdate gezählt; bei fehlender Reichweite pausiere ich.";
     }
 
