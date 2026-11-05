@@ -172,6 +172,7 @@ public final class AIChatScreen extends Screen {
     public static void clientTick() {
         if (active == null) return;
         active.expireLocateRequest();
+        active.expireStructureRequest();
         active.expireCommandRequest();
     }
 
@@ -693,6 +694,9 @@ public final class AIChatScreen extends Screen {
             result = "Aktion ist fehlgeschlagen: " + failure.getClass().getSimpleName()
                     + (detail == null || detail.isEmpty() ? "." : " – " + detail);
         }
+        if ("stop_movement".equals(action.name()) || "stop_current_action".equals(action.name())) {
+            locatingStructure = "";
+        }
         if ("locate_structure".equals(action.name())) {
             if (result.contains("wurde gesendet")) {
                 locatingStructure = action.arguments().get("structure").getAsString();
@@ -888,6 +892,16 @@ public final class AIChatScreen extends Screen {
             actionRoundTrips = 0;
             requestAI();
         }
+    }
+
+    private void expireStructureRequest() {
+        if (locatingStructure.isEmpty() || System.currentTimeMillis() <= locateDeadline) return;
+        String expired = locatingStructure;
+        locatingStructure = "";
+        status = "Keine Strukturantwort erhalten";
+        history.add(new ChatLine("assistant", "Für " + expired
+                + " kam innerhalb von 30 Sekunden keine passende Koordinatenantwort. Nightfall hat keine Bewegung gestartet."));
+        scroll = Float.MAX_VALUE;
     }
 
     private void expireLocateRequest() {
