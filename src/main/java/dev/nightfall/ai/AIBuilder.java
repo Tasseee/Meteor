@@ -17,6 +17,12 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
+import net.fabricmc.loader.api.FabricLoader;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import java.util.ArrayList;
 import java.util.ArrayDeque;
@@ -114,6 +120,10 @@ public final class AIBuilder {
     private static int preparedMaxBlocks = 200;
     private static int preparedMaxHorizontal = 15;
     private static int preparedMaxY = 10;
+    private static boolean restoredCheckpoint;
+    private static boolean preserveCheckpointOnStop;
+    private static boolean checkpointLoadAttempted;
+    private static String savedServerKey = "";
 
     private AIBuilder() {}
 
@@ -261,6 +271,7 @@ public final class AIBuilder {
         return "Bauplan geprüft: " + selectedBlueprint.label + " – " + layout + ". Material: "
                 + materialName + " × " + (creative ? "unbegrenzt (Kreativmodus)" : selectedBlueprint.blocks + " (Inventar: " + available + ")") + ". "
                 + "Fläche und Boden sind geprüft. Jede Platzierung wird erst nach Server-Weltupdate gezählt; bei fehlender Reichweite pausiere ich."
+        saveCheckpoint();
                 + fixedLayoutPreview(nextPlan, origin, right, forward, baseY, selected);
     }
 
@@ -503,6 +514,7 @@ public final class AIBuilder {
         preparedMaxY = maxVerticalLimit;
         absoluteSchematicOrientation = preserveSchematicOrientation;
         status = "Eigener Bauplan geprüft";
+        saveCheckpoint();
         return "Eigener Bauplan geprüft: „" + blueprintName + "“, " + offsets.size() + " Blöcke, "
                 + (maxX + 1) + " × " + (maxY + 1) + " × " + (maxZ + 1)
                 + " Raster, Materialien: " + materialName
@@ -654,25 +666,28 @@ public final class AIBuilder {
     public static String startStarterShelter() { return startPreparedStructure(); }
 
     public static String startPreparedStructure() {
-        if (!prepared || blueprint == null || preparedPlayerPos == null || preparedFacing == null)
+        if (!prepared || blueprint == null || (preparedPlayerPos == null && !restoredCheckpoint) || (!restoredCheckpoint && preparedFacing == null))
             throw new IllegalArgumentException("Der Bauplan ist abgelaufen. Bitte fordere ihn erneut an.");
         if (AIPlayerController.isBusy())
             throw new IllegalArgumentException("Nightfall führt gerade eine andere Bewegung oder Abbauaktion aus. Stoppe sie zuerst.");
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null
-                || !mc.player.getBlockPos().equals(preparedPlayerPos)
-                || mc.player.getHorizontalFacing() != preparedFacing
-                || !mc.world.getRegistryKey().getValue().equals(dimension)) {
+                || (!restoredCheckpoint && (!mc.player.getBlockPos().equals(preparedPlayerPos)
+                || mc.player.getHorizontalFacing() != preparedFacing))
+                || !mc.world.getRegistryKey().getValue().equals(dimension)
+                || (restoredCheckpoint && !currentServerKey(mc).equals(savedServerKey))) {
             throw new IllegalArgumentException("Du hast dich seit der Vorschau bewegt oder die Welt gewechselt. Bitte erstelle den Bauplan an deinem neuen Standort erneut.");
         }
         String id = blueprint.id;
         BlockItem approvedMaterial = material;
-        if (blueprint == Blueprint.CUSTOM) {
-            prepareCustomStructure(blueprintName, approvedMaterial, null, List.copyOf(CUSTOM_OFFSETS),
-                    List.copyOf(CUSTOM_CLEAR_OFFSETS), preparedMaxBlocks, preparedMaxHorizontal, preparedMaxY,
-                    absoluteSchematicOrientation);
-        } else {
-            prepareStructure(id, approvedMaterial, null);
+        if (!restoredCheckpoint) {
+            if (blueprint == Blueprint.CUSTOM) {
+                prepareCustomStructure(blueprintName, approvedMaterial, null, List.copyOf(CUSTOM_OFFSETS),
+                        List.copyOf(CUSTOM_CLEAR_OFFSETS), preparedMaxBlocks, preparedMaxHorizontal, preparedMaxY,
+                        absoluteSchematicOrientation);
+            } else {
+                prepareStructure(id, approvedMaterial, null);
+            }
         }
         originalSlot = mc.player.getInventory().getSelectedSlot();
         originalYaw = mc.player.getYaw();
@@ -682,7 +697,7 @@ public final class AIBuilder {
         queuedPlacementMaterial = null;
         queuedPlacementState = null;
         pendingExpectedState = null;
-        index = 0;
+        if (!restoredCheckpoint) index = 0;
         delay = 0;
         pendingTarget = null;
         pendingTicks = 0;
@@ -690,7 +705,9 @@ public final class AIBuilder {
         waitingForReach = false;
         pausedByUser = false;
         running = true;
+        restoredCheckpoint = false;
         status = "Bau gestartet";
+        saveCheckpoint();
         notifyPlayer("Bau gestartet: " + blueprintName + " · Aushub " + EXCAVATION_PLAN.size()
                 + " · Bau 0/" + PLAN.size() + ".");
         String materialSummary = blueprint == Blueprint.CUSTOM
@@ -702,7 +719,10 @@ public final class AIBuilder {
     }
 
     public static void tick() {
-        if (!running) return;
+        if (!running) {
+            if (!checkpointLoadAttempted) tryRestoreCheckpoint();
+            return;
+        }
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null || mc.interactionManager == null || mc.getNetworkHandler() == null
                 || !mc.world.getRegistryKey().getValue().equals(dimension)) {
@@ -746,6 +766,7 @@ public final class AIBuilder {
             if (pendingExpectedState != null && pendingState.equals(pendingExpectedState)) {
                 pendingMaterial = null;
                 index++;
+                saveCheckpoint();
                 pendingTarget = null;
                 pendingTicks = 0;
                 placementRetries = 0;
@@ -799,7 +820,7 @@ public final class AIBuilder {
             return;
         }
         BlockState expectedState = PLAN_STATES.getOrDefault(target, targetMaterial.getBlock().getDefaultState());
-        if (present.equals(expectedState)) { index++; progressNotice(); return; }
+        if (present.equals(expectedState)) { index++; saveCheckpoint(); progressNotice(); return; }
         if (!present.isReplaceable()) {
             stopInternal("Bau gestoppt: Bei X=" + target.getX() + ", Y=" + target.getY() + ", Z=" + target.getZ()
                     + " ist inzwischen ein anderer Block im Weg.", true);
@@ -853,6 +874,7 @@ public final class AIBuilder {
             BlockState after = mined == null ? null : mc.world.getBlockState(mined);
             if (after != null && after.isAir()) {
                 excavationIndex++;
+                saveCheckpoint();
                 excavationRetries = 0;
                 excavationApproachAttempts = 0;
                 excavationWaitingNotice = false;
@@ -877,6 +899,7 @@ public final class AIBuilder {
         BlockState state = mc.world.getBlockState(target);
         if (state.isAir()) {
             excavationIndex++;
+            saveCheckpoint();
             excavationRetries = 0;
             excavationApproachAttempts = 0;
             excavationWaitingNotice = false;
@@ -1032,6 +1055,139 @@ public final class AIBuilder {
         return MATERIAL_SWAP_PENDING;
     }
 
+
+    private static Path checkpointPath() {
+        return FabricLoader.getInstance().getConfigDir().resolve("nightfall").resolve("builder_resume.json");
+    }
+
+    private static String currentServerKey(MinecraftClient mc) {
+        if (mc.getCurrentServerEntry() != null)
+            return "server:" + mc.getCurrentServerEntry().address.toLowerCase(Locale.ROOT);
+        if (mc.isInSingleplayer() && mc.getServer() != null)
+            return "singleplayer:" + mc.getServer().getSavePath(net.minecraft.util.WorldSavePath.ROOT).toAbsolutePath().normalize();
+        return "unknown";
+    }
+
+    private static void saveCheckpoint() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if ((!running && !prepared) || mc.world == null || blueprint == null) return;
+        try {
+            JsonObject root = new JsonObject();
+            savedServerKey = currentServerKey(mc);
+            root.addProperty("version", 1);
+            root.addProperty("server", savedServerKey);
+            root.addProperty("dimension", mc.world.getRegistryKey().getValue().toString());
+            root.addProperty("name", blueprintName);
+            root.addProperty("index", index);
+            root.addProperty("excavationIndex", excavationIndex);
+            root.addProperty("materialName", materialName);
+            root.addProperty("material", material == null ? "" : Registries.ITEM.getId(material).toString());
+            JsonArray blocks = new JsonArray();
+            for (BlockPos pos : PLAN) {
+                BlockItem item = PLAN_MATERIALS.getOrDefault(pos, material);
+                if (item == null) throw new IllegalStateException("Material für gespeicherten Bauplan fehlt.");
+                JsonObject block = new JsonObject();
+                block.addProperty("x", pos.getX());
+                block.addProperty("y", pos.getY());
+                block.addProperty("z", pos.getZ());
+                block.addProperty("item", Registries.ITEM.getId(item).toString());
+                blocks.add(block);
+            }
+            root.add("blocks", blocks);
+            JsonArray excavation = new JsonArray();
+            for (BlockPos pos : EXCAVATION_PLAN) {
+                JsonObject block = new JsonObject();
+                block.addProperty("x", pos.getX());
+                block.addProperty("y", pos.getY());
+                block.addProperty("z", pos.getZ());
+                excavation.add(block);
+            }
+            root.add("excavation", excavation);
+            Path file = checkpointPath();
+            Files.createDirectories(file.getParent());
+            Files.writeString(file, root.toString());
+        } catch (Exception error) {
+            status = "Baufortschritt konnte nicht lokal gespeichert werden: " + error.getMessage();
+        }
+    }
+
+    private static void deleteCheckpoint() {
+        try {
+            Files.deleteIfExists(checkpointPath());
+            checkpointLoadAttempted = true;
+        } catch (Exception ignored) {
+            status = "Gespeicherter Bauplan konnte nicht gelöscht werden.";
+        }
+    }
+
+    private static void tryRestoreCheckpoint() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null || mc.getNetworkHandler() == null) return;
+        checkpointLoadAttempted = true;
+        Path file = checkpointPath();
+        if (!Files.exists(file)) return;
+        try {
+            JsonObject root = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
+            if (!root.has("version") || root.get("version").getAsInt() != 1
+                    || !root.has("blocks") || !root.get("blocks").isJsonArray()
+                    || root.getAsJsonArray("blocks").isEmpty() || root.getAsJsonArray("blocks").size() > 5_000
+                    || !root.has("excavation") || !root.get("excavation").isJsonArray()
+                    || root.getAsJsonArray("excavation").size() > MAX_EXCAVATION_BLOCKS)
+                throw new IllegalArgumentException("Ungültiges oder nicht unterstütztes Speicherformat.");
+            String storedServer = root.get("server").getAsString();
+            if (!storedServer.equals(currentServerKey(mc))) {
+                status = "Ein gespeicherter Bau für einen anderen Server/eine andere Welt wurde gefunden. Verbinde dich mit der ursprünglichen Welt, um ihn fortzusetzen.";
+                checkpointLoadAttempted = false;
+                return;
+            }
+            Identifier storedDimension = Identifier.tryParse(root.get("dimension").getAsString());
+            if (storedDimension == null || !storedDimension.equals(mc.world.getRegistryKey().getValue())) {
+                status = "Gespeicherter Bau gefunden, aber die Dimension stimmt nicht. Wechsle zuerst in die ursprüngliche Dimension.";
+                checkpointLoadAttempted = false;
+                return;
+            }
+            PLAN.clear(); PLAN_MATERIALS.clear(); PLAN_STATES.clear();
+            for (var element : root.getAsJsonArray("blocks")) {
+                JsonObject block = element.getAsJsonObject();
+                BlockPos pos = new BlockPos(block.get("x").getAsInt(), block.get("y").getAsInt(), block.get("z").getAsInt());
+                Identifier itemId = Identifier.tryParse(block.get("item").getAsString());
+                if (itemId == null || !(Registries.ITEM.get(itemId) instanceof BlockItem item)
+                        || !Registries.ITEM.getId(item).equals(itemId))
+                    throw new IllegalArgumentException("Ein gespeichertes Baumaterial existiert in dieser Minecraft-Version nicht mehr.");
+                PLAN.add(pos); PLAN_MATERIALS.put(pos, item); PLAN_STATES.put(pos, item.getBlock().getDefaultState());
+            }
+            EXCAVATION_PLAN.clear();
+            for (var element : root.getAsJsonArray("excavation")) {
+                JsonObject block = element.getAsJsonObject();
+                EXCAVATION_PLAN.add(new BlockPos(block.get("x").getAsInt(), block.get("y").getAsInt(), block.get("z").getAsInt()));
+            }
+            index = Math.max(0, Math.min(PLAN.size(), root.get("index").getAsInt()));
+            excavationIndex = Math.max(0, Math.min(EXCAVATION_PLAN.size(), root.get("excavationIndex").getAsInt()));
+            blueprintName = root.get("name").getAsString();
+            materialName = root.has("materialName") ? root.get("materialName").getAsString() : "Gespeicherte Materialien";
+            Identifier primaryId = Identifier.tryParse(root.get("material").getAsString());
+            BlockItem primary = primaryId != null && Registries.ITEM.get(primaryId) instanceof BlockItem item
+                    ? item : PLAN_MATERIALS.values().iterator().next();
+            material = primary;
+            blueprint = Blueprint.CUSTOM;
+            dimension = storedDimension;
+            savedServerKey = storedServer;
+            preparedPlayerPos = mc.player.getBlockPos().toImmutable();
+            preparedFacing = mc.player.getHorizontalFacing();
+            preparedMaxBlocks = 5_000; preparedMaxHorizontal = 63; preparedMaxY = 63;
+            prepared = true; running = false; restoredCheckpoint = true;
+            pendingTarget = null; pendingExcavationTarget = null; pendingMaterial = null; queuedPlacementHit = null;
+            status = "Gespeicherter Bau wartet auf deine Bestätigung";
+            notifyPlayer("Gespeicherter Bau gefunden: " + blueprintName + " · bestätigt " + index + "/" + PLAN.size()
+                    + ". Sage „Bau fortsetzen“, um ihn nach einer Prüfung weiterzuführen.");
+        } catch (Exception error) {
+            status = "Gespeicherter Bau konnte nicht geladen werden: " + error.getMessage()
+                    + ". Die Datei bleibt zur Prüfung erhalten.";
+        }
+    }
+
+    public static boolean hasRestoredCheckpoint() { return restoredCheckpoint && prepared && !running; }
+
     private static void progressNotice() {
         if (index == 1 || index % 10 == 0 || index == PLAN.size()) {
             status = "Baue " + index + "/" + PLAN.size();
@@ -1072,6 +1228,8 @@ public final class AIBuilder {
 
     public static void cancelPrepared() {
         if (running) return;
+        deleteCheckpoint();
+        restoredCheckpoint = false;
         prepared = false;
         PLAN.clear();
         PLAN_MATERIALS.clear();
@@ -1130,6 +1288,10 @@ public final class AIBuilder {
     }
 
     public static void onDisconnect() {
+        if (running || prepared) {
+            saveCheckpoint();
+            preserveCheckpointOnStop = true;
+        }
         if (running) stopInternal("Bau bei Verbindungsabbruch gestoppt.", false);
         cancelPrepared();
     }
@@ -1152,6 +1314,8 @@ public final class AIBuilder {
         pendingTicks = 0;
         placementRetries = 0;
         status = message;
+        if (!preserveCheckpointOnStop) deleteCheckpoint();
+        preserveCheckpointOnStop = false;
         if (notify) notifyPlayer(message);
         PLAN.clear();
         PLAN_MATERIALS.clear();
