@@ -259,6 +259,12 @@ public final class AIRealtimeVoiceClient {
                 Achte besonders darauf, bei Bau-, Abbau-, Sammel-, Crafting- oder Ofenaktionen die Vorschau
                 abzuwarten und die separate Bestätigung zu verlangen. Spiele freundlich mit dem Spieler, aber
                 dränge ihn nicht zu riskanten Aktionen.
+                Wenn der Spieler selbstständig Strukturen auf einem Server ohne /locate suchen lassen möchte,
+                verwende search_structures: Nightfall läuft sicher in einer begrenzten Quadratspirale und prüft
+                geladene Chunks auf Blockmuster. Die Heuristiken decken Ancient City, Trial Chambers, Nether
+                Fortress, Bastion und Stronghold ab. Treffer sind nur mögliche Hinweise, keine sichere Bestätigung.
+                Die Suche endet spätestens nach fünf Minuten oder bei Gefahr, fehlendem Weg oder „Stopp“.
+                locate_structure nur verwenden, wenn der Spieler ausdrücklich den Serverbefehl /locate möchte.
                 """);
         JsonArray modalities = new JsonArray();
         modalities.add("audio");
