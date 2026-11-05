@@ -2,7 +2,6 @@ package dev.nightfall.ai;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.block.FallingBlock;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.command.argument.BlockArgumentParser;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
