@@ -40,6 +40,7 @@ public final class AIChatScreen extends Screen {
     private int panelX, panelY, panelW, panelH;
     private int sendX, sendY, sendW, sendH;
     private int micX, micY, micW, micH;
+    private int ttsX, ttsY, ttsW, ttsH;
     private AIActionRegistry.Action pendingAction;
     private AIChatClient.ToolCall pendingToolCall;
     private final List<AIChatClient.Message> apiHistory = new ArrayList<>();
@@ -57,6 +58,7 @@ public final class AIChatScreen extends Screen {
 
     public AIChatScreen() {
         super(Text.literal("Nightfall AI"));
+        AIConfig.load();
         active = this;
         history.add(new ChatLine("assistant",
                 "Hey! Ich bin Nightfall AI. Frag mich alles rund um Minecraft – oder bitte mich, ein Biom zu suchen. Weltaktionen frage ich immer vorher bei dir an."));
@@ -247,8 +249,12 @@ public final class AIChatScreen extends Screen {
         micH = 23;
         micX = sendX - micW - 6;
         micY = sendY;
+        ttsW = 48;
+        ttsH = 23;
+        ttsX = micX - ttsW - 6;
+        ttsY = sendY;
         int inputX = panelX + 14;
-        int inputW = micX - inputX - 8;
+        int inputW = ttsX - inputX - 8;
         ctx.fill(inputX, sendY, inputX + inputW, sendY + sendH, 0xE5080B12);
         ctx.fill(inputX, sendY + sendH - 1, inputX + inputW, sendY + sendH, Theme.ACCENT_DIM);
         String shownInput = input + ((System.currentTimeMillis() / 500) % 2 == 0 ? "_" : "");
@@ -265,6 +271,14 @@ public final class AIChatScreen extends Screen {
                 micX + (micW - mc.textRenderer.getWidth(micLabel)) / 2,
                 micY + 7, Theme.TEXT, true);
 
+        boolean ttsEnabled = AIConfig.current().voiceOutputEnabled();
+        int ttsColor = ttsEnabled ? 0xFF267B69 : 0xFF343848;
+        ctx.fill(ttsX, ttsY, ttsX + ttsW, ttsY + ttsH, ttsColor);
+        String ttsLabel = ttsEnabled ? "TTS ON" : "TTS OFF";
+        ctx.drawText(mc.textRenderer, ttsLabel,
+                ttsX + (ttsW - mc.textRenderer.getWidth(ttsLabel)) / 2,
+                ttsY + 7, Theme.TEXT, true);
+
         int sendColor = waiting || input.isBlank() ? 0xFF3B3E4A : Theme.ACCENT;
         ctx.fill(sendX, sendY, sendX + sendW, sendY + sendH, sendColor);
         String sendLabel = waiting ? "..." : "SEND";
@@ -272,7 +286,7 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, sendLabel, sendLabelX, sendY + 7,
                 waiting || input.isBlank() ? Theme.TEXT_DIM : 0xFF081014, true);
 
-        ctx.drawText(mc.textRenderer, "ENTER: senden  ·  F8/MIC: Sprache aufnehmen  ·  ESC: schließen",
+        ctx.drawText(mc.textRenderer, "ENTER: senden · MIC/F8: sprechen · TTS: Stimme an/aus · ESC: schließen",
                 panelX + 16, panelY + panelH - 10, Theme.TEXT_DIM, false);
     }
 
@@ -360,6 +374,12 @@ public final class AIChatScreen extends Screen {
             return true;
         }
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && click.x() >= ttsX && click.x() <= ttsX + ttsW
+                && click.y() >= ttsY && click.y() <= ttsY + ttsH) {
+            toggleVoiceOutput();
+            return true;
+        }
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
                 && click.x() >= micX && click.x() <= micX + micW
                 && click.y() >= micY && click.y() <= micY + micH) {
             toggleVoiceInput();
@@ -381,13 +401,47 @@ public final class AIChatScreen extends Screen {
     }
 
     private void toggleVoiceInput() {
+        AIConfig.Settings settings = AIConfig.current();
+        if (settings.apiKey().isBlank()) {
+            status = "Für Sprache zuerst den API-Key in config/nightfall/ai.json eintragen.";
+            return;
+        }
+        if (!settings.voiceInputEnabled()) {
+            settings = AIConfig.updateVoiceSettings(true, settings.voiceOutputEnabled());
+            if (!settings.voiceInputEnabled()) {
+                status = "Spracheingabe konnte nicht in ai.json gespeichert werden.";
+                return;
+            }
+        }
         AIVoiceClient.toggleRecording(transcript -> {
             if (MinecraftClient.getInstance().currentScreen != this) return;
             input = input.isBlank() ? transcript : input + " " + transcript;
-            status = "Sprache erkannt · Enter zum Senden";
+            if (waiting || pendingAction != null) {
+                status = "Sprache erkannt · schließe zuerst die laufende Aktion ab.";
+                return;
+            }
+            status = "Sprache erkannt · Nightfall antwortet …";
+            sendMessage();
         }, message -> {
             if (MinecraftClient.getInstance().currentScreen == this) status = message;
         });
+    }
+
+    private void toggleVoiceOutput() {
+        AIConfig.Settings settings = AIConfig.current();
+        if (!settings.voiceOutputEnabled() && settings.apiKey().isBlank()) {
+            status = "Für Sprachausgabe zuerst den API-Key in config/nightfall/ai.json eintragen.";
+            return;
+        }
+        boolean enabled = !settings.voiceOutputEnabled();
+        AIConfig.Settings updated = AIConfig.updateVoiceSettings(settings.voiceInputEnabled(), enabled);
+        if (updated.voiceOutputEnabled() != enabled) {
+            status = "TTS-Einstellung konnte nicht gespeichert werden.";
+            return;
+        }
+        if (!enabled) AIVoiceClient.stopSpeaking();
+        status = enabled ? "Sprachausgabe aktiviert · Nightfall spricht fertige Antworten."
+                : "Sprachausgabe ausgeschaltet.";
     }
 
     private void sendMessage() {
