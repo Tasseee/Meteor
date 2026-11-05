@@ -1453,7 +1453,8 @@ public final class AIPlayerController {
 
         switch (mode) {
             case WALK -> tickWalk(mc);
-            case NAVIGATE -> tickNavigation(mc);\n            case SEARCH_STRUCTURES -> tickStructureSearch(mc);
+            case NAVIGATE -> tickNavigation(mc);
+            case SEARCH_STRUCTURES -> tickStructureSearch(mc);
             case MINE -> tickMining(mc);
             case EAT -> tickEating(mc);
             case CRAFT -> tickCrafting(mc);
@@ -1498,7 +1499,11 @@ public final class AIPlayerController {
             return;
         }
         if (pathIndex >= path.size()) {
-            if (navigationGoal == null || isAtGoal(mc, navigationGoal)) {\n                if (mode == Mode.SEARCH_STRUCTURES) {\n                    if (!startNextStructureSearchLeg(mc)) stop("Struktursuche gestoppt: Kein sicherer nächster Wegabschnitt verfügbar.");\n                    return;\n                }
+            if (navigationGoal == null || isAtGoal(mc, navigationGoal)) {
+                if (mode == Mode.SEARCH_STRUCTURES) {
+                    if (!startNextStructureSearchLeg(mc)) stop("Struktursuche gestoppt: Kein sicherer nächster Wegabschnitt verfügbar.");
+                    return;
+                }
                 if (gatherMaterial != null) {
                     resumeGatheringAfterNavigation(mc);
                     return;
@@ -1917,6 +1922,13 @@ public final class AIPlayerController {
         pathIndex = 0;
         path = List.of();
         navigationGoal = null;
+        structureSearchFilter = "any";
+        structureSearchDirection = 0;
+        structureSearchLegLength = 0;
+        structureSearchLegProgress = 0;
+        structureSearchLegsAtLength = 0;
+        structureSearchScanCooldown = 0;
+        structureSearchScannedBlocks = 0;
         miningPos = null;
         miningState = null;
         foodSlot = -1;
@@ -1941,7 +1953,8 @@ public final class AIPlayerController {
         return switch (mode) {
             case NONE -> "Keine KI-Aktion aktiv";
             case WALK -> "Geradeausbewegung";
-            case NAVIGATE -> "Navigation · " + Math.min(pathIndex + 1, path.size()) + "/" + path.size();\n            case SEARCH_STRUCTURES -> "Struktursuche · " + Math.min(pathIndex + 1, path.size()) + "/" + path.size();
+            case NAVIGATE -> "Navigation · " + Math.min(pathIndex + 1, path.size()) + "/" + path.size();
+            case SEARCH_STRUCTURES -> "Struktursuche · " + Math.min(pathIndex + 1, path.size()) + "/" + path.size();
             case MINE -> "Blockabbau · " + (miningPos == null ? "" : miningPos.toShortString());
             case EAT -> "Nahrungsaufnahme · " + foodName;
             case CRAFT -> "Crafting · " + craftingName;
