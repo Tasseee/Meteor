@@ -690,6 +690,8 @@ public final class AIBuilder {
         ClientPlayerEntity player = mc.player;
         if (delay > 0) { delay--; return; }
 
+        if (pausedByUser) return;
+
         if (queuedPlacementHit != null) {
             BlockPos target = queuedPlacementTarget;
             if (target == null || queuedPlacementMaterial == null || queuedPlacementState == null
