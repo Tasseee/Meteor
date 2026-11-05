@@ -242,7 +242,7 @@ public final class AIPlayerController {
         if (planned.isEmpty()) return false;
         path = List.copyOf(planned);
         pathIndex = 0;
-        navigationGoal = target.toImmutable();
+        navigationGoal = planned.get(planned.size() - 1).toImmutable();
         stuckTicks = 0;
         lastWaypointDistance = Double.MAX_VALUE;
         structureSearchLegProgress = 0;
@@ -1476,7 +1476,7 @@ public final class AIPlayerController {
     }
 
     private static void tickStructureSearch(MinecraftClient mc) {
-        if (++actionTicks > 20 * 60 * 5 || mc.player.isSubmergedInWater() || mc.player.hasVehicle()
+        if (mc.player.isSubmergedInWater() || mc.player.hasVehicle()
                 || mc.player.isOnFire() || mc.player.isInLava()) {
             stop("Struktursuche aus Sicherheitsgründen beendet (Zeitlimit oder Gefahr erkannt).");
             return;
@@ -1524,6 +1524,10 @@ public final class AIPlayerController {
             stuckTicks = 0;
             lastWaypointDistance = Double.MAX_VALUE;
             if (pathIndex >= path.size()) {
+                if (mode == Mode.SEARCH_STRUCTURES) {
+                    if (!startNextStructureSearchLeg(mc)) stop("Struktursuche gestoppt: Kein sicherer nächster Wegabschnitt verfügbar.");
+                    return;
+                }
                 if (gatherMaterial != null) {
                     resumeGatheringAfterNavigation(mc);
                     return;
