@@ -131,8 +131,9 @@ public final class AIChatClient {
             Item-IDs; verwende zum Bauen alle dort gelisteten Materialien. Nightfall verschiebt benötigte Stacks bei Bedarf
             mit einem normalen Inventar-SWAP in die Hotbar; der Spieler muss die Stacks nicht vorher manuell verschieben.
             Für andere ausdrücklich gewünschte Gebäude verwende build_custom_structure.
-            Erzeuge einen konkreten, kompakten Blockplan mit höchstens 200 Blöcken, Koordinaten als
-            nichtnegative ganzzahlige Offsets in X/Z 0–15 und Y 0–10. Jeder Block muss über eine
+            Erzeuge einen konkreten, kompakten Blockplan mit höchstens 512 Blöcken in einem
+            32×32×32-Raster, Koordinaten als nichtnegative ganzzahlige Offsets in X/Z 0–31 und Y 0–31.
+            Jeder Block muss über eine
             Seitenfläche mit einem anderen Planblock verbunden sein oder direkt an einem bestehenden
             festen Block anliegen; es darf keine schwebenden oder getrennten Teile geben.
             Plane zuerst Fundament/Boden, dann Stützen/Wände, zum Schluss Dach und Details. Du kannst
