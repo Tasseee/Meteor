@@ -354,14 +354,21 @@ public final class AIBuilder {
             requiredCounts.merge(blockMaterial, 1, Integer::sum);
         }
         boolean creative = playerIsCreative(mc);
+        List<String> shortages = new ArrayList<>();
         for (Map.Entry<BlockItem, Integer> requirement : requiredCounts.entrySet()) {
             int found = counts.getOrDefault(requirement.getKey(), 0);
-            if (found < (creative ? 1 : requirement.getValue()))
-                throw new IllegalArgumentException(creative
-                        ? "Lege mindestens einen Block von " + requirement.getKey().getName().getString() + " in dein Inventar."
-                        : "Für " + requirement.getKey().getName().getString() + " brauche ich " + requirement.getValue()
-                        + " Blöcke, in deinem Inventar liegen aber nur " + found + ".");
+            int needed = creative ? 1 : requirement.getValue();
+            if (found < needed) {
+                String itemId = Registries.ITEM.getId(requirement.getKey()).toString();
+                shortages.add(itemId + " (" + requirement.getKey().getName().getString()
+                        + ": benötigt " + needed + ", vorhanden " + found + ", fehlen " + (needed - found) + ")");
+            }
         }
+        if (!shortages.isEmpty())
+            throw new IllegalArgumentException("Fehlende Baumaterialien: " + String.join("; ", shortages)
+                    + ". Nightfall hat die exakten Block-IDs erkannt, aber der Bau startet erst, wenn alle Mengen im Spielerinventar liegen. "
+                    + "Unterstützte nächste Schritte: passende Vanilla-Holzstämme mit gather_wood sammeln und freigeschaltete 2×2-Rezepte mit craft_item herstellen. "
+                    + "Andere Materialtypen müssen derzeit manuell beschafft werden.");
         if (selected == null) selected = offsetMaterials.values().iterator().next();
 
         ClientPlayerEntity player = mc.player;
@@ -607,8 +614,17 @@ public final class AIBuilder {
             }
         }
         if (partialMatch != null) return partialMatch;
+
+        // Resolve a precise registry ID even when the player currently owns zero stacks of this block.
+        Identifier requestedIdentifier = Identifier.tryParse(requested);
+        if (requestedIdentifier != null) {
+            var registeredItem = Registries.ITEM.get(requestedIdentifier);
+            if (registeredItem instanceof BlockItem blockItem
+                    && Registries.ITEM.getId(registeredItem).equals(requestedIdentifier))
+                return blockItem;
+        }
         throw new IllegalArgumentException("Das gewünschte Baumaterial " + requestedId
-                + " befindet sich nicht als platzierbarer Block in deinem Inventar.");
+                + " ist keine bekannte platzierbare Block-Item-ID.");
     }
 
     private static BlockItem mostAvailable(Map<BlockItem, Integer> counts) {
