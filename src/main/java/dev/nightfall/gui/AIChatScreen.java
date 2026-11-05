@@ -29,7 +29,7 @@ public final class AIChatScreen extends Screen {
     private static AIChatScreen active;
     private static final int MAX_ACTION_ROUND_TRIPS = 10;
     private static final Pattern LOCATE_COORDINATES =
-            Pattern.compile("(?s).*\\[\\s*-?\\d+\\s*,\\s*[^,]+\\s*,\\s*-?\\d+\\s*\\].*");
+            Pattern.compile("(?s).*\\[\\s*(-?\\d+)\\s*,\\s*(-?\\d+)\\s*,\\s*(-?\\d+)\\s*\\].*");
 
     private record ChatLine(String role, String content) {}
 
@@ -51,6 +51,7 @@ public final class AIChatScreen extends Screen {
     private int cancelX, cancelY, cancelW;
     private boolean waitingLocate;
     private String locatingBiome = "";
+    private String locatingStructure = "";
     private long locateDeadline;
     private boolean waitingCommandResponse;
     private String trackedCommand = "";
@@ -177,6 +178,7 @@ public final class AIChatScreen extends Screen {
     public static void onGameMessage(String message) {
         if (active != null) {
             active.handleLocateMessage(message);
+            active.handleStructureMessage(message);
             active.handleServerCommandMessage(message);
         }
     }
@@ -217,6 +219,7 @@ public final class AIChatScreen extends Screen {
         session.waitingLocate = false;
         session.waitingCommandResponse = false;
         session.locatingBiome = "";
+        session.locatingStructure = "";
         session.trackedCommand = "";
         session.apiHistory.clear();
         session.actionRoundTrips = 0;
@@ -690,6 +693,12 @@ public final class AIChatScreen extends Screen {
             result = "Aktion ist fehlgeschlagen: " + failure.getClass().getSimpleName()
                     + (detail == null || detail.isEmpty() ? "." : " – " + detail);
         }
+        if ("locate_structure".equals(action.name())) {
+            if (result.contains("wurde gesendet")) {
+                locatingStructure = action.arguments().get("structure").getAsString();
+                locateDeadline = System.currentTimeMillis() + 30_000L;
+            } else locatingStructure = "";
+        }
         if ("locate_biome".equals(action.name())) {
             if (result.contains("wurde gesendet")) {
                 locatingBiome = action.arguments().get("biome").getAsString();
@@ -765,6 +774,61 @@ public final class AIChatScreen extends Screen {
         waitingLocate = false;
         status = rejected ? "Server hat den Befehl abgelehnt" : "Antwort vom Server erhalten";
         history.add(new ChatLine("assistant", "Server-Antwort: " + message));
+        scroll = Float.MAX_VALUE;
+    }
+
+    private void handleStructureMessage(String message) {
+        if (locatingStructure.isEmpty() || message == null || message.isBlank()) return;
+        if (System.currentTimeMillis() > locateDeadline) {
+            locatingStructure = "";
+            return;
+        }
+        String lower = message.toLowerCase(Locale.ROOT);
+        String structureName = locatingStructure.substring("minecraft:".length());
+        boolean rejected = lower.contains("unknown command") || lower.contains("unbekannter befehl")
+                || lower.contains("permission") || lower.contains("berechtigung")
+                || lower.contains("not allowed") || lower.contains("nicht erlaubt")
+                || lower.contains("could not find") || lower.contains("konnte keine");
+        java.util.regex.Matcher coordinates = LOCATE_COORDINATES.matcher(message);
+        if (rejected) {
+            locatingStructure = "";
+            history.add(new ChatLine("assistant", "Die Struktursuche wurde vom Server abgelehnt: " + message));
+            status = "Struktursuche abgelehnt";
+            scroll = Float.MAX_VALUE;
+            return;
+        }
+        if (!coordinates.matches()) return;
+        // The response must identify the requested structure, unless the server uses a generic
+        // locate-result line with coordinates. The short request timeout limits unrelated matches.
+        boolean namesTarget = lower.contains(structureName.replace('_', ' '))
+                || lower.contains(structureName) || lower.contains("nearest") || lower.contains("nächste")
+                || lower.contains("nächstgelegene") || lower.contains("position");
+        if (!namesTarget) return;
+        int x, y, z;
+        try {
+            x = Integer.parseInt(coordinates.group(1));
+            y = Integer.parseInt(coordinates.group(2));
+            z = Integer.parseInt(coordinates.group(3));
+        } catch (NumberFormatException invalid) {
+            locatingStructure = "";
+            history.add(new ChatLine("assistant", "Die Serverkoordinaten waren ungültig; ich starte keine Bewegung."));
+            status = "Ungültige Koordinaten";
+            return;
+        }
+        String found = locatingStructure;
+        locatingStructure = "";
+        try {
+            String navigation = AIPlayerController.navigateTo(x, y, z);
+            history.add(new ChatLine("assistant", "Strukturhinweis vom Server für " + found
+                    + " bei X=" + x + ", Y=" + y + ", Z=" + z + ". Nightfall startet jetzt die sichere Wegsuche. " + navigation));
+            status = "Weg zur Struktur wird gesucht";
+        } catch (RuntimeException failure) {
+            String detail = failure.getMessage() == null ? "Kein sicherer Wegabschnitt verfügbar." : failure.getMessage();
+            history.add(new ChatLine("assistant", "Strukturkoordinaten erhalten (" + x + ", " + y + ", " + z
+                    + "), aber Nightfall konnte keinen sicheren Weg starten: " + detail
+                    + " Gehe näher heran oder lade die Umgebung.");
+            status = "Struktur gefunden · Weg nicht verfügbar";
+        }
         scroll = Float.MAX_VALUE;
     }
 
