@@ -688,7 +688,6 @@ public final class AIChatScreen extends Screen {
             commandDeadline = System.currentTimeMillis() + 30_000L;
         }
         history.add(new ChatLine("assistant", "Nightfall: " + result));
-        history.add(new ChatLine("assistant", "Nightfall: " + result));
         if (realtimeCall) {
             status = "Aktion ausgeführt · Nightfall antwortet per Stimme";
             scroll = Float.MAX_VALUE;
