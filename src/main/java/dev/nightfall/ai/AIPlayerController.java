@@ -272,11 +272,31 @@ public final class AIPlayerController {
                     if (id.equals("minecraft:sculk") || id.equals("minecraft:sculk_catalyst")
                             || id.equals("minecraft:sculk_sensor") || id.equals("minecraft:sculk_shrieker")
                             || id.equals("minecraft:sculk_vein")) counts.merge("ancient_city", 1, Integer::sum);
-                    if (id.contains("tuff") || id.contains("copper")) counts.merge("trial_chambers", 1, Integer::sum);
+                    if (id.equals("minecraft:sculk_catalyst") || id.equals("minecraft:sculk_shrieker"))
+                        counts.merge("ancient_anchor", 1, Integer::sum);
+                    if (id.equals("minecraft:polished_tuff") || id.equals("minecraft:chiseled_tuff")
+                            || id.equals("minecraft:polished_tuff_slab") || id.equals("minecraft:polished_tuff_stairs")
+                            || id.equals("minecraft:tuff_bricks") || id.equals("minecraft:chiseled_tuff_bricks")
+                            || id.equals("minecraft:tuff_brick_slab") || id.equals("minecraft:tuff_brick_stairs")
+                            || id.equals("minecraft:tuff_brick_wall")) counts.merge("trial_tuff", 1, Integer::sum);
+                    if (id.equals("minecraft:copper_block") || id.equals("minecraft:cut_copper")
+                            || id.equals("minecraft:exposed_copper") || id.equals("minecraft:weathered_copper")
+                            || id.equals("minecraft:oxidized_copper") || id.equals("minecraft:copper_bulb")
+                            || id.equals("minecraft:exposed_copper_bulb") || id.equals("minecraft:weathered_copper_bulb")
+                            || id.equals("minecraft:oxidized_copper_bulb") || id.equals("minecraft:copper_grate")
+                            || id.equals("minecraft:exposed_copper_grate") || id.equals("minecraft:weathered_copper_grate")
+                            || id.equals("minecraft:oxidized_copper_grate") || id.equals("minecraft:copper_door")
+                            || id.equals("minecraft:copper_trapdoor") || id.equals("minecraft:lightning_rod"))
+                        counts.merge("trial_copper", 1, Integer::sum);
                     if (id.equals("minecraft:nether_bricks") || id.equals("minecraft:nether_brick_fence")
                             || id.equals("minecraft:nether_brick_stairs") || id.equals("minecraft:nether_brick_wall"))
                         counts.merge("fortress", 1, Integer::sum);
-                    if (id.contains("blackstone") || id.equals("minecraft:gilded_blackstone"))
+                    if (id.equals("minecraft:polished_blackstone") || id.equals("minecraft:polished_blackstone_bricks")
+                            || id.equals("minecraft:cracked_polished_blackstone_bricks")
+                            || id.equals("minecraft:chiseled_polished_blackstone") || id.equals("minecraft:gilded_blackstone")
+                            || id.equals("minecraft:polished_blackstone_brick_slab")
+                            || id.equals("minecraft:polished_blackstone_brick_stairs")
+                            || id.equals("minecraft:polished_blackstone_brick_wall"))
                         counts.merge("bastion", 1, Integer::sum);
                     if (id.equals("minecraft:stone_bricks") || id.equals("minecraft:mossy_stone_bricks")
                             || id.equals("minecraft:cracked_stone_bricks") || id.equals("minecraft:chiseled_stone_bricks")
@@ -286,11 +306,16 @@ public final class AIPlayerController {
             }
         }
         String[] types = {"ancient_city", "trial_chambers", "fortress", "bastion", "stronghold"};
-        int[] thresholds = {10, 36, 12, 24, 28};
+        int[] thresholds = {10, 24, 12, 16, 28};
         for (int i = 0; i < types.length; i++) {
             String type = types[i];
             if (!"any".equals(structureSearchFilter) && !structureSearchFilter.equals(type)) continue;
-            if (counts.getOrDefault(type, 0) >= thresholds[i]) {
+            boolean supportedPattern = type.equals("ancient_city")
+                    ? counts.getOrDefault(type, 0) >= thresholds[i] && counts.getOrDefault("ancient_anchor", 0) >= 1
+                    : type.equals("trial_chambers")
+                    ? counts.getOrDefault("trial_tuff", 0) >= 10 && counts.getOrDefault("trial_copper", 0) >= 8
+                    : counts.getOrDefault(type, 0) >= thresholds[i];
+            if (supportedPattern) {
                 BlockPos found = center.toImmutable();
                 stop(null);
                 notifyPlayer(mc, "Möglicher Strukturhinweis: " + type + " nahe X=" + found.getX()
