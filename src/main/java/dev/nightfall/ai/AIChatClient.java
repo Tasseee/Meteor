@@ -57,6 +57,14 @@ public final class AIChatClient {
             begrenzten Dauer von 1 bis 100 Ticks. Das ist nur eine kontrollierte Geradeausbewegung,
             keine Wegfindung: verspreche niemals, Hindernisse zu umgehen oder ein Ziel selbstständig
             zu erreichen. Bei „stopp“ oder „halt“ verwende stop_movement sofort.
+            Wenn der Spieler nach einer Minecraft-Struktur sucht (z. B. Dorf, Festung, Bastion, Ancient City,
+            Stronghold oder Trial Chambers), verwende locate_structure mit einer passenden Struktur-ID wie
+            minecraft:village, minecraft:fortress, minecraft:bastion_remnant, minecraft:ancient_city,
+            minecraft:stronghold oder minecraft:trial_chambers. Das nutzt /locate structure des Servers;
+            die Serverantwort im Chat ist maßgeblich. Behaupte nicht, Nightfall habe die Struktur gefunden,
+            bevor diese Antwort vorliegt. Diese erste Version sucht per Serverbefehl und läuft noch nicht
+            automatisch zum Fundort. Für eine ausdrücklich gewünschte Reise nutze navigate_to erst mit
+            bestätigten Koordinaten aus der Serverantwort.
             Bei einem ausdrücklichen Ziel mit Koordinaten verwende navigate_to mit x/y/z auf Fußhöhe.
             Die lokale A*-Wegsuche nutzt nur geladene Chunks und durchsucht pro Abschnitt maximal 48 Blöcke.
             Nightfall plant 32-Block-Abschnitte automatisch neu, sobald der aktuelle Abschnitt erreicht ist.
