@@ -269,6 +269,7 @@ public final class AIBuilder {
             case WATCHTOWER -> "5x5-Plattform, vier sechs Blöcke hohe Eckpfeiler und Dachplattform";
             case CUSTOM -> throw new IllegalStateException("Eigener Bauplan darf nicht über Vorlagen-Planung laufen.");
         };
+        saveCheckpoint();
         return "Bauplan geprüft: " + selectedBlueprint.label + " – " + layout + ". Material: "
                 + materialName + " × " + (creative ? "unbegrenzt (Kreativmodus)" : selectedBlueprint.blocks + " (Inventar: " + available + ")") + ". "
                 + "Fläche und Boden sind geprüft. Jede Platzierung wird erst nach Server-Weltupdate gezählt; bei fehlender Reichweite pausiere ich."
@@ -678,6 +679,13 @@ public final class AIBuilder {
                 || !mc.world.getRegistryKey().getValue().equals(dimension)
                 || (restoredCheckpoint && !currentServerKey(mc).equals(savedServerKey))) {
             throw new IllegalArgumentException("Du hast dich seit der Vorschau bewegt oder die Welt gewechselt. Bitte erstelle den Bauplan an deinem neuen Standort erneut.");
+        }
+        if (restoredCheckpoint) {
+            BlockPos next = excavationIndex < EXCAVATION_PLAN.size() ? EXCAVATION_PLAN.get(excavationIndex)
+                    : index < PLAN.size() ? PLAN.get(index) : null;
+            if (next != null && mc.player.getEyePos().squaredDistanceTo(next.toCenterPos())
+                    > mc.player.getBlockInteractionRange() * mc.player.getBlockInteractionRange())
+                throw new IllegalArgumentException("Der gespeicherte Bau ist bereit, aber du bist noch zu weit vom nächsten Arbeitsschritt entfernt. Geh bitte zum Bauplatz und sage danach erneut „Bau fortsetzen“.");
         }
         String id = blueprint.id;
         BlockItem approvedMaterial = material;
