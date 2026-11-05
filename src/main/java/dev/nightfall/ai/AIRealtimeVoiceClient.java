@@ -214,11 +214,10 @@ public final class AIRealtimeVoiceClient {
         URI base = URI.create(configuredBase.trim());
         String scheme = base.getScheme();
         if (base.getHost() == null || scheme == null
-                || !(scheme.equalsIgnoreCase("https") || scheme.equalsIgnoreCase("http")
-                || scheme.equalsIgnoreCase("wss") || scheme.equalsIgnoreCase("ws"))) {
-            throw new IllegalArgumentException("audioBaseUrl muss eine gültige HTTP(S)- oder WS(S)-URL sein.");
+                || !(scheme.equalsIgnoreCase("https") || scheme.equalsIgnoreCase("wss"))) {
+            throw new IllegalArgumentException("Der Sprach-Call benötigt eine verschlüsselte HTTPS- oder WSS-audioBaseUrl.");
         }
-        String wsScheme = scheme.equalsIgnoreCase("https") || scheme.equalsIgnoreCase("wss") ? "wss" : "ws";
+        String wsScheme = "wss";
         String path = base.getPath() == null ? "" : base.getPath().replaceAll("/+$", "");
         if (!path.endsWith("/v1")) path += "/v1";
         return URI.create(wsScheme + "://" + base.getAuthority() + path
