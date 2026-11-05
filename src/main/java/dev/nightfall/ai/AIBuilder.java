@@ -2,6 +2,8 @@ package dev.nightfall.ai;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.block.FallingBlock;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import net.minecraft.command.argument.BlockArgumentParser;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.item.BlockItem;
@@ -10,6 +12,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.screen.slot.SlotActionType;
 import dev.nightfall.mixin.BlockItemPlacementAccessor;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
@@ -1121,6 +1124,8 @@ public final class AIBuilder {
                 block.addProperty("y", pos.getY());
                 block.addProperty("z", pos.getZ());
                 block.addProperty("item", Registries.ITEM.getId(item).toString());
+                BlockState state = PLAN_STATES.getOrDefault(pos, item.getBlock().getDefaultState());
+                block.addProperty("state", state.toString());
                 blocks.add(block);
             }
             root.add("blocks", blocks);
@@ -1185,7 +1190,13 @@ public final class AIBuilder {
                 if (itemId == null || !(Registries.ITEM.get(itemId) instanceof BlockItem item)
                         || !Registries.ITEM.getId(item).equals(itemId))
                     throw new IllegalArgumentException("Ein gespeichertes Baumaterial existiert in dieser Minecraft-Version nicht mehr.");
-                PLAN.add(pos); PLAN_MATERIALS.put(pos, item); PLAN_STATES.put(pos, item.getBlock().getDefaultState());
+                BlockState state = block.has("state")
+                        ? BlockArgumentParser.block(mc.world.getRegistryManager().getOrThrow(RegistryKeys.BLOCK),
+                                block.get("state").getAsString(), false).blockState()
+                        : item.getBlock().getDefaultState();
+                if (!state.isOf(item.getBlock()))
+                    throw new IllegalArgumentException("Ein gespeicherter BlockState passt nicht zum Baumaterial.");
+                PLAN.add(pos); PLAN_MATERIALS.put(pos, item); PLAN_STATES.put(pos, state);
             }
             EXCAVATION_PLAN.clear();
             EXCAVATION_EXPECTED_BLOCKS.clear();
