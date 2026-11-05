@@ -105,7 +105,7 @@ Wartungszugang und Hinweisen zu Wasserführung, Wachstum und Ernte. Es ist derze
 Technik-/Bauleitfaden, kein getestetes Schematic und keine behauptete vollautomatische Farm.
 Die Ernteschaltung muss auf der konkreten Welt/Serverversion separat validiert werden.
 
-**Materialversorgung:** Der Builder zählt jetzt Materialien aus der gesamten Hotbar und dem 27-Slot-Hauptinventar. Fehlt der benötigte Block in der Hotbar, verschiebt Nightfall den Stack mit einem normalen Inventar-SWAP; vorhandene Items bleiben erhalten. Crafting und autonomes Beschaffen fehlender Rohstoffe sind davon getrennte, noch nicht implementierte Schritte.
+**Materialversorgung:** Der Builder zählt Materialien aus der gesamten Hotbar und dem 27-Slot-Hauptinventar. Fehlt der benötigte Block in der Hotbar, verschiebt Nightfall den Stack mit einem normalen Inventar-SWAP; vorhandene Items bleiben erhalten. Beim Ausgraben wählt Nightfall außerdem ein geeignetes Werkzeug aus dem gesamten Inventar, bevorzugt korrekte Drop-Werkzeuge und stellt die vorherige Hotbar-Belegung nach dem Abbau wieder her, wenn der verdrängte Stack unverändert ist. Crafting und autonomes Beschaffen fehlender Rohstoffe sind davon getrennte, noch nicht implementierte Schritte.
 Er kann noch keine Wasserquellen, spitzen Tropfsteine, Dorfbewohner, Hopper, Kolben, Beobachter
 oder Redstone-Schaltungen als funktionierende Farmmechanik zuverlässig aufbauen. Farm-Einträge
 mit `GUIDE_ONLY` dürfen deshalb nicht automatisch in Blockpläne umgewandelt werden.
@@ -133,7 +133,7 @@ The AI action registry includes the following approved actions:
 
 - `navigate_to`: requests a feet-level target coordinate. Nightfall plans an A* route in 32-block segments using only loaded client chunks and safe full-height support blocks. It avoids fluids, solid collisions and common hazards, replans after each segment as chunks load, and stops after five minutes, prolonged lack of progress, or when no safe next segment exists. This is not a guarantee of a route through unloaded terrain, caves, parkour, water or server-specific obstacles.
 - `attack_nearest_hostile`: chooses only a nearby vanilla `HostileEntity`, approaches by local navigation and uses normal melee interactions. It never targets players, passive mobs or neutral mobs. It stops after 12 attacks or 45 seconds.
-- `mine_looked_block`: mines the block currently under the crosshair. `mine_block` accepts explicit x/y/z coordinates. Both use the currently held tool, require reach and direct line of sight, reject unbreakable blocks and block entities/containers, and wait for a world update.
+- `mine_looked_block`: mines the block currently under the crosshair. `mine_block` accepts explicit x/y/z coordinates. Both choose the most suitable tool from all 36 player inventory slots, preferring tools that can harvest drops. If the tool is outside the hotbar, Nightfall temporarily moves it with a normal SWAP click and restores the displaced stack when it is unchanged. Both use normal vanilla mining, require reach and direct line of sight, reject unbreakable blocks and block entities/containers, and wait for a world update.
 - `eat_food`: selects the best food item from the hotbar when the hunger bar is not full, consumes it using vanilla item interaction and restores the previous hotbar slot.
 - `stop_current_action`: releases Nightfall-controlled movement/use/attack keys and stops active navigation, mining, eating and combat. This safety action does not require confirmation.
 
