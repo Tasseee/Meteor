@@ -180,10 +180,16 @@ public final class AIActionRegistry {
         tools.add(tool("gather_wood",
                 "Gather a target total amount (1–64) of a specific vanilla log/wood/stem/hyphae block item. Scans only already-loaded chunks within 16 horizontal blocks and 4 below/16 above the player; accepts only matching vanilla block/item IDs whose drops are the same wood item. Uses safe nearby A* paths, the suitable tool from the full inventory and normal vanilla block breaking. At most 32 additional blocks per request. It stops if no safe path or confirmed drops are unavailable. Requires player confirmation.",
                 gatherWoodSchema));
+        JsonObject craftSchema = objectSchema(property("item", "string",
+                "Exact Minecraft item ID, item path or localized item name to craft."), "item");
+        JsonObject craftCount = property("count", "integer",
+                "Additional amount to craft (1–256); defaults to one item batch if omitted.").get("schema").getAsJsonObject();
+        craftCount.addProperty("minimum", 1);
+        craftCount.addProperty("maximum", 256);
+        craftSchema.getAsJsonObject("properties").add("count", craftCount);
         tools.add(tool("craft_item",
-                "Craft one batch of an exact item using a recipe already unlocked in the connected server's recipe book. Nightfall checks ingredients in the player's inventory, supports only shaped recipes up to 2x2 and shapeless recipes with up to four ingredients, places the recipe with the normal recipe-book interaction and waits for the output to appear in the inventory. It never creates ingredients or bypasses server recipe rules. Requires player confirmation.",
-                objectSchema(property("item", "string",
-                        "Exact Minecraft item ID, item path or localized item name to craft."), "item")));
+                "Craft at least the requested additional amount (1–256) using a recipe already unlocked in the connected server's recipe book. Supports only shaped recipes up to 2x2 and shapeless recipes with up to four ingredients. Nightfall takes each output batch individually, deposits it into an available inventory slot and refills the recipe through the normal recipe-book interaction. It stops on missing ingredients, full inventory or timeout and reports the amount actually crafted. It never creates ingredients or bypasses server recipe rules. Requires player confirmation.",
+                craftSchema));
         JsonObject foodSchema = objectSchema();
         JsonObject foodItem = property("item", "string", "Optional exact Minecraft item ID, item path or localized name already in the hotbar.").get("schema").getAsJsonObject();
         foodItem.addProperty("maxLength", 64);
@@ -319,7 +325,8 @@ public final class AIActionRegistry {
                     AIPlayerController.previewGatherWood(requiredString(args, "item", 64),
                             readBoundedInteger(args, "count", 1, 64)));
             case "craft_item" -> new Action(name, args,
-                    AIPlayerController.previewCraftItem(requiredString(args, "item", 64)));
+                    AIPlayerController.previewCraftItem(requiredString(args, "item", 64),
+                            args.has("count") ? readBoundedInteger(args, "count", 1, 256) : 1));
             case "eat_food" -> new Action(name, args, AIPlayerController.previewEat(
                     args.has("item") ? requiredString(args, "item", 64).trim() : null));
             case "attack_nearest_hostile" -> new Action(name, args, AICombatController.preview());
@@ -417,7 +424,8 @@ public final class AIActionRegistry {
             case "mine_looked_block" -> AIPlayerController.mineLookedBlock();
             case "gather_wood" -> AIPlayerController.gatherWood(args.get("item").getAsString(),
                     readBoundedInteger(args, "count", 1, 64));
-            case "craft_item" -> AIPlayerController.craftItem(args.get("item").getAsString());
+            case "craft_item" -> AIPlayerController.craftItem(args.get("item").getAsString(),
+                    args.has("count") ? readBoundedInteger(args, "count", 1, 256) : 1);
             case "eat_food" -> AIPlayerController.eatFood(args.has("item") ? args.get("item").getAsString() : null);
             case "attack_nearest_hostile" -> AICombatController.start();
             case "stop_current_action" -> {
