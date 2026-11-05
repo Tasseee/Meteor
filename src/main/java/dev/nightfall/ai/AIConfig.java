@@ -74,6 +74,39 @@ public final class AIConfig {
         }
     }
 
+    /** Persist explicit push-to-talk and spoken-reply preferences. */
+    public static synchronized Settings updateVoiceSettings(boolean voiceInputEnabled, boolean voiceOutputEnabled) {
+        load();
+        Settings current = settings;
+        Settings updated = new Settings(current.baseUrl(), current.model(), current.apiKey(),
+                current.shareWorldContext(), current.audioBaseUrl(), current.transcriptionModel(),
+                current.speechModel(), current.speechVoice(), voiceInputEnabled, voiceOutputEnabled);
+        try {
+            writeSettings(updated);
+            settings = updated;
+        } catch (IOException failure) {
+            Nightfall.LOGGER.warn("Nightfall-Stimmeinstellungen konnten nicht gespeichert werden: {}",
+                    failure.getClass().getSimpleName());
+        }
+        return settings;
+    }
+
+    private static void writeSettings(Settings value) throws IOException {
+        Files.createDirectories(FILE.getParent());
+        JsonObject root = new JsonObject();
+        root.addProperty("baseUrl", value.baseUrl());
+        root.addProperty("model", value.model());
+        root.addProperty("apiKey", value.apiKey());
+        root.addProperty("shareWorldContext", value.shareWorldContext());
+        root.addProperty("audioBaseUrl", value.audioBaseUrl());
+        root.addProperty("transcriptionModel", value.transcriptionModel());
+        root.addProperty("speechModel", value.speechModel());
+        root.addProperty("speechVoice", value.speechVoice());
+        root.addProperty("voiceInputEnabled", value.voiceInputEnabled());
+        root.addProperty("voiceOutputEnabled", value.voiceOutputEnabled());
+        Files.writeString(FILE, root.toString().replace(",", ",\\n  ").replace("{", "{\\n  ").replace("}", "\\n}"));
+    }
+
     private static boolean readBoolean(JsonObject root, String key, boolean fallback) {
         try {
             return root.has(key) ? root.get(key).getAsBoolean() : fallback;
