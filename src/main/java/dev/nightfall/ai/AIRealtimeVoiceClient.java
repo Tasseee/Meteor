@@ -48,6 +48,7 @@ public final class AIRealtimeVoiceClient {
     private static volatile boolean active;
     private static volatile boolean ready;
     private static volatile boolean microphoneSending;
+    private static volatile boolean microphoneMuted;
     private static volatile boolean speaking;
     private static volatile boolean speechEnabled = true;
     private static volatile TargetDataLine microphoneLine;
@@ -67,6 +68,20 @@ public final class AIRealtimeVoiceClient {
     public static boolean isActive() { return active; }
     public static boolean isReady() { return active && ready; }
     public static boolean isSpeaking() { return speaking; }
+    public static boolean isMicrophoneMuted() { return !active || microphoneMuted; }
+
+    /** Toggle microphone uplink without ending the realtime conversation. */
+    public static synchronized void toggleMicrophone() {
+        if (!active) {
+            status("Kein Nightfall-Sprachanruf aktiv. Drücke F8 für einen Anruf.");
+            return;
+        }
+        microphoneMuted = !microphoneMuted;
+        microphoneSending = ready && !speaking && !microphoneMuted;
+        status(microphoneMuted
+                ? "Mikrofon stumm · Nightfall hört dich gerade nicht. F9 aktiviert es wieder."
+                : "Mikrofon aktiv · Du kannst weiter mit Nightfall sprechen. F9 schaltet stumm.");
+    }
 
     public static synchronized void start(Listener callbacks) {
         if (active) {
@@ -84,6 +99,7 @@ public final class AIRealtimeVoiceClient {
         active = true;
         ready = false;
         microphoneSending = false;
+        microphoneMuted = false;
         speaking = false;
         speechEnabled = settings.voiceOutputEnabled();
         CAPTURE_STARTED.set(false);
@@ -115,6 +131,7 @@ public final class AIRealtimeVoiceClient {
         active = false;
         ready = false;
         microphoneSending = false;
+        microphoneMuted = true;
         speaking = false;
         generation++;
         TargetDataLine mic = microphoneLine;
@@ -370,7 +387,7 @@ public final class AIRealtimeVoiceClient {
                 if (chunk == PLAYBACK_END) {
                     line.drain();
                     speaking = false;
-                    microphoneSending = ready;
+                    microphoneSending = ready && !microphoneMuted;
                     continue;
                 }
                 if (chunk.length > 0 && speechEnabled) {
@@ -404,7 +421,7 @@ public final class AIRealtimeVoiceClient {
             switch (type) {
                 case "session.updated" -> {
                     ready = true;
-                    microphoneSending = true;
+                    microphoneSending = !microphoneMuted;
                     startAudioWorkers(callGeneration);
                     status("Nightfall ist im Call · Du kannst sprechen. F8 beendet den Anruf.");
                 }
@@ -423,7 +440,7 @@ public final class AIRealtimeVoiceClient {
                     if (speechEnabled) playbackQueue.offer(PLAYBACK_END);
                     else {
                         speaking = false;
-                        microphoneSending = ready;
+                        microphoneSending = ready && !microphoneMuted;
                     }
                 }
                 case "response.output_audio_transcript.done" -> {
@@ -438,7 +455,7 @@ public final class AIRealtimeVoiceClient {
                                 : "Unbekannter Realtime-Fehler"
                             : "Spracherkennung fehlgeschlagen";
                     status("Realtime: " + detail);
-                    if (type.equals("error")) microphoneSending = ready && !speaking;
+                    if (type.equals("error")) microphoneSending = ready && !speaking && !microphoneMuted;
                 }
                 default -> { }
             }
