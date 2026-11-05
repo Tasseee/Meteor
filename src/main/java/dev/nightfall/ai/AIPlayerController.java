@@ -3,6 +3,7 @@ package dev.nightfall.ai;
 import dev.nightfall.gui.AIChatScreen;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.component.DataComponentTypes;
@@ -310,7 +311,7 @@ public final class AIPlayerController {
             throw new IllegalArgumentException("Ein einzelner Sammelauftrag darf höchstens "
                     + MAX_GATHER_BLOCKS + " zusätzliche Blöcke abbauen.");
 
-        List<BlockPos> candidates = findGatherableBlocks(mc, item.getBlock());
+        List<BlockPos> candidates = findGatherableBlocks(mc, item);
         if (candidates.isEmpty())
             throw new IllegalArgumentException("Im geladenen Umkreis von " + GATHER_HORIZONTAL_RADIUS
                     + " Blöcken habe ich keine passenden " + item.getName().getString()
@@ -335,7 +336,7 @@ public final class AIPlayerController {
         requireWorld(mc);
         previewGatherResource(requestedItem, targetCount, woodOnly);
         BlockItem item = resolveGatherableItem(requestedItem, woodOnly);
-        List<BlockPos> candidates = findGatherableBlocks(mc, item.getBlock());
+        List<BlockPos> candidates = findGatherableBlocks(mc, item);
         List<BlockPos> usableTargets = new ArrayList<>();
         for (BlockPos pos : candidates) {
             BlockState state = mc.world.getBlockState(pos);
@@ -405,7 +406,7 @@ public final class AIPlayerController {
         return count;
     }
 
-    private static List<BlockPos> findGatherableBlocks(MinecraftClient mc, Block targetBlock) {
+    private static List<BlockPos> findGatherableBlocks(MinecraftClient mc, BlockItem targetItem) {
         BlockPos center = mc.player.getBlockPos();
         int minX = center.getX() - GATHER_HORIZONTAL_RADIUS;
         int maxX = center.getX() + GATHER_HORIZONTAL_RADIUS;
@@ -422,7 +423,7 @@ public final class AIPlayerController {
                     cursor.set(x, y, z);
                     if (!mc.world.isChunkLoaded(cursor)) continue;
                     BlockState state = mc.world.getBlockState(cursor);
-                    if (!state.isOf(targetBlock) || state.hasBlockEntity()
+                    if (!isGatherableSourceBlock(state, targetItem) || state.hasBlockEntity()
                             || state.getBlock() instanceof net.minecraft.block.FallingBlock
                             || !state.getFluidState().isEmpty()
                             || state.getHardness(mc.world, cursor) < 0.0f) continue;
@@ -435,6 +436,19 @@ public final class AIPlayerController {
         if (found.size() > MAX_GATHER_TARGETS)
             return new ArrayList<>(found.subList(0, MAX_GATHER_TARGETS));
         return found;
+    }
+
+    /**
+     * Resolves only explicitly supported direct drops and two common stone conversions.
+     * Cobblestone comes from stone/cobblestone; cobbled deepslate comes from deepslate or itself.
+     */
+    private static boolean isGatherableSourceBlock(BlockState state, BlockItem targetItem) {
+        String itemId = Registries.ITEM.getId(targetItem).toString();
+        if ("minecraft:cobblestone".equals(itemId)
+                && (state.isOf(Blocks.STONE) || state.isOf(Blocks.COBBLESTONE))) return true;
+        if ("minecraft:cobbled_deepslate".equals(itemId)
+                && (state.isOf(Blocks.DEEPSLATE) || state.isOf(Blocks.COBBLED_DEEPSLATE))) return true;
+        return state.isOf(targetItem.getBlock());
     }
 
     private static void tickGather(MinecraftClient mc) {
@@ -468,7 +482,7 @@ public final class AIPlayerController {
         while (gatherIndex < gatherTargets.size()) {
             BlockPos target = gatherTargets.get(gatherIndex);
             BlockState state = mc.world.getBlockState(target);
-            if (!state.isOf(gatherMaterial.getBlock()) || state.hasBlockEntity()
+            if (!isGatherableSourceBlock(state, gatherMaterial) || state.hasBlockEntity()
                     || state.getBlock() instanceof net.minecraft.block.FallingBlock
                     || !state.getFluidState().isEmpty() || state.getHardness(mc.world, target) < 0.0f
                     || !hasSuitableMiningTool(mc, state)) {
