@@ -64,7 +64,7 @@ public final class AIChatScreen extends Screen {
         AIConfig.load();
         active = this;
         history.add(new ChatLine("assistant",
-                "Hey! Ich bin Nightfall AI. Frag mich alles rund um Minecraft – oder bitte mich, ein Biom zu suchen. Weltaktionen frage ich immer vorher bei dir an."));
+                "Hey! Ich bin Nightfall AI. Ich kann dir beim Spielen helfen und auch Nightfall-Module und Menü-Einstellungen für dich ändern. Änderungen frage ich vorher bei dir an."));
     }
 
     @Override
