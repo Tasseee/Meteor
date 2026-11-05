@@ -581,6 +581,7 @@ public final class AIPlayerController {
             if (!isGatherableSourceBlock(state, gatherMaterial, gatherRequiresSuitableTool) || state.hasBlockEntity()
                     || state.getBlock() instanceof net.minecraft.block.FallingBlock
                     || !state.getFluidState().isEmpty() || state.getHardness(mc.world, target) < 0.0f
+                    || (isAncientDebrisItem(gatherMaterial) && !isSafeAncientDebrisTarget(mc, target))
                     || !hasSuitableMiningTool(mc, state, gatherRequiresSuitableTool)) {
                 gatherIndex++;
                 continue;
