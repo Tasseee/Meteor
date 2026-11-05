@@ -166,9 +166,9 @@ public final class AIBuilder {
         boolean creative = playerIsCreative(mc);
         if (selected == null || available < (creative ? 1 : selectedBlueprint.blocks))
             throw new IllegalArgumentException(creative
-                    ? "Lege mindestens einen passenden Full-Block in deine Hotbar."
+                    ? "Lege mindestens einen passenden Full-Block in dein Inventar."
                     : "Für " + selectedBlueprint.label + " brauche ich " + selectedBlueprint.blocks
-                    + " volle Blöcke derselben Sorte in deiner Hotbar. Gefunden: " + available + ".");
+                    + " volle Blöcke derselben Sorte in deinem Inventar. Gefunden: " + available + ".");
 
         ClientPlayerEntity player = mc.player;
         Direction forward = player.getHorizontalFacing();
@@ -260,7 +260,7 @@ public final class AIBuilder {
             case CUSTOM -> throw new IllegalStateException("Eigener Bauplan darf nicht über Vorlagen-Planung laufen.");
         };
         return "Bauplan geprüft: " + selectedBlueprint.label + " – " + layout + ". Material: "
-                + materialName + " × " + (creative ? "unbegrenzt (Kreativmodus)" : selectedBlueprint.blocks + " (Hotbar: " + available + ")") + ". "
+                + materialName + " × " + (creative ? "unbegrenzt (Kreativmodus)" : selectedBlueprint.blocks + " (Inventar: " + available + ")") + ". "
                 + "Fläche und Boden sind geprüft. Jede Platzierung wird erst nach Server-Weltupdate gezählt; bei fehlender Reichweite pausiere ich."
                 + fixedLayoutPreview(nextPlan, origin, right, forward, baseY, selected);
     }
@@ -345,7 +345,7 @@ public final class AIBuilder {
             BlockItem blockMaterial = offset.materialId() == null || offset.materialId().isBlank()
                     ? selected : resolveMaterial(counts, offset.materialId());
             if (blockMaterial == null)
-                throw new IllegalArgumentException("Für jeden Block ohne eigenes Material muss ein passender Block in der Hotbar liegen.");
+                throw new IllegalArgumentException("Für jeden Block ohne eigenes Material muss ein passender Block im Spielerinventar liegen.");
             BlockState targetState = offset.state() == null ? blockMaterial.getBlock().getDefaultState() : offset.state();
             if (!targetState.isOf(blockMaterial.getBlock()))
                 throw new IllegalArgumentException("BlockState und Material stimmen an Position "
@@ -359,9 +359,9 @@ public final class AIBuilder {
             int found = counts.getOrDefault(requirement.getKey(), 0);
             if (found < (creative ? 1 : requirement.getValue()))
                 throw new IllegalArgumentException(creative
-                        ? "Lege mindestens einen Block von " + requirement.getKey().getName().getString() + " in die Hotbar."
+                        ? "Lege mindestens einen Block von " + requirement.getKey().getName().getString() + " in dein Inventar."
                         : "Für " + requirement.getKey().getName().getString() + " brauche ich " + requirement.getValue()
-                        + " Blöcke, in der Hotbar liegen aber nur " + found + ".");
+                        + " Blöcke, in deinem Inventar liegen aber nur " + found + ".");
         }
         if (selected == null) selected = offsetMaterials.values().iterator().next();
 
@@ -603,7 +603,7 @@ public final class AIBuilder {
             if (displayName.contains(displayQuery)) {
                 if (partialMatch != null && partialMatch != item)
                     throw new IllegalArgumentException("Das Material „" + requestedId
-                            + "“ ist in deiner Hotbar mehrdeutig. Bitte nenne die genaue Minecraft-Item-ID.");
+                            + "“ ist in deinem Inventar mehrdeutig. Bitte nenne die genaue Minecraft-Item-ID.");
                 partialMatch = item;
             }
         }
