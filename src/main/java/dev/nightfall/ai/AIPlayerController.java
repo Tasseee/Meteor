@@ -511,7 +511,8 @@ public final class AIPlayerController {
                     if (!isGatherableSourceBlock(state, targetItem, oreOnly) || state.hasBlockEntity()
                             || state.getBlock() instanceof net.minecraft.block.FallingBlock
                             || !state.getFluidState().isEmpty()
-                            || state.getHardness(mc.world, cursor) < 0.0f) continue;
+                            || state.getHardness(mc.world, cursor) < 0.0f
+                            || (isAncientDebrisItem(targetItem) && !isSafeAncientDebrisTarget(mc, cursor))) continue;
                     found.add(cursor.toImmutable());
                 }
             }
@@ -643,7 +644,7 @@ public final class AIPlayerController {
     private static boolean startAncientDebrisTunnel(MinecraftClient mc, BlockPos oreTarget) {
         if (!isInNether(mc) || !isAncientDebrisItem(gatherMaterial)) return false;
         BlockState ore = mc.world.getBlockState(oreTarget);
-        if (!ore.isOf(Blocks.ANCIENT_DEBRIS) || !hasSuitableMiningTool(mc, ore, true)) return false;
+        if (!isSafeAncientDebrisTarget(mc, oreTarget) || !hasSuitableMiningTool(mc, ore, true)) return false;
         List<BlockPos> route = findAncientDebrisTunnelRoute(mc, oreTarget);
         if (route.isEmpty()) return false;
         gatherTunnelOreTarget = oreTarget.toImmutable();
@@ -704,8 +705,8 @@ public final class AIPlayerController {
                 route.add(new BlockPos(x, start.getY(), z));
             }
         }
-        if (countAncientTunnelBlocks(mc, route) > MAX_ANCIENT_TUNNEL_BLOCKS) return List.of();
         for (BlockPos cell : route) if (!isSafeAncientTunnelCell(mc, cell)) return List.of();
+        if (countAncientTunnelBlocks(mc, route) > MAX_ANCIENT_TUNNEL_BLOCKS) return List.of();
         return route;
     }
 
@@ -716,6 +717,19 @@ public final class AIPlayerController {
             if (!mc.world.getBlockState(cell.up()).isAir()) count++;
         }
         return count;
+    }
+
+    private static boolean isSafeAncientDebrisTarget(MinecraftClient mc, BlockPos pos) {
+        if (!isInNether(mc) || !mc.world.isChunkLoaded(pos)) return false;
+        BlockState state = mc.world.getBlockState(pos);
+        if (!state.isOf(Blocks.ANCIENT_DEBRIS) || state.hasBlockEntity()
+                || !state.getFluidState().isEmpty() || state.getHardness(mc.world, pos) < 0.0f) return false;
+        for (Direction direction : Direction.values()) {
+            BlockPos neighbor = pos.offset(direction);
+            if (!mc.world.isChunkLoaded(neighbor) || !mc.world.getBlockState(neighbor).getFluidState().isEmpty())
+                return false;
+        }
+        return true;
     }
 
     private static boolean isSafeAncientTunnelCell(MinecraftClient mc, BlockPos feet) {
@@ -782,7 +796,7 @@ public final class AIPlayerController {
             stop("Ancient-Debris-Abbau gestoppt: Der Tunnelplan ist nicht mehr gültig.");
             return;
         }
-        if (!mc.world.getBlockState(gatherTunnelOreTarget).isOf(Blocks.ANCIENT_DEBRIS)) {
+        if (!isSafeAncientDebrisTarget(mc, gatherTunnelOreTarget)) {
             gatherTunnelCells = List.of();
             gatherTunnelOreTarget = null;
             gatherTunnelCellIndex = 0;
@@ -795,7 +809,8 @@ public final class AIPlayerController {
                 skipAncientTunnelTarget(mc, "Lava/Flüssigkeit, unsicherer Untergrund oder ungeeigneter Tunnelblock erkannt.");
                 return;
             }
-            for (BlockPos clearPos : new BlockPos[]{cell, cell.up()}) {
+            // Clear headroom first; otherwise the player's eye ray hits the upper block.
+            for (BlockPos clearPos : new BlockPos[]{cell.up(), cell}) {
                 BlockState state = mc.world.getBlockState(clearPos);
                 if (state.isAir()) continue;
                 if (!startAncientTunnelMining(mc, clearPos, state))
@@ -862,6 +877,7 @@ public final class AIPlayerController {
             if (mc.interactionManager != null) {
                 try { mc.interactionManager.cancelBlockBreaking(); } catch (RuntimeException ignored) {}
             }
+            releaseKeys(mc);
             restoreMiningTool(mc);
             restoreHotbar(mc);
             miningPos = null;
