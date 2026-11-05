@@ -87,9 +87,10 @@ public final class SchematicManager {
             out.append("\n\nSICHERHEIT: Nightfall räumt vor dem Setzen die als Luft markierten Zellen im Schematic-Volumen frei "
                     + "und entfernt ersetzte Blöcke an Bauzielen. Es übernimmt die gespeicherten BlockStates und sucht mit Minecrafts "
                     + "normaler BlockItem-Platzierlogik nach einer passenden Ansetzfläche und Blickrichtung. Ein Block zählt erst nach "
-                    + "exakter Serverbestätigung als gebaut; nicht reproduzierbare Zustände brechen den Bau ab. Block-Entities samt NBT, "
-                    + "Flüssigkeiten, fallende Blöcke und Entities werden nicht automatisch rekonstruiert; dynamische Redstone-/Nachbarschafts-"
-                    + "Zustände können vom Weltkontext abhängen.");
+                    + "exakter Serverbestätigung als gebaut; nicht reproduzierbare Zustände brechen den Bau ab. Block-Entity-Blöcke "
+                    + "wie Hopper und Truhen werden mit Standardzustand platziert, ihre Inventare und Sonderdaten aus der Schematic aber "
+                    + "nicht übertragen. Flüssigkeiten, fallende Blöcke und Entities werden nicht automatisch rekonstruiert; dynamische "
+                    + "Redstone-/Nachbarschafts-Zustände können vom Weltkontext abhängen.");
             return out.toString();
         }
     }
@@ -417,7 +418,7 @@ public final class SchematicManager {
     }
 
     private static BlockItem safeBuildItem(BlockState state, MinecraftClient mc, int x, int y, int z) {
-        if (state == null || state.isAir() || !state.getFluidState().isEmpty() || state.hasBlockEntity())
+        if (state == null || state.isAir() || !state.getFluidState().isEmpty())
             return null;
         if (state.getBlock() instanceof FallingBlock) return null;
         return state.getBlock().asItem() instanceof BlockItem item ? item : null;
