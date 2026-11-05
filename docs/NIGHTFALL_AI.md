@@ -182,18 +182,27 @@ AI actions:
 - `build_schematic`: prepares the automatically supported subset and displays a normal Nightfall
   placement preview. It requires player confirmation before the first placement.
 
-**Aushub und Aufbau:** Bei lokalen Schematics liest Nightfall nun auch alle Luftzellen innerhalb
-des Vorlagen-Volumens. Vor dem Setzen räumt es dort vorhandenes Gelände ab und entfernt feste
-Hindernisse an Zielpositionen. Dafür nutzt es den normalen clientseitigen Abbau, wartet auf das
-Server-Weltupdate und versucht, sich über geladene, begehbare Wege an nahe Aushubziele zu bewegen.
-Der Aushub ist auf 20.000 Blöcke begrenzt. Block-Entities/Container, Flüssigkeiten und unzerstörbare
-Blöcke werden nicht angerührt. Wenn Nightfall keine sichere Route oder Sichtlinie findet, pausiert
-es und fordert dich auf, näher heranzugehen. Materialien müssen weiterhin in der Hotbar liegen.
+**Aushub und Aufbau:** Bei lokalen Schematics liest Nightfall alle Luftzellen innerhalb des
+Vorlagen-Volumens. Vor dem Setzen räumt es dort vorhandenes Gelände ab und entfernt Hindernisse an
+Baupositionen. Dafür nutzt es den normalen clientseitigen Abbau, wartet auf das Server-Weltupdate und
+versucht, sich über geladene, begehbare Wege an nahe Aushubziele zu bewegen. Der Aushub ist auf
+20.000 Blöcke begrenzt. Block-Entities/Container, Flüssigkeiten und unzerstörbare Blöcke werden nicht
+angerührt. Wenn Nightfall keine sichere Route oder Sichtlinie findet, pausiert es und fordert dich
+auf, näher heranzugehen.
 
-**Wichtige verbleibende Grenzen:** Automatisch platziert werden weiterhin nur statische Standard-
-Full-Cube-BlockItems ohne Block-Entity und ohne Zustands-Properties. Daher sind orientierte Blöcke
-(Kolben, Beobachter, Hopper, Treppen usw.), Behälter/Inventare, Entities, Dorfbewohner, Wasser/Lava,
-Redstone-Zustände und Block-Entity-NBT noch nicht vollständig reproduzierbar. Der Aushub selbst
-macht eine Farm nicht funktionsfähig, wenn ihre Mechanik nicht unterstützt wird. Prüfe die Vorschau
-und teste Community-Schematics in einer Weltkopie. Keine heruntergeladene Creator-Datei wird durch
-Nightfall mitgeliefert.
+**Blockausrichtung:** Die Import-Pipeline übernimmt jetzt die gespeicherten BlockStates statt nur
+Material-IDs. Vor jeder Platzierung prüft Nightfall mit Minecrafts eigener BlockItem-Platzierlogik
+verschiedene Ansetzflächen und Blickrichtungen. Die Schematic-Koordinaten bleiben in ihrer
+ursprünglichen Himmelsrichtung; die Vorschau setzt den Bauplatz vor dem Spieler. Ein Block zählt
+erst, wenn der Server exakt den gewünschten Blockzustand bestätigt. Ist die gewünschte Kombination
+durch normale Platzierung nicht reproduzierbar, stoppt Nightfall mit einer konkreten Fehlermeldung,
+statt eine falsch ausgerichtete Farm als fertig zu melden. Materialien müssen weiterhin in der
+Hotbar liegen.
+
+**Wichtige verbleibende Grenzen:** Block-Entity-NBT/Inventarinhalte, Entities, Flüssigkeitsquellen,
+fallende Blöcke und komplexe, dynamische Redstone-/Nachbarschaftszustände werden noch nicht
+vollständig rekonstruiert. Insbesondere kann eine Schematic, deren Block-States von Nachbarblöcken
+oder Redstone-Signalen abhängen, trotz korrekter Grundausrichtung noch Abweichungen enthalten.
+Der Aushub selbst macht eine Farm nicht funktionsfähig, wenn ihre Mechanik nicht unterstützt wird.
+Prüfe die Vorschau und teste Community-Schematics in einer Weltkopie. Keine heruntergeladene
+Creator-Datei wird durch Nightfall mitgeliefert.
