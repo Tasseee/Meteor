@@ -146,7 +146,7 @@ public final class AIActionRegistry {
                 "Inspect one locally downloaded Sponge v2 .schem or Litematica v5-v7 .litematic file. Reports dimensions, materials, automatic-build subset and blocks requiring manual placement. Read-only.",
                 schematicSchema));
         tools.add(tool("build_schematic",
-                "Prepare a local schematic for building after validating its palette, file size, dimensions, block states, materials, connected layout and free target positions. Only default-state full-cube blocks without block entities are automatically placed; all other blocks are explicitly excluded. The player must confirm the preview.",
+                "Prepare a local schematic for building. Nightfall validates its palette and dimensions, clears air cells and occupied build positions by mining them with normal Minecraft interactions, then places the supported block subset. It can approach nearby excavation targets through loaded terrain. It refuses to destroy block entities, fluids or unbreakable blocks; oriented/property-bearing blocks, inventories, entities and complex redstone/fluid mechanics remain unsupported. The preview includes the excavation count and requires explicit player confirmation.",
                 schematicSchema));
         JsonObject walkTicks = property("ticks", "integer", "Dauer der kurzen Vorwärtsbewegung in Ticks (1 bis 100).").get("schema").getAsJsonObject();
         walkTicks.addProperty("minimum", 1);
