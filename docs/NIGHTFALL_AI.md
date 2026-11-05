@@ -198,8 +198,9 @@ verschiedene Ansetzflächen und Blickrichtungen. Die Schematic-Koordinaten bleib
 ursprünglichen Himmelsrichtung; die Vorschau setzt den Bauplatz vor dem Spieler. Ein Block zählt
 erst, wenn der Server exakt den gewünschten Blockzustand bestätigt. Ist die gewünschte Kombination
 durch normale Platzierung nicht reproduzierbar, stoppt Nightfall mit einer konkreten Fehlermeldung,
-statt eine falsch ausgerichtete Farm als fertig zu melden. Materialien müssen weiterhin in der
-Hotbar liegen.
+statt eine falsch ausgerichtete Farm als fertig zu melden. Materialien können aus allen 36 Slots des Spielerinventars verwendet werden; benötigte Stacks werden per normalem SWAP-Klick in die Hotbar geholt und bei unverändertem verdrängtem Stack zurückgetauscht.
+
+**Materialmangel und unterstützte Nachbeschaffung:** Wenn ein Material vollständig fehlt, löst Nightfall eine exakte registrierte Block-Item-ID auch ohne vorhandenen Stack auf und meldet alle fehlenden Materialien gesammelt mit benötigter, vorhandener und fehlender Menge. Für unterstützte Vanilla-Holzarten kann die KI anschließend `gather_wood` mit der passenden Log-ID verwenden und die fehlenden Bretter mit `craft_item` über ein bereits freigeschaltetes 2×2-Rezept herstellen. Danach muss `build_schematic` erneut aufgerufen werden, damit Nightfall eine aktuelle Vorschau mit dem aktualisierten Inventar erzeugt. Jeder Sammel-, Crafting- und Bauauftrag benötigt weiterhin eine eigene Spielerbestätigung. Stein, Erze, Sand und andere nicht unterstützte Rohstoffe werden nicht automatisch beschafft.
 
 **Wichtige verbleibende Grenzen:** Block-Entity-Blöcke wie Hopper und Truhen können mit frischen
 Standarddaten platziert werden. Inventarinhalte und benutzerdefiniertes Block-Entity-NBT werden
