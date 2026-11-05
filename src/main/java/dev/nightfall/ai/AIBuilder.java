@@ -125,6 +125,7 @@ public final class AIBuilder {
     private static boolean preserveCheckpointOnStop;
     private static boolean keepCheckpointDuringCancel;
     private static boolean checkpointLoadAttempted;
+    private static String checkpointScanKey = "";
     private static String savedServerKey = "";
 
     private AIBuilder() {}
@@ -735,7 +736,10 @@ public final class AIBuilder {
 
     public static void tick() {
         if (!running) {
-            if (!checkpointLoadAttempted) tryRestoreCheckpoint();
+            MinecraftClient mc = MinecraftClient.getInstance();
+            if (mc.player != null && mc.world != null && mc.getNetworkHandler() != null
+                    && (!checkpointLoadAttempted || !checkpointScanKey.equals(currentCheckpointScanKey(mc))))
+                tryRestoreCheckpoint();
             return;
         }
         MinecraftClient mc = MinecraftClient.getInstance();
@@ -1090,6 +1094,10 @@ public final class AIBuilder {
         return "unknown";
     }
 
+    private static String currentCheckpointScanKey(MinecraftClient mc) {
+        return currentServerKey(mc) + "|" + mc.world.getRegistryKey().getValue();
+    }
+
     private static void saveCheckpoint() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if ((!running && !prepared) || mc.world == null || blueprint == null) return;
@@ -1148,6 +1156,7 @@ public final class AIBuilder {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null || mc.getNetworkHandler() == null) return;
         checkpointLoadAttempted = true;
+        checkpointScanKey = currentCheckpointScanKey(mc);
         Path file = checkpointPath();
         if (!Files.exists(file)) return;
         try {
@@ -1166,7 +1175,6 @@ public final class AIBuilder {
             Identifier storedDimension = Identifier.tryParse(root.get("dimension").getAsString());
             if (storedDimension == null || !storedDimension.equals(mc.world.getRegistryKey().getValue())) {
                 status = "Gespeicherter Bau gefunden, aber die Dimension stimmt nicht. Wechsle zuerst in die ursprüngliche Dimension.";
-                checkpointLoadAttempted = false;
                 return;
             }
             PLAN.clear(); PLAN_MATERIALS.clear(); PLAN_STATES.clear();
@@ -1329,6 +1337,7 @@ public final class AIBuilder {
         cancelPrepared();
         keepCheckpointDuringCancel = false;
         checkpointLoadAttempted = false;
+        checkpointScanKey = "";
         preserveCheckpointOnStop = false;
     }
 
