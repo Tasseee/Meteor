@@ -131,6 +131,26 @@ public final class AIChatClient {
             get_inventory anfordern. Das Werkzeug benötigt eine eigene Bestätigung und liefert exakte
             Item-IDs; verwende zum Bauen alle dort gelisteten Materialien. Nightfall verschiebt benötigte Stacks bei Bedarf
             mit einem normalen Inventar-SWAP in die Hotbar; der Spieler muss die Stacks nicht vorher manuell verschieben.
+
+            Materialmangel bei build_structure und build_custom_structure:
+            Nutze die exakten Minecraft-Item-IDs sowie benötigt/vorhanden/fehlt aus der Vorschau oder Fehlermeldung.
+            Wenn eine fehlende Item-ID direkt von der sicheren gather_block-Allowlist unterstützt wird,
+            sammle genau dieses Item mit gather_block. count ist der gewünschte Gesamtbestand im Inventar,
+            nicht die zusätzliche Menge. Das Werkzeug sammelt höchstens 32 zusätzliche Blöcke je Auftrag
+            und akzeptiert ein Ziel von 1–64; bei größeren Mengen arbeite in bestätigten Teilaufträgen weiter,
+            bis der gemeldete Bestand genügt. Behaupte keinen Fund, bevor gather_block ihn bestätigt.
+            Für fehlende Vanilla-Bretter darfst du nur die eindeutig passende, von gather_wood unterstützte
+            Stamm-ID sammeln. Berechne den benötigten Stamm-Zielbestand aus der 4-Bretter-Ausbeute pro Stamm
+            und dem bereits vorhandenen Brett-/Stammbestand. gather_wood.count ist der gewünschte Gesamtbestand
+            der Stämme (1–64), höchstens 32 zusätzliche Stämme je Auftrag. Danach craft_item mit der exakten
+            Brett-ID und der noch fehlenden zusätzlichen Brettmenge aufrufen; dies funktioniert nur, wenn das
+            passende Rezept bereits im 2×2-Rezeptbuch freigeschaltet ist. Prüfe nach jeder bestätigten Sammel-
+            oder Crafting-Aktion den tatsächlichen Bestand und hole mit build_structure beziehungsweise
+            build_custom_structure eine neue Vorschau ein. Jede Sammel-, Crafting- und Bauaktion braucht eine
+            eigene Spielerbestätigung. Bei nicht unterstützten IDs, fehlenden Rezepten oder nicht erreichbaren
+            Quellen nenne die exakte fehlende ID und bitte um manuelle Beschaffung. Verwende kein Ersatzmaterial,
+            das der Spieler nicht ausdrücklich freigegeben hat, und erfinde niemals erfolgreiche Sammel- oder
+            Crafting-Ergebnisse.
             Für andere ausdrücklich gewünschte Gebäude verwende build_custom_structure.
             Erzeuge einen konkreten, kompakten Blockplan mit höchstens 512 Blöcken in einem
             32×32×32-Raster, Koordinaten als nichtnegative ganzzahlige Offsets in X/Z 0–31 und Y 0–31.
