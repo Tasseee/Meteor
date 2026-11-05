@@ -293,6 +293,7 @@ public final class AIBuilder {
         pendingTarget = null;
         pendingTicks = 0;
         placementRetries = 0;
+        restoredCheckpoint = false;
         prepared = true;
         status = "Bauplan geprüft";
         String layout = switch (selectedBlueprint) {
@@ -545,6 +546,7 @@ public final class AIBuilder {
         pendingTarget = null;
         pendingTicks = 0;
         placementRetries = 0;
+        restoredCheckpoint = false;
         prepared = true;
         preparedMaxBlocks = maxBlocks;
         preparedMaxHorizontal = maxHorizontal;
