@@ -181,6 +181,23 @@ public final class AIActionRegistry {
         tools.add(tool("gather_wood",
                 "Gather a target total amount (1–64) of a specific vanilla log/wood/stem/hyphae block item. Scans only already-loaded chunks within 16 horizontal blocks and 4 below/16 above the player; accepts only matching vanilla block/item IDs whose drops are the same wood item. Uses safe nearby A* paths, the suitable tool from the full inventory and normal vanilla block breaking. At most 32 additional blocks per request. It stops if no safe path or confirmed drops are unavailable. Requires player confirmation.",
                 gatherWoodSchema));
+        JsonObject gatherBlockSchema = objectSchema();
+        JsonObject gatherBlockItem = property("item", "string",
+                "Exact supported vanilla block item ID, e.g. minecraft:cobblestone, minecraft:dirt or minecraft:netherrack.").get("schema").getAsJsonObject();
+        gatherBlockItem.addProperty("maxLength", 64);
+        JsonObject gatherBlockCount = property("count", "integer",
+                "Target total amount of this item in the player's inventory (1–64).").get("schema").getAsJsonObject();
+        gatherBlockCount.addProperty("minimum", 1);
+        gatherBlockCount.addProperty("maximum", 64);
+        gatherBlockSchema.getAsJsonObject("properties").add("item", gatherBlockItem);
+        gatherBlockSchema.getAsJsonObject("properties").add("count", gatherBlockCount);
+        JsonArray gatherBlockRequired = new JsonArray();
+        gatherBlockRequired.add("item");
+        gatherBlockRequired.add("count");
+        gatherBlockSchema.add("required", gatherBlockRequired);
+        tools.add(tool("gather_block",
+                "Gather a target total amount (1–64) of a whitelisted vanilla block item from the loaded nearby area. Supports wood blocks plus a conservative list of same-item self-dropping blocks such as dirt, coarse dirt, cobblestone, granite, diorite, andesite, tuff, calcite, moss block, sandstone, netherrack, end stone, blackstone, basalt, cobbled deepslate, stone bricks and selected masonry. It rejects falling blocks, fluids, block entities, unbreakable blocks, unknown IDs and blocks requiring a tool that the player does not own. Only mines the exact block whose item ID matches the requested item. Scans already-loaded chunks within 16 horizontal blocks and 4 below/16 above the player, uses safe nearby A* paths and normal vanilla block breaking, and waits for confirmed drops. At most 32 additional blocks per request. Requires player confirmation.",
+                gatherBlockSchema));
         JsonObject craftSchema = objectSchema(property("item", "string",
                 "Exact Minecraft item ID, item path or localized item name to craft."), "item");
         JsonObject craftCount = property("count", "integer",
@@ -202,7 +219,7 @@ public final class AIActionRegistry {
                 "Engage the nearest nearby hostile mob only (never players or passive/neutral mobs). Approaches using local pathfinding and performs normal melee attacks within reach. Bounded to 12 attacks or 45 seconds. Requires player confirmation.",
                 objectSchema()));
         tools.add(tool("stop_current_action",
-                "Immediately stop Nightfall movement, navigation, mining, wood gathering, crafting, eating and combat, and release all keys controlled by Nightfall. Safe emergency stop.",
+                "Immediately stop Nightfall movement, navigation, mining, wood/resource gathering, crafting, eating and combat, and release all keys controlled by Nightfall. Safe emergency stop.",
                 objectSchema()));
         tools.add(tool("get_build_status",
                 "Read the current Nightfall builder status: confirmed block count, phase, pause reason, blueprint and materials. Read-only; no confirmation required.",
@@ -325,6 +342,9 @@ public final class AIActionRegistry {
             case "gather_wood" -> new Action(name, args,
                     AIPlayerController.previewGatherWood(requiredString(args, "item", 64),
                             readBoundedInteger(args, "count", 1, 64)));
+            case "gather_block" -> new Action(name, args,
+                    AIPlayerController.previewGatherBlock(requiredString(args, "item", 64),
+                            readBoundedInteger(args, "count", 1, 64)));
             case "craft_item" -> new Action(name, args,
                     AIPlayerController.previewCraftItem(requiredString(args, "item", 64),
                             args.has("count") ? readBoundedInteger(args, "count", 1, 256) : 1));
@@ -332,7 +352,7 @@ public final class AIActionRegistry {
                     args.has("item") ? requiredString(args, "item", 64).trim() : null));
             case "attack_nearest_hostile" -> new Action(name, args, AICombatController.preview());
             case "stop_current_action" -> new Action(name, args,
-                    "Nightfall stoppt sofort Navigation, Bewegung, Blockabbau, Holzsammeln, Crafting, Essen und Kampf und gibt alle eigenen Tasten frei.");
+                    "Nightfall stoppt sofort Navigation, Bewegung, Blockabbau, Holz- und Rohstoffsammlung, Crafting, Essen und Kampf und gibt alle eigenen Tasten frei.");
             case "get_build_status" -> new Action(name, args, AIBuilder.describeStatus());
             case "pause_build" -> new Action(name, args,
                     AIBuilder.isRunning() ? "Nightfall pausiert den Bau nach einer eventuell noch ausstehenden Blockbestätigung."
@@ -424,6 +444,8 @@ public final class AIActionRegistry {
                     args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt());
             case "mine_looked_block" -> AIPlayerController.mineLookedBlock();
             case "gather_wood" -> AIPlayerController.gatherWood(args.get("item").getAsString(),
+                    readBoundedInteger(args, "count", 1, 64));
+            case "gather_block" -> AIPlayerController.gatherBlock(args.get("item").getAsString(),
                     readBoundedInteger(args, "count", 1, 64));
             case "craft_item" -> AIPlayerController.craftItem(args.get("item").getAsString(),
                     args.has("count") ? readBoundedInteger(args, "count", 1, 256) : 1);
