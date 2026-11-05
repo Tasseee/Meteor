@@ -288,6 +288,7 @@ public final class AIActionRegistry {
         tools.add(tool("stop_current_action",
                 "Immediately stop Nightfall movement, navigation, mining, wood/resource gathering, crafting, smelting, eating and combat, and release all keys controlled by Nightfall. Safe emergency stop.",
                 objectSchema()));
+        tools.add(tool("resume_saved_build", "Resume a locally saved Nightfall build after Minecraft restart or reconnect. The checkpoint is only prepared when the original server and dimension match; this action requires explicit player confirmation.", objectSchema()));
         tools.add(tool("get_build_status",
                 "Read the current Nightfall builder status: confirmed block count, phase, pause reason, blueprint and materials. Read-only; no confirmation required.",
                 objectSchema()));
@@ -451,6 +452,9 @@ public final class AIActionRegistry {
             case "guard_nearby_hostiles" -> new Action(name, args, AICombatController.previewGuard());
             case "stop_current_action" -> new Action(name, args,
                     "Nightfall stoppt sofort Navigation, Bewegung, Blockabbau, Holz- und Rohstoffsammlung, Crafting, Schmelzen, Essen und Kampf und gibt alle eigenen Tasten frei.");
+            case "resume_saved_build" -> new Action(name, args, AIBuilder.hasRestoredCheckpoint()
+                    ? "Nightfall lädt den gespeicherten Bauplan und setzt ihn nach deiner Bestätigung ab dem letzten serverbestätigten Block fort."
+                    : "Kein passender gespeicherter Bauplan ist in dieser Welt bereit.");
             case "get_build_status" -> new Action(name, args, AIBuilder.describeStatus());
             case "pause_build" -> new Action(name, args,
                     AIBuilder.isRunning() ? "Nightfall pausiert den Bau nach einer eventuell noch ausstehenden Blockbestätigung."
@@ -549,6 +553,7 @@ public final class AIActionRegistry {
                     yield "Der Befehl konnte nicht gesendet werden. Prüfe deine Verbindung.";
                 }
             }
+            case "resume_saved_build" -> AIBuilder.startPreparedStructure();
             case "build_structure", "build_starter_shelter", "build_custom_structure" -> AIBuilder.startPreparedStructure();
             case "search_blueprints" -> BlueprintCatalog.search(args.get("query").getAsString());
             case "list_schematics" -> SchematicManager.listForAI() + "\n\n" + SchematicManager.communityCatalog();
