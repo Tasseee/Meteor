@@ -654,7 +654,7 @@ public final class AIActionRegistry {
                 out.append("\\n- ").append(setting.getName()).append(" = ");
                 if (setting instanceof BoolSetting bool) out.append(bool.get());
                 else if (setting instanceof NumberSetting number) out.append(number.display()).append(" (").append(number.min).append(" bis ").append(number.max).append(", Schritt ").append(number.step).append(")");
-                else if (setting instanceof ModeSetting mode) out.append(mode.get()).append(" (Modusauswahl nur aus den erlaubten Optionen)");
+                else if (setting instanceof ModeSetting mode) out.append(mode.get()).append(" (Optionen: ").append(String.join(", ", mode.getModes())).append(")");
                 else if (setting instanceof ColorSetting color) out.append(String.format(Locale.ROOT, "#%06X", color.rgb()));
                 else if (setting instanceof StringSetting string) out.append(string.get());
                 else out.append("(nicht direkt durch KI editierbar)");
@@ -717,7 +717,10 @@ public final class AIActionRegistry {
         String value = raw.trim();
         if (setting instanceof BoolSetting bool) bool.set(value.equalsIgnoreCase("true") || value.equalsIgnoreCase("an") || value.equalsIgnoreCase("on"));
         else if (setting instanceof NumberSetting number) number.set(Double.parseDouble(value.replace(',', '.')));
-        else if (setting instanceof ModeSetting mode) mode.set(value);
+        else if (setting instanceof ModeSetting mode) {
+            String canonical = java.util.Arrays.stream(mode.getModes()).filter(option -> option.equalsIgnoreCase(value)).findFirst().orElseThrow();
+            mode.set(canonical);
+        }
         else if (setting instanceof StringSetting string) string.set(value);
         else if (setting instanceof ColorSetting color) color.set(Integer.parseInt(value.startsWith("#") ? value.substring(1) : value, 16));
         else return "Dieser Einstellungstyp wird nicht unterstützt.";
