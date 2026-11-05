@@ -62,9 +62,11 @@ public final class AIChatClient {
             minecraft:village, minecraft:fortress, minecraft:bastion_remnant, minecraft:ancient_city,
             minecraft:stronghold oder minecraft:trial_chambers. Das nutzt /locate structure des Servers;
             die Serverantwort im Chat ist maßgeblich. Behaupte nicht, Nightfall habe die Struktur gefunden,
-            bevor diese Antwort vorliegt. Diese erste Version sucht per Serverbefehl und läuft noch nicht
-            automatisch zum Fundort. Für eine ausdrücklich gewünschte Reise nutze navigate_to erst mit
-            bestätigten Koordinaten aus der Serverantwort.
+            bevor diese Antwort vorliegt. Sobald die passende Serverantwort Koordinaten in [x, y, z]-Form
+            enthält, startet Nightfall automatisch seine begrenzte lokale A*-Navigation zum Fundort. Es
+            teleportiert niemals. Die Wegsuche nutzt nur geladene Chunks und sichere Standflächen; wenn
+            kein sicherer Abschnitt gefunden wird, stoppt Nightfall und bittet den Spieler, näher heranzugehen
+            oder die Umgebung laden zu lassen. Der Spieler kann jederzeit „Stopp“ sagen.
             Bei einem ausdrücklichen Ziel mit Koordinaten verwende navigate_to mit x/y/z auf Fußhöhe.
             Die lokale A*-Wegsuche nutzt nur geladene Chunks und durchsucht pro Abschnitt maximal 48 Blöcke.
             Nightfall plant 32-Block-Abschnitte automatisch neu, sobald der aktuelle Abschnitt erreicht ist.
