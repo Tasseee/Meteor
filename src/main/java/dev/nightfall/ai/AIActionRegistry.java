@@ -54,7 +54,7 @@ public final class AIActionRegistry {
     public static JsonArray toolDefinitions() {
         JsonArray tools = new JsonArray();
         tools.add(tool("locate_structure",
-                "Search for the nearest Minecraft structure using the server's native /locate structure command. Accepts a structure ID such as minecraft:village, minecraft:ancient_city, minecraft:fortress, minecraft:bastion_remnant, minecraft:trial_chambers, minecraft:stronghold or minecraft:woodland_mansion. The server must support and permit the command. It reports coordinates in chat but does not teleport or automatically walk there.",
+                "Search for the nearest Minecraft structure using the server's native /locate structure command. Accepts a structure ID such as minecraft:village, minecraft:ancient_city, minecraft:fortress, minecraft:bastion_remnant, minecraft:trial_chambers, minecraft:stronghold or minecraft:woodland_mansion. The server must support and permit the command. When a matching coordinate response arrives, Nightfall starts its bounded local A* navigation toward the reported location; it never teleports.",
                 objectSchema(property("structure", "string", "Structure registry ID, for example minecraft:village or minecraft:ancient_city."), "structure")));
         tools.add(tool("locate_biome", "Find a biome using the server's normal /locate biome command. The player must confirm first.",
                 objectSchema(
@@ -438,7 +438,7 @@ public final class AIActionRegistry {
                 try {
                     mc.player.networkHandler.sendChatCommand("locate structure " + structure);
                     yield "Der Befehl /locate structure " + structure
-                            + " wurde gesendet. Prüfe die Serverantwort im Chat; die Suche hängt von Serverversion und Berechtigungen ab. Nightfall ist noch nicht automatisch zum Fundort gelaufen.";
+                            + " wurde gesendet. Prüfe die Serverantwort im Chat; die Suche hängt von Serverversion und Berechtigungen ab. Nightfall wartet auf die passende Koordinatenantwort und versucht danach, einen sicheren Weg zum Fundort zu planen.";
                 } catch (RuntimeException error) {
                     yield "Der Struktur-Suchbefehl konnte nicht gesendet werden. Prüfe deine Verbindung.";
                 }
