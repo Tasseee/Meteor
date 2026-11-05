@@ -7,6 +7,7 @@ import dev.nightfall.gui.HudEditorScreen;
 import dev.nightfall.gui.MapScreen;
 import dev.nightfall.gui.AIChatScreen;
 import dev.nightfall.ai.AIConfig;
+import dev.nightfall.ai.AIRealtimeVoiceClient;
 import dev.nightfall.ai.AIBuilder;
 import dev.nightfall.ai.AIPlayerController;
 import dev.nightfall.ai.AICombatController;
@@ -38,7 +39,7 @@ public class Nightfall implements ClientModInitializer {
     public static final String VERSION = "2.0.0";
     public static final Logger LOGGER = LoggerFactory.getLogger("nightfall");
 
-    private boolean prevGui, prevHud, prevMap, prevAi, prevVoice;
+    private boolean prevGui, prevHud, prevMap, prevAi, prevVoice, prevMic;
 
     @Override
     public void onInitializeClient() {
@@ -104,6 +105,7 @@ public class Nightfall implements ClientModInitializer {
             boolean m = GLFW.glfwGetKey(h, Config.mapKey) == GLFW.GLFW_PRESS;
             boolean ai = GLFW.glfwGetKey(h, Config.aiKey) == GLFW.GLFW_PRESS;
             boolean voice = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_F8) == GLFW.GLFW_PRESS;
+            boolean mic = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_F9) == GLFW.GLFW_PRESS;
             if (mc.currentScreen == null && mc.player != null) {
                 if (g && !prevGui) open(mc, new ClickGuiScreen());
                 else if (hu && !prevHud) open(mc, new HudEditorScreen());
@@ -111,7 +113,11 @@ public class Nightfall implements ClientModInitializer {
                 else if (ai && !prevAi) open(mc, AIChatScreen.getOrCreate());
                 else if (voice && !prevVoice) AIChatScreen.toggleVoiceCall();
             }
-            prevGui = g; prevHud = hu; prevMap = m; prevAi = ai; prevVoice = voice;
+            if (mic && !prevMic && AIRealtimeVoiceClient.isActive()
+                    && !(mc.currentScreen instanceof AIChatScreen)) {
+                AIChatScreen.toggleVoiceMicrophone();
+            }
+            prevGui = g; prevHud = hu; prevMap = m; prevAi = ai; prevVoice = voice; prevMic = mic;
             ModuleManager.pollKeys(mc);
         }
         AIPlayerController.tick();
