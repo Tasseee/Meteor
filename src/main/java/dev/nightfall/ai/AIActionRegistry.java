@@ -163,6 +163,10 @@ public final class AIActionRegistry {
         tools.add(tool("mine_looked_block",
                 "Mine the exact block currently under the player's crosshair using the most suitable tool from the player's full inventory and normal vanilla block-breaking interactions. Nightfall temporarily swaps it into the hotbar and restores the displaced stack when possible. Rejects containers, unbreakable or out-of-reach blocks. Requires player confirmation.",
                 objectSchema()));
+        tools.add(tool("craft_item",
+                "Craft one batch of an exact item using a recipe already unlocked in the connected server's recipe book. Nightfall checks ingredients in the player's inventory, supports only shaped recipes up to 2x2 and shapeless recipes with up to four ingredients, places the recipe with the normal recipe-book interaction and waits for the output to appear in the inventory. It never creates ingredients or bypasses server recipe rules. Requires player confirmation.",
+                objectSchema(property("item", "string",
+                        "Exact Minecraft item ID, item path or localized item name to craft.").get("schema").getAsJsonObject(), "item"));
         JsonObject foodSchema = objectSchema();
         JsonObject foodItem = property("item", "string", "Optional exact Minecraft item ID, item path or localized name already in the hotbar.").get("schema").getAsJsonObject();
         foodItem.addProperty("maxLength", 64);
@@ -174,7 +178,7 @@ public final class AIActionRegistry {
                 "Engage the nearest nearby hostile mob only (never players or passive/neutral mobs). Approaches using local pathfinding and performs normal melee attacks within reach. Bounded to 12 attacks or 45 seconds. Requires player confirmation.",
                 objectSchema()));
         tools.add(tool("stop_current_action",
-                "Immediately stop Nightfall movement, navigation, mining, eating and combat, and release all keys controlled by Nightfall. Safe emergency stop.",
+                "Immediately stop Nightfall movement, navigation, mining, crafting, eating and combat, and release all keys controlled by Nightfall. Safe emergency stop.",
                 objectSchema()));
         tools.add(tool("get_build_status",
                 "Read the current Nightfall builder status: confirmed block count, phase, pause reason, blueprint and materials. Read-only; no confirmation required.",
@@ -294,11 +298,13 @@ public final class AIActionRegistry {
                 yield new Action(name, args, AIPlayerController.previewMine(x, y, z));
             }
             case "mine_looked_block" -> new Action(name, args, AIPlayerController.previewLookedBlock());
+            case "craft_item" -> new Action(name, args,
+                    AIPlayerController.previewCraftItem(requiredString(args, "item", 64)));
             case "eat_food" -> new Action(name, args, AIPlayerController.previewEat(
                     args.has("item") ? requiredString(args, "item", 64).trim() : null));
             case "attack_nearest_hostile" -> new Action(name, args, AICombatController.preview());
             case "stop_current_action" -> new Action(name, args,
-                    "Nightfall stoppt sofort Navigation, Bewegung, Blockabbau, Essen und Kampf und gibt alle eigenen Tasten frei.");
+                    "Nightfall stoppt sofort Navigation, Bewegung, Blockabbau, Crafting, Essen und Kampf und gibt alle eigenen Tasten frei.");
             case "get_build_status" -> new Action(name, args, AIBuilder.describeStatus());
             case "pause_build" -> new Action(name, args,
                     AIBuilder.isRunning() ? "Nightfall pausiert den Bau nach einer eventuell noch ausstehenden Blockbestätigung."
@@ -389,6 +395,7 @@ public final class AIActionRegistry {
             case "mine_block" -> AIPlayerController.mineBlock(
                     args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt());
             case "mine_looked_block" -> AIPlayerController.mineLookedBlock();
+            case "craft_item" -> AIPlayerController.craftItem(args.get("item").getAsString());
             case "eat_food" -> AIPlayerController.eatFood(args.has("item") ? args.get("item").getAsString() : null);
             case "attack_nearest_hostile" -> AICombatController.start();
             case "stop_current_action" -> {
