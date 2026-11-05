@@ -648,17 +648,17 @@ public final class AIActionRegistry {
         int modules = 0;
         for (Module module : ModuleManager.all()) {
             if (moduleName != null && !module.getName().equalsIgnoreCase(moduleName)) continue;
-            if (++modules > 80) { out.append("\\n(weitere Module ausgelassen)"); break; }
-            out.append("\\n\\n").append(module.getName()).append(" [").append(module.isEnabled() ? "AN" : "AUS").append("]");
+            if (++modules > 80) { out.append("\n(weitere Module ausgelassen)"); break; }
+            out.append("\n\n").append(module.getName()).append(" [").append(module.isEnabled() ? "AN" : "AUS").append("]");
             for (Setting<?> setting : module.getSettings()) {
-                out.append("\\n- ").append(setting.getName()).append(" = ");
+                out.append("\n- ").append(setting.getName()).append(" = ");
                 if (setting instanceof BoolSetting bool) out.append(bool.get());
                 else if (setting instanceof NumberSetting number) out.append(number.display()).append(" (").append(number.min).append(" bis ").append(number.max).append(", Schritt ").append(number.step).append(")");
                 else if (setting instanceof ModeSetting mode) out.append(mode.get()).append(" (Optionen: ").append(String.join(", ", mode.getModes())).append(")");
                 else if (setting instanceof ColorSetting color) out.append(String.format(Locale.ROOT, "#%06X", color.rgb()));
                 else if (setting instanceof StringSetting string) out.append(string.get());
                 else out.append("(nicht direkt durch KI editierbar)");
-                if (out.length() > 12000) return out.append("\\n(gekürzt)").toString();
+                if (out.length() > 12000) return out.append("\n(gekürzt)").toString();
             }
         }
         if (modules == 0) return "Kein passendes Nightfall-Modul gefunden.";
