@@ -79,8 +79,17 @@ public final class AIActionRegistry {
         JsonObject moduleQuery = objectSchema();
         moduleQuery.getAsJsonObject("properties").add("module", property("module", "string", "Optional exact Nightfall module name. Omit to list settings for all modules.").get("schema"));
         tools.add(tool("get_module_settings", "Read the live Nightfall ClickGUI module list and their editable settings, current values, ranges and allowed modes. Read-only; no confirmation required. Do not guess setting names; inspect first.", moduleQuery));
-        tools.add(tool("set_module_setting", "Change one existing Nightfall ClickGUI setting by exact module and setting name. Supports boolean toggles, bounded numbers, allowed mode choices, text settings and colors (#RRGGBB). The client validates the setting type and range, shows a preview and requires player confirmation. Unsupported list settings cannot be edited by AI.",
-                objectSchema(property("module", "string", "Exact Nightfall module name."), property("setting", "string", "Exact setting name as returned by get_module_settings."), property("value", "string", "New value: true/false, number, allowed mode text, string text, or #RRGGBB for colors."), "module", "setting", "value")));
+        JsonObject setSettingSchema = objectSchema();
+        JsonObject setSettingProperties = setSettingSchema.getAsJsonObject("properties");
+        setSettingProperties.add("module", property("module", "string", "Exact Nightfall module name.").get("schema"));
+        setSettingProperties.add("setting", property("setting", "string", "Exact setting name as returned by get_module_settings.").get("schema"));
+        setSettingProperties.add("value", property("value", "string", "New value: true/false, number, allowed mode text, string text, or #RRGGBB for colors.").get("schema"));
+        JsonArray setSettingRequired = new JsonArray();
+        setSettingRequired.add("module");
+        setSettingRequired.add("setting");
+        setSettingRequired.add("value");
+        setSettingSchema.add("required", setSettingRequired);
+        tools.add(tool("set_module_setting", "Change one existing Nightfall ClickGUI setting by exact module and setting name. Supports boolean toggles, bounded numbers, allowed mode choices, text settings and colors (#RRGGBB). The client validates the setting type and range, shows a preview and requires player confirmation. Unsupported list settings cannot be edited by AI.", setSettingSchema));
         tools.add(tool("open_nightfall_menu", "Open Nightfall's own ClickGUI menu on the client. Does not change any setting.", objectSchema()));
         tools.add(tool("get_inventory", "Read the player's inventory and summarize item names and counts. This data is sent to the configured AI provider; the player must confirm first.",
                 objectSchema()));
