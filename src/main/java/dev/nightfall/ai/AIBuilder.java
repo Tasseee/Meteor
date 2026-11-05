@@ -96,7 +96,6 @@ public final class AIBuilder {
     private static boolean absoluteSchematicOrientation;
     private static BlockItem pendingInventoryMaterial;
     private static int pendingInventoryHotbarSlot = -1;
-    private static int pendingInventorySourceSlot = -1;
     private static int pendingInventorySwapTicks;
     private static BlockPos preparedPlayerPos;
     private static Direction preparedFacing;
@@ -332,7 +331,7 @@ public final class AIBuilder {
             maxZ = Math.max(maxZ, clear.z());
         }
 
-        Map<BlockItem, Integer> counts = collectHotbarMaterials(mc, false);
+        Map<BlockItem, Integer> counts = collectInventoryMaterialsmc, false);
         BlockItem selected = preferredMaterial;
         if (selected == null && preferredMaterialId != null && !preferredMaterialId.isBlank())
             selected = resolveMaterial(counts, preferredMaterialId);
@@ -695,6 +694,10 @@ public final class AIBuilder {
             return;
         }
         ClientPlayerEntity player = mc.player;
+        if (player.currentScreenHandler != player.playerScreenHandler) {
+            status = "Warte auf Schließen des Containers";
+            return;
+        }
         if (delay > 0) { delay--; return; }
 
         if (pausedByUser) return;
@@ -957,7 +960,6 @@ public final class AIBuilder {
             if (pendingInventoryMaterial != expectedMaterial) {
                 pendingInventoryMaterial = null;
                 pendingInventoryHotbarSlot = -1;
-                pendingInventorySourceSlot = -1;
                 pendingInventorySwapTicks = 0;
             } else {
                 ItemStack staged = player.getInventory().getStack(pendingInventoryHotbarSlot);
@@ -965,14 +967,12 @@ public final class AIBuilder {
                     int readySlot = pendingInventoryHotbarSlot;
                     pendingInventoryMaterial = null;
                     pendingInventoryHotbarSlot = -1;
-                    pendingInventorySourceSlot = -1;
-                    pendingInventorySwapTicks = 0;
+                        pendingInventorySwapTicks = 0;
                     return readySlot;
                 }
                 if (++pendingInventorySwapTicks < 20) return MATERIAL_SWAP_PENDING;
                 pendingInventoryMaterial = null;
                 pendingInventoryHotbarSlot = -1;
-                pendingInventorySourceSlot = -1;
                 pendingInventorySwapTicks = 0;
                 return -1;
             }
@@ -992,8 +992,10 @@ public final class AIBuilder {
             }
         }
         if (sourceSlot < 0) return -1;
-        if (player.currentScreenHandler != player.playerScreenHandler)
-            throw new IllegalArgumentException("Schließe zuerst das geöffnete Inventar/den Container. Danach kann Nightfall Material ins Baumenü holen.");
+        if (player.currentScreenHandler != player.playerScreenHandler) {
+            status = "Warte auf Schließen des Containers";
+            return MATERIAL_SWAP_PENDING;
+        }
 
         int hotbarSlot = -1;
         for (int slot = 0; slot < 9; slot++) {
@@ -1008,7 +1010,6 @@ public final class AIBuilder {
                 SlotActionType.SWAP, player);
         pendingInventoryMaterial = expectedMaterial;
         pendingInventoryHotbarSlot = hotbarSlot;
-        pendingInventorySourceSlot = sourceSlot;
         pendingInventorySwapTicks = 0;
         notifyPlayer("Material aus dem Inventar geholt: " + expectedMaterial.getName().getString()
                 + " (Inventarslot " + (sourceSlot + 1) + " → Hotbar " + (hotbarSlot + 1) + ").");
