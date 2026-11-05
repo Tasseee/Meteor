@@ -158,10 +158,10 @@ public final class AIActionRegistry {
                 "Navigate to a feet-level block position x/y/z using A* paths through already-loaded chunks in automatic 32-block segments. Replans after each segment as new chunks load. Avoids solid blocks, fluids and common hazards. Stops if stuck or no safe next segment is available. Requires player confirmation.",
                 targetPosition));
         tools.add(tool("mine_block",
-                "Mine one visible block at x/y/z using the currently held tool and normal vanilla block-breaking interactions. Will not break block entities/containers or unbreakable blocks; requires reach and clear line of sight. Waits for a world update. Requires player confirmation.",
+                "Mine one visible block at x/y/z using the most suitable tool from the player's full inventory and normal vanilla block-breaking interactions. Nightfall temporarily swaps it into the hotbar and restores the displaced stack when possible. Will not break block entities/containers or unbreakable blocks; requires reach and clear line of sight. Waits for a world update. Requires player confirmation.",
                 positionSchema()));
         tools.add(tool("mine_looked_block",
-                "Mine the exact block currently under the player's crosshair using the currently held tool and normal vanilla block-breaking interactions. Rejects containers, unbreakable or out-of-reach blocks. Requires player confirmation.",
+                "Mine the exact block currently under the player's crosshair using the most suitable tool from the player's full inventory and normal vanilla block-breaking interactions. Nightfall temporarily swaps it into the hotbar and restores the displaced stack when possible. Rejects containers, unbreakable or out-of-reach blocks. Requires player confirmation.",
                 objectSchema()));
         JsonObject foodSchema = objectSchema();
         JsonObject foodItem = property("item", "string", "Optional exact Minecraft item ID, item path or localized name already in the hotbar.").get("schema").getAsJsonObject();
