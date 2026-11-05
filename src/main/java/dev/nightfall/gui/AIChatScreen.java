@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
 /** Nightfall AI chat screen with explicit confirmation for the first world action. */
 public final class AIChatScreen extends Screen {
     private static AIChatScreen active;
+    private static final int MAX_ACTION_ROUND_TRIPS = 10;
     private static final Pattern LOCATE_COORDINATES =
             Pattern.compile("(?s).*\\[\\s*-?\\d+\\s*,\\s*[^,]+\\s*,\\s*-?\\d+\\s*\\].*");
 
@@ -402,7 +403,7 @@ public final class AIChatScreen extends Screen {
 
     private void requestAI() {
         if (waiting || apiHistory.isEmpty()) return;
-        if (actionRoundTrips > 4) {
+        if (actionRoundTrips > MAX_ACTION_ROUND_TRIPS) {
             history.add(new ChatLine("assistant",
                     "Ich habe mehrere Aktionen nacheinander ausgeführt. Bitte gib mir den nächsten Auftrag separat."));
             status = "Bitte nächste Aufgabe eingeben";
@@ -491,7 +492,13 @@ public final class AIChatScreen extends Screen {
         try {
             result = AIActionRegistry.execute(action);
         } catch (RuntimeException | Error failure) {
-            result = "Aktion ist fehlgeschlagen: " + failure.getClass().getSimpleName();
+            String detail = failure.getMessage();
+            if (detail != null) {
+                detail = detail.trim();
+                if (detail.length() > 320) detail = detail.substring(0, 320) + "…";
+            }
+            result = "Aktion ist fehlgeschlagen: " + failure.getClass().getSimpleName()
+                    + (detail == null || detail.isEmpty() ? "." : " – " + detail);
         }
         if ("locate_biome".equals(action.name())) {
             if (result.contains("wurde gesendet")) {
