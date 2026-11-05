@@ -240,6 +240,10 @@ statt eine falsch ausgerichtete Farm als fertig zu melden. Materialien können a
 **Wichtige verbleibende Grenzen:** Block-Entity-Blöcke wie Hopper und Truhen können mit frischen
 Standarddaten platziert werden. Inventarinhalte und benutzerdefiniertes Block-Entity-NBT werden
 aber nicht aus der Vorlage übernommen. Entities, Flüssigkeitsquellen, fallende Blöcke und komplexe,
+dynamische Redstone-/Nachbarschaftszustände werden noch nicht vollständig rekonstruiert. Insbesondere kann eine Schematic, deren Block-States von Nachbarblöcken
+oder Redstone-Signalen abhängen, trotz korrekter Grundausrichtung noch Abweichungen enthalten.
+Der Aushub selbst macht eine Farm nicht funktionsfähig, wenn ihre Mechanik nicht unterstützt wird.
+
 **Wiederaufnahme nach Neustart oder Verbindungsabbruch:** Der Builder speichert einen lokalen Checkpoint unter
 `config/nightfall/builder_resume.json`. Darin stehen Server- und Dimensionskennung, Baupositionen,
 Materialien, vollständige BlockStates sowie die bestätigten Bau- und Aushubstände. Die Datei wird,
@@ -249,9 +253,5 @@ beendet, gleicht Nightfall den gespeicherten Stand mit der tatsächlichen Welt a
 gesetzte beziehungsweise entfernte Blöcke, bevor er weiterarbeitet. Server und Dimension müssen
 übereinstimmen; `resume_saved_build` verlangt weiterhin eine ausdrückliche Spielerbestätigung.
 Manuelles Stoppen/Abbrechen und ein normal abgeschlossener Bau löschen den Checkpoint.
-
-dynamische Redstone-/Nachbarschaftszustände werden noch nicht vollständig rekonstruiert. Insbesondere kann eine Schematic, deren Block-States von Nachbarblöcken
-oder Redstone-Signalen abhängen, trotz korrekter Grundausrichtung noch Abweichungen enthalten.
-Der Aushub selbst macht eine Farm nicht funktionsfähig, wenn ihre Mechanik nicht unterstützt wird.
 Prüfe die Vorschau und teste Community-Schematics in einer Weltkopie. Keine heruntergeladene
 Creator-Datei wird durch Nightfall mitgeliefert.
