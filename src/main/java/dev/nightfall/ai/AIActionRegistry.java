@@ -150,7 +150,7 @@ public final class AIActionRegistry {
         JsonObject blocksSchema = new JsonObject();
         blocksSchema.addProperty("type", "array");
         blocksSchema.addProperty("minItems", 1);
-        blocksSchema.addProperty("maxItems", 200);
+        blocksSchema.addProperty("maxItems", 512);
         blocksSchema.add("items", coordinateSchema);
         customProps.add("blocks", blocksSchema);
         JsonArray customRequired = new JsonArray();
@@ -158,7 +158,7 @@ public final class AIActionRegistry {
         customRequired.add("blocks");
         customBlueprintSchema.add("required", customRequired);
         tools.add(tool("build_custom_structure",
-                "Create a custom connected blueprint with at most 200 blocks in a 16x16x11 grid. Coordinates are nonnegative x/y/z offsets; blocks must be connected face-to-face to solid ground or existing solid blocks. You may set an optional material item ID/name per block to create a palette; otherwise use the top-level material or Nightfall's selected full-cube block from the player inventory. Nightfall validates per-material counts and previews the plan before confirmation.",
+                "Create a custom connected blueprint with at most 512 blocks in a 32x32x32 grid. Coordinates are nonnegative x/y/z offsets from 0 to 31; blocks must be connected face-to-face to solid ground or existing solid blocks. You may set an optional material item ID/name per block to create a palette; otherwise use the top-level material or Nightfall's selected full-cube block from the player inventory. Nightfall validates per-material counts and previews the plan before confirmation.",
                 customBlueprintSchema));
         JsonObject blueprintSearchSchema = objectSchema(property("query", "string",
                 "Search the local curated Minecraft blueprint and farm knowledge database, e.g. dripstone farm, iron farm, storage."), "query");
@@ -765,8 +765,8 @@ public final class AIActionRegistry {
     }
 
     private static List<AIBuilder.RelativeBlock> readCustomBlocks(JsonArray blocks) {
-        if (blocks == null || blocks.isEmpty() || blocks.size() > 200)
-            throw new IllegalArgumentException("Ein eigener Bauplan muss 1 bis 200 Blöcke enthalten.");
+        if (blocks == null || blocks.isEmpty() || blocks.size() > 512)
+            throw new IllegalArgumentException("Ein eigener Bauplan muss 1 bis 512 Blöcke enthalten.");
         List<AIBuilder.RelativeBlock> result = new ArrayList<>(blocks.size());
         for (JsonElement element : blocks) {
             if (!element.isJsonObject()) throw new IllegalArgumentException("Ein Block im Bauplan ist kein Objekt.");
@@ -829,7 +829,7 @@ public final class AIActionRegistry {
         } catch (NumberFormatException invalid) {
             throw new IllegalArgumentException("Die Koordinate " + key + " muss eine gültige Zahl sein.");
         }
-        int maximum = "y".equals(key) ? 10 : 15;
+        int maximum = 31;
         if (!Double.isFinite(value) || value != Math.rint(value) || value < 0 || value > maximum)
             throw new IllegalArgumentException("Die Koordinate " + key + " muss eine ganze Zahl zwischen 0 und " + maximum + " sein.");
         return (int) value;
