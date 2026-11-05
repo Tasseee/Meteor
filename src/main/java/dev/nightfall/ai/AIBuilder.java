@@ -237,7 +237,7 @@ public final class AIBuilder {
         blueprintName = selectedBlueprint.label;
         CUSTOM_OFFSETS.clear();
         preparedPlayerPos = player.getBlockPos().toImmutable();
-        preparedFacing = forward;
+        preparedFacing = playerForward;
         materialName = selected.getName().getString();
         dimension = mc.world.getRegistryKey().getValue();
         index = 0;
@@ -326,7 +326,7 @@ public final class AIBuilder {
             maxZ = Math.max(maxZ, clear.z());
         }
 
-        Map<BlockItem, Integer> counts = collectHotbarMaterials(mc);
+        Map<BlockItem, Integer> counts = collectHotbarMaterials(mc, false);
         BlockItem selected = preferredMaterial;
         if (selected == null && preferredMaterialId != null && !preferredMaterialId.isBlank())
             selected = resolveMaterial(counts, preferredMaterialId);
@@ -381,8 +381,11 @@ public final class AIBuilder {
                 throw new IllegalArgumentException("Schematic-Ziel liegt in einem nicht geladenen Chunk bei " + target.toShortString() + ".");
             BlockState present = mc.world.getBlockState(target);
             BlockState desired = offsetStates.get(offset);
+            if (!present.equals(desired) && !present.getFluidState().isEmpty())
+                throw new IllegalArgumentException("Im Schematic-Ziel " + target.toShortString()
+                        + " liegt Wasser oder Lava. Flüssigkeiten werden derzeit nicht automatisch entfernt.");
             if (!present.equals(desired) && !present.isReplaceable()) {
-                if (present.hasBlockEntity() || !present.getFluidState().isEmpty() || present.getHardness(mc.world, target) < 0.0f)
+                if (present.hasBlockEntity() || present.getHardness(mc.world, target) < 0.0f)
                     throw new IllegalArgumentException("Nightfall darf das Hindernis bei " + target.toShortString()
                             + " nicht automatisch entfernen (Block-Entity, Flüssigkeit oder unzerstörbarer Block).");
                 excavationSet.add(target.toImmutable());
@@ -561,6 +564,10 @@ public final class AIBuilder {
     }
 
     private static Map<BlockItem, Integer> collectHotbarMaterials(MinecraftClient mc) {
+        return collectHotbarMaterials(mc, true);
+    }
+
+    private static Map<BlockItem, Integer> collectHotbarMaterials(MinecraftClient mc, boolean requireFullCube) {
         Map<BlockItem, Integer> counts = new LinkedHashMap<>();
         BlockPos sample = mc.player.getBlockPos();
         for (int slot = 0; slot < 9; slot++) {
@@ -568,7 +575,7 @@ public final class AIBuilder {
             if (!(stack.getItem() instanceof BlockItem item)) continue;
             BlockState state = item.getBlock().getDefaultState();
             if (item.getBlock() instanceof FallingBlock || state.getCollisionShape(mc.world, sample).isEmpty()
-                    || !state.isFullCube(mc.world, sample)) continue;
+                    || (requireFullCube && !state.isFullCube(mc.world, sample))) continue;
             counts.merge(item, stack.getCount(), Integer::sum);
         }
         return counts;
@@ -592,7 +599,7 @@ public final class AIBuilder {
         }
         if (partialMatch != null) return partialMatch;
         throw new IllegalArgumentException("Das gewünschte Baumaterial " + requestedId
-                + " befindet sich nicht als voller Block in deiner Hotbar.");
+                + " befindet sich nicht als platzierbarer Block in deiner Hotbar.");
     }
 
     private static BlockItem mostAvailable(Map<BlockItem, Integer> counts) {
