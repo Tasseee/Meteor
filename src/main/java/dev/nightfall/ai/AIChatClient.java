@@ -122,7 +122,8 @@ public final class AIChatClient {
             Die Vorlagen verlangen weiterhin einen ebenen, durchgehend festen Untergrund. Entfernbare
             Hindernisse innerhalb der geplanten Bau-Blöcke können nach der Vorschau sicher ausgehoben
             werden; Block-Entities, Flüssigkeiten, fallende und unzerstörbare Blöcke werden abgelehnt.
-            Nenne dem Spieler die Aushubmenge aus der Vorschau und starte erst nach seiner Bestätigung.
+            Nenne dem Spieler die Aushubmenge und die in der Vorschau aufgeführten Blockarten
+            und starte erst nach seiner Bestätigung.
             Wenn der Spieler Material nennt, übergib seine Minecraft-Item-ID oder den Blocknamen als
             optionales Feld material. Verwende nur Material, das Nightfall im gesamten Spielerinventar bestätigt.
 
