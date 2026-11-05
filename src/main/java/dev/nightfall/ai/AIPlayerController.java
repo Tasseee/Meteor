@@ -54,7 +54,7 @@ import java.util.Set;
  * the server remains authoritative for every result.
  */
 public final class AIPlayerController {
-    private enum Mode { NONE, WALK, NAVIGATE, MINE, EAT, CRAFT, GATHER, GATHER_MINE, GATHER_TUNNEL, GATHER_TUNNEL_MINE, SMELT }
+    private enum Mode { NONE, WALK, NAVIGATE, SEARCH_STRUCTURES, MINE, EAT, CRAFT, GATHER, GATHER_MINE, GATHER_TUNNEL, GATHER_TUNNEL_MINE, SMELT }
 
     private static final int MAX_PATH_RADIUS = 48;
     private static final int NAVIGATION_SEGMENT_LENGTH = 32;
@@ -125,6 +125,13 @@ public final class AIPlayerController {
     private static double lastWaypointDistance = Double.MAX_VALUE;
     private static List<BlockPos> path = List.of();
     private static BlockPos navigationGoal;
+    private static String structureSearchFilter = "any";
+    private static int structureSearchDirection;
+    private static int structureSearchLegLength;
+    private static int structureSearchLegProgress;
+    private static int structureSearchLegsAtLength;
+    private static int structureSearchScanCooldown;
+    private static int structureSearchScannedBlocks;
     private static BlockPos miningPos;
     private static BlockState miningState;
     private static Direction miningSide = Direction.UP;
@@ -185,6 +192,113 @@ public final class AIPlayerController {
         forwardTicks = ticks;
         notifyPlayer(mc, "Laufe geradeaus · " + ticks + " Ticks. „Stopp“ bricht ab.");
         return "Vorwärtsbewegung gestartet (" + ticks + " Ticks).";
+    }
+
+    public static String previewStructureSearch(String structure) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        String filter = structure == null ? "any" : structure.trim().toLowerCase(java.util.Locale.ROOT);
+        if (!Set.of("any", "ancient_city", "trial_chambers", "fortress", "bastion", "stronghold").contains(filter))
+            throw new IllegalArgumentException("Unterstützt werden any, ancient_city, trial_chambers, fortress, bastion und stronghold.");
+        return "Nightfall erkundet nach deiner Bestätigung selbstständig die Umgebung zu Fuß und prüft geladene Blöcke auf typische Struktur-Baustoffmuster. "
+                + "Suche: " + filter + ". Keine Serverbefehle, kein Teleport. Maximal fünf Minuten pro Suchlauf; bei Gefahr, Hindernissen oder Stopp wird abgebrochen. "
+                + "Treffer sind Hinweise anhand von Blockmustern, keine garantierte Struktur-Bestätigung.";
+    }
+
+    public static String startStructureSearch(String structure) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        String filter = structure == null ? "any" : structure.trim().toLowerCase(java.util.Locale.ROOT);
+        previewStructureSearch(filter);
+        stop(null);
+        structureSearchFilter = filter;
+        structureSearchDirection = 0;
+        structureSearchLegLength = 16;
+        structureSearchLegProgress = 0;
+        structureSearchLegsAtLength = 0;
+        structureSearchScanCooldown = 0;
+        structureSearchScannedBlocks = 0;
+        actionTicks = 0;
+        mode = Mode.SEARCH_STRUCTURES;
+        if (!startNextStructureSearchLeg(mc)) {
+            stop("Struktursuche gestoppt: Kein sicherer erster Wegabschnitt in der geladenen Umgebung.");
+            return "Kein sicherer erster Erkundungsweg gefunden.";
+        }
+        notifyPlayer(mc, "Struktursuche gestartet · " + filter + " · du kannst jederzeit „Stopp“ sagen.");
+        return "Selbstständige Strukturerkundung gestartet. Nightfall läuft in einer wachsenden Quadratspirale und meldet verdächtige Blockmuster.";
+    }
+
+    private static boolean startNextStructureSearchLeg(MinecraftClient mc) {
+        int[][] directions = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
+        int[] direction = directions[structureSearchDirection & 3];
+        BlockPos target = BlockPos.ofFloored(mc.player.getX(), mc.player.getY(), mc.player.getZ())
+                .add(direction[0] * structureSearchLegLength, 0, direction[1] * structureSearchLegLength);
+        List<BlockPos> planned;
+        try {
+            planned = planNavigationSegment(mc, target);
+        } catch (RuntimeException invalid) {
+            return false;
+        }
+        if (planned.isEmpty()) return false;
+        path = List.copyOf(planned);
+        pathIndex = 0;
+        navigationGoal = target.toImmutable();
+        stuckTicks = 0;
+        lastWaypointDistance = Double.MAX_VALUE;
+        structureSearchLegProgress = 0;
+        structureSearchDirection = (structureSearchDirection + 1) & 3;
+        if (++structureSearchLegsAtLength >= 2) {
+            structureSearchLegsAtLength = 0;
+            structureSearchLegLength = Math.min(48, structureSearchLegLength + 16);
+        }
+        return true;
+    }
+
+    private static void scanForStructureHints(MinecraftClient mc) {
+        if (structureSearchScanCooldown-- > 0) return;
+        structureSearchScanCooldown = 20;
+        BlockPos center = mc.player.getBlockPos();
+        int minX = center.getX() - 12, maxX = center.getX() + 12;
+        int minZ = center.getZ() - 12, maxZ = center.getZ() + 12;
+        int minY = Math.max(mc.world.getBottomY(), center.getY() - 24);
+        int maxY = Math.min(mc.world.getBottomY() + mc.world.getHeight() - 1, center.getY() + 16);
+        Map<String, Integer> counts = new HashMap<>();
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                for (int y = minY; y <= maxY; y++) {
+                    BlockPos pos = new BlockPos(x, y, z);
+                    if (!mc.world.isChunkLoaded(pos)) continue;
+                    String id = Registries.BLOCK.getId(mc.world.getBlockState(pos).getBlock()).toString();
+                    if (id.equals("minecraft:sculk") || id.equals("minecraft:sculk_catalyst")
+                            || id.equals("minecraft:sculk_sensor") || id.equals("minecraft:sculk_shrieker")
+                            || id.equals("minecraft:sculk_vein")) counts.merge("ancient_city", 1, Integer::sum);
+                    if (id.contains("tuff") || id.contains("copper")) counts.merge("trial_chambers", 1, Integer::sum);
+                    if (id.equals("minecraft:nether_bricks") || id.equals("minecraft:nether_brick_fence")
+                            || id.equals("minecraft:nether_brick_stairs") || id.equals("minecraft:nether_brick_wall"))
+                        counts.merge("fortress", 1, Integer::sum);
+                    if (id.contains("blackstone") || id.equals("minecraft:gilded_blackstone"))
+                        counts.merge("bastion", 1, Integer::sum);
+                    if (id.equals("minecraft:stone_bricks") || id.equals("minecraft:mossy_stone_bricks")
+                            || id.equals("minecraft:cracked_stone_bricks") || id.equals("minecraft:chiseled_stone_bricks")
+                            || id.equals("minecraft:iron_bars")) counts.merge("stronghold", 1, Integer::sum);
+                    structureSearchScannedBlocks++;
+                }
+            }
+        }
+        String[] types = {"ancient_city", "trial_chambers", "fortress", "bastion", "stronghold"};
+        int[] thresholds = {10, 36, 12, 24, 28};
+        for (int i = 0; i < types.length; i++) {
+            String type = types[i];
+            if (!"any".equals(structureSearchFilter) && !structureSearchFilter.equals(type)) continue;
+            if (counts.getOrDefault(type, 0) >= thresholds[i]) {
+                BlockPos found = center.toImmutable();
+                stop(null);
+                notifyPlayer(mc, "Möglicher Strukturhinweis: " + type + " nahe X=" + found.getX()
+                        + ", Y=" + found.getY() + ", Z=" + found.getZ()
+                        + " (Blockmuster erkannt). Bitte vor Ort prüfen; keine sichere Bestätigung.");
+                return;
+            }
+        }
     }
 
     /** Previews a coordinate request without starting movement. Y is the player's feet block. */
@@ -1339,7 +1453,7 @@ public final class AIPlayerController {
 
         switch (mode) {
             case WALK -> tickWalk(mc);
-            case NAVIGATE -> tickNavigation(mc);
+            case NAVIGATE -> tickNavigation(mc);\n            case SEARCH_STRUCTURES -> tickStructureSearch(mc);
             case MINE -> tickMining(mc);
             case EAT -> tickEating(mc);
             case CRAFT -> tickCrafting(mc);
@@ -1361,13 +1475,30 @@ public final class AIPlayerController {
         if (--forwardTicks <= 0) stop("Bewegung abgeschlossen.");
     }
 
+    private static void tickStructureSearch(MinecraftClient mc) {
+        if (++actionTicks > 20 * 60 * 5 || mc.player.isSubmergedInWater() || mc.player.hasVehicle()
+                || mc.player.isOnFire() || mc.player.isInLava()) {
+            stop("Struktursuche aus Sicherheitsgründen beendet (Zeitlimit oder Gefahr erkannt).");
+            return;
+        }
+        scanForStructureHints(mc);
+        if (mode != Mode.SEARCH_STRUCTURES) return;
+        if (pathIndex >= path.size()) {
+            if (!startNextStructureSearchLeg(mc)) {
+                stop("Struktursuche gestoppt: Kein sicherer nächster Wegabschnitt verfügbar.");
+                return;
+            }
+        }
+        tickNavigation(mc);
+    }
+
     private static void tickNavigation(MinecraftClient mc) {
         if (++actionTicks > MAX_NAVIGATION_TICKS || mc.player.isSubmergedInWater() || mc.player.hasVehicle()) {
             stop("Navigation gestoppt: Zeitlimit, Wasser oder Fahrzeug erkannt.");
             return;
         }
         if (pathIndex >= path.size()) {
-            if (navigationGoal == null || isAtGoal(mc, navigationGoal)) {
+            if (navigationGoal == null || isAtGoal(mc, navigationGoal)) {\n                if (mode == Mode.SEARCH_STRUCTURES) {\n                    if (!startNextStructureSearchLeg(mc)) stop("Struktursuche gestoppt: Kein sicherer nächster Wegabschnitt verfügbar.");\n                    return;\n                }
                 if (gatherMaterial != null) {
                     resumeGatheringAfterNavigation(mc);
                     return;
@@ -1806,7 +1937,7 @@ public final class AIPlayerController {
         return switch (mode) {
             case NONE -> "Keine KI-Aktion aktiv";
             case WALK -> "Geradeausbewegung";
-            case NAVIGATE -> "Navigation · " + Math.min(pathIndex + 1, path.size()) + "/" + path.size();
+            case NAVIGATE -> "Navigation · " + Math.min(pathIndex + 1, path.size()) + "/" + path.size();\n            case SEARCH_STRUCTURES -> "Struktursuche · " + Math.min(pathIndex + 1, path.size()) + "/" + path.size();
             case MINE -> "Blockabbau · " + (miningPos == null ? "" : miningPos.toShortString());
             case EAT -> "Nahrungsaufnahme · " + foodName;
             case CRAFT -> "Crafting · " + craftingName;
