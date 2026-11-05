@@ -159,6 +159,9 @@ public final class AIPlayerController {
     private static int smeltTicks;
     private static int smeltOpenTicks;
     private static boolean smeltItemsLoaded;
+    private static boolean smeltOutputPending;
+    private static int smeltOutputCountBeforeClick;
+    private static int smeltOutputWaitTicks;
 
     private AIPlayerController() {}
 
@@ -758,6 +761,9 @@ public final class AIPlayerController {
         smeltTicks = 0;
         smeltOpenTicks = 0;
         smeltItemsLoaded = false;
+        smeltOutputPending = false;
+        smeltOutputCountBeforeClick = 0;
+        smeltOutputWaitTicks = 0;
 
         try {
             mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);
@@ -850,6 +856,19 @@ public final class AIPlayerController {
             return;
         }
 
+        if (smeltOutputPending) {
+            int currentOutputCount = countInventoryItem(mc, smeltOutput);
+            if (currentOutputCount > smeltOutputCountBeforeClick) {
+                smeltOutputPending = false;
+                smeltOutputWaitTicks = 0;
+                return;
+            }
+            if (++smeltOutputWaitTicks > 40) {
+                stop("Schmelzen gestoppt: Das Ofenergebnis wurde nicht im Inventar bestätigt. Prüfe den Ofenausgabeslot manuell.");
+            }
+            return;
+        }
+
         ItemStack outputStack = handler.getOutputSlot().getStack();
         if (!outputStack.isEmpty()) {
             if (!outputStack.isOf(smeltOutput)) {
@@ -860,6 +879,9 @@ public final class AIPlayerController {
                 stop("Schmelzen pausiert: Dein Inventar hat keinen Platz für das Ofenergebnis. Räume Platz frei und entnimm es manuell.");
                 return;
             }
+            smeltOutputCountBeforeClick = countInventoryItem(mc, smeltOutput);
+            smeltOutputWaitTicks = 0;
+            smeltOutputPending = true;
             mc.interactionManager.clickSlot(handler.syncId, handler.getOutputSlot().id,
                     0, SlotActionType.QUICK_MOVE, mc.player);
             return;
@@ -920,6 +942,9 @@ public final class AIPlayerController {
         smeltTicks = 0;
         smeltOpenTicks = 0;
         smeltItemsLoaded = false;
+        smeltOutputPending = false;
+        smeltOutputCountBeforeClick = 0;
+        smeltOutputWaitTicks = 0;
     }
 
     public static String previewEat(String preferredItem) {
