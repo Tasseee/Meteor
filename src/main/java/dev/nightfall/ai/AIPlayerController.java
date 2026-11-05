@@ -256,12 +256,12 @@ public final class AIPlayerController {
 
     private static void scanForStructureHints(MinecraftClient mc) {
         if (structureSearchScanCooldown-- > 0) return;
-        structureSearchScanCooldown = 20;
+        structureSearchScanCooldown = 40;
         BlockPos center = mc.player.getBlockPos();
-        int minX = center.getX() - 12, maxX = center.getX() + 12;
-        int minZ = center.getZ() - 12, maxZ = center.getZ() + 12;
-        int minY = Math.max(mc.world.getBottomY(), center.getY() - 24);
-        int maxY = Math.min(mc.world.getBottomY() + mc.world.getHeight() - 1, center.getY() + 16);
+        int minX = center.getX() - 8, maxX = center.getX() + 8;
+        int minZ = center.getZ() - 8, maxZ = center.getZ() + 8;
+        int minY = mc.world.getBottomY();
+        int maxY = mc.world.getBottomY() + mc.world.getHeight() - 1;
         Map<String, Integer> counts = new HashMap<>();
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
