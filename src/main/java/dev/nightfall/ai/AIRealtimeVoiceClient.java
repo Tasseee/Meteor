@@ -58,7 +58,7 @@ public final class AIRealtimeVoiceClient {
     private static volatile Thread playbackThread;
     private static volatile long generation;
     private static final AtomicBoolean CAPTURE_STARTED = new AtomicBoolean();
-    private static final LinkedBlockingQueue<byte[]> PLAYBACK_QUEUE = new LinkedBlockingQueue<>();
+    private static volatile LinkedBlockingQueue<byte[]> playbackQueue = new LinkedBlockingQueue<>();
     private static CompletableFuture<WebSocket> sendChain = CompletableFuture.completedFuture(null);
     private static final StringBuilder incomingText = new StringBuilder();
 
@@ -87,7 +87,7 @@ public final class AIRealtimeVoiceClient {
         speaking = false;
         speechEnabled = settings.voiceOutputEnabled();
         CAPTURE_STARTED.set(false);
-        PLAYBACK_QUEUE.clear();
+        playbackQueue = new LinkedBlockingQueue<>();
         incomingText.setLength(0);
         long callGeneration = ++generation;
         notifyStatus(callbacks, "Verbinde Nightfall-Sprachanruf …");
@@ -123,8 +123,8 @@ public final class AIRealtimeVoiceClient {
             try { mic.stop(); } catch (RuntimeException ignored) {}
             try { mic.close(); } catch (RuntimeException ignored) {}
         }
-        PLAYBACK_QUEUE.clear();
-        PLAYBACK_QUEUE.offer(PLAYBACK_END);
+        playbackQueue.clear();
+        playbackQueue.offer(PLAYBACK_END);
         SourceDataLine speaker = speakerLine;
         speakerLine = null;
         if (speaker != null) {
@@ -146,8 +146,8 @@ public final class AIRealtimeVoiceClient {
     public static void setSpeechEnabled(boolean enabled) {
         speechEnabled = enabled;
         if (!enabled) {
-            PLAYBACK_QUEUE.clear();
-            if (speaking) PLAYBACK_QUEUE.offer(PLAYBACK_END);
+            playbackQueue.clear();
+            if (speaking) playbackQueue.offer(PLAYBACK_END);
         }
     }
 
@@ -196,6 +196,9 @@ public final class AIRealtimeVoiceClient {
         response.addProperty("instructions",
                 "Sprich die folgende Nachricht auf Deutsch, freundlich und klar. Füge keine zusätzlichen Aussagen hinzu: "
                         + prompt);
+        response.add("input", new JsonArray());
+        response.add("tools", new JsonArray());
+        response.addProperty("tool_choice", "none");
         event.add("response", response);
         sendJson(event);
     }
@@ -314,7 +317,8 @@ public final class AIRealtimeVoiceClient {
         captureThread = capture;
         capture.start();
 
-        Thread playback = new Thread(() -> playAudio(callGeneration), "Nightfall-Realtime-Speaker");
+        LinkedBlockingQueue<byte[]> callQueue = playbackQueue;
+        Thread playback = new Thread(() -> playAudio(callGeneration, callQueue), "Nightfall-Realtime-Speaker");
         playback.setDaemon(true);
         playbackThread = playback;
         playback.start();
@@ -326,6 +330,7 @@ public final class AIRealtimeVoiceClient {
             DataLine.Info info = new DataLine.Info(TargetDataLine.class, FORMAT);
             line = (TargetDataLine) AudioSystem.getLine(info);
             line.open(FORMAT, 16_384);
+            if (!active || callGeneration != generation) return;
             microphoneLine = line;
             line.start();
             byte[] buffer = new byte[AUDIO_CHUNK_BYTES];
@@ -344,7 +349,7 @@ public final class AIRealtimeVoiceClient {
                         + ". Prüfe das Standard-Eingabegerät und die Mikrofonberechtigung.");
         } finally {
             microphoneSending = false;
-            microphoneLine = null;
+            if (callGeneration == generation && microphoneLine == line) microphoneLine = null;
             if (line != null) {
                 try { line.stop(); } catch (RuntimeException ignored) {}
                 try { line.close(); } catch (RuntimeException ignored) {}
@@ -352,16 +357,17 @@ public final class AIRealtimeVoiceClient {
         }
     }
 
-    private static void playAudio(long callGeneration) {
+    private static void playAudio(long callGeneration, LinkedBlockingQueue<byte[]> callQueue) {
         SourceDataLine line = null;
         try {
             DataLine.Info info = new DataLine.Info(SourceDataLine.class, FORMAT);
             line = (SourceDataLine) AudioSystem.getLine(info);
             line.open(FORMAT, 16_384);
+            if (!active || callGeneration != generation) return;
             speakerLine = line;
             line.start();
             while (active && callGeneration == generation) {
-                byte[] chunk = PLAYBACK_QUEUE.take();
+                byte[] chunk = callQueue.take();
                 if (chunk == PLAYBACK_END) {
                     line.drain();
                     speaking = false;
@@ -383,7 +389,7 @@ public final class AIRealtimeVoiceClient {
                 status("Sprachausgabe ist auf diesem Gerät nicht verfügbar: " + failure.getClass().getSimpleName());
             }
         } finally {
-            speakerLine = null;
+            if (callGeneration == generation && speakerLine == line) speakerLine = null;
             if (line != null) {
                 try { line.stop(); } catch (RuntimeException ignored) {}
                 try { line.close(); } catch (RuntimeException ignored) {}
@@ -411,11 +417,11 @@ public final class AIRealtimeVoiceClient {
                     if (speechEnabled && event.has("delta")) {
                         microphoneSending = false;
                         speaking = true;
-                        PLAYBACK_QUEUE.offer(Base64.getDecoder().decode(event.get("delta").getAsString()));
+                        playbackQueue.offer(Base64.getDecoder().decode(event.get("delta").getAsString()));
                     }
                 }
                 case "response.output_audio.done" -> {
-                    if (speechEnabled) PLAYBACK_QUEUE.offer(PLAYBACK_END);
+                    if (speechEnabled) playbackQueue.offer(PLAYBACK_END);
                     else {
                         speaking = false;
                         microphoneSending = ready;
