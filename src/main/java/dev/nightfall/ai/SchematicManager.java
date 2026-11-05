@@ -35,10 +35,10 @@ import java.util.regex.Pattern;
  * - Sponge Schematic v2 (.schem)
  * - Litematica v5-v7 (.litematic), positive-sized regions only
  *
- * NBT is parsed with strict byte/file/volume limits. Non-falling BlockItems without
- * fluids or block entities keep their complete BlockState. The builder tests vanilla placement
- * contexts for a matching state and refuses placements it cannot reproduce. Block-entity NBT,
- * entities and fluid blocks are not recreated.
+ * NBT is parsed with strict byte/file/volume limits. Non-falling BlockItems without fluids
+ * keep their complete BlockState; block-entity blocks can be placed with fresh default data.
+ * The builder tests vanilla placement contexts for a matching state and refuses placements it
+ * cannot reproduce. Block-entity NBT/inventories, entities and fluid blocks are not recreated.
  */
 public final class SchematicManager {
     private static final Path DIRECTORY = net.fabricmc.loader.api.FabricLoader.getInstance()
