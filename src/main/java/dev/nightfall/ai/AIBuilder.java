@@ -716,7 +716,7 @@ public final class AIBuilder {
             BlockPos mined = pendingExcavationTarget;
             pendingExcavationTarget = null;
             BlockState after = mined == null ? null : mc.world.getBlockState(mined);
-            if (after != null && (after.isAir() || (after.isReplaceable() && after.getFluidState().isEmpty()))) {
+            if (after != null && after.isAir()) {
                 excavationIndex++;
                 excavationRetries = 0;
                 excavationApproachAttempts = 0;
@@ -740,7 +740,7 @@ public final class AIBuilder {
         if (excavationIndex >= EXCAVATION_PLAN.size()) return;
         BlockPos target = EXCAVATION_PLAN.get(excavationIndex);
         BlockState state = mc.world.getBlockState(target);
-        if (state.isAir() || (state.isReplaceable() && state.getFluidState().isEmpty())) {
+        if (state.isAir()) {
             excavationIndex++;
             excavationRetries = 0;
             excavationApproachAttempts = 0;
