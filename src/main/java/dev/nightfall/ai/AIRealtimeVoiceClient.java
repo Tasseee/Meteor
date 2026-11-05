@@ -488,9 +488,7 @@ public final class AIRealtimeVoiceClient {
 
     private static void notifyStatus(Listener callbacks, String message) {
         if (callbacks == null) return;
-        MinecraftClient.getInstance().execute(() -> {
-            if (active || callbacks == listener) callbacks.onStatus(message);
-        });
+        MinecraftClient.getInstance().execute(() -> callbacks.onStatus(message));
     }
 
     private static void failCall(String message) {
