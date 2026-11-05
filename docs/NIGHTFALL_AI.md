@@ -2,6 +2,17 @@
 
 Nightfall AI is an in-game Minecraft companion with an extensible, allow-listed tool system. The AI model may choose from the tools exposed by the client, but **the client validates every argument and controls every execution**.
 
+## Struktur finden
+
+Nightfall bietet die bestätigungspflichtige Aktion `locate_structure`. Sie sendet eine Struktur-ID wie
+`minecraft:village`, `minecraft:fortress`, `minecraft:bastion_remnant`, `minecraft:ancient_city`,
+`minecraft:stronghold` oder `minecraft:trial_chambers` an den nativen Serverbefehl
+`/locate structure`. Der Server muss den Befehl unterstützen und erlauben; Koordinaten werden in dessen
+Chatantwort angezeigt. Die Aktion teleportiert den Spieler nicht und läuft in dieser Version noch nicht
+automatisch zur Struktur. Für die Navigation kann anschließend `navigate_to` mit den bestätigten
+Koordinaten verwendet werden. Eine Serverantwort muss abgewartet werden; das Senden eines Befehls ist
+kein Beweis, dass eine Struktur gefunden wurde.
+
 ## Setup
 
 1. Start Nightfall once. It creates `config/nightfall/ai.json`.
