@@ -1094,7 +1094,7 @@ public final class AIBuilder {
         try {
             JsonObject root = new JsonObject();
             savedServerKey = currentServerKey(mc);
-            root.addProperty("version", 1);
+            root.addProperty("version", 2);
             root.addProperty("server", savedServerKey);
             root.addProperty("dimension", mc.world.getRegistryKey().getValue().toString());
             root.addProperty("name", blueprintName);
@@ -1150,7 +1150,7 @@ public final class AIBuilder {
         if (!Files.exists(file)) return;
         try {
             JsonObject root = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
-            if (!root.has("version") || root.get("version").getAsInt() != 1
+            if (!root.has("version") || root.get("version").getAsInt() != 2
                     || !root.has("blocks") || !root.get("blocks").isJsonArray()
                     || root.getAsJsonArray("blocks").isEmpty() || root.getAsJsonArray("blocks").size() > 5_000
                     || !root.has("excavation") || !root.get("excavation").isJsonArray()
