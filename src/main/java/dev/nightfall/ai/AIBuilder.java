@@ -1138,7 +1138,6 @@ public final class AIBuilder {
             String storedServer = root.get("server").getAsString();
             if (!storedServer.equals(currentServerKey(mc))) {
                 status = "Ein gespeicherter Bau für einen anderen Server/eine andere Welt wurde gefunden. Verbinde dich mit der ursprünglichen Welt, um ihn fortzusetzen.";
-                checkpointLoadAttempted = false;
                 return;
             }
             Identifier storedDimension = Identifier.tryParse(root.get("dimension").getAsString());
@@ -1298,6 +1297,7 @@ public final class AIBuilder {
         cancelPrepared();
         keepCheckpointDuringCancel = false;
         checkpointLoadAttempted = false;
+        preserveCheckpointOnStop = false;
     }
 
     private static void stopInternal(String message, boolean notify) {
