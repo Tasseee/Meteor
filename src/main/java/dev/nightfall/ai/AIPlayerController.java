@@ -59,7 +59,8 @@ public final class AIPlayerController {
     private static final int MAX_MINING_TICKS = 20 * 30;
     private static final int MAX_EATING_TICKS = 80;
     private static final double MIN_PROGRESS = 0.025;
-    private static final int MAX_CRAFTING_TICKS = 60;
+    private static final int MAX_CRAFTING_TICKS = 20 * 30;
+    private static final int MAX_CRAFTING_IDLE_TICKS = 20;
     private static final int MAX_GATHER_BLOCKS = 32;
     private static final int MAX_GATHER_TARGETS = 96;
     private static final int GATHER_HORIZONTAL_RADIUS = 16;
@@ -90,8 +91,12 @@ public final class AIPlayerController {
     private static Item craftingTarget;
     private static String craftingName = "";
     private static int craftingCountBefore;
+    private static int craftingGoalCount;
     private static int craftingTicks;
-    private static boolean craftingOutputTaken;
+    private static int craftingIdleTicks;
+    private static int craftingBatchesTaken;
+    private static boolean craftingNeedsRefill;
+    private static RecipeDisplayEntry craftingRecipe;
     private static BlockItem gatherMaterial;
     private static String gatherMaterialName = "";
     private static int gatherGoalCount;
@@ -698,24 +703,33 @@ public final class AIPlayerController {
      * player's own 2x2 inventory crafting grid. The recipe and ingredient check are
      * supplied by the connected server's recipe book.
      */
-    public static String previewCraftItem(String requestedItem) {
+    public static String previewCraftItem(String requestedItem, int additionalCount) {
         MinecraftClient mc = MinecraftClient.getInstance();
         requireWorld(mc);
+        if (additionalCount < 1 || additionalCount > 256)
+            throw new IllegalArgumentException("Die zusätzliche Craftingmenge muss zwischen 1 und 256 liegen.");
         String requested = validateCraftItemName(requestedItem);
         PlayerScreenHandler handler = requireEmptyPlayerCraftingGrid(mc);
         CraftingChoice choice = findCraftingChoice(mc, requested);
-        return "Nightfall stellt nach deiner Bestätigung einmal "
-                + choice.result().getCount() + " × " + choice.result().getName().getString()
-                + " her. Rezept: " + choice.recipe().id()
-                + ". Es wird ausschließlich ein freigeschaltetes Vanilla-Rezept aus deinem Rezeptbuch verwendet, "
-                + "und alle Zutaten müssen bereits in deinem Inventar liegen. "
-                + "Verwendet wird das normale 2×2-Craftingfeld (Handler " + handler.syncId + ").";
+        int current = countInventoryItem(mc, choice.result().getItem());
+        int batchSize = Math.max(1, choice.result().getCount());
+        int estimatedBatches = (additionalCount + batchSize - 1) / batchSize;
+        return "Nightfall stellt nach deiner Bestätigung mindestens " + additionalCount + " zusätzliche "
+                + choice.result().getName().getString() + " her (derzeit im Inventar: " + current
+                + ", Ziel: mindestens " + (current + additionalCount) + "). "
+                + "Voraussichtlich mindestens " + estimatedBatches + " Rezept-Ausführungen à "
+                + batchSize + " Stück; die letzte Ausgabe kann die Zielmenge um höchstens eine Rezeptcharge überschreiten. "
+                + "Rezept: " + choice.recipe().id()
+                + ". Es wird ausschließlich ein freigeschaltetes Vanilla-Rezept aus deinem Rezeptbuch verwendet; "
+                + "Zutaten müssen im Inventar liegen. Verwendet wird das normale 2×2-Craftingfeld (Handler "
+                + handler.syncId + ").";
     }
 
-    /** Starts one confirmed recipe-book crafting operation and waits for server confirmation. */
-    public static String craftItem(String requestedItem) {
+    /** Crafts one controlled recipe output per client tick until the requested additional count is reached. */
+    public static String craftItem(String requestedItem, int additionalCount) {
         MinecraftClient mc = MinecraftClient.getInstance();
         requireWorld(mc);
+        previewCraftItem(requestedItem, additionalCount);
         String requested = validateCraftItemName(requestedItem);
         PlayerScreenHandler handler = requireEmptyPlayerCraftingGrid(mc);
         CraftingChoice choice = findCraftingChoice(mc, requested);
@@ -724,10 +738,14 @@ public final class AIPlayerController {
 
         stop(null);
         craftingTarget = target;
+        craftingRecipe = choice.recipe();
         craftingName = choice.result().getName().getString();
         craftingCountBefore = before;
+        craftingGoalCount = before + additionalCount;
         craftingTicks = 0;
-        craftingOutputTaken = false;
+        craftingIdleTicks = 0;
+        craftingBatchesTaken = 0;
+        craftingNeedsRefill = false;
         try {
             mc.interactionManager.clickRecipe(handler.syncId, choice.recipe().id(), false);
             mode = Mode.CRAFT;
@@ -735,8 +753,9 @@ public final class AIPlayerController {
             resetCraftingState();
             throw new IllegalArgumentException("Minecraft konnte das Rezept nicht in das 2×2-Craftingfeld legen. Prüfe Rezeptbuch und Inventar.");
         }
-        notifyPlayer(mc, "Crafting gestartet: " + craftingName + ". Warte auf die Serverbestätigung.");
-        return "Crafting gestartet. Nightfall verwendet ein freigeschaltetes Rezept und wartet auf das bestätigte Ergebnis im Inventar.";
+        notifyPlayer(mc, "Crafting gestartet: " + craftingName + " · +" + additionalCount
+                + " (mindestens). Warte auf Serverbestätigungen.");
+        return "Crafting gestartet. Nightfall nimmt jede Rezept-Ausgabe einzeln auf, füllt das Rezept bei Bedarf erneut und stoppt bei Zielmenge, fehlenden Zutaten oder vollem Inventar.";
     }
 
     private static String validateCraftItemName(String requestedItem) {
@@ -829,9 +848,27 @@ public final class AIPlayerController {
         return count;
     }
 
+    /** Returns a PlayerScreenHandler slot ID able to store the whole output stack, or -1. */
+    private static int findCraftOutputStorageSlot(MinecraftClient mc, Item item, int outputCount) {
+        for (int inventorySlot = 0; inventorySlot < 36; inventorySlot++) {
+            ItemStack stack = mc.player.getInventory().getStack(inventorySlot);
+            if (!stack.isEmpty() && stack.isOf(item)
+                    && stack.getCount() + outputCount <= stack.getMaxCount()) {
+                return inventorySlot < 9 ? inventorySlot + 36 : inventorySlot;
+            }
+        }
+        for (int inventorySlot = 0; inventorySlot < 36; inventorySlot++) {
+            if (mc.player.getInventory().getStack(inventorySlot).isEmpty())
+                return inventorySlot < 9 ? inventorySlot + 36 : inventorySlot;
+        }
+        return -1;
+    }
+
     private static void tickCrafting(MinecraftClient mc) {
         if (++craftingTicks > MAX_CRAFTING_TICKS || mc.interactionManager == null) {
-            stop("Crafting abgebrochen: Zeitlimit erreicht, ohne dass das Ergebnis bestätigt wurde.");
+            stop("Crafting gestoppt: Zeitlimit erreicht. Erreicht: "
+                    + Math.max(0, countInventoryItem(mc, craftingTarget) - craftingCountBefore)
+                    + " von mindestens " + (craftingGoalCount - craftingCountBefore) + ".");
             return;
         }
         if (mc.player.currentScreenHandler != mc.player.playerScreenHandler) {
@@ -839,21 +876,68 @@ public final class AIPlayerController {
             return;
         }
 
-        if (countInventoryItem(mc, craftingTarget) > craftingCountBefore) {
-            stop("Crafting bestätigt: " + craftingName + " liegt jetzt in deinem Inventar.");
+        int currentCount = countInventoryItem(mc, craftingTarget);
+        if (currentCount >= craftingGoalCount) {
+            stop("Crafting abgeschlossen: " + (currentCount - craftingCountBefore) + " zusätzliche "
+                    + craftingName + " im Inventar.");
             return;
         }
 
         PlayerScreenHandler handler = mc.player.playerScreenHandler;
+        if (!handler.getCursorStack().isEmpty()) {
+            stop("Crafting gestoppt: Der Maus-Cursor ist nicht leer. Lege den Gegenstand zuerst ins Inventar.");
+            return;
+        }
+
+        if (craftingNeedsRefill) {
+            try {
+                mc.interactionManager.clickRecipe(handler.syncId, craftingRecipe.id(), false);
+                craftingNeedsRefill = false;
+                craftingIdleTicks = 0;
+            } catch (RuntimeException failure) {
+                stop("Crafting beendet: " + (currentCount - craftingCountBefore) + " zusätzliche "
+                        + craftingName + " hergestellt; das Rezept ließ sich nicht erneut füllen.");
+            }
+            return;
+        }
+
         ItemStack output = handler.getOutputSlot().getStack();
-        if (!craftingOutputTaken && !output.isEmpty()) {
+        if (!output.isEmpty()) {
             if (!output.isOf(craftingTarget)) {
                 stop("Crafting gestoppt: Minecraft zeigte ein anderes Ergebnis als angefordert.");
                 return;
             }
-            mc.interactionManager.clickSlot(handler.syncId, handler.getOutputSlot().id,
-                    0, SlotActionType.QUICK_MOVE, mc.player);
-            craftingOutputTaken = true;
+            int destinationSlot = findCraftOutputStorageSlot(mc, craftingTarget, output.getCount());
+            if (destinationSlot < 0) {
+                stop("Crafting gestoppt: Dein Inventar ist voll. Hergestellt: "
+                        + (currentCount - craftingCountBefore) + " zusätzliche " + craftingName + ".");
+                return;
+            }
+            try {
+                mc.interactionManager.clickSlot(handler.syncId, handler.getOutputSlot().id,
+                        0, SlotActionType.PICKUP, mc.player);
+                if (!handler.getCursorStack().isOf(craftingTarget)) {
+                    stop("Crafting gestoppt: Die Rezept-Ausgabe konnte nicht sicher aufgenommen werden.");
+                    return;
+                }
+                mc.interactionManager.clickSlot(handler.syncId, destinationSlot,
+                        0, SlotActionType.PICKUP, mc.player);
+                if (!handler.getCursorStack().isEmpty()) {
+                    stop("Crafting gestoppt: Die Ausgabe konnte nicht vollständig ins Inventar gelegt werden.");
+                    return;
+                }
+                craftingBatchesTaken++;
+                craftingNeedsRefill = true;
+                craftingIdleTicks = 0;
+            } catch (RuntimeException failure) {
+                stop("Crafting gestoppt: Minecraft hat die Ausgabe nicht sicher ins Inventar übertragen.");
+            }
+            return;
+        }
+
+        if (++craftingIdleTicks > (craftingBatchesTaken == 0 ? MAX_CRAFTING_IDLE_TICKS * 4 : MAX_CRAFTING_IDLE_TICKS)) {
+            stop("Crafting beendet: " + (currentCount - craftingCountBefore) + " zusätzliche "
+                    + craftingName + " hergestellt. Weitere Zutaten fehlen oder das Rezeptbuch konnte es nicht erneut füllen.");
         }
     }
 
@@ -874,10 +958,14 @@ public final class AIPlayerController {
 
     private static void resetCraftingState() {
         craftingTarget = null;
+        craftingRecipe = null;
         craftingName = "";
         craftingCountBefore = 0;
+        craftingGoalCount = 0;
         craftingTicks = 0;
-        craftingOutputTaken = false;
+        craftingIdleTicks = 0;
+        craftingBatchesTaken = 0;
+        craftingNeedsRefill = false;
     }
 
     private record CraftingChoice(RecipeDisplayEntry recipe, ItemStack result) {}
