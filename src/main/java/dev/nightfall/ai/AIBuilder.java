@@ -1110,7 +1110,7 @@ public final class AIBuilder {
         try {
             JsonObject root = new JsonObject();
             savedServerKey = currentServerKey(mc);
-            root.addProperty("version", 2);
+            root.addProperty("version", 3);
             root.addProperty("server", savedServerKey);
             root.addProperty("dimension", mc.world.getRegistryKey().getValue().toString());
             root.addProperty("name", blueprintName);
@@ -1177,7 +1177,10 @@ public final class AIBuilder {
         if (!Files.exists(file)) return;
         try {
             JsonObject root = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
-            if (!root.has("version") || root.get("version").getAsInt() != 2
+            if (!root.has("version"))
+                throw new IllegalArgumentException("Checkpoint-Version fehlt.");
+            int checkpointVersion = root.get("version").getAsInt();
+            if ((checkpointVersion != 2 && checkpointVersion != 3)
                     || !root.has("blocks") || !root.get("blocks").isJsonArray()
                     || root.getAsJsonArray("blocks").isEmpty() || root.getAsJsonArray("blocks").size() > 5_000
                     || !root.has("excavation") || !root.get("excavation").isJsonArray()
@@ -1194,37 +1197,62 @@ public final class AIBuilder {
                 return;
             }
             PLAN.clear(); PLAN_MATERIALS.clear(); PLAN_STATES.clear();
+            Set<BlockPos> restoredPlanPositions = new HashSet<>();
             for (var element : root.getAsJsonArray("blocks")) {
                 JsonObject block = element.getAsJsonObject();
                 BlockPos pos = new BlockPos(block.get("x").getAsInt(), block.get("y").getAsInt(), block.get("z").getAsInt());
+                if (pos.getY() < mc.world.getBottomY()
+                        || pos.getY() >= mc.world.getBottomY() + mc.world.getHeight()
+                        || !restoredPlanPositions.add(pos))
+                    throw new IllegalArgumentException("Der gespeicherte Bauplan enthält ungültige oder doppelte Blockpositionen.");
                 Identifier itemId = Identifier.tryParse(block.get("item").getAsString());
                 if (itemId == null || !(Registries.ITEM.get(itemId) instanceof BlockItem item)
                         || !Registries.ITEM.getId(item).equals(itemId))
                     throw new IllegalArgumentException("Ein gespeichertes Baumaterial existiert in dieser Minecraft-Version nicht mehr.");
-                BlockState state = block.has("state")
-                        ? BlockArgumentParser.block(mc.world.getRegistryManager().getOrThrow(RegistryKeys.BLOCK),
-                                block.get("state").getAsString(), false).blockState()
-                        : item.getBlock().getDefaultState();
+                BlockState state;
+                if (block.has("state")) {
+                    state = BlockArgumentParser.block(mc.world.getRegistryManager().getOrThrow(RegistryKeys.BLOCK),
+                            block.get("state").getAsString(), false).blockState();
+                } else {
+                    if (checkpointVersion >= 3 || !item.getBlock().getStateManager().getProperties().isEmpty())
+                        throw new IllegalArgumentException("Der gespeicherte Bauplan enthält keinen sicheren Blockzustand für ein Material mit Eigenschaften.");
+                    state = item.getBlock().getDefaultState();
+                }
                 if (!state.isOf(item.getBlock()))
                     throw new IllegalArgumentException("Ein gespeicherter BlockState passt nicht zum Baumaterial.");
                 PLAN.add(pos); PLAN_MATERIALS.put(pos, item); PLAN_STATES.put(pos, state);
             }
             EXCAVATION_PLAN.clear();
             EXCAVATION_EXPECTED_BLOCKS.clear();
+            Set<BlockPos> restoredExcavationPositions = new HashSet<>();
             for (var element : root.getAsJsonArray("excavation")) {
                 JsonObject block = element.getAsJsonObject();
                 BlockPos excavationPos = new BlockPos(block.get("x").getAsInt(), block.get("y").getAsInt(), block.get("z").getAsInt());
+                if (excavationPos.getY() < mc.world.getBottomY()
+                        || excavationPos.getY() >= mc.world.getBottomY() + mc.world.getHeight()
+                        || !restoredExcavationPositions.add(excavationPos)
+                        || restoredPlanPositions.contains(excavationPos))
+                    throw new IllegalArgumentException("Der gespeicherte Aushub enthält ungültige, doppelte oder überlappende Positionen.");
+                if (!block.has("expected"))
+                    throw new IllegalArgumentException("Für einen gespeicherten Aushub-Block fehlt die erwartete Block-ID; aus Sicherheitsgründen wird nicht fortgesetzt.");
+                Identifier expected = Identifier.tryParse(block.get("expected").getAsString());
+                if (expected == null || !Registries.BLOCK.getId(Registries.BLOCK.get(expected)).equals(expected))
+                    throw new IllegalArgumentException("Ein gespeicherter Aushub-Block ist in dieser Version unbekannt.");
                 EXCAVATION_PLAN.add(excavationPos);
-                if (block.has("expected")) {
-                    Identifier expected = Identifier.tryParse(block.get("expected").getAsString());
-                    if (expected == null || !Registries.BLOCK.getId(Registries.BLOCK.get(expected)).equals(expected))
-                        throw new IllegalArgumentException("Ein gespeicherter Aushub-Block ist in dieser Version unbekannt.");
-                    EXCAVATION_EXPECTED_BLOCKS.put(excavationPos, expected);
-                }
+                EXCAVATION_EXPECTED_BLOCKS.put(excavationPos, expected);
             }
-            index = Math.max(0, Math.min(PLAN.size(), root.get("index").getAsInt()));
-            excavationIndex = Math.max(0, Math.min(EXCAVATION_PLAN.size(), root.get("excavationIndex").getAsInt()));
+            if (!root.has("index") || !root.has("excavationIndex"))
+                throw new IllegalArgumentException("Der gespeicherte Baufortschritt ist unvollständig.");
+            int storedIndex = root.get("index").getAsInt();
+            int storedExcavationIndex = root.get("excavationIndex").getAsInt();
+            if (storedIndex < 0 || storedIndex > PLAN.size()
+                    || storedExcavationIndex < 0 || storedExcavationIndex > EXCAVATION_PLAN.size())
+                throw new IllegalArgumentException("Der gespeicherte Baufortschritt liegt außerhalb des Bauplans.");
+            index = storedIndex;
+            excavationIndex = storedExcavationIndex;
             blueprintName = root.get("name").getAsString();
+            if (blueprintName.isBlank() || blueprintName.length() > 48)
+                throw new IllegalArgumentException("Der gespeicherte Bauplanname ist ungültig.");
             materialName = root.has("materialName") ? root.get("materialName").getAsString() : "Gespeicherte Materialien";
             Identifier primaryId = Identifier.tryParse(root.get("material").getAsString());
             BlockItem primary = primaryId != null && Registries.ITEM.get(primaryId) instanceof BlockItem item
