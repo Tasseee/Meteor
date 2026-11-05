@@ -355,16 +355,13 @@ public final class AIPlayerController {
                             || !state.getFluidState().isEmpty()
                             || state.getHardness(mc.world, cursor) < 0.0f) continue;
                     found.add(cursor.toImmutable());
-                    if (found.size() >= MAX_GATHER_TARGETS) {
-                        found.sort(Comparator.comparingDouble(pos -> mc.player.squaredDistanceTo(
-                                pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)));
-                        return found;
-                    }
                 }
             }
         }
         found.sort(Comparator.comparingDouble(pos -> mc.player.squaredDistanceTo(
                 pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)));
+        if (found.size() > MAX_GATHER_TARGETS)
+            return new ArrayList<>(found.subList(0, MAX_GATHER_TARGETS));
         return found;
     }
 
