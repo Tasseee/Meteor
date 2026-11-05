@@ -33,9 +33,9 @@ The key is stored locally as plain text in the Minecraft config folder. Do not u
 
 - Press **J** to open Nightfall AI (default; configurable as `aiKey` in `config/nightfall.json`).
 - Press **Enter** or click **SEND** to send a message.
-- Press **F8** or click **MIC** to start push-to-talk recording; press F8 again to stop. Recordings are limited to 20 seconds.
-- The recognized text is inserted into the input field. Review it and press **Enter** to send it; voice recognition never sends a message by itself.
-- Enable `voiceOutputEnabled` to speak final assistant replies. Closing the chat or disconnecting stops active recording/playback.
+- Press **F8** or click **CALL** to start the persistent voice call; press F8 or **STOP** again to end it.
+- Spoken messages are handled directly by the live voice agent; typed messages sent while the call is active join the same conversation.
+- The call remains active when the chat screen closes and is shown by a small HUD indicator. Disconnecting or exiting Minecraft stops the microphone and speaker.
 - Press **Escape** to close the chat.
 - Use the mouse wheel to scroll through the current conversation.
 
@@ -110,22 +110,39 @@ Er kann noch keine Wasserquellen, spitzen Tropfsteine, Dorfbewohner, Hopper, Kol
 oder Redstone-Schaltungen als funktionierende Farmmechanik zuverlässig aufbauen. Farm-Einträge
 mit `GUIDE_ONLY` dürfen deshalb nicht automatisch in Blockpläne umgewandelt werden.
 
-## Voice: Push-to-talk und gesprochene Antworten
+## Voice-Call: mit Nightfall sprechen
 
-Sprache ist standardmäßig deaktiviert. Trage zuerst einen gültigen API-Key in
-`config/nightfall/ai.json` ein. Beim ersten Klick auf **MIC** oder Drücken von **F8** aktiviert
-Nightfall die Push-to-talk-Eingabe dauerhaft in der Konfiguration und öffnet das Mikrofon nur für
-diese Aufnahme. F8/MIC beendet die Aufnahme; maximal 20 Sekunden werden erfasst. Nightfall
-speichert keine Audiodatei dauerhaft. Die Aufnahme wird als WAV an `audioBaseUrl` unter
-`/audio/transcriptions` übertragen. Nach der Transkription sendet Nightfall den erkannten Satz
-automatisch an den Chat. Mit **TTS ON/OFF** schaltest du gesprochene Antworten um; aktivierte
-Sprachausgabe spricht finale Antworten und Aktionsvorschauen über `/audio/speech`.
+Nightfall hat einen dauerhaften, ausdrücklich gestarteten Sprach-Call. Trage zuerst deinen API-Key
+in `config/nightfall/ai.json` ein. Drücke **F8** oder öffne mit **J** den KI-Chat und klicke auf
+**CALL**. Nightfall öffnet das Mikrofon und verbindet sich über die Realtime-WebSocket-Schnittstelle
+mit dem unter `audioBaseUrl` konfigurierten Anbieter. Die Sprachaufnahme wird live übertragen;
+sie wird nicht als Audiodatei auf der Festplatte gespeichert. Die automatische Spracherkennung
+erkennt Gesprächsenden und sendet den erkannten Text in derselben Realtime-Konversation an Nightfall.
 
-Die Sprachschnittstelle verwendet `transcriptionModel`, `speechModel` und `speechVoice`.
-Der Standard-Endpunkt ist OpenAI API v1. Andere Anbieter müssen beide Audio-Endpunkte und die
-gewählten Modelle unterstützen. Audio und erkannter Text werden an diesen Anbieter übertragen;
-aktiviere Sprache nur, wenn du damit einverstanden bist. Schließen des Chats und Trennen der
-Serververbindung stoppen laufende Aufnahme/Wiedergabe.
+Nightfall antwortet mit gestreamter Stimme. Die kleine Anzeige **NIGHTFALL CALL · F8 STOP** bleibt
+auch sichtbar, wenn du das Chatfenster schließt und wieder Minecraft spielst. **F8** oder **STOP**
+beendet den Call; Trennen vom Server und Schließen von Minecraft beenden ihn ebenfalls. Während
+Nightfall spricht, pausiert der Mikrofon-Uplink lokal, damit die Lautsprecherausgabe nicht als neue
+Spracheingabe zurückkommt. Deshalb ist diese erste Call-Version halbduplex: Sprich erst weiter,
+wenn Nightfall fertig gesprochen hat; Unterbrechen während der Ausgabe ist noch nicht aktiviert.
+
+Wenn Nightfall eine Weltaktion vorschlägt, zeigt es wie im Textchat eine Vorschau an. Du kannst sie
+im Chatfenster bestätigen/abbrechen oder im Call klar **„Ja“** bzw. **„Nein“** sagen. Ein mehrdeutiges
+Wort löst keine Aktion aus. Der Call verwendet dieselbe freigegebene Werkzeugliste wie Nightfalls
+normaler Chat; Weltänderungen werden nicht allein durch das Hören eines Sprachbefehls ausgeführt.
+
+Die Stimmeingabe/-ausgabe wird beim Start des Calls in `ai.json` aktiviert. **TTS ON/OFF** im
+Chatfenster schaltet die gesprochene Ausgabe während des Calls um. Der Call verwendet das Realtime-
+Modell `gpt-realtime-2.1-mini` mit deutscher Transkription und der eingestellten Stimme
+`speechVoice`. Die Verbindung benötigt einen kompatiblen Realtime-WebSocket-Endpunkt; der
+Standard ist OpenAI API v1. Andere Anbieter müssen das Realtime-WebSocket-Protokoll und die
+konfigurierten Modelle unterstützen.
+
+Mikrofon-Audio, erkannter Text, Gesprächsinhalte und gegebenenfalls freigegebene Werkzeugdaten
+werden an den eingestellten KI-Anbieter übertragen. Es gelten dessen Nutzungs- und Abrechnungsregeln;
+Realtime-Audio kann zusätzliche API-Kosten verursachen. Aktiviere den Call nur, wenn du mit dieser
+Übertragung einverstanden bist. Der API-Key liegt lokal in `config/nightfall/ai.json` und gehört
+nicht in Screenshots, Bugreports oder Commits.
 
 
 ## Core companion actions · navigation, combat, mining, wood gathering, crafting and eating
