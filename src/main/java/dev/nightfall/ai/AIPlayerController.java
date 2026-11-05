@@ -54,7 +54,7 @@ import java.util.Set;
  * the server remains authoritative for every result.
  */
 public final class AIPlayerController {
-    private enum Mode { NONE, WALK, NAVIGATE, MINE, EAT, CRAFT, GATHER, GATHER_MINE, SMELT }
+    private enum Mode { NONE, WALK, NAVIGATE, MINE, EAT, CRAFT, GATHER, GATHER_MINE, GATHER_TUNNEL, GATHER_TUNNEL_MINE, SMELT }
 
     private static final int MAX_PATH_RADIUS = 48;
     private static final int NAVIGATION_SEGMENT_LENGTH = 32;
@@ -85,6 +85,9 @@ public final class AIPlayerController {
             "terracotta", "purpur_block", "quartz_block", "quartz_bricks");
     private static final int GATHER_ORE_VERTICAL_BELOW = 24;
     private static final int GATHER_ORE_VERTICAL_ABOVE = 12;
+    private static final int MAX_ANCIENT_TUNNEL_LENGTH = 8;
+    private static final int MAX_ANCIENT_TUNNEL_BLOCKS = 16;
+    private static final Set<String> ANCIENT_TUNNEL_BLOCKS = Set.of("netherrack", "basalt", "blackstone");
     private static final Map<String, String> GATHERABLE_ORE_DROPS = Map.ofEntries(
             Map.entry("minecraft:coal_ore", "minecraft:coal"),
             Map.entry("minecraft:deepslate_coal_ore", "minecraft:coal"),
@@ -150,6 +153,9 @@ public final class AIPlayerController {
     private static boolean gatherAwaitingPickup;
     private static int gatherPickupTicks;
     private static int gatherCountBeforeBreak;
+    private static List<BlockPos> gatherTunnelCells = List.of();
+    private static int gatherTunnelCellIndex;
+    private static BlockPos gatherTunnelOreTarget;
     private static BlockPos smeltFurnacePos;
     private static Item smeltInput;
     private static Item smeltOutput;
@@ -360,6 +366,8 @@ public final class AIPlayerController {
         if (mc.player.currentScreenHandler != mc.player.playerScreenHandler)
             throw new IllegalArgumentException("Schließe zuerst den geöffneten Container.");
         Item item = resolveGatherableItem(requestedItem, woodOnly, oreOnly);
+        if (isAncientDebrisItem(item) && !isInNether(mc))
+            throw new IllegalArgumentException("Ancient Debris kann nur im Nether gefunden werden. Wechsle zuerst in den Nether und gehe in die Tiefen, die du absuchen möchtest.");
         int current = countInventoryItem(mc, item);
         int missing = targetCount - current;
         if (missing <= 0)
@@ -384,14 +392,20 @@ public final class AIPlayerController {
                     + "aber für diese Blöcke fehlt ein geeignetes Werkzeug. Lege das passende Werkzeug in dein Inventar.");
         int available = Math.min(Math.min(missing, toolEligible), inventoryCapacity);
         String kind = woodOnly ? "Holzblöcke" : oreOnly ? "Erzblöcke" : "freigegebene Rohstoffblöcke";
+        String ancientNote = isAncientDebrisItem(item)
+                ? " Für Ancient Debris prüft Nightfall zusätzlich kurze horizontale Stollen (max. "
+                    + MAX_ANCIENT_TUNNEL_LENGTH + " Schritte) durch Netherrack, Basalt und Schwarzstein; "
+                    + "nur mit passender Spitzhacke und nur wenn im Tunnel kein Lava-/Flüssigkeitsrisiko erkannt wird."
+                : "";
         return "Nightfall sammelt nach deiner Bestätigung bis zu " + available + " zusätzliche "
                 + item.getName().getString() + " (Ziel: " + targetCount + " im Inventar). "
                 + "Gefunden: " + candidates.size() + " passende " + kind + " im bereits geladenen Umkreis; "
                 + toolEligible + " davon haben ein verfügbares passendes Werkzeug. "
-                + "Höchstens " + MAX_GATHER_BLOCKS + " zusätzliche Blöcke pro Auftrag. "
+                + "Höchstens " + MAX_GATHER_BLOCKS + " zusätzliche Zielblöcke pro Auftrag. "
                 + "Nightfall sucht sichere Standpunkte, nutzt bei toolpflichtigen Blöcken nur ein geeignetes Werkzeug "
                 + "und wartet auf Block- und Item-Updates. Freier Inventarplatz für " + inventoryCapacity
-                + " weitere Items. Es werden höchstens " + available + " Ziele eingeplant.";
+                + " weitere Items. Es werden höchstens " + available + " Ziele eingeplant."
+                + ancientNote;
     }
 
     private static String gatherResource(String requestedItem, int targetCount,
@@ -577,6 +591,7 @@ public final class AIPlayerController {
             BlockHitResult hit = inReach ? raycastBlock(mc, target) : null;
             if (hit == null) {
                 if (startGatherApproach(mc, target)) return;
+                if (isAncientDebrisItem(gatherMaterial) && startAncientDebrisTunnel(mc, target)) return;
                 gatherIndex++;
                 continue;
             }
@@ -613,6 +628,260 @@ public final class AIPlayerController {
 
         stop("Materialsammlung beendet: " + currentCount + "/" + gatherGoalCount + " "
                 + gatherMaterialName + " im Inventar. Im geladenen Nahbereich sind keine weiteren passenden Rohstoffblöcke erreichbar.");
+    }
+
+
+    private static boolean isAncientDebrisItem(Item item) {
+        return item != null && "minecraft:ancient_debris".equals(Registries.ITEM.getId(item).toString());
+    }
+
+    private static boolean isInNether(MinecraftClient mc) {
+        return mc.world != null && "the_nether".equals(mc.world.getRegistryKey().getValue().getPath());
+    }
+
+    /** Starts a short, level 1x2 tunnel to one side of an Ancient Debris block. */
+    private static boolean startAncientDebrisTunnel(MinecraftClient mc, BlockPos oreTarget) {
+        if (!isInNether(mc) || !isAncientDebrisItem(gatherMaterial)) return false;
+        BlockState ore = mc.world.getBlockState(oreTarget);
+        if (!ore.isOf(Blocks.ANCIENT_DEBRIS) || !hasSuitableMiningTool(mc, ore, true)) return false;
+        List<BlockPos> route = findAncientDebrisTunnelRoute(mc, oreTarget);
+        if (route.isEmpty()) return false;
+        gatherTunnelOreTarget = oreTarget.toImmutable();
+        gatherTunnelCells = List.copyOf(route);
+        gatherTunnelCellIndex = 0;
+        mode = Mode.GATHER_TUNNEL;
+        statusNotice(mc, "Ancient Debris liegt verdeckt. Grabe einen geprüften Nether-Stollen ("
+                + route.size() + " Schritte) bis an das Erz heran.");
+        return true;
+    }
+
+    private static List<BlockPos> findAncientDebrisTunnelRoute(MinecraftClient mc, BlockPos oreTarget) {
+        BlockPos start = mc.player.getBlockPos();
+        int verticalOffset = oreTarget.getY() - start.getY();
+        if (verticalOffset != 0 && verticalOffset != 1) return List.of();
+        List<List<BlockPos>> routes = new ArrayList<>();
+        for (Direction side : new Direction[]{Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST}) {
+            BlockPos stand = verticalOffset == 1 ? oreTarget.offset(side).down() : oreTarget.offset(side);
+            if (stand.getY() != start.getY()) continue;
+            List<BlockPos> xFirst = buildAncientTunnelRoute(mc, start, stand, true);
+            List<BlockPos> zFirst = buildAncientTunnelRoute(mc, start, stand, false);
+            if (!xFirst.isEmpty()) routes.add(xFirst);
+            if (!zFirst.isEmpty() && !zFirst.equals(xFirst)) routes.add(zFirst);
+        }
+        routes.sort(Comparator
+                .comparingInt((List<BlockPos> route) -> countAncientTunnelBlocks(mc, route))
+                .thenComparingInt(List::size));
+        return routes.isEmpty() ? List.of() : routes.get(0);
+    }
+
+    private static List<BlockPos> buildAncientTunnelRoute(MinecraftClient mc, BlockPos start,
+                                                            BlockPos stand, boolean xFirst) {
+        int dx = stand.getX() - start.getX();
+        int dz = stand.getZ() - start.getZ();
+        int length = Math.abs(dx) + Math.abs(dz);
+        if (length < 1 || length > MAX_ANCIENT_TUNNEL_LENGTH) return List.of();
+        List<BlockPos> route = new ArrayList<>(length);
+        int x = start.getX();
+        int z = start.getZ();
+        int xStep = Integer.compare(dx, 0);
+        int zStep = Integer.compare(dz, 0);
+        if (xFirst) {
+            for (int i = 0; i < Math.abs(dx); i++) {
+                x += xStep;
+                route.add(new BlockPos(x, start.getY(), z));
+            }
+            for (int i = 0; i < Math.abs(dz); i++) {
+                z += zStep;
+                route.add(new BlockPos(x, start.getY(), z));
+            }
+        } else {
+            for (int i = 0; i < Math.abs(dz); i++) {
+                z += zStep;
+                route.add(new BlockPos(x, start.getY(), z));
+            }
+            for (int i = 0; i < Math.abs(dx); i++) {
+                x += xStep;
+                route.add(new BlockPos(x, start.getY(), z));
+            }
+        }
+        if (countAncientTunnelBlocks(mc, route) > MAX_ANCIENT_TUNNEL_BLOCKS) return List.of();
+        for (BlockPos cell : route) if (!isSafeAncientTunnelCell(mc, cell)) return List.of();
+        return route;
+    }
+
+    private static int countAncientTunnelBlocks(MinecraftClient mc, List<BlockPos> route) {
+        int count = 0;
+        for (BlockPos cell : route) {
+            if (!mc.world.getBlockState(cell).isAir()) count++;
+            if (!mc.world.getBlockState(cell.up()).isAir()) count++;
+        }
+        return count;
+    }
+
+    private static boolean isSafeAncientTunnelCell(MinecraftClient mc, BlockPos feet) {
+        BlockPos head = feet.up();
+        BlockPos floor = feet.down();
+        if (!mc.world.isChunkLoaded(feet) || !mc.world.isChunkLoaded(head) || !mc.world.isChunkLoaded(floor))
+            return false;
+        BlockState support = mc.world.getBlockState(floor);
+        var supportShape = support.getCollisionShape(mc.world, floor);
+        if (!support.getFluidState().isEmpty() || support.hasBlockEntity()
+                || support.getBlock() instanceof net.minecraft.block.FallingBlock || isHazard(support)
+                || supportShape.isEmpty() || supportShape.getMax(Direction.Axis.Y) < 0.95) return false;
+
+        for (BlockPos clearPos : new BlockPos[]{feet, head}) {
+            BlockState state = mc.world.getBlockState(clearPos);
+            if (!state.getFluidState().isEmpty() || state.hasBlockEntity()
+                    || state.getBlock() instanceof net.minecraft.block.FallingBlock
+                    || state.getHardness(mc.world, clearPos) < 0.0f || isHazard(state)) return false;
+            if (!state.isAir() && !ANCIENT_TUNNEL_BLOCKS.contains(Registries.BLOCK.getId(state.getBlock()).getPath()))
+                return false;
+            for (Direction direction : Direction.values()) {
+                BlockPos neighbor = clearPos.offset(direction);
+                if (!mc.world.isChunkLoaded(neighbor) || !mc.world.getBlockState(neighbor).getFluidState().isEmpty())
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean startAncientTunnelMining(MinecraftClient mc, BlockPos pos, BlockState state) {
+        if (!isSafeAncientTunnelCell(mc, gatherTunnelCells.get(gatherTunnelCellIndex))
+                || !ANCIENT_TUNNEL_BLOCKS.contains(Registries.BLOCK.getId(state.getBlock()).getPath())
+                || !hasSuitableMiningTool(mc, state, true)
+                || availableInventoryCapacity(mc, state.getBlock().asItem()) <= 0) return false;
+        try {
+            originalSlot = mc.player.getInventory().getSelectedSlot();
+            int toolSlot = findBestMiningToolSlot(mc, mc.player, state);
+            mc.player.getInventory().setSelectedSlot(toolSlot);
+            aimAt(mc.player, pos.toCenterPos());
+            BlockHitResult hit = raycastBlock(mc, pos);
+            if (hit == null || !mc.interactionManager.attackBlock(pos, hit.getSide())) {
+                restoreMiningTool(mc);
+                restoreHotbar(mc);
+                return false;
+            }
+            miningPos = pos.toImmutable();
+            miningState = state;
+            miningSide = hit.getSide();
+            actionTicks = 0;
+            mode = Mode.GATHER_TUNNEL_MINE;
+            mc.options.attackKey.setPressed(true);
+            statusNotice(mc, "Grabe sicheren Tunnelblock " + Registries.BLOCK.getId(state.getBlock())
+                    + " bei " + pos.toShortString() + " ab.");
+            return true;
+        } catch (RuntimeException failure) {
+            restoreMiningTool(mc);
+            restoreHotbar(mc);
+            return false;
+        }
+    }
+
+    private static void tickGatherTunnel(MinecraftClient mc) {
+        if (gatherMaterial == null || gatherTunnelOreTarget == null || gatherTunnelCells.isEmpty()) {
+            stop("Ancient-Debris-Abbau gestoppt: Der Tunnelplan ist nicht mehr gültig.");
+            return;
+        }
+        if (!mc.world.getBlockState(gatherTunnelOreTarget).isOf(Blocks.ANCIENT_DEBRIS)) {
+            gatherTunnelCells = List.of();
+            gatherTunnelOreTarget = null;
+            gatherTunnelCellIndex = 0;
+            mode = Mode.GATHER;
+            return;
+        }
+        while (gatherTunnelCellIndex < gatherTunnelCells.size()) {
+            BlockPos cell = gatherTunnelCells.get(gatherTunnelCellIndex);
+            if (!isSafeAncientTunnelCell(mc, cell)) {
+                skipAncientTunnelTarget(mc, "Lava/Flüssigkeit, unsicherer Untergrund oder ungeeigneter Tunnelblock erkannt.");
+                return;
+            }
+            for (BlockPos clearPos : new BlockPos[]{cell, cell.up()}) {
+                BlockState state = mc.world.getBlockState(clearPos);
+                if (state.isAir()) continue;
+                if (!startAncientTunnelMining(mc, clearPos, state))
+                    skipAncientTunnelTarget(mc, "Der nächste Tunnelblock konnte nicht sicher abgebaut werden.");
+                return;
+            }
+            if (isAtGoal(mc, cell)) {
+                gatherTunnelCellIndex++;
+                continue;
+            }
+            if (!canStandAt(mc, cell, mc.player)) {
+                skipAncientTunnelTarget(mc, "Der geöffnete Tunnelabschnitt ist kein sicherer Standpunkt.");
+                return;
+            }
+            List<BlockPos> planned = findPath(mc, cell);
+            if (planned.isEmpty()) {
+                skipAncientTunnelTarget(mc, "Kein sicherer Laufweg durch den geöffneten Tunnelabschnitt.");
+                return;
+            }
+            path = List.copyOf(planned);
+            navigationGoal = cell.toImmutable();
+            pathIndex = 0;
+            actionTicks = 0;
+            stuckTicks = 0;
+            lastWaypointDistance = Double.MAX_VALUE;
+            mode = Mode.NAVIGATE;
+            statusNotice(mc, "Gehe durch den freigeräumten Nether-Stollen weiter.");
+            return;
+        }
+        gatherTunnelCells = List.of();
+        gatherTunnelOreTarget = null;
+        gatherTunnelCellIndex = 0;
+        mode = Mode.GATHER;
+    }
+
+    private static void skipAncientTunnelTarget(MinecraftClient mc, String reason) {
+        releaseKeys(mc);
+        if (mc.interactionManager != null) {
+            try { mc.interactionManager.cancelBlockBreaking(); } catch (RuntimeException ignored) {}
+        }
+        restoreMiningTool(mc);
+        restoreHotbar(mc);
+        miningPos = null;
+        miningState = null;
+        gatherIndex++;
+        gatherTunnelCells = List.of();
+        gatherTunnelOreTarget = null;
+        gatherTunnelCellIndex = 0;
+        mode = Mode.GATHER;
+        statusNotice(mc, "Überspringe dieses Ancient-Debris-Vorkommen: " + reason);
+    }
+
+    private static void tickGatherTunnelMining(MinecraftClient mc) {
+        if (++actionTicks > MAX_MINING_TICKS || mc.interactionManager == null || miningPos == null
+                || gatherTunnelCellIndex >= gatherTunnelCells.size()
+                || mc.player.getEyePos().squaredDistanceTo(miningPos.toCenterPos())
+                    > mc.player.getBlockInteractionRange() * mc.player.getBlockInteractionRange()) {
+            skipAncientTunnelTarget(mc, "Reichweite oder Abbauzeitlimit überschritten.");
+            return;
+        }
+        BlockPos cell = gatherTunnelCells.get(gatherTunnelCellIndex);
+        BlockState current = mc.world.getBlockState(miningPos);
+        if (current.isAir() || !current.getBlock().equals(miningState.getBlock())) {
+            if (mc.interactionManager != null) {
+                try { mc.interactionManager.cancelBlockBreaking(); } catch (RuntimeException ignored) {}
+            }
+            restoreMiningTool(mc);
+            restoreHotbar(mc);
+            miningPos = null;
+            miningState = null;
+            mode = Mode.GATHER_TUNNEL;
+            return;
+        }
+        if (!isSafeAncientTunnelCell(mc, cell)
+                || !ANCIENT_TUNNEL_BLOCKS.contains(Registries.BLOCK.getId(current.getBlock()).getPath())
+                || !hasSuitableMiningTool(mc, current, true)) {
+            skipAncientTunnelTarget(mc, "Tunnelbedingungen haben sich während des Abbaus geändert.");
+            return;
+        }
+        BlockHitResult hit = raycastBlock(mc, miningPos);
+        if (hit == null || !hit.getBlockPos().equals(miningPos)) {
+            skipAncientTunnelTarget(mc, "Der nächste Tunnelblock ist nicht mehr frei sichtbar.");
+            return;
+        }
+        mc.options.attackKey.setPressed(true);
+        mc.interactionManager.updateBlockBreakingProgress(miningPos, miningSide);
     }
 
     private static boolean startGatherApproach(MinecraftClient mc, BlockPos target) {
@@ -700,6 +969,9 @@ public final class AIPlayerController {
         gatherAwaitingPickup = false;
         gatherPickupTicks = 0;
         gatherCountBeforeBreak = 0;
+        gatherTunnelCells = List.of();
+        gatherTunnelCellIndex = 0;
+        gatherTunnelOreTarget = null;
     }
 
 
@@ -1012,6 +1284,8 @@ public final class AIPlayerController {
             case CRAFT -> tickCrafting(mc);
             case GATHER -> tickGather(mc);
             case GATHER_MINE -> tickGatherMining(mc);
+            case GATHER_TUNNEL -> tickGatherTunnel(mc);
+            case GATHER_TUNNEL_MINE -> tickGatherTunnelMining(mc);
             case SMELT -> tickSmelting(mc);
             case NONE -> { }
         }
@@ -1092,7 +1366,8 @@ public final class AIPlayerController {
         actionTicks = 0;
         stuckTicks = 0;
         lastWaypointDistance = Double.MAX_VALUE;
-        mode = Mode.GATHER;
+        mode = gatherTunnelOreTarget != null && gatherTunnelCellIndex < gatherTunnelCells.size()
+                ? Mode.GATHER_TUNNEL : Mode.GATHER;
     }
 
     private static void tickMining(MinecraftClient mc) {
@@ -1425,14 +1700,16 @@ public final class AIPlayerController {
         MinecraftClient mc = MinecraftClient.getInstance();
         Mode previous = mode;
         releaseKeys(mc);
-        if ((previous == Mode.MINE || previous == Mode.GATHER_MINE) && mc.interactionManager != null) {
+        if ((previous == Mode.MINE || previous == Mode.GATHER_MINE || previous == Mode.GATHER_TUNNEL_MINE)
+                && mc.interactionManager != null) {
             try { mc.interactionManager.cancelBlockBreaking(); } catch (RuntimeException ignored) {}
         }
         if (previous == Mode.EAT && mc.player != null) {
             try { mc.player.stopUsingItem(); } catch (RuntimeException ignored) {}
             restoreHotbar(mc);
         }
-        if ((previous == Mode.MINE || previous == Mode.GATHER_MINE) && mc.player != null) {
+        if ((previous == Mode.MINE || previous == Mode.GATHER_MINE || previous == Mode.GATHER_TUNNEL_MINE)
+                && mc.player != null) {
             restoreMiningTool(mc);
             restoreHotbar(mc);
         }
@@ -1474,6 +1751,8 @@ public final class AIPlayerController {
             case CRAFT -> "Crafting · " + craftingName;
             case GATHER -> "Sammle " + gatherMaterialName + " · " + gatherIndex + "/" + gatherTargets.size();
             case GATHER_MINE -> "Baue Rohstoff ab · " + (miningPos == null ? "" : miningPos.toShortString());
+            case GATHER_TUNNEL -> "Grabe Ancient-Debris-Stollen · " + gatherTunnelCellIndex + "/" + gatherTunnelCells.size();
+            case GATHER_TUNNEL_MINE -> "Grabe Tunnelblock · " + (miningPos == null ? "" : miningPos.toShortString());
             case SMELT -> "Schmelze " + (smeltInput == null ? "" : smeltInput.getName().getString());
         };
     }
