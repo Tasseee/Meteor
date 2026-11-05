@@ -285,7 +285,7 @@ public final class SchematicManager {
                 continue;
             }
             Identifier itemId = Registries.ITEM.getId(item);
-            buildPlan.add(new AIBuilder.RelativeBlock(x, y, z, itemId.toString()));
+            buildPlan.add(new AIBuilder.RelativeBlock(x, y, z, itemId.toString(), state));
             materials.merge(itemId.toString(), 1, Integer::sum);
             buildable++;
         }
@@ -402,7 +402,7 @@ public final class SchematicManager {
                     continue;
                 }
                 Identifier itemId = Registries.ITEM.getId(item);
-                buildPlan.add(new AIBuilder.RelativeBlock(x, y, z, itemId.toString()));
+                buildPlan.add(new AIBuilder.RelativeBlock(x, y, z, itemId.toString(), state));
                 materials.merge(itemId.toString(), 1, Integer::sum);
                 buildable++;
             }
@@ -416,11 +416,7 @@ public final class SchematicManager {
     private static BlockItem safeBuildItem(BlockState state, MinecraftClient mc, int x, int y, int z) {
         if (state == null || state.isAir() || !state.getFluidState().isEmpty() || state.hasBlockEntity())
             return null;
-        if (state.getBlock() instanceof FallingBlock || !state.equals(state.getBlock().getDefaultState())
-                || !state.getEntries().isEmpty())
-            return null;
-        if (!state.isFullCube(mc.world, new BlockPos(x, y, z)))
-            return null;
+        if (state.getBlock() instanceof FallingBlock) return null;
         return state.getBlock().asItem() instanceof BlockItem item ? item : null;
     }
 
