@@ -749,7 +749,9 @@ public final class AIBuilder {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null || mc.interactionManager == null || mc.getNetworkHandler() == null
                 || !mc.world.getRegistryKey().getValue().equals(dimension)) {
-            stopInternal("Bau gestoppt: Welt oder Verbindung hat sich geändert.", true);
+            // Keep the last checkpoint when the connection/world changes unexpectedly.
+            preserveCheckpointOnStop = true;
+            stopInternal("Bau gestoppt: Welt oder Verbindung hat sich geändert. Der gespeicherte Bauplan bleibt erhalten.", true);
             return;
         }
         ClientPlayerEntity player = mc.player;
@@ -1401,6 +1403,15 @@ public final class AIBuilder {
         CUSTOM_CLEAR_OFFSETS.clear();
         EXCAVATION_PLAN.clear();
         EXCAVATION_EXPECTED_BLOCKS.clear();
+        excavationIndex = 0;
+        excavationRetries = 0;
+        excavationApproachAttempts = 0;
+        excavationMinePending = false;
+        excavationNavigationPending = false;
+        excavationWaitingNotice = false;
+        pendingExcavationTarget = null;
+        restoredCheckpoint = false;
+        index = 0;
         preparedPlayerPos = null;
         preparedFacing = null;
     }
