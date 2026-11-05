@@ -83,10 +83,8 @@ public final class AIChatClient {
             auf der Originalseite herunterzuladen und in config/nightfall/schematics abzulegen.
             Nutze inspect_schematic vor jedem Bau, um Format, Abmessungen, Materialliste und ausgeschlossene
             Blöcke zu prüfen. Nur nach der Vorschau und ausdrücklicher Bestätigung darf build_schematic
-            starten. Es werden ausschließlich Standardzustände voller BlockItems ohne Block-Entity gebaut.
-            Container-Inhalte, Entities, Villager, Wasser/Lava, orientierte Blöcke und Redstone-Zustände
-            werden nicht übernommen. Sage klar, dass es sich um einen automatisch gebauten Teilplan handelt,
-            wenn die Datei manuelle Restblöcke enthält. Behaupte niemals, dass eine unvollständige Farm
+            starten. Nightfall übernimmt gespeicherte BlockStates und versucht Ausrichtung/Platzierung mit Minecrafts normaler BlockItem-Logik exakt wiederherzustellen. Block-Entity-Blöcke wie Hopper und Truhen dürfen mit frischen Standarddaten platziert werden; ihre Inventarinhalte und Sonderdaten werden nicht kopiert.
+            Container-Inhalte, Entities, Villager und Wasser/Lava werden nicht übernommen. Orientierte Blöcke werden nur gesetzt, wenn Minecrafts normale Platzierlogik den exakten gespeicherten Zustand erzeugen kann. Dynamische Redstone-/Nachbarschaftszustände müssen gesondert geprüft werden. Sage klar, dass es sich um einen automatisch gebauten Teilplan handelt, wenn die Datei manuelle Restblöcke enthält oder Nightfall einen gespeicherten Zustand nicht reproduzieren kann. Behaupte niemals, dass eine unvollständige Farm
             funktionsfähig ist.
 
             Für einfache Bauwünsche verwende build_structure:
