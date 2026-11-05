@@ -3,6 +3,7 @@ package dev.nightfall.gui;
 import dev.nightfall.ai.AIChatClient;
 import dev.nightfall.ai.AIConfig;
 import dev.nightfall.ai.AIVoiceClient;
+import dev.nightfall.ai.AIRealtimeVoiceClient;
 import dev.nightfall.ai.AIActionRegistry;
 import dev.nightfall.ai.AIBuilder;
 import dev.nightfall.util.Theme;
@@ -43,6 +44,7 @@ public final class AIChatScreen extends Screen {
     private int ttsX, ttsY, ttsW, ttsH;
     private AIActionRegistry.Action pendingAction;
     private AIChatClient.ToolCall pendingToolCall;
+    private boolean pendingRealtimeToolCall;
     private final List<AIChatClient.Message> apiHistory = new ArrayList<>();
     private int actionRoundTrips;
     private int confirmX, confirmY, confirmW, confirmH;
@@ -79,9 +81,77 @@ public final class AIChatScreen extends Screen {
 
     @Override
     public void removed() {
-        // Do not leave the microphone open after the player closes the voice chat.
+        // A realtime call is independent of this screen and stays active while the player explores.
         AIVoiceClient.stopRecording();
         AIVoiceClient.stopSpeaking();
+    }
+
+    /** Stops all local audio resources when Minecraft itself is shutting down. */
+    public static void onClientStopping() {
+        AIRealtimeVoiceClient.stop();
+        AIVoiceClient.stopRecording();
+        AIVoiceClient.stopSpeaking();
+    }
+
+    /** Toggle the persistent voice call. Can be invoked from F8 while the chat screen is closed. */
+    public static void toggleVoiceCall() {
+        AIChatScreen session = getOrCreate();
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (AIRealtimeVoiceClient.isActive()) {
+            AIRealtimeVoiceClient.stop();
+            session.status = "Nightfall-Sprachanruf beendet.";
+            return;
+        }
+        if (mc.player == null || mc.world == null) {
+            session.status = "Starte den Sprachanruf in einer Minecraft-Welt.";
+            return;
+        }
+        AIConfig.Settings settings = AIConfig.current();
+        if (settings.apiKey().isBlank()) {
+            session.status = "Für den Sprachanruf zuerst den API-Key in config/nightfall/ai.json eintragen.";
+            return;
+        }
+        AIConfig.Settings updated = AIConfig.updateVoiceSettings(true, true);
+        if (!updated.voiceInputEnabled() || !updated.voiceOutputEnabled()) {
+            session.status = "Die Stimmeinstellungen konnten nicht gespeichert werden.";
+            return;
+        }
+        AIRealtimeVoiceClient.start(new AIRealtimeVoiceClient.Listener() {
+            @Override public void onStatus(String message) {
+                if (active != null) active.status = message;
+            }
+
+            @Override public void onTranscript(String transcript) {
+                AIChatScreen current = active == null ? new AIChatScreen() : active;
+                current.handleRealtimeTranscript(transcript);
+            }
+
+            @Override public void onAssistantText(String text) {
+                AIChatScreen current = active == null ? new AIChatScreen() : active;
+                current.history.add(new ChatLine("assistant", text));
+                current.status = "Nightfall hat geantwortet";
+                current.scroll = Float.MAX_VALUE;
+            }
+
+            @Override public void onToolCall(AIChatClient.ToolCall call) {
+                AIChatScreen current = active == null ? new AIChatScreen() : active;
+                current.handleRealtimeToolCall(call);
+            }
+        });
+    }
+
+    /** Small persistent HUD chip makes it obvious when the microphone/call is active. */
+    public static void renderVoiceIndicator(DrawContext ctx) {
+        if (!AIRealtimeVoiceClient.isActive()) return;
+        MinecraftClient mc = MinecraftClient.getInstance();
+        int right = 236;
+        ctx.fill(10, 10, right, 31, 0xD91A202B);
+        ctx.fill(10, 10, 13, 31, Theme.ACCENT);
+        String label = AIRealtimeVoiceClient.isSpeaking()
+                ? "NIGHTFALL SPRICHT · F8 STOP"
+                : AIRealtimeVoiceClient.isReady() ? "NIGHTFALL CALL · F8 STOP" : "NIGHTFALL VERBINDET …";
+        ctx.drawText(mc.textRenderer, label, 20, 17,
+                AIRealtimeVoiceClient.isSpeaking() ? 0xFFFFD27A : Theme.ACCENT, true);
     }
 
     /** Called from the client tick so command/locate deadlines continue while this screen is hidden. */
@@ -99,6 +169,7 @@ public final class AIChatScreen extends Screen {
     }
 
     public static void onDisconnect() {
+        AIRealtimeVoiceClient.stop();
         AIVoiceClient.stopRecording();
         AIVoiceClient.stopSpeaking();
         AIBuilder.onDisconnect();
@@ -108,6 +179,7 @@ public final class AIChatScreen extends Screen {
         session.sessionGeneration++;
         session.waiting = false;
         session.pendingCommandFeedbackAI = false;
+        session.pendingRealtimeToolCall = false;
 
         if (session.pendingAction != null) {
             AIActionRegistry.cancel(session.pendingAction);
@@ -245,7 +317,7 @@ public final class AIChatScreen extends Screen {
         sendH = 23;
         sendW = 62;
         sendX = panelX + panelW - 77;
-        micW = 28;
+        micW = 44;
         micH = 23;
         micX = sendX - micW - 6;
         micY = sendY;
@@ -264,9 +336,9 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, shownInput, inputX + 7, sendY + 7,
                 input.isEmpty() ? Theme.TEXT_DIM : Theme.TEXT, false);
 
-        int micColor = AIVoiceClient.isCapturing() ? 0xFFE0A04A : 0xFF343848;
+        int micColor = AIRealtimeVoiceClient.isActive() ? 0xFF267B69 : 0xFF343848;
         ctx.fill(micX, micY, micX + micW, micY + micH, micColor);
-        String micLabel = AIVoiceClient.isCapturing() ? "STOP" : "MIC";
+        String micLabel = AIRealtimeVoiceClient.isActive() ? "STOP" : "CALL";
         ctx.drawText(mc.textRenderer, micLabel,
                 micX + (micW - mc.textRenderer.getWidth(micLabel)) / 2,
                 micY + 7, Theme.TEXT, true);
@@ -286,7 +358,7 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, sendLabel, sendLabelX, sendY + 7,
                 waiting || input.isBlank() ? Theme.TEXT_DIM : 0xFF081014, true);
 
-        ctx.drawText(mc.textRenderer, "ENTER: senden · MIC/F8: sprechen · TTS: Stimme an/aus · ESC: schließen",
+        ctx.drawText(mc.textRenderer, "ENTER: senden · CALL/F8: Anruf an/aus · TTS: Stimme an/aus · ESC: schließen",
                 panelX + 16, panelY + panelH - 10, Theme.TEXT_DIM, false);
     }
 
@@ -339,7 +411,7 @@ public final class AIChatScreen extends Screen {
             return true;
         }
         if (keyCode == GLFW.GLFW_KEY_F8) {
-            toggleVoiceInput();
+            toggleVoiceCall();
             return true;
         }
         if (keyCode == GLFW.GLFW_KEY_BACKSPACE) {
@@ -382,7 +454,7 @@ public final class AIChatScreen extends Screen {
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
                 && click.x() >= micX && click.x() <= micX + micW
                 && click.y() >= micY && click.y() <= micY + micH) {
-            toggleVoiceInput();
+            toggleVoiceCall();
             return true;
         }
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
@@ -400,31 +472,69 @@ public final class AIChatScreen extends Screen {
         return true;
     }
 
-    private void toggleVoiceInput() {
-        AIConfig.Settings settings = AIConfig.current();
-        if (settings.apiKey().isBlank()) {
-            status = "Für Sprache zuerst den API-Key in config/nightfall/ai.json eintragen.";
+    private void handleRealtimeTranscript(String transcript) {
+        if (transcript == null || transcript.isBlank()) return;
+        history.add(new ChatLine("user", transcript));
+        status = "Du: " + transcript;
+        scroll = Float.MAX_VALUE;
+
+        if (pendingAction != null && pendingRealtimeToolCall) {
+            String answer = transcript.trim().toLowerCase(Locale.ROOT)
+                    .replaceAll("[.!?,;:]+$", "").trim();
+            if (Set.of("ja", "ja bitte", "ja mach", "mach das", "bestätigen", "bestätige",
+                    "ausführen", "einverstanden", "yes", "confirm", "okay", "ok").contains(answer)) {
+                confirmPendingAction();
+            } else if (Set.of("nein", "nein danke", "abbrechen", "abbruch", "stopp", "stop",
+                    "cancel", "no").contains(answer)) {
+                cancelPendingAction();
+            } else {
+                AIRealtimeVoiceClient.speakPrompt("Ich warte noch auf deine Freigabe. Sage bitte klar Ja zum Bestätigen oder Nein zum Abbrechen.");
+                status = "Aktion wartet auf ein klares Ja oder Nein";
+            }
             return;
         }
-        if (!settings.voiceInputEnabled()) {
-            settings = AIConfig.updateVoiceSettings(true, settings.voiceOutputEnabled());
-            if (!settings.voiceInputEnabled()) {
-                status = "Spracheingabe konnte nicht in ai.json gespeichert werden.";
-                return;
-            }
+
+        if (pendingAction != null || waiting) {
+            AIRealtimeVoiceClient.speakPrompt("Ich bearbeite noch den letzten Auftrag. Bitte warte kurz oder bestätige die angezeigte Aktion.");
+            return;
         }
-        AIVoiceClient.toggleRecording(transcript -> {
-            if (MinecraftClient.getInstance().currentScreen != this) return;
-            input = input.isBlank() ? transcript : input + " " + transcript;
-            if (waiting || pendingAction != null) {
-                status = "Sprache erkannt · schließe zuerst die laufende Aktion ab.";
+        AIRealtimeVoiceClient.requestResponse();
+    }
+
+    private void handleRealtimeToolCall(AIChatClient.ToolCall call) {
+        if (call == null) return;
+        if (pendingAction != null) {
+            AIRealtimeVoiceClient.sendFunctionOutput(call.id(),
+                    "Nightfall führt noch eine bestätigungspflichtige Aktion. Warte, bis der Spieler Ja oder Nein gesagt hat.");
+            return;
+        }
+        try {
+            AIActionRegistry.Action prepared = AIActionRegistry.prepare(call.name(), call.arguments());
+            if (!AIActionRegistry.requiresConfirmation(call.name())) {
+                String result = AIActionRegistry.execute(prepared);
+                history.add(new ChatLine("assistant", "Nightfall: " + result));
+                status = "Nightfall hat eine sichere Abfrage ausgeführt";
+                scroll = Float.MAX_VALUE;
+                AIRealtimeVoiceClient.sendFunctionOutput(call.id(), result);
                 return;
             }
-            status = "Sprache erkannt · Nightfall antwortet …";
-            sendMessage();
-        }, message -> {
-            if (MinecraftClient.getInstance().currentScreen == this) status = message;
-        });
+            pendingAction = prepared;
+            pendingToolCall = call;
+            pendingRealtimeToolCall = true;
+            history.add(new ChatLine("assistant",
+                    "Ich möchte folgende Aktion ausführen. Bestätige mit Ja oder Nein:\n" + prepared.preview()));
+            status = "Aktion wartet auf deine Sprach- oder Button-Bestätigung";
+            scroll = Float.MAX_VALUE;
+            AIRealtimeVoiceClient.speakPrompt("Ich möchte folgende Minecraft-Aktion ausführen. "
+                    + prepared.preview() + ". Sage Ja zum Bestätigen oder Nein zum Abbrechen.");
+        } catch (RuntimeException failure) {
+            String detail = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+            history.add(new ChatLine("assistant", "Diese Aktion kann ich nicht ausführen: " + detail));
+            status = "Aktion abgelehnt";
+            scroll = Float.MAX_VALUE;
+            AIRealtimeVoiceClient.sendFunctionOutput(call.id(),
+                    "Nightfall hat die Aktion abgelehnt: " + detail);
+        }
     }
 
     private void toggleVoiceOutput() {
@@ -440,6 +550,7 @@ public final class AIChatScreen extends Screen {
             return;
         }
         if (!enabled) AIVoiceClient.stopSpeaking();
+        AIRealtimeVoiceClient.setSpeechEnabled(enabled);
         status = enabled ? "Sprachausgabe aktiviert · Nightfall spricht fertige Antworten."
                 : "Sprachausgabe ausgeschaltet.";
     }
@@ -452,6 +563,10 @@ public final class AIChatScreen extends Screen {
         apiHistory.add(new AIChatClient.Message("user", prompt));
         actionRoundTrips = 0;
         scroll = Float.MAX_VALUE;
+        if (AIRealtimeVoiceClient.isActive()) {
+            AIRealtimeVoiceClient.sendText(prompt);
+            return;
+        }
         requestAI();
     }
 
@@ -543,6 +658,8 @@ public final class AIChatScreen extends Screen {
         AIChatClient.ToolCall call = pendingToolCall;
         pendingAction = null;
         pendingToolCall = null;
+        boolean realtimeCall = pendingRealtimeToolCall;
+        pendingRealtimeToolCall = false;
 
         String result;
         try {
@@ -571,6 +688,13 @@ public final class AIChatScreen extends Screen {
             commandDeadline = System.currentTimeMillis() + 30_000L;
         }
         history.add(new ChatLine("assistant", "Nightfall: " + result));
+        history.add(new ChatLine("assistant", "Nightfall: " + result));
+        if (realtimeCall) {
+            status = "Aktion ausgeführt · Nightfall antwortet per Stimme";
+            scroll = Float.MAX_VALUE;
+            AIRealtimeVoiceClient.sendFunctionOutput(call.id(), result);
+            return;
+        }
         apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), result));
         actionRoundTrips++;
         status = "Aktion ausgeführt · KI antwortet";
@@ -584,8 +708,16 @@ public final class AIChatScreen extends Screen {
         AIActionRegistry.cancel(pendingAction);
         pendingAction = null;
         pendingToolCall = null;
+        boolean realtimeCall = pendingRealtimeToolCall;
+        pendingRealtimeToolCall = false;
         String result = "Der Spieler hat die Aktion vor der Ausführung abgebrochen. Es wurde nichts verändert.";
         history.add(new ChatLine("assistant", "Alles klar. Ich habe nichts ausgeführt."));
+        if (realtimeCall) {
+            status = "Aktion abgebrochen · Nightfall hört weiter zu";
+            scroll = Float.MAX_VALUE;
+            AIRealtimeVoiceClient.sendFunctionOutput(call.id(), result);
+            return;
+        }
         apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), result));
         actionRoundTrips++;
         status = "Aktion abgebrochen";
