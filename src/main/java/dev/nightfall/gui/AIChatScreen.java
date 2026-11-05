@@ -140,18 +140,31 @@ public final class AIChatScreen extends Screen {
         });
     }
 
-    /** Small persistent HUD chip makes it obvious when the microphone/call is active. */
+    /** Toggle microphone uplink while keeping the voice conversation connected. */
+    public static void toggleVoiceMicrophone() {
+        AIRealtimeVoiceClient.toggleMicrophone();
+        if (active != null && AIRealtimeVoiceClient.isActive()) {
+            active.status = AIRealtimeVoiceClient.isMicrophoneMuted()
+                    ? "Mikrofon stumm · F9 aktiviert es wieder."
+                    : "Mikrofon aktiv · F9 schaltet stumm.";
+        }
+    }
+
+    /** Small persistent HUD chip makes call, microphone and speaking state visible. */
     public static void renderVoiceIndicator(DrawContext ctx) {
         if (!AIRealtimeVoiceClient.isActive()) return;
         MinecraftClient mc = MinecraftClient.getInstance();
-        int right = 236;
+        int right = 248;
         ctx.fill(10, 10, right, 31, 0xD91A202B);
         ctx.fill(10, 10, 13, 31, Theme.ACCENT);
-        String label = AIRealtimeVoiceClient.isSpeaking()
-                ? "NIGHTFALL SPRICHT · F8 STOP"
-                : AIRealtimeVoiceClient.isReady() ? "NIGHTFALL CALL · F8 STOP" : "NIGHTFALL VERBINDET …";
+        String label = AIRealtimeVoiceClient.isMicrophoneMuted()
+                ? "MIKRO STUMM · F9 AN"
+                : AIRealtimeVoiceClient.isSpeaking() ? "NIGHTFALL SPRICHT · F9 STUMM"
+                : AIRealtimeVoiceClient.isReady() ? "NIGHTFALL CALL · F9 STUMM · F8 STOP"
+                : "NIGHTFALL VERBINDET …";
         ctx.drawText(mc.textRenderer, label, 20, 17,
-                AIRealtimeVoiceClient.isSpeaking() ? 0xFFFFD27A : Theme.ACCENT, true);
+                AIRealtimeVoiceClient.isMicrophoneMuted() ? 0xFFFFD27A
+                        : AIRealtimeVoiceClient.isSpeaking() ? 0xFFFFD27A : Theme.ACCENT, true);
     }
 
     /** Called from the client tick so command/locate deadlines continue while this screen is hidden. */
@@ -358,7 +371,7 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, sendLabel, sendLabelX, sendY + 7,
                 waiting || input.isBlank() ? Theme.TEXT_DIM : 0xFF081014, true);
 
-        ctx.drawText(mc.textRenderer, "ENTER: senden · CALL/F8: Anruf an/aus · TTS: Stimme an/aus · ESC: schließen",
+        ctx.drawText(mc.textRenderer, "ENTER: senden · F8: Call an/aus · F9: Mikro stumm/an · TTS: Stimme · ESC: schließen",
                 panelX + 16, panelY + panelH - 10, Theme.TEXT_DIM, false);
     }
 
@@ -412,6 +425,10 @@ public final class AIChatScreen extends Screen {
         }
         if (keyCode == GLFW.GLFW_KEY_F8) {
             toggleVoiceCall();
+            return true;
+        }
+        if (keyCode == GLFW.GLFW_KEY_F9) {
+            toggleVoiceMicrophone();
             return true;
         }
         if (keyCode == GLFW.GLFW_KEY_BACKSPACE) {
