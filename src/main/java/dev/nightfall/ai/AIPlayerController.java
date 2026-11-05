@@ -1,12 +1,14 @@
 package dev.nightfall.ai;
 
 import dev.nightfall.gui.AIChatScreen;
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.FoodComponent;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.recipe.RecipeDisplayEntry;
@@ -23,6 +25,7 @@ import net.minecraft.util.context.ContextParameterMap;
 import net.minecraft.util.context.ContextType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
@@ -47,7 +50,7 @@ import java.util.Set;
  * the server remains authoritative for every result.
  */
 public final class AIPlayerController {
-    private enum Mode { NONE, WALK, NAVIGATE, MINE, EAT, CRAFT }
+    private enum Mode { NONE, WALK, NAVIGATE, MINE, EAT, CRAFT, GATHER, GATHER_MINE }
 
     private static final int MAX_PATH_RADIUS = 48;
     private static final int NAVIGATION_SEGMENT_LENGTH = 32;
@@ -57,6 +60,11 @@ public final class AIPlayerController {
     private static final int MAX_EATING_TICKS = 80;
     private static final double MIN_PROGRESS = 0.025;
     private static final int MAX_CRAFTING_TICKS = 60;
+    private static final int MAX_GATHER_BLOCKS = 32;
+    private static final int MAX_GATHER_TARGETS = 96;
+    private static final int GATHER_HORIZONTAL_RADIUS = 16;
+    private static final int GATHER_VERTICAL_BELOW = 4;
+    private static final int GATHER_VERTICAL_ABOVE = 16;
     private static final ContextParameterMap EMPTY_RECIPE_CONTEXT =
             new ContextParameterMap.Builder().build(new ContextType.Builder().build());
 
@@ -84,6 +92,14 @@ public final class AIPlayerController {
     private static int craftingCountBefore;
     private static int craftingTicks;
     private static boolean craftingOutputTaken;
+    private static BlockItem gatherMaterial;
+    private static String gatherMaterialName = "";
+    private static int gatherGoalCount;
+    private static List<BlockPos> gatherTargets = List.of();
+    private static int gatherIndex;
+    private static boolean gatherAwaitingPickup;
+    private static int gatherPickupTicks;
+    private static int gatherCountBeforeBreak;
 
     private AIPlayerController() {}
 
@@ -239,6 +255,286 @@ public final class AIPlayerController {
         return "Abbau gestartet. Nightfall wartet auf die bestätigte Blockänderung der Welt.";
     }
 
+
+    /**
+     * Preview a bounded request to collect naturally occurring wood blocks nearby.
+     * Only vanilla log/wood/stem/hyphae block-items whose block and item IDs match are accepted.
+     */
+    public static String previewGatherWood(String requestedItem, int targetCount) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        if (targetCount < 1 || targetCount > 64)
+            throw new IllegalArgumentException("Die Zielmenge muss zwischen 1 und 64 liegen.");
+        if (mc.player.currentScreenHandler != mc.player.playerScreenHandler)
+            throw new IllegalArgumentException("Schließe zuerst den geöffneten Container.");
+        BlockItem item = resolveGatherWoodItem(requestedItem);
+        int current = countInventoryItem(mc, item);
+        int missing = targetCount - current;
+        if (missing <= 0)
+            throw new IllegalArgumentException("Du hast bereits " + current + " × " + item.getName().getString()
+                    + " im Inventar. Die gewünschte Zielmenge ist erreicht.");
+        if (missing > MAX_GATHER_BLOCKS)
+            throw new IllegalArgumentException("Ein einzelner Sammelauftrag darf höchstens "
+                    + MAX_GATHER_BLOCKS + " zusätzliche Holzblöcke abbauen.");
+        List<BlockPos> candidates = findGatherableWoodBlocks(mc, item.getBlock());
+        if (candidates.isEmpty())
+            throw new IllegalArgumentException("Im geladenen Umkreis von " + GATHER_HORIZONTAL_RADIUS
+                    + " Blöcken habe ich keine passenden " + item.getName().getString()
+                    + " gefunden. Erkunde zuerst die Gegend oder gehe näher an einen Baum.");
+        int available = Math.min(missing, candidates.size());
+        return "Nightfall sammelt nach deiner Bestätigung bis zu " + missing + " zusätzliche "
+                + item.getName().getString() + " (Ziel: " + targetCount + " im Inventar). "
+                + "Gefunden: " + candidates.size() + " passende Stämme/Holzblöcke im bereits geladenen "
+                + "Umkreis. Höchstens " + MAX_GATHER_BLOCKS + " Blöcke pro Auftrag. "
+                + "Nightfall sucht sichere Standpunkte, nutzt das passende Werkzeug und wartet auf "
+                + "Block- und Item-Updates. Es werden höchstens " + available + " Ziele eingeplant.";
+    }
+
+    /** Start a confirmed, bounded wood-gathering task in loaded nearby terrain. */
+    public static String gatherWood(String requestedItem, int targetCount) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        previewGatherWood(requestedItem, targetCount);
+        BlockItem item = resolveGatherWoodItem(requestedItem);
+        List<BlockPos> candidates = findGatherableWoodBlocks(mc, item.getBlock());
+        if (candidates.isEmpty()) throw new IllegalArgumentException("Die gefundenen Holzblöcke sind inzwischen nicht mehr verfügbar.");
+
+        stop(null);
+        gatherMaterial = item;
+        gatherMaterialName = item.getName().getString();
+        gatherGoalCount = targetCount;
+        gatherTargets = List.copyOf(candidates);
+        gatherIndex = 0;
+        gatherAwaitingPickup = false;
+        gatherPickupTicks = 0;
+        gatherCountBeforeBreak = 0;
+        mode = Mode.GATHER;
+        statusNotice(mc, "Sammle " + gatherMaterialName + " · Ziel " + targetCount
+                + " im Inventar. Ich baue nur passende Holzblöcke im geladenen Nahbereich ab.");
+        return "Holzsammeln gestartet. Nightfall sucht passende Stämme, navigiert über sichere geladene Wege und wartet auf bestätigte Drops. „Stopp“ bricht ab.";
+    }
+
+    private static BlockItem resolveGatherWoodItem(String requestedItem) {
+        if (requestedItem == null || requestedItem.isBlank() || requestedItem.length() > 64)
+            throw new IllegalArgumentException("Gib eine Minecraft-Item-ID wie minecraft:oak_log an.");
+        Identifier id = Identifier.tryParse(requestedItem.trim());
+        if (id == null || !id.getNamespace().equals("minecraft"))
+            throw new IllegalArgumentException("Bitte gib eine gültige Vanilla-Holz-ID wie minecraft:oak_log an.");
+        Item item = Registries.ITEM.get(id);
+        if (!(item instanceof BlockItem blockItem) || !Registries.ITEM.getId(item).equals(id)
+                || !Registries.BLOCK.getId(blockItem.getBlock()).equals(id)
+                || !isGatherableWoodPath(id.getPath()))
+            throw new IllegalArgumentException("Nightfall sammelt derzeit nur Vanilla-Holzblöcke, die als derselbe Itemtyp droppen "
+                    + "(z. B. minecraft:oak_log, minecraft:birch_log, minecraft:crimson_stem oder minecraft:oak_wood).");
+        return blockItem;
+    }
+
+    private static boolean isGatherableWoodPath(String path) {
+        return path.endsWith("_log") || path.endsWith("_wood")
+                || path.endsWith("_stem") || path.endsWith("_hyphae");
+    }
+
+    private static List<BlockPos> findGatherableWoodBlocks(MinecraftClient mc, Block targetBlock) {
+        BlockPos center = mc.player.getBlockPos();
+        int minX = center.getX() - GATHER_HORIZONTAL_RADIUS;
+        int maxX = center.getX() + GATHER_HORIZONTAL_RADIUS;
+        int minZ = center.getZ() - GATHER_HORIZONTAL_RADIUS;
+        int maxZ = center.getZ() + GATHER_HORIZONTAL_RADIUS;
+        int minY = Math.max(mc.world.getBottomY(), center.getY() - GATHER_VERTICAL_BELOW);
+        int maxY = Math.min(mc.world.getBottomY() + mc.world.getHeight() - 1,
+                center.getY() + GATHER_VERTICAL_ABOVE);
+        List<BlockPos> found = new ArrayList<>();
+        BlockPos.Mutable cursor = new BlockPos.Mutable();
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                for (int y = minY; y <= maxY; y++) {
+                    cursor.set(x, y, z);
+                    if (!mc.world.isChunkLoaded(cursor)) continue;
+                    BlockState state = mc.world.getBlockState(cursor);
+                    if (!state.isOf(targetBlock) || state.hasBlockEntity()
+                            || !state.getFluidState().isEmpty()
+                            || state.getHardness(mc.world, cursor) < 0.0f) continue;
+                    found.add(cursor.toImmutable());
+                    if (found.size() >= MAX_GATHER_TARGETS) {
+                        found.sort(Comparator.comparingDouble(pos -> mc.player.squaredDistanceTo(
+                                pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)));
+                        return found;
+                    }
+                }
+            }
+        }
+        found.sort(Comparator.comparingDouble(pos -> mc.player.squaredDistanceTo(
+                pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)));
+        return found;
+    }
+
+    private static void tickGather(MinecraftClient mc) {
+        if (gatherMaterial == null || gatherTargets.isEmpty()) {
+            stop("Holzsammeln gestoppt: Es gibt keinen gültigen Sammelplan mehr.");
+            return;
+        }
+        int currentCount = countInventoryItem(mc, gatherMaterial);
+        if (currentCount >= gatherGoalCount) {
+            stop("Holzsammeln abgeschlossen: " + currentCount + "/" + gatherGoalCount
+                    + " " + gatherMaterialName + " im Inventar.");
+            return;
+        }
+        if (gatherAwaitingPickup) {
+            if (currentCount > gatherCountBeforeBreak) {
+                gatherAwaitingPickup = false;
+                gatherPickupTicks = 0;
+                gatherIndex++;
+                return;
+            }
+            if (++gatherPickupTicks > 40) {
+                gatherAwaitingPickup = false;
+                gatherPickupTicks = 0;
+                gatherIndex++;
+                statusNotice(mc, "Der letzte Holzblock wurde abgebaut, aber sein Drop kam nicht im Inventar an. Ich überspringe ihn.");
+            } else {
+                return;
+            }
+        }
+
+        while (gatherIndex < gatherTargets.size()) {
+            BlockPos target = gatherTargets.get(gatherIndex);
+            BlockState state = mc.world.getBlockState(target);
+            if (!state.isOf(gatherMaterial.getBlock()) || state.hasBlockEntity()
+                    || !state.getFluidState().isEmpty() || state.getHardness(mc.world, target) < 0.0f) {
+                gatherIndex++;
+                continue;
+            }
+
+            aimAt(mc.player, target.toCenterPos());
+            double reach = mc.player.getBlockInteractionRange();
+            boolean inReach = mc.player.getEyePos().squaredDistanceTo(target.toCenterPos()) <= reach * reach;
+            BlockHitResult hit = inReach ? raycastBlock(mc, target) : null;
+            if (hit == null) {
+                if (startGatherApproach(mc, target)) return;
+                gatherIndex++;
+                continue;
+            }
+
+            try {
+                originalSlot = mc.player.getInventory().getSelectedSlot();
+                int toolSlot = findBestMiningToolSlot(mc, mc.player, state);
+                mc.player.getInventory().setSelectedSlot(toolSlot);
+                aimAt(mc.player, target.toCenterPos());
+                hit = raycastBlock(mc, target);
+                if (hit == null || !mc.interactionManager.attackBlock(target, hit.getSide())) {
+                    restoreMiningTool(mc);
+                    restoreHotbar(mc);
+                    gatherIndex++;
+                    continue;
+                }
+            } catch (RuntimeException failure) {
+                restoreMiningTool(mc);
+                restoreHotbar(mc);
+                stop("Holzsammeln gestoppt: Passendes Werkzeug konnte nicht sicher gewechselt werden.");
+                return;
+            }
+
+            miningPos = target.toImmutable();
+            miningState = state;
+            miningSide = hit.getSide();
+            actionTicks = 0;
+            gatherCountBeforeBreak = currentCount;
+            mode = Mode.GATHER_MINE;
+            mc.options.attackKey.setPressed(true);
+            statusNotice(mc, "Baue " + gatherMaterialName + " bei " + target.toShortString() + " ab.");
+            return;
+        }
+
+        stop("Holzsammeln beendet: " + currentCount + "/" + gatherGoalCount + " "
+                + gatherMaterialName + " im Inventar. Im geladenen Nahbereich sind keine weiteren passenden Stämme erreichbar.");
+    }
+
+    private static boolean startGatherApproach(MinecraftClient mc, BlockPos target) {
+        List<BlockPos> stands = new ArrayList<>();
+        Direction[] sides = {Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
+        for (Direction side : sides) {
+            stands.add(target.offset(side).down());
+            stands.add(target.offset(side));
+        }
+        stands.sort(Comparator.comparingDouble(pos -> mc.player.squaredDistanceTo(
+                pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5)));
+        for (BlockPos stand : stands) {
+            if (!mc.world.isChunkLoaded(stand) || isAtGoal(mc, stand)) continue;
+            List<BlockPos> planned = findPath(mc, stand);
+            if (planned.isEmpty()) continue;
+            path = List.copyOf(planned);
+            navigationGoal = stand.toImmutable();
+            pathIndex = 0;
+            actionTicks = 0;
+            stuckTicks = 0;
+            lastWaypointDistance = Double.MAX_VALUE;
+            mode = Mode.NAVIGATE;
+            statusNotice(mc, "Gehe zu einem sicheren Standpunkt neben " + gatherMaterialName + " bei " + target.toShortString() + ".");
+            return true;
+        }
+        return false;
+    }
+
+    private static void tickGatherMining(MinecraftClient mc) {
+        if (++actionTicks > MAX_MINING_TICKS || mc.interactionManager == null
+                || miningPos == null || mc.player.getEyePos().squaredDistanceTo(miningPos.toCenterPos())
+                > mc.player.getBlockInteractionRange() * mc.player.getBlockInteractionRange()) {
+            stop("Holzsammeln gestoppt: Abbaureichweite oder Zeitlimit überschritten.");
+            return;
+        }
+        BlockState current = mc.world.getBlockState(miningPos);
+        if (current.isAir() || !current.getBlock().equals(miningState.getBlock())) {
+            BlockPos broken = miningPos.toImmutable();
+            try { mc.interactionManager.cancelBlockBreaking(); } catch (RuntimeException ignored) {}
+            restoreMiningTool(mc);
+            restoreHotbar(mc);
+            miningPos = null;
+            miningState = null;
+            gatherAwaitingPickup = true;
+            gatherPickupTicks = 0;
+
+            // Step into the cleared trunk cell when it is safe, so the dropped log can be picked up.
+            if (canStandAt(mc, broken, mc.player) && !isAtGoal(mc, broken)) {
+                List<BlockPos> planned = findPath(mc, broken);
+                if (!planned.isEmpty()) {
+                    path = List.copyOf(planned);
+                    navigationGoal = broken;
+                    pathIndex = 0;
+                    actionTicks = 0;
+                    stuckTicks = 0;
+                    lastWaypointDistance = Double.MAX_VALUE;
+                    mode = Mode.NAVIGATE;
+                    return;
+                }
+            }
+            mode = Mode.GATHER;
+            return;
+        }
+
+        BlockHitResult hit = raycastBlock(mc, miningPos);
+        if (hit == null || !hit.getBlockPos().equals(miningPos)) {
+            stop("Holzsammeln gestoppt: Der Stamm ist nicht mehr frei sichtbar.");
+            return;
+        }
+        mc.options.attackKey.setPressed(true);
+        mc.interactionManager.updateBlockBreakingProgress(miningPos, miningSide);
+    }
+
+    private static void statusNotice(MinecraftClient mc, String message) {
+        if (mc.player != null) mc.player.sendMessage(Text.literal("[Nightfall] " + message), false);
+    }
+
+    private static void resetGatherState() {
+        gatherMaterial = null;
+        gatherMaterialName = "";
+        gatherGoalCount = 0;
+        gatherTargets = List.of();
+        gatherIndex = 0;
+        gatherAwaitingPickup = false;
+        gatherPickupTicks = 0;
+        gatherCountBeforeBreak = 0;
+    }
+
     public static String previewEat(String preferredItem) {
         MinecraftClient mc = MinecraftClient.getInstance();
         requireWorld(mc);
@@ -294,6 +590,8 @@ public final class AIPlayerController {
             case MINE -> tickMining(mc);
             case EAT -> tickEating(mc);
             case CRAFT -> tickCrafting(mc);
+            case GATHER -> tickGather(mc);
+            case GATHER_MINE -> tickGatherMining(mc);
             case NONE -> { }
         }
     }
@@ -314,6 +612,10 @@ public final class AIPlayerController {
         }
         if (pathIndex >= path.size()) {
             if (navigationGoal == null || isAtGoal(mc, navigationGoal)) {
+                if (gatherMaterial != null) {
+                    resumeGatheringAfterNavigation(mc);
+                    return;
+                }
                 stop("Ziel erreicht.");
                 return;
             }
@@ -335,6 +637,10 @@ public final class AIPlayerController {
             stuckTicks = 0;
             lastWaypointDistance = Double.MAX_VALUE;
             if (pathIndex >= path.size()) {
+                if (gatherMaterial != null) {
+                    resumeGatheringAfterNavigation(mc);
+                    return;
+                }
                 stop("Ziel erreicht.");
                 return;
             }
@@ -355,6 +661,17 @@ public final class AIPlayerController {
         mc.options.forwardKey.setPressed(true);
         mc.options.jumpKey.setPressed(waypoint.getY() > mc.player.getBlockY() && mc.player.isOnGround());
         mc.options.sprintKey.setPressed(false);
+    }
+
+    private static void resumeGatheringAfterNavigation(MinecraftClient mc) {
+        releaseKeys(mc);
+        path = List.of();
+        pathIndex = 0;
+        navigationGoal = null;
+        actionTicks = 0;
+        stuckTicks = 0;
+        lastWaypointDistance = Double.MAX_VALUE;
+        mode = Mode.GATHER;
     }
 
     private static void tickMining(MinecraftClient mc) {
@@ -589,14 +906,14 @@ public final class AIPlayerController {
         MinecraftClient mc = MinecraftClient.getInstance();
         Mode previous = mode;
         releaseKeys(mc);
-        if (previous == Mode.MINE && mc.interactionManager != null) {
+        if ((previous == Mode.MINE || previous == Mode.GATHER_MINE) && mc.interactionManager != null) {
             try { mc.interactionManager.cancelBlockBreaking(); } catch (RuntimeException ignored) {}
         }
         if (previous == Mode.EAT && mc.player != null) {
             try { mc.player.stopUsingItem(); } catch (RuntimeException ignored) {}
             restoreHotbar(mc);
         }
-        if (previous == Mode.MINE && mc.player != null) {
+        if ((previous == Mode.MINE || previous == Mode.GATHER_MINE) && mc.player != null) {
             restoreMiningTool(mc);
             restoreHotbar(mc);
         }
@@ -613,6 +930,7 @@ public final class AIPlayerController {
         foodSlot = -1;
         foodName = "";
         resetCraftingState();
+        resetGatherState();
         if (previous != Mode.NONE && mc.player != null && reason != null)
             notifyPlayer(mc, reason);
         return previous == Mode.NONE ? "Nightfall führt gerade keine Bewegung oder Interaktion aus." : "Nightfall-Aktion gestoppt.";
@@ -634,6 +952,8 @@ public final class AIPlayerController {
             case MINE -> "Blockabbau · " + (miningPos == null ? "" : miningPos.toShortString());
             case EAT -> "Nahrungsaufnahme · " + foodName;
             case CRAFT -> "Crafting · " + craftingName;
+            case GATHER -> "Sammle " + gatherMaterialName + " · " + gatherIndex + "/" + gatherTargets.size();
+            case GATHER_MINE -> "Baue Holz ab · " + (miningPos == null ? "" : miningPos.toShortString());
         };
     }
 
