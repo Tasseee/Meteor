@@ -5,7 +5,9 @@ import net.minecraft.block.FallingBlock;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.item.BlockItem;
+import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.item.ItemStack;
+import dev.nightfall.mixin.BlockItemPlacementAccessor;
 import net.minecraft.registry.Registries;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
@@ -54,12 +56,16 @@ public final class AIBuilder {
         }
     }
 
-    public record RelativeBlock(int x, int y, int z, String materialId) {
-        public RelativeBlock(int x, int y, int z) { this(x, y, z, null); }
+    public record RelativeBlock(int x, int y, int z, String materialId, BlockState state) {
+        public RelativeBlock(int x, int y, int z, String materialId) { this(x, y, z, materialId, null); }
+        public RelativeBlock(int x, int y, int z) { this(x, y, z, null, null); }
     }
+
+    private record PlacementCandidate(BlockHitResult hit, float yaw, float pitch) { }
 
     private static final List<BlockPos> PLAN = new ArrayList<>();
     private static final Map<BlockPos, BlockItem> PLAN_MATERIALS = new LinkedHashMap<>();
+    private static final Map<BlockPos, BlockState> PLAN_STATES = new LinkedHashMap<>();
     private static final List<RelativeBlock> CUSTOM_OFFSETS = new ArrayList<>();
     private static final List<RelativeBlock> CUSTOM_CLEAR_OFFSETS = new ArrayList<>();
     private static final List<BlockPos> EXCAVATION_PLAN = new ArrayList<>();
@@ -76,6 +82,16 @@ public final class AIBuilder {
     private static Identifier dimension;
     private static BlockPos pendingTarget;
     private static BlockItem pendingMaterial;
+    private static BlockState pendingExpectedState;
+    private static BlockHitResult queuedPlacementHit;
+    private static BlockPos queuedPlacementTarget;
+    private static BlockItem queuedPlacementMaterial;
+    private static BlockState queuedPlacementState;
+    private static float queuedPlacementYaw;
+    private static float queuedPlacementPitch;
+    private static float originalYaw;
+    private static float originalPitch;
+    private static boolean absoluteSchematicOrientation;
     private static BlockPos preparedPlayerPos;
     private static Direction preparedFacing;
     private static int index;
@@ -211,7 +227,11 @@ public final class AIBuilder {
         PLAN.clear();
         PLAN.addAll(nextPlan);
         PLAN_MATERIALS.clear();
+        PLAN_STATES.clear();
+        for (BlockPos target : nextPlan) PLAN_STATES.put(target, selected.getBlock().getDefaultState());
         pendingMaterial = null;
+        pendingExpectedState = null;
+        queuedPlacementHit = null;
         material = selected;
         blueprint = selectedBlueprint;
         blueprintName = selectedBlueprint.label;
@@ -246,17 +266,26 @@ public final class AIBuilder {
     /** Prepares the safe subset and the air volume that must be cleared for an imported schematic. */
     public static String prepareImportedStructure(String name, List<RelativeBlock> offsets,
                                                   List<RelativeBlock> clearOffsets) {
-        return prepareCustomStructure(name, null, null, offsets, clearOffsets, 5_000, 63, 63);
+        return prepareCustomStructure(name, null, null, offsets, clearOffsets, 5_000, 63, 63, true);
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial, List<RelativeBlock> offsets) {
-        return prepareCustomStructure(name, preferredMaterial, null, offsets, List.of(), 200, 15, 10);
+        return prepareCustomStructure(name, preferredMaterial, null, offsets, List.of(), 200, 15, 10, false);
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial,
                                                  String preferredMaterialId, List<RelativeBlock> offsets,
                                                  List<RelativeBlock> clearOffsets,
                                                  int maxBlocks, int maxHorizontal, int maxVerticalLimit) {
+        return prepareCustomStructure(name, preferredMaterial, preferredMaterialId, offsets, clearOffsets,
+                maxBlocks, maxHorizontal, maxVerticalLimit, false);
+    }
+
+    private static String prepareCustomStructure(String name, BlockItem preferredMaterial,
+                                                 String preferredMaterialId, List<RelativeBlock> offsets,
+                                                 List<RelativeBlock> clearOffsets,
+                                                 int maxBlocks, int maxHorizontal, int maxVerticalLimit,
+                                                 boolean preserveSchematicOrientation) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (running) throw new IllegalArgumentException("Nightfall baut bereits. Stoppe den aktuellen Bau zuerst.");
         if (mc.player == null || mc.world == null || mc.interactionManager == null || mc.getNetworkHandler() == null)
@@ -305,12 +334,18 @@ public final class AIBuilder {
 
         Map<BlockItem, Integer> requiredCounts = new LinkedHashMap<>();
         Map<RelativeBlock, BlockItem> offsetMaterials = new LinkedHashMap<>();
+        Map<RelativeBlock, BlockState> offsetStates = new LinkedHashMap<>();
         for (RelativeBlock offset : offsets) {
             BlockItem blockMaterial = offset.materialId() == null || offset.materialId().isBlank()
                     ? selected : resolveMaterial(counts, offset.materialId());
             if (blockMaterial == null)
-                throw new IllegalArgumentException("Für jeden Block ohne eigenes Material muss ein passender Full-Block-Typ in der Hotbar liegen.");
+                throw new IllegalArgumentException("Für jeden Block ohne eigenes Material muss ein passender Block in der Hotbar liegen.");
+            BlockState targetState = offset.state() == null ? blockMaterial.getBlock().getDefaultState() : offset.state();
+            if (!targetState.isOf(blockMaterial.getBlock()))
+                throw new IllegalArgumentException("BlockState und Material stimmen an Position "
+                        + offset.x() + "/" + offset.y() + "/" + offset.z() + " nicht überein.");
             offsetMaterials.put(offset, blockMaterial);
+            offsetStates.put(offset, targetState);
             requiredCounts.merge(blockMaterial, 1, Integer::sum);
         }
         boolean creative = playerIsCreative(mc);
@@ -325,9 +360,13 @@ public final class AIBuilder {
         if (selected == null) selected = offsetMaterials.values().iterator().next();
 
         ClientPlayerEntity player = mc.player;
-        Direction forward = player.getHorizontalFacing();
-        Direction right = forward.rotateYClockwise();
-        BlockPos origin = player.getBlockPos().offset(forward, 1).offset(right, -((maxX + 1) / 2));
+        Direction playerForward = player.getHorizontalFacing();
+        Direction forward = preserveSchematicOrientation ? Direction.SOUTH : playerForward;
+        Direction right = preserveSchematicOrientation ? Direction.EAST : forward.rotateYClockwise();
+        BlockPos origin = preserveSchematicOrientation
+                ? player.getBlockPos().offset(playerForward, 1)
+                    .offset(Direction.WEST, (maxX + 1) / 2).offset(Direction.NORTH, (maxZ + 1) / 2)
+                : player.getBlockPos().offset(forward, 1).offset(right, -((maxX + 1) / 2));
         List<BlockPos> targets = new ArrayList<>(offsets.size());
         Set<BlockPos> targetSet = new HashSet<>();
         Map<BlockPos, BlockItem> targetMaterials = new LinkedHashMap<>();
@@ -341,7 +380,8 @@ public final class AIBuilder {
             if (!mc.world.isChunkLoaded(target))
                 throw new IllegalArgumentException("Schematic-Ziel liegt in einem nicht geladenen Chunk bei " + target.toShortString() + ".");
             BlockState present = mc.world.getBlockState(target);
-            if (!present.isReplaceable() && !present.isOf(offsetMaterials.get(offset).getBlock())) {
+            BlockState desired = offsetStates.get(offset);
+            if (!present.equals(desired) && !present.isReplaceable()) {
                 if (present.hasBlockEntity() || !present.getFluidState().isEmpty() || present.getHardness(mc.world, target) < 0.0f)
                     throw new IllegalArgumentException("Nightfall darf das Hindernis bei " + target.toShortString()
                             + " nicht automatisch entfernen (Block-Entity, Flüssigkeit oder unzerstörbarer Block).");
@@ -406,6 +446,7 @@ public final class AIBuilder {
         PLAN.clear();
         PLAN.addAll(ordered);
         PLAN_MATERIALS.clear();
+        PLAN_STATES.clear();
         EXCAVATION_PLAN.clear();
         EXCAVATION_PLAN.addAll(nextExcavation);
         excavationIndex = 0;
@@ -417,7 +458,12 @@ public final class AIBuilder {
         excavationWaitingNotice = false;
         CUSTOM_CLEAR_OFFSETS.clear();
         CUSTOM_CLEAR_OFFSETS.addAll(clearOffsets);
-        for (BlockPos position : ordered) PLAN_MATERIALS.put(position, targetMaterials.get(position));
+        for (RelativeBlock offset : offsets) {
+            BlockPos target = origin.add(right.getOffsetX() * offset.x() + forward.getOffsetX() * offset.z(),
+                    offset.y(), right.getOffsetZ() * offset.x() + forward.getOffsetZ() * offset.z());
+            PLAN_MATERIALS.put(target, offsetMaterials.get(offset));
+            PLAN_STATES.put(target, offsetStates.get(offset));
+        }
         pendingMaterial = null;
         CUSTOM_OFFSETS.clear();
         CUSTOM_OFFSETS.addAll(offsets);
@@ -437,6 +483,7 @@ public final class AIBuilder {
         preparedMaxBlocks = maxBlocks;
         preparedMaxHorizontal = maxHorizontal;
         preparedMaxY = maxVerticalLimit;
+        absoluteSchematicOrientation = preserveSchematicOrientation;
         status = "Eigener Bauplan geprüft";
         return "Eigener Bauplan geprüft: „" + blueprintName + "“, " + offsets.size() + " Blöcke, "
                 + (maxX + 1) + " × " + (maxY + 1) + " × " + (maxZ + 1)
@@ -590,11 +637,19 @@ public final class AIBuilder {
         BlockItem approvedMaterial = material;
         if (blueprint == Blueprint.CUSTOM) {
             prepareCustomStructure(blueprintName, approvedMaterial, null, List.copyOf(CUSTOM_OFFSETS),
-                    List.copyOf(CUSTOM_CLEAR_OFFSETS), preparedMaxBlocks, preparedMaxHorizontal, preparedMaxY);
+                    List.copyOf(CUSTOM_CLEAR_OFFSETS), preparedMaxBlocks, preparedMaxHorizontal, preparedMaxY,
+                    absoluteSchematicOrientation);
         } else {
             prepareStructure(id, approvedMaterial, null);
         }
         originalSlot = mc.player.getInventory().getSelectedSlot();
+        originalYaw = mc.player.getYaw();
+        originalPitch = mc.player.getPitch();
+        queuedPlacementHit = null;
+        queuedPlacementTarget = null;
+        queuedPlacementMaterial = null;
+        queuedPlacementState = null;
+        pendingExpectedState = null;
         index = 0;
         delay = 0;
         pendingTarget = null;
@@ -625,9 +680,32 @@ public final class AIBuilder {
         ClientPlayerEntity player = mc.player;
         if (delay > 0) { delay--; return; }
 
+        if (queuedPlacementHit != null) {
+            BlockPos target = queuedPlacementTarget;
+            if (target == null || queuedPlacementMaterial == null || queuedPlacementState == null
+                    || !mc.world.getBlockState(target).isReplaceable()) {
+                stopInternal("Bau gestoppt: Die vorbereitete Platzierung ist nicht mehr gültig.", true);
+                return;
+            }
+            player.setYaw(queuedPlacementYaw);
+            player.setPitch(queuedPlacementPitch);
+            mc.interactionManager.interactBlock(player, Hand.MAIN_HAND, queuedPlacementHit);
+            player.swingHand(Hand.MAIN_HAND);
+            pendingTarget = target.toImmutable();
+            pendingMaterial = queuedPlacementMaterial;
+            pendingExpectedState = queuedPlacementState;
+            queuedPlacementHit = null;
+            queuedPlacementTarget = null;
+            queuedPlacementMaterial = null;
+            queuedPlacementState = null;
+            pendingTicks = 0;
+            delay = 2;
+            return;
+        }
+
         if (pendingTarget != null) {
             BlockState pendingState = mc.world.getBlockState(pendingTarget);
-            if (pendingMaterial != null && pendingState.isOf(pendingMaterial.getBlock())) {
+            if (pendingExpectedState != null && pendingState.equals(pendingExpectedState)) {
                 pendingMaterial = null;
                 index++;
                 pendingTarget = null;
@@ -638,7 +716,12 @@ public final class AIBuilder {
                 return;
             }
             if (!pendingState.isReplaceable()) {
-                stopInternal("Bau gestoppt: Der Server meldet an der Zielposition einen anderen Block.", true);
+                String mismatch = pendingMaterial != null && pendingState.isOf(pendingMaterial.getBlock())
+                        ? "Der Server hat den Block mit einer anderen Ausrichtung/einem anderen Zustand platziert."
+                        : "Der Server meldet an der Zielposition einen anderen Block.";
+                stopInternal("Bau gestoppt: " + mismatch + " Erwartet: "
+                        + (pendingExpectedState == null ? "unbekannt" : pendingExpectedState)
+                        + ", erhalten: " + pendingState + ".", true);
                 return;
             }
             if (++pendingTicks < CONFIRMATION_TIMEOUT_TICKS) { delay = 1; return; }
@@ -649,6 +732,7 @@ public final class AIBuilder {
             placementRetries++;
             pendingTarget = null;
             pendingMaterial = null;
+            pendingExpectedState = null;
             pendingTicks = 0;
             notifyPlayer("Platzierung nicht bestätigt – ich versuche es erneut (" + placementRetries + "/" + MAX_PLACEMENT_RETRIES + ").");
             delay = 1;
@@ -673,7 +757,8 @@ public final class AIBuilder {
             stopInternal("Bau gestoppt: Für den nächsten Block ist kein Baumaterial zugeordnet.", true);
             return;
         }
-        if (present.isOf(targetMaterial.getBlock())) { index++; progressNotice(); return; }
+        BlockState expectedState = PLAN_STATES.getOrDefault(target, targetMaterial.getBlock().getDefaultState());
+        if (present.equals(expectedState)) { index++; progressNotice(); return; }
         if (!present.isReplaceable()) {
             stopInternal("Bau gestoppt: Bei X=" + target.getX() + ", Y=" + target.getY() + ", Z=" + target.getZ()
                     + " ist inzwischen ein anderer Block im Weg.", true);
@@ -687,24 +772,24 @@ public final class AIBuilder {
             delay = 1;
             return;
         }
-        BlockHitResult hit = findReachableSupport(mc, player, target);
-        if (hit == null) {
-            if (!waitingForReach) {
-                waitingForReach = true;
-                status = "Warte auf Reichweite · " + index + "/" + PLAN.size();
-                notifyPlayer("Geh bitte näher an den Bauplatz. Ich setze den Bau automatisch fort, sobald der nächste Block erreichbar ist.");
-            }
+        PlacementCandidate candidate = findPlacementCandidate(mc, player, target, targetMaterial, expectedState);
+        if (candidate == null) {
+            stopInternal("Bau gestoppt: Für " + expectedState + " wurde mit normaler Minecraft-Platzierung keine sichere Ansetzfläche/Ausrichtung gefunden. "
+                    + "Nightfall setzt den Block nicht falsch herum.", true);
             return;
         }
 
         waitingForReach = false;
-        status = "Warte auf Serverbestätigung " + (index + 1) + "/" + PLAN.size();
-        mc.interactionManager.interactBlock(player, Hand.MAIN_HAND, hit);
-        player.swingHand(Hand.MAIN_HAND);
-        pendingTarget = target.toImmutable();
-        pendingMaterial = targetMaterial;
-        pendingTicks = 0;
-        delay = 2;
+        status = "Richte Block aus " + (index + 1) + "/" + PLAN.size();
+        queuedPlacementHit = candidate.hit();
+        queuedPlacementTarget = target.toImmutable();
+        queuedPlacementMaterial = targetMaterial;
+        queuedPlacementState = expectedState;
+        queuedPlacementYaw = candidate.yaw();
+        queuedPlacementPitch = candidate.pitch();
+        player.setYaw(candidate.yaw());
+        player.setPitch(candidate.pitch());
+        delay = 1;
     }
 
     private static void tickExcavation(MinecraftClient mc, ClientPlayerEntity player) {
@@ -790,14 +875,42 @@ public final class AIBuilder {
         }
     }
 
-    private static BlockHitResult findReachableSupport(MinecraftClient mc, ClientPlayerEntity player, BlockPos target) {
-        for (Direction face : Direction.values()) {
-            BlockPos support = target.offset(face.getOpposite());
-            if (mc.world.getBlockState(support).getCollisionShape(mc.world, support).isEmpty()) continue;
-            Vec3d hit = support.toCenterPos().add(face.getOffsetX() * 0.5,
-                    face.getOffsetY() * 0.5, face.getOffsetZ() * 0.5);
-            if (player.getEyePos().squaredDistanceTo(hit) <= REACH_SQUARED)
-                return new BlockHitResult(hit, face, support, false);
+    private static PlacementCandidate findPlacementCandidate(MinecraftClient mc, ClientPlayerEntity player,
+                                                              BlockPos target, BlockItem item,
+                                                              BlockState expectedState) {
+        ItemStack stack = player.getMainHandStack();
+        if (stack.isEmpty() || !stack.isOf(item)) return null;
+        float savedYaw = player.getYaw();
+        float savedPitch = player.getPitch();
+        float[] yaws = {0.0f, 90.0f, 180.0f, -90.0f};
+        float[] pitches = {0.0f, -90.0f, 90.0f};
+        try {
+            for (Direction face : Direction.values()) {
+                BlockPos support = target.offset(face.getOpposite());
+                BlockState supportState = mc.world.getBlockState(support);
+                if (supportState.getCollisionShape(mc.world, support).isEmpty()) continue;
+                Vec3d hitPos = support.toCenterPos().add(face.getOffsetX() * 0.5,
+                        face.getOffsetY() * 0.5, face.getOffsetZ() * 0.5);
+                if (player.getEyePos().squaredDistanceTo(hitPos) > Math.min(REACH_SQUARED,
+                        player.getBlockInteractionRange() * player.getBlockInteractionRange())) continue;
+                BlockHitResult hit = new BlockHitResult(hitPos, face, support, false);
+                for (float yaw : yaws) {
+                    for (float pitch : pitches) {
+                        player.setYaw(yaw);
+                        player.setPitch(pitch);
+                        ItemPlacementContext raw = new ItemPlacementContext(player, Hand.MAIN_HAND, stack, hit);
+                        ItemPlacementContext context = item.getPlacementContext(raw);
+                        if (context == null || !context.getBlockPos().equals(target)) continue;
+                        BlockState predicted = ((BlockItemPlacementAccessor) (Object) item)
+                                .nightfall$invokeGetPlacementState(context);
+                        if (expectedState.equals(predicted))
+                            return new PlacementCandidate(hit, yaw, pitch);
+                    }
+                }
+            }
+        } finally {
+            player.setYaw(savedYaw);
+            player.setPitch(savedPitch);
         }
         return null;
     }
@@ -853,6 +966,7 @@ public final class AIBuilder {
         prepared = false;
         PLAN.clear();
         PLAN_MATERIALS.clear();
+        PLAN_STATES.clear();
         material = null;
         pendingMaterial = null;
         blueprint = null;
@@ -866,6 +980,11 @@ public final class AIBuilder {
         excavationMinePending = false;
         excavationNavigationPending = false;
         pendingTarget = null;
+        pendingExpectedState = null;
+        queuedPlacementHit = null;
+        queuedPlacementTarget = null;
+        queuedPlacementMaterial = null;
+        queuedPlacementState = null;
         preparedPlayerPos = null;
         preparedFacing = null;
     }
@@ -906,6 +1025,10 @@ public final class AIBuilder {
     private static void stopInternal(String message, boolean notify) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (originalSlot >= 0 && mc.player != null) mc.player.getInventory().setSelectedSlot(originalSlot);
+        if (mc.player != null) {
+            mc.player.setYaw(originalYaw);
+            mc.player.setPitch(originalPitch);
+        }
         if (AIPlayerController.isBusy()) AIPlayerController.stop(null);
         originalSlot = -1;
         running = false;
@@ -920,8 +1043,14 @@ public final class AIBuilder {
         if (notify) notifyPlayer(message);
         PLAN.clear();
         PLAN_MATERIALS.clear();
+        PLAN_STATES.clear();
         material = null;
         pendingMaterial = null;
+        pendingExpectedState = null;
+        queuedPlacementHit = null;
+        queuedPlacementTarget = null;
+        queuedPlacementMaterial = null;
+        queuedPlacementState = null;
         blueprint = null;
         blueprintName = "";
         CUSTOM_OFFSETS.clear();
