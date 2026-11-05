@@ -163,6 +163,23 @@ public final class AIActionRegistry {
         tools.add(tool("mine_looked_block",
                 "Mine the exact block currently under the player's crosshair using the most suitable tool from the player's full inventory and normal vanilla block-breaking interactions. Nightfall temporarily swaps it into the hotbar and restores the displaced stack when possible. Rejects containers, unbreakable or out-of-reach blocks. Requires player confirmation.",
                 objectSchema()));
+        JsonObject gatherWoodSchema = objectSchema();
+        JsonObject gatherWoodItem = property("item", "string",
+                "Exact vanilla wood block item ID, e.g. minecraft:oak_log or minecraft:crimson_stem.").get("schema").getAsJsonObject();
+        gatherWoodItem.addProperty("maxLength", 64);
+        JsonObject gatherWoodCount = property("count", "integer",
+                "Target total amount of this item in the player's inventory (1–64).").get("schema").getAsJsonObject();
+        gatherWoodCount.addProperty("minimum", 1);
+        gatherWoodCount.addProperty("maximum", 64);
+        gatherWoodSchema.getAsJsonObject("properties").add("item", gatherWoodItem);
+        gatherWoodSchema.getAsJsonObject("properties").add("count", gatherWoodCount);
+        JsonArray gatherWoodRequired = new JsonArray();
+        gatherWoodRequired.add("item");
+        gatherWoodRequired.add("count");
+        gatherWoodSchema.add("required", gatherWoodRequired);
+        tools.add(tool("gather_wood",
+                "Gather a target total amount (1–64) of a specific vanilla log/wood/stem/hyphae block item. Scans only already-loaded chunks within 16 horizontal blocks and 4 below/16 above the player; accepts only matching vanilla block/item IDs whose drops are the same wood item. Uses safe nearby A* paths, the suitable tool from the full inventory and normal vanilla block breaking. At most 32 additional blocks per request. It stops if no safe path or confirmed drops are unavailable. Requires player confirmation.",
+                gatherWoodSchema));
         tools.add(tool("craft_item",
                 "Craft one batch of an exact item using a recipe already unlocked in the connected server's recipe book. Nightfall checks ingredients in the player's inventory, supports only shaped recipes up to 2x2 and shapeless recipes with up to four ingredients, places the recipe with the normal recipe-book interaction and waits for the output to appear in the inventory. It never creates ingredients or bypasses server recipe rules. Requires player confirmation.",
                 objectSchema(property("item", "string",
@@ -178,7 +195,7 @@ public final class AIActionRegistry {
                 "Engage the nearest nearby hostile mob only (never players or passive/neutral mobs). Approaches using local pathfinding and performs normal melee attacks within reach. Bounded to 12 attacks or 45 seconds. Requires player confirmation.",
                 objectSchema()));
         tools.add(tool("stop_current_action",
-                "Immediately stop Nightfall movement, navigation, mining, crafting, eating and combat, and release all keys controlled by Nightfall. Safe emergency stop.",
+                "Immediately stop Nightfall movement, navigation, mining, wood gathering, crafting, eating and combat, and release all keys controlled by Nightfall. Safe emergency stop.",
                 objectSchema()));
         tools.add(tool("get_build_status",
                 "Read the current Nightfall builder status: confirmed block count, phase, pause reason, blueprint and materials. Read-only; no confirmation required.",
@@ -298,13 +315,16 @@ public final class AIActionRegistry {
                 yield new Action(name, args, AIPlayerController.previewMine(x, y, z));
             }
             case "mine_looked_block" -> new Action(name, args, AIPlayerController.previewLookedBlock());
+            case "gather_wood" -> new Action(name, args,
+                    AIPlayerController.previewGatherWood(requiredString(args, "item", 64),
+                            readBoundedInteger(args, "count", 1, 64)));
             case "craft_item" -> new Action(name, args,
                     AIPlayerController.previewCraftItem(requiredString(args, "item", 64)));
             case "eat_food" -> new Action(name, args, AIPlayerController.previewEat(
                     args.has("item") ? requiredString(args, "item", 64).trim() : null));
             case "attack_nearest_hostile" -> new Action(name, args, AICombatController.preview());
             case "stop_current_action" -> new Action(name, args,
-                    "Nightfall stoppt sofort Navigation, Bewegung, Blockabbau, Crafting, Essen und Kampf und gibt alle eigenen Tasten frei.");
+                    "Nightfall stoppt sofort Navigation, Bewegung, Blockabbau, Holzsammeln, Crafting, Essen und Kampf und gibt alle eigenen Tasten frei.");
             case "get_build_status" -> new Action(name, args, AIBuilder.describeStatus());
             case "pause_build" -> new Action(name, args,
                     AIBuilder.isRunning() ? "Nightfall pausiert den Bau nach einer eventuell noch ausstehenden Blockbestätigung."
@@ -395,6 +415,8 @@ public final class AIActionRegistry {
             case "mine_block" -> AIPlayerController.mineBlock(
                     args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt());
             case "mine_looked_block" -> AIPlayerController.mineLookedBlock();
+            case "gather_wood" -> AIPlayerController.gatherWood(args.get("item").getAsString(),
+                    readBoundedInteger(args, "count", 1, 64));
             case "craft_item" -> AIPlayerController.craftItem(args.get("item").getAsString());
             case "eat_food" -> AIPlayerController.eatFood(args.has("item") ? args.get("item").getAsString() : null);
             case "attack_nearest_hostile" -> AICombatController.start();
