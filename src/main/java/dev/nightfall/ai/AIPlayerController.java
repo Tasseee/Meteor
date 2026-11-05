@@ -66,6 +66,16 @@ public final class AIPlayerController {
     private static final int GATHER_HORIZONTAL_RADIUS = 16;
     private static final int GATHER_VERTICAL_BELOW = 4;
     private static final int GATHER_VERTICAL_ABOVE = 16;
+    private static final Set<String> GATHERABLE_SELF_DROP_BLOCKS = Set.of(
+            "dirt", "coarse_dirt", "rooted_dirt",
+            "cobblestone", "mossy_cobblestone",
+            "granite", "diorite", "andesite", "tuff", "calcite", "dripstone_block",
+            "moss_block", "sandstone", "red_sandstone", "cut_sandstone", "cut_red_sandstone",
+            "netherrack", "end_stone", "blackstone", "basalt", "smooth_basalt",
+            "cobbled_deepslate", "stone_bricks", "mossy_stone_bricks",
+            "cracked_stone_bricks", "chiseled_stone_bricks", "bricks", "mud_bricks",
+            "nether_bricks", "red_nether_bricks", "end_stone_bricks",
+            "terracotta", "purpur_block", "quartz_block", "quartz_bricks");
     private static final ContextParameterMap EMPTY_RECIPE_CONTEXT =
             new ContextParameterMap.Builder().build(new ContextType.Builder().build());
 
@@ -266,13 +276,31 @@ public final class AIPlayerController {
      * Only vanilla log/wood/stem/hyphae block-items whose block and item IDs match are accepted.
      */
     public static String previewGatherWood(String requestedItem, int targetCount) {
+        return previewGatherResource(requestedItem, targetCount, true);
+    }
+
+    public static String gatherWood(String requestedItem, int targetCount) {
+        return gatherResource(requestedItem, targetCount, true);
+    }
+
+    /** Preview a bounded collection request for a whitelisted vanilla self-dropping block. */
+    public static String previewGatherBlock(String requestedItem, int targetCount) {
+        return previewGatherResource(requestedItem, targetCount, false);
+    }
+
+    /** Start a confirmed, bounded collection task for a whitelisted vanilla self-dropping block. */
+    public static String gatherBlock(String requestedItem, int targetCount) {
+        return gatherResource(requestedItem, targetCount, false);
+    }
+
+    private static String previewGatherResource(String requestedItem, int targetCount, boolean woodOnly) {
         MinecraftClient mc = MinecraftClient.getInstance();
         requireWorld(mc);
         if (targetCount < 1 || targetCount > 64)
             throw new IllegalArgumentException("Die Zielmenge muss zwischen 1 und 64 liegen.");
         if (mc.player.currentScreenHandler != mc.player.playerScreenHandler)
             throw new IllegalArgumentException("Schließe zuerst den geöffneten Container.");
-        BlockItem item = resolveGatherWoodItem(requestedItem);
+        BlockItem item = resolveGatherableItem(requestedItem, woodOnly);
         int current = countInventoryItem(mc, item);
         int missing = targetCount - current;
         if (missing <= 0)
@@ -280,58 +308,78 @@ public final class AIPlayerController {
                     + " im Inventar. Die gewünschte Zielmenge ist erreicht.");
         if (missing > MAX_GATHER_BLOCKS)
             throw new IllegalArgumentException("Ein einzelner Sammelauftrag darf höchstens "
-                    + MAX_GATHER_BLOCKS + " zusätzliche Holzblöcke abbauen.");
-        List<BlockPos> candidates = findGatherableWoodBlocks(mc, item.getBlock());
+                    + MAX_GATHER_BLOCKS + " zusätzliche Blöcke abbauen.");
+
+        List<BlockPos> candidates = findGatherableBlocks(mc, item.getBlock());
         if (candidates.isEmpty())
             throw new IllegalArgumentException("Im geladenen Umkreis von " + GATHER_HORIZONTAL_RADIUS
                     + " Blöcken habe ich keine passenden " + item.getName().getString()
-                    + " gefunden. Erkunde zuerst die Gegend oder gehe näher an einen Baum.");
-        int available = Math.min(missing, candidates.size());
+                    + " gefunden. Erkunde zuerst die Gegend oder gehe näher an passende Blöcke.");
+        int toolEligible = countToolEligibleTargets(mc, candidates);
+        if (toolEligible == 0)
+            throw new IllegalArgumentException("Ich habe " + candidates.size() + " passende Blöcke gefunden, "
+                    + "aber für diese Blöcke fehlt ein geeignetes Werkzeug. Lege das passende Werkzeug in dein Inventar.");
+        int available = Math.min(missing, toolEligible);
+        String kind = woodOnly ? "Holzblöcke" : "freigegebene Rohstoffblöcke";
         return "Nightfall sammelt nach deiner Bestätigung bis zu " + missing + " zusätzliche "
                 + item.getName().getString() + " (Ziel: " + targetCount + " im Inventar). "
-                + "Gefunden: " + candidates.size() + " passende Stämme/Holzblöcke im bereits geladenen "
-                + "Umkreis. Höchstens " + MAX_GATHER_BLOCKS + " Blöcke pro Auftrag. "
-                + "Nightfall sucht sichere Standpunkte, nutzt das passende Werkzeug und wartet auf "
-                + "Block- und Item-Updates. Es werden höchstens " + available + " Ziele eingeplant.";
+                + "Gefunden: " + candidates.size() + " passende " + kind + " im bereits geladenen Umkreis; "
+                + toolEligible + " davon haben ein verfügbares passendes Werkzeug. "
+                + "Höchstens " + MAX_GATHER_BLOCKS + " zusätzliche Blöcke pro Auftrag. "
+                + "Nightfall sucht sichere Standpunkte, nutzt bei toolpflichtigen Blöcken nur ein geeignetes Werkzeug "
+                + "und wartet auf Block- und Item-Updates. Es werden höchstens " + available + " Ziele eingeplant.";
     }
 
-    /** Start a confirmed, bounded wood-gathering task in loaded nearby terrain. */
-    public static String gatherWood(String requestedItem, int targetCount) {
+    private static String gatherResource(String requestedItem, int targetCount, boolean woodOnly) {
         MinecraftClient mc = MinecraftClient.getInstance();
         requireWorld(mc);
-        previewGatherWood(requestedItem, targetCount);
-        BlockItem item = resolveGatherWoodItem(requestedItem);
-        List<BlockPos> candidates = findGatherableWoodBlocks(mc, item.getBlock());
-        if (candidates.isEmpty()) throw new IllegalArgumentException("Die gefundenen Holzblöcke sind inzwischen nicht mehr verfügbar.");
+        previewGatherResource(requestedItem, targetCount, woodOnly);
+        BlockItem item = resolveGatherableItem(requestedItem, woodOnly);
+        List<BlockPos> candidates = findGatherableBlocks(mc, item.getBlock());
+        List<BlockPos> usableTargets = new ArrayList<>();
+        for (BlockPos pos : candidates) {
+            BlockState state = mc.world.getBlockState(pos);
+            if (!state.isToolRequired() || hasSuitableMiningTool(mc, state))
+                usableTargets.add(pos);
+        }
+        if (usableTargets.isEmpty())
+            throw new IllegalArgumentException("Die passenden Rohstoffblöcke oder Werkzeuge sind inzwischen nicht mehr verfügbar.");
 
         stop(null);
         gatherMaterial = item;
         gatherMaterialName = item.getName().getString();
         gatherGoalCount = targetCount;
-        gatherTargets = List.copyOf(candidates);
+        gatherTargets = List.copyOf(usableTargets);
         gatherIndex = 0;
         gatherAwaitingPickup = false;
         gatherPickupTicks = 0;
         gatherCountBeforeBreak = 0;
         mode = Mode.GATHER;
         statusNotice(mc, "Sammle " + gatherMaterialName + " · Ziel " + targetCount
-                + " im Inventar. Ich baue nur passende Holzblöcke im geladenen Nahbereich ab.");
-        return "Holzsammeln gestartet. Nightfall sucht passende Stämme, navigiert über sichere geladene Wege und wartet auf bestätigte Drops. „Stopp“ bricht ab.";
+                + " im Inventar. Ich baue nur freigegebene Blöcke im geladenen Nahbereich ab.");
+        return (woodOnly ? "Holzsammeln" : "Materialsammlung") + " gestartet. Nightfall sucht passende Blöcke, "
+                + "navigiert über sichere geladene Wege, verwendet erforderliche Werkzeuge und wartet auf bestätigte Drops. „Stopp“ bricht ab.";
     }
 
-    private static BlockItem resolveGatherWoodItem(String requestedItem) {
+    private static BlockItem resolveGatherableItem(String requestedItem, boolean woodOnly) {
         if (requestedItem == null || requestedItem.isBlank() || requestedItem.length() > 64)
-            throw new IllegalArgumentException("Gib eine Minecraft-Item-ID wie minecraft:oak_log an.");
+            throw new IllegalArgumentException("Gib eine exakte Vanilla-Item-ID wie minecraft:oak_log oder minecraft:cobblestone an.");
         Identifier id = Identifier.tryParse(requestedItem.trim());
         if (id == null || !id.getNamespace().equals("minecraft"))
-            throw new IllegalArgumentException("Bitte gib eine gültige Vanilla-Holz-ID wie minecraft:oak_log an.");
+            throw new IllegalArgumentException("Bitte gib eine gültige Vanilla-Item-ID an.");
         Item item = Registries.ITEM.get(id);
         if (!(item instanceof BlockItem blockItem) || !Registries.ITEM.getId(item).equals(id)
                 || !Registries.BLOCK.getId(blockItem.getBlock()).equals(id)
-                || !isGatherableWoodPath(id.getPath()))
-            throw new IllegalArgumentException("Nightfall sammelt derzeit nur Vanilla-Holzblöcke, die als derselbe Itemtyp droppen "
-                    + "(z. B. minecraft:oak_log, minecraft:birch_log, minecraft:crimson_stem oder minecraft:oak_wood).");
+                || !isGatherableResourcePath(id.getPath(), woodOnly))
+            throw new IllegalArgumentException(woodOnly
+                    ? "Nightfall sammelt derzeit nur Vanilla-Holzblöcke, die als derselbe Itemtyp droppen (z. B. minecraft:oak_log oder minecraft:crimson_stem)."
+                    : "Dieser Block ist nicht in der sicheren Selbst-Drop-Liste. Unterstützt werden Holzblöcke und ausgewählte Vanilla-Blöcke wie dirt, cobblestone, granite, tuff, sandstone, netherrack und stone_bricks.");
         return blockItem;
+    }
+
+    private static boolean isGatherableResourcePath(String path, boolean woodOnly) {
+        if (isGatherableWoodPath(path)) return true;
+        return !woodOnly && GATHERABLE_SELF_DROP_BLOCKS.contains(path);
     }
 
     private static boolean isGatherableWoodPath(String path) {
@@ -339,7 +387,25 @@ public final class AIPlayerController {
                 || path.endsWith("_stem") || path.endsWith("_hyphae");
     }
 
-    private static List<BlockPos> findGatherableWoodBlocks(MinecraftClient mc, Block targetBlock) {
+    private static boolean hasSuitableMiningTool(MinecraftClient mc, BlockState state) {
+        if (!state.isToolRequired()) return true;
+        for (int slot = 0; slot < 36; slot++) {
+            ItemStack stack = mc.player.getInventory().getStack(slot);
+            if (!stack.isEmpty() && stack.isSuitableFor(state)) return true;
+        }
+        return false;
+    }
+
+    private static int countToolEligibleTargets(MinecraftClient mc, List<BlockPos> candidates) {
+        int count = 0;
+        for (BlockPos pos : candidates) {
+            BlockState state = mc.world.getBlockState(pos);
+            if (!state.isToolRequired() || hasSuitableMiningTool(mc, state)) count++;
+        }
+        return count;
+    }
+
+    private static List<BlockPos> findGatherableBlocks(MinecraftClient mc, Block targetBlock) {
         BlockPos center = mc.player.getBlockPos();
         int minX = center.getX() - GATHER_HORIZONTAL_RADIUS;
         int maxX = center.getX() + GATHER_HORIZONTAL_RADIUS;
@@ -357,6 +423,7 @@ public final class AIPlayerController {
                     if (!mc.world.isChunkLoaded(cursor)) continue;
                     BlockState state = mc.world.getBlockState(cursor);
                     if (!state.isOf(targetBlock) || state.hasBlockEntity()
+                            || state.getBlock() instanceof net.minecraft.block.FallingBlock
                             || !state.getFluidState().isEmpty()
                             || state.getHardness(mc.world, cursor) < 0.0f) continue;
                     found.add(cursor.toImmutable());
@@ -372,12 +439,12 @@ public final class AIPlayerController {
 
     private static void tickGather(MinecraftClient mc) {
         if (gatherMaterial == null || gatherTargets.isEmpty()) {
-            stop("Holzsammeln gestoppt: Es gibt keinen gültigen Sammelplan mehr.");
+            stop("Materialsammlung gestoppt: Es gibt keinen gültigen Sammelplan mehr.");
             return;
         }
         int currentCount = countInventoryItem(mc, gatherMaterial);
         if (currentCount >= gatherGoalCount) {
-            stop("Holzsammeln abgeschlossen: " + currentCount + "/" + gatherGoalCount
+            stop("Materialsammlung abgeschlossen: " + currentCount + "/" + gatherGoalCount
                     + " " + gatherMaterialName + " im Inventar.");
             return;
         }
@@ -402,7 +469,9 @@ public final class AIPlayerController {
             BlockPos target = gatherTargets.get(gatherIndex);
             BlockState state = mc.world.getBlockState(target);
             if (!state.isOf(gatherMaterial.getBlock()) || state.hasBlockEntity()
-                    || !state.getFluidState().isEmpty() || state.getHardness(mc.world, target) < 0.0f) {
+                    || state.getBlock() instanceof net.minecraft.block.FallingBlock
+                    || !state.getFluidState().isEmpty() || state.getHardness(mc.world, target) < 0.0f
+                    || !hasSuitableMiningTool(mc, state)) {
                 gatherIndex++;
                 continue;
             }
@@ -432,7 +501,7 @@ public final class AIPlayerController {
             } catch (RuntimeException failure) {
                 restoreMiningTool(mc);
                 restoreHotbar(mc);
-                stop("Holzsammeln gestoppt: Passendes Werkzeug konnte nicht sicher gewechselt werden.");
+                stop("Materialsammlung gestoppt: Passendes Werkzeug konnte nicht sicher gewechselt werden.");
                 return;
             }
 
@@ -447,8 +516,8 @@ public final class AIPlayerController {
             return;
         }
 
-        stop("Holzsammeln beendet: " + currentCount + "/" + gatherGoalCount + " "
-                + gatherMaterialName + " im Inventar. Im geladenen Nahbereich sind keine weiteren passenden Stämme erreichbar.");
+        stop("Materialsammlung beendet: " + currentCount + "/" + gatherGoalCount + " "
+                + gatherMaterialName + " im Inventar. Im geladenen Nahbereich sind keine weiteren passenden Rohstoffblöcke erreichbar.");
     }
 
     private static boolean startGatherApproach(MinecraftClient mc, BlockPos target) {
@@ -481,7 +550,7 @@ public final class AIPlayerController {
         if (++actionTicks > MAX_MINING_TICKS || mc.interactionManager == null
                 || miningPos == null || mc.player.getEyePos().squaredDistanceTo(miningPos.toCenterPos())
                 > mc.player.getBlockInteractionRange() * mc.player.getBlockInteractionRange()) {
-            stop("Holzsammeln gestoppt: Abbaureichweite oder Zeitlimit überschritten.");
+            stop("Materialsammlung gestoppt: Abbaureichweite oder Zeitlimit überschritten.");
             return;
         }
         BlockState current = mc.world.getBlockState(miningPos);
@@ -515,7 +584,7 @@ public final class AIPlayerController {
 
         BlockHitResult hit = raycastBlock(mc, miningPos);
         if (hit == null || !hit.getBlockPos().equals(miningPos)) {
-            stop("Holzsammeln gestoppt: Der Stamm ist nicht mehr frei sichtbar.");
+            stop("Materialsammlung gestoppt: Der Stamm ist nicht mehr frei sichtbar.");
             return;
         }
         mc.options.attackKey.setPressed(true);
