@@ -577,8 +577,9 @@ public final class AIBuilder {
             ItemStack stack = mc.player.getInventory().getStack(slot);
             if (!(stack.getItem() instanceof BlockItem item)) continue;
             BlockState state = item.getBlock().getDefaultState();
-            if (item.getBlock() instanceof FallingBlock || state.getCollisionShape(mc.world, sample).isEmpty()
-                    || (requireFullCube && !state.isFullCube(mc.world, sample))) continue;
+            if (item.getBlock() instanceof FallingBlock
+                    || (requireFullCube && (state.getCollisionShape(mc.world, sample).isEmpty()
+                    || !state.isFullCube(mc.world, sample)))) continue;
             counts.merge(item, stack.getCount(), Integer::sum);
         }
         return counts;
