@@ -53,6 +53,10 @@ public final class AIActionRegistry {
     /** OpenAI-compatible function definitions. The model can suggest, never execute, these tools. */
     public static JsonArray toolDefinitions() {
         JsonArray tools = new JsonArray();
+        tools.add(tool("search_structures",
+                "Explore the nearby Minecraft world on foot without server commands. Walks a bounded expanding square spiral using safe local A* navigation through loaded chunks and scans nearby loaded blocks for characteristic block-pattern hints for ancient cities, trial chambers, nether fortresses, bastions or strongholds. Stops and reports likely coordinates when a pattern threshold is reached. This is heuristic, not guaranteed identification; never uses /locate or teleport. Requires player confirmation; user can say stop.",
+                objectSchema(property("structure", "string", "Structure family to search for: any, ancient_city, trial_chambers, fortress, bastion, or stronghold.",
+                        enumArray(List.of("any", "ancient_city", "trial_chambers", "fortress", "bastion", "stronghold"))), "structure")));
         tools.add(tool("locate_structure",
                 "Search for the nearest Minecraft structure using the server's native /locate structure command. Accepts a structure ID such as minecraft:village, minecraft:ancient_city, minecraft:fortress, minecraft:bastion_remnant, minecraft:trial_chambers, minecraft:stronghold or minecraft:woodland_mansion. The server must support and permit the command. When a matching coordinate response arrives, Nightfall starts its bounded local A* navigation toward the reported location; it never teleports.",
                 objectSchema(property("structure", "string", "Structure registry ID, for example minecraft:village or minecraft:ancient_city."), "structure")));
@@ -287,6 +291,10 @@ public final class AIActionRegistry {
         }
 
         return switch (name) {
+            case "search_structures" -> {
+                String structure = args.has("structure") ? requiredString(args, "structure", 32) : "any";
+                yield new Action(name, args, AIPlayerController.previewStructureSearch(structure));
+            }
             case "locate_structure" -> {
                 String structure = requiredString(args, "structure", 96).trim().toLowerCase(Locale.ROOT);
                 if (!structure.matches("[a-z0-9_.-]+:[a-z0-9_./-]+"))
@@ -432,6 +440,8 @@ public final class AIActionRegistry {
         JsonObject args = action.arguments();
 
         return switch (action.name()) {
+            case "search_structures" -> AIPlayerController.startStructureSearch(
+                    args.has("structure") ? args.get("structure").getAsString() : "any");
             case "locate_structure" -> {
                 if (mc.player.networkHandler == null) yield "Aktion fehlgeschlagen: Keine Serververbindung.";
                 String structure = args.get("structure").getAsString();
