@@ -136,25 +136,24 @@ public final class AIChatClient {
             Nutze die exakten Minecraft-Item-IDs sowie benötigt/vorhanden/fehlt aus der Vorschau oder Fehlermeldung.
             Wenn eine fehlende Item-ID direkt von der sicheren gather_block-Allowlist unterstützt wird,
             sammle genau dieses Item mit gather_block. count ist der gewünschte Gesamtbestand im Inventar,
-            nicht die zusätzliche Menge. Das Werkzeug sammelt höchstens 32 zusätzliche Blöcke je Auftrag
-            und akzeptiert höchstens 256 als Gesamtziel; pro Auftrag bleiben höchstens 32 zusätzliche Blöcke erlaubt.
-            Wiederhole bestätigte Teilaufträge nur bis der angeforderte Zielbestand (maximal 256) erreicht ist.
-            Liegt der Bedarf über 256 Stück derselben Blockart, sammle höchstens 256 und nenne den Rest
-            als manuell zu beschaffen. Behaupte keinen Fund, bevor gather_block ihn bestätigt.
+            nicht die zusätzliche Menge. gather_block akzeptiert ein Gesamtziel bis 256 und baut höchstens
+            32 zusätzliche Blöcke pro bestätigtem Auftrag ab. Wiederhole bestätigte Teilaufträge nur bis
+            der angeforderte Zielbestand (maximal 256) erreicht ist. Liegt der Bedarf über 256 Stück
+            derselben Blockart, sammle höchstens 256 und nenne den Rest als manuell zu beschaffen.
+            Behaupte keinen Fund, bevor gather_block ihn bestätigt.
             Für fehlende Vanilla-Bretter darfst du nur die eindeutig passende, von gather_wood unterstützte
             Stamm-ID sammeln. Berechne den benötigten Stamm-Zielbestand aus der 4-Bretter-Ausbeute pro Stamm
             und dem bereits vorhandenen Brett-/Stammbestand. gather_wood.count ist der gewünschte Gesamtbestand
             der Stämme (1–64), höchstens 32 zusätzliche Stämme je Auftrag. Danach craft_item mit der exakten
-            gather_wood und craft_item können zusammen höchstens 256 zusätzliche Bretter bereitstellen;
-            bei höherem Bretterbedarf muss der Rest manuell beschafft werden.
             Brett-ID und der noch fehlenden zusätzlichen Brettmenge aufrufen; dies funktioniert nur, wenn das
-            passende Rezept bereits im 2×2-Rezeptbuch freigeschaltet ist. Prüfe nach jeder bestätigten Sammel-
-            oder Crafting-Aktion den tatsächlichen Bestand und hole mit build_structure beziehungsweise
-            build_custom_structure eine neue Vorschau ein. Jede Sammel-, Crafting- und Bauaktion braucht eine
-            eigene Spielerbestätigung. Bei nicht unterstützten IDs, fehlenden Rezepten oder nicht erreichbaren
-            Quellen nenne die exakte fehlende ID und bitte um manuelle Beschaffung. Verwende kein Ersatzmaterial,
-            das der Spieler nicht ausdrücklich freigegeben hat, und erfinde niemals erfolgreiche Sammel- oder
-            Crafting-Ergebnisse.
+            passende Rezept bereits im 2×2-Rezeptbuch freigeschaltet ist. gather_wood und craft_item können
+            zusammen höchstens 256 zusätzliche Bretter bereitstellen; bei höherem Bretterbedarf muss der Rest
+            manuell beschafft werden. Prüfe nach jeder bestätigten Sammel- oder Crafting-Aktion den tatsächlichen
+            Bestand und hole mit build_structure beziehungsweise build_custom_structure eine neue Vorschau ein.
+            Jede Sammel-, Crafting- und Bauaktion braucht eine eigene Spielerbestätigung. Bei nicht unterstützten
+            IDs, fehlenden Rezepten oder nicht erreichbaren Quellen nenne die exakte fehlende ID und bitte um
+            manuelle Beschaffung. Verwende kein Ersatzmaterial, das der Spieler nicht ausdrücklich freigegeben
+            hat, und erfinde niemals erfolgreiche Sammel- oder Crafting-Ergebnisse.
             Für andere ausdrücklich gewünschte Gebäude verwende build_custom_structure.
             Erzeuge einen konkreten, kompakten Blockplan mit höchstens 512 Blöcken in einem
             32×32×32-Raster, Koordinaten als nichtnegative ganzzahlige Offsets in X/Z 0–31 und Y 0–31.
