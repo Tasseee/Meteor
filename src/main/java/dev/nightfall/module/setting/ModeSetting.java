@@ -14,6 +14,8 @@ public class ModeSetting extends Setting<String> {
         this.value = modes[index];
     }
 
+    public String[] getModes() { return modes.clone(); }
+
     public void cycle(int dir) {
         index = Math.floorMod(index + dir, modes.length);
         value = modes[index];
