@@ -77,6 +77,7 @@ public final class AIBuilder {
     private static final List<RelativeBlock> CUSTOM_OFFSETS = new ArrayList<>();
     private static final List<RelativeBlock> CUSTOM_CLEAR_OFFSETS = new ArrayList<>();
     private static final List<BlockPos> EXCAVATION_PLAN = new ArrayList<>();
+    private static final Map<BlockPos, Identifier> EXCAVATION_EXPECTED_BLOCKS = new LinkedHashMap<>();
     private static int excavationIndex;
     private static int excavationRetries;
     private static BlockPos pendingExcavationTarget;
@@ -479,6 +480,9 @@ public final class AIBuilder {
         PLAN_STATES.clear();
         EXCAVATION_PLAN.clear();
         EXCAVATION_PLAN.addAll(nextExcavation);
+        EXCAVATION_EXPECTED_BLOCKS.clear();
+        for (BlockPos target : nextExcavation)
+            EXCAVATION_EXPECTED_BLOCKS.put(target, Registries.BLOCK.getId(mc.world.getBlockState(target).getBlock()));
         excavationIndex = 0;
         excavationRetries = 0;
         pendingExcavationTarget = null;
@@ -906,6 +910,13 @@ public final class AIBuilder {
         if (excavationIndex >= EXCAVATION_PLAN.size()) return;
         BlockPos target = EXCAVATION_PLAN.get(excavationIndex);
         BlockState state = mc.world.getBlockState(target);
+        Identifier expectedBlock = EXCAVATION_EXPECTED_BLOCKS.get(target);
+        if (!state.isAir() && expectedBlock != null
+                && !Registries.BLOCK.getId(state.getBlock()).equals(expectedBlock)) {
+            stopInternal("Bau gestoppt: Der Aushub-Block bei " + target.toShortString()
+                    + " wurde seit der gespeicherten Vorschau verändert. Nightfall gräbt ihn nicht ungeprüft ab.", true);
+            return;
+        }
         if (state.isAir()) {
             excavationIndex++;
             saveCheckpoint();
@@ -1109,6 +1120,8 @@ public final class AIBuilder {
                 block.addProperty("x", pos.getX());
                 block.addProperty("y", pos.getY());
                 block.addProperty("z", pos.getZ());
+                Identifier expected = EXCAVATION_EXPECTED_BLOCKS.get(pos);
+                if (expected != null) block.addProperty("expected", expected.toString());
                 excavation.add(block);
             }
             root.add("excavation", excavation);
@@ -1165,9 +1178,17 @@ public final class AIBuilder {
                 PLAN.add(pos); PLAN_MATERIALS.put(pos, item); PLAN_STATES.put(pos, item.getBlock().getDefaultState());
             }
             EXCAVATION_PLAN.clear();
+            EXCAVATION_EXPECTED_BLOCKS.clear();
             for (var element : root.getAsJsonArray("excavation")) {
                 JsonObject block = element.getAsJsonObject();
-                EXCAVATION_PLAN.add(new BlockPos(block.get("x").getAsInt(), block.get("y").getAsInt(), block.get("z").getAsInt()));
+                BlockPos excavationPos = new BlockPos(block.get("x").getAsInt(), block.get("y").getAsInt(), block.get("z").getAsInt());
+                EXCAVATION_PLAN.add(excavationPos);
+                if (block.has("expected")) {
+                    Identifier expected = Identifier.tryParse(block.get("expected").getAsString());
+                    if (expected == null || !Registries.BLOCK.getId(Registries.BLOCK.get(expected)).equals(expected))
+                        throw new IllegalArgumentException("Ein gespeicherter Aushub-Block ist in dieser Version unbekannt.");
+                    EXCAVATION_EXPECTED_BLOCKS.put(excavationPos, expected);
+                }
             }
             index = Math.max(0, Math.min(PLAN.size(), root.get("index").getAsInt()));
             excavationIndex = Math.max(0, Math.min(EXCAVATION_PLAN.size(), root.get("excavationIndex").getAsInt()));
@@ -1252,6 +1273,7 @@ public final class AIBuilder {
         CUSTOM_OFFSETS.clear();
         CUSTOM_CLEAR_OFFSETS.clear();
         EXCAVATION_PLAN.clear();
+        EXCAVATION_EXPECTED_BLOCKS.clear();
         excavationIndex = 0;
         excavationRetries = 0;
         pendingExcavationTarget = null;
@@ -1347,6 +1369,7 @@ public final class AIBuilder {
         CUSTOM_OFFSETS.clear();
         CUSTOM_CLEAR_OFFSETS.clear();
         EXCAVATION_PLAN.clear();
+        EXCAVATION_EXPECTED_BLOCKS.clear();
         preparedPlayerPos = null;
         preparedFacing = null;
     }
