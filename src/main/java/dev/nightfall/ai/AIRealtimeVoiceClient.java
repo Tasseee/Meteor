@@ -66,6 +66,11 @@ public final class AIRealtimeVoiceClient {
 
     private AIRealtimeVoiceClient() {}
 
+    /** Apply the selected voice to the active realtime session for subsequent replies. */
+    public static void updateVoice(AIConfig.Settings settings) {
+        if (settings != null && active && ready) sendJson(sessionUpdate(settings));
+    }
+
     public static boolean isActive() { return active; }
     public static boolean isReady() { return active && ready; }
     public static boolean isSpeaking() { return speaking; }
