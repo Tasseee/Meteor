@@ -88,6 +88,11 @@ final class AILocalSurvivalReadiness {
                     + " Rüstungsteil(e) haben höchstens 20% Resthaltbarkeit");
             recommendations.add("stark beschädigte Rüstung reparieren oder ersetzen");
             majorGap = true;
+        } else if (snapshot.lowestArmorDurabilityPercent() >= 0
+                && snapshot.lowestArmorDurabilityPercent() <= 40) {
+            findings.add("schwächstes ausgerüstetes Rüstungsteil hat nur "
+                    + snapshot.lowestArmorDurabilityPercent() + "% Resthaltbarkeit");
+            recommendations.add("Rüstung mit mittlerer Resthaltbarkeit bei Gelegenheit reparieren");
         }
 
         if (snapshot.mainHandDurabilityPercent() >= 0
