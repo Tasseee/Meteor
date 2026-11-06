@@ -181,11 +181,14 @@ public final class AIActionRegistry {
         schematicSchema.getAsJsonObject("properties").add("part_x", partX);
         schematicSchema.getAsJsonObject("properties").add("part_y", partY);
         schematicSchema.getAsJsonObject("properties").add("part_z", partZ);
+        JsonObject resetAnchor = property("reset_anchor", "boolean",
+                "Setze nur bei einem ausdrücklich gewünschten neuen Farm-Standort auf true. Der neue Startpunkt wird bei Abschnitt 0/0/0 gespeichert; alle folgenden Abschnitte müssen false verwenden.").get("schema").getAsJsonObject();
+        schematicSchema.getAsJsonObject("properties").add("reset_anchor", resetAnchor);
         tools.add(tool("inspect_schematic",
-                "Inspect a local Sponge v2 .schem or Litematica v5-v7 .litematic file, including mirrored/negative region axes and large designs up to 256 blocks per axis and 2 million volume. Reports the 32x32x32 build-section grid, materials, automatic subset, manual-only blocks, exact build center and an accessible feet-level position at the saved farm anchor's Y. For nonzero part_x/y/z, start with section 0/0/0 first so a stable farm anchor is saved.",
+                "Inspect a local Sponge v2 .schem or Litematica v5-v7 .litematic file, including mirrored/negative region axes and large designs up to 256 blocks per axis and 2 million volume. Reports the 32x32x32 build-section grid, materials, automatic subset, manual-only blocks, exact build center and an accessible feet-level position at the saved farm anchor's Y. For nonzero part_x/y/z, start with section 0/0/0 first so a stable farm anchor is saved. Set reset_anchor=true only when the player explicitly wants a new build location; otherwise preserve the existing anchor.",
                 schematicSchema));
         tools.add(tool("build_schematic",
-                "Prepare exactly one 32x32x32 section of a local schematic for building. For oversized structures, pass part_x, part_y and part_z (zero-based); inspect_schematic reports the valid grid. Start with part_x=0, part_y=0, part_z=0: Nightfall stores a server/dimension/file-bound farm anchor in config/nightfall/schematic_build_session.json. Later sections retain the exact overall schematic alignment and report both their build center and an access position at the farm anchor's Y-level; navigate to the access position before previewing so the destination chunks are loaded. Build every section in ascending part_y order (lowest layer first), then across X/Z, so upper components can attach to already-built lower layers. Nightfall then approaches reachable placement targets using bounded A* navigation and saves/resumes section progress across client restarts. It preserves supported BlockStates and stops when a state cannot be reproduced. Still water source cells can be placed after solid blocks only in Creative mode when a water bucket is in the player's inventory; flowing water is left to vanilla fluid simulation and must be checked in-game. Survival water, lava, falling blocks, entities and custom block-entity NBT/inventories remain manual. Redstone timing and farm output are never claimed as verified.\n"
+                "Prepare exactly one 32x32x32 section of a local schematic for building. For oversized structures, pass part_x, part_y and part_z (zero-based); inspect_schematic reports the valid grid. Start with part_x=0, part_y=0, part_z=0: Nightfall stores a server/dimension/file-bound farm anchor in config/nightfall/schematic_build_session.json. Set reset_anchor=true only when intentionally starting another copy at a new location; all remaining calls for that copy must keep it false. Later sections retain the exact overall schematic alignment and report both their build center and an access position at the farm anchor's Y-level; navigate to the access position before previewing so the destination chunks are loaded. Build every section in ascending part_y order (lowest layer first), then across X/Z, so upper components can attach to already-built lower layers. Nightfall then approaches reachable placement targets using bounded A* navigation and saves/resumes section progress across client restarts. It preserves supported BlockStates and stops when a state cannot be reproduced. Still water source cells can be placed after solid blocks only in Creative mode when a water bucket is in the player's inventory; flowing water is left to vanilla fluid simulation and must be checked in-game. Survival water, lava, falling blocks, entities and custom block-entity NBT/inventories remain manual. Redstone timing and farm output are never claimed as verified.\n"
                 + "Material-shortage workflow: the current section requires its exact materials in the player's inventory; Creative mode only requires one representative stack per material. In Survival, obtain the missing counts before building the section. Do not claim the entire schematic is complete after building one section.",
                 schematicSchema));
         JsonObject walkTicks = property("ticks", "integer", "Dauer der kurzen Vorwärtsbewegung in Ticks (1 bis 100).").get("schema").getAsJsonObject();
@@ -421,12 +424,14 @@ public final class AIActionRegistry {
                     SchematicManager.inspectSummary(requiredString(args, "file", 110),
                             args.has("part_x") ? readBoundedInteger(args, "part_x", 0, 7) : 0,
                             args.has("part_y") ? readBoundedInteger(args, "part_y", 0, 7) : 0,
-                            args.has("part_z") ? readBoundedInteger(args, "part_z", 0, 7) : 0));
+                            args.has("part_z") ? readBoundedInteger(args, "part_z", 0, 7) : 0,
+                            args.has("reset_anchor") && args.get("reset_anchor").getAsBoolean()));
             case "build_schematic" -> new Action(name, args,
                     SchematicManager.prepareBuild(requiredString(args, "file", 110),
                             args.has("part_x") ? readBoundedInteger(args, "part_x", 0, 7) : 0,
                             args.has("part_y") ? readBoundedInteger(args, "part_y", 0, 7) : 0,
-                            args.has("part_z") ? readBoundedInteger(args, "part_z", 0, 7) : 0));
+                            args.has("part_z") ? readBoundedInteger(args, "part_z", 0, 7) : 0,
+                            args.has("reset_anchor") && args.get("reset_anchor").getAsBoolean()));
             case "walk_forward" -> {
                 int ticks = readBoundedInteger(args, "ticks", 1, 100);
                 yield new Action(name, args, "Nightfall hält die Vorwärtstaste für höchstens " + ticks
