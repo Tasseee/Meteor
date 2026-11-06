@@ -21,6 +21,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 
 import java.io.IOException;
+import java.lang.ref.SoftReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -57,6 +58,10 @@ public final class SchematicManager {
     private static final Path BUILD_SESSION_PATH = net.fabricmc.loader.api.FabricLoader.getInstance()
             .getConfigDir().resolve("nightfall").resolve("schematic_build_session.json");
     private static final Pattern SAFE_FILE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._ ()-]{0,100}\\.(?i:schem|litematic)");
+    private static Path cachedPath;
+    private static long cachedSize = -1L;
+    private static long cachedModified = -1L;
+    private static SoftReference<Imported> cachedImport = new SoftReference<>(null);
 
     public record Imported(String fileName, String format, String sourceName,
                            int width, int height, int length, int totalBlocks,
@@ -193,8 +198,13 @@ public final class SchematicManager {
         Path file = resolveFile(requestedFile);
         try {
             long size = Files.size(file);
+            long modified = Files.getLastModifiedTime(file).toMillis();
             if (size <= 0 || size > MAX_FILE_BYTES)
                 throw new IllegalArgumentException("Die Datei muss zwischen 1 Byte und 32 MB groß sein.");
+            Imported cached = cachedImport.get();
+            if (cached != null && file.equals(cachedPath) && size == cachedSize && modified == cachedModified)
+                return cached;
+
             MinecraftClient mc = MinecraftClient.getInstance();
             if (mc.world == null) throw new IllegalArgumentException("Zum Interpretieren von BlockStates musst du in einer Minecraft-Welt sein.");
 
@@ -206,6 +216,10 @@ public final class SchematicManager {
             if (result.buildPlan().size() > MAX_BUILDABLE_BLOCKS)
                 throw new IllegalArgumentException("Diese Datei enthält mehr als " + MAX_BUILDABLE_BLOCKS
                         + " automatisch unterstützte Blöcke. Teile die Schematic in kleinere Abschnitte.");
+            cachedPath = file;
+            cachedSize = size;
+            cachedModified = modified;
+            cachedImport = new SoftReference<>(result);
             return result;
         } catch (IllegalArgumentException failure) {
             throw failure;
