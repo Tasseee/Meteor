@@ -37,12 +37,13 @@ import java.util.regex.Pattern;
  *
  * Supported formats:
  * - Sponge Schematic v2 (.schem)
- * - Litematica v5-v7 (.litematic), positive-sized regions only
+ * - Litematica v5-v7 (.litematic), including signed/mirrored region axes
  *
- * NBT is parsed with strict byte/file/volume limits. Non-falling BlockItems without fluids
- * keep their complete BlockState; block-entity blocks can be placed with fresh default data.
- * The builder tests vanilla placement contexts for a matching state and refuses placements it
- * cannot reproduce. Block-entity NBT/inventories, entities and fluid blocks are not recreated.
+ * NBT is parsed with strict byte/file/volume limits. Supported BlockItems keep their complete
+ * BlockState; block-entity blocks can be placed with fresh default data. Still-water sources
+ * can be placed with a reusable water bucket in Creative mode. Flowing fluids, Lava, falling
+ * blocks, entities and custom block-entity NBT/inventories are not recreated. The builder tests
+ * vanilla placement contexts and confirms each placed state against the client world.
  */
 public final class SchematicManager {
     private static final Path DIRECTORY = net.fabricmc.loader.api.FabricLoader.getInstance()
@@ -103,8 +104,9 @@ public final class SchematicManager {
                     + "normaler BlockItem-Platzierlogik nach einer passenden Ansetzfläche und Blickrichtung. Ein Block zählt erst nach "
                     + "exakter Serverbestätigung als gebaut; nicht reproduzierbare Zustände brechen den Bau ab. Block-Entity-Blöcke "
                     + "wie Hopper und Truhen werden mit Standardzustand platziert, ihre Inventare und Sonderdaten aus der Schematic aber "
-                    + "nicht übertragen. Flüssigkeiten, fallende Blöcke und Entities werden nicht automatisch rekonstruiert; dynamische "
-                    + "Redstone-/Nachbarschafts-Zustände können vom Weltkontext abhängen.");
+                    + "nicht übertragen. Stille Wasserquellen können im Kreativmodus mit einem Wassereimer gesetzt werden; fließendes Wasser "
+                    + "muss durch Vanilla-Flusssimulation entstehen. Lava, fallende Blöcke und Entities werden nicht automatisch rekonstruiert; "
+                    + "dynamische Redstone-/Nachbarschafts-Zustände können vom Weltkontext abhängen.");
             return out.toString();
         }
     }
