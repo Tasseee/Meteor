@@ -550,7 +550,7 @@ public final class AIBuilder {
                     || !mc.world.isChunkLoaded(target))
                 throw new IllegalArgumentException("Wasser-Ziel liegt außerhalb der Welt oder in einem nicht geladenen Chunk: " + target.toShortString());
             BlockState present = mc.world.getBlockState(target);
-            if (present.isOf(Blocks.WATER) && present.get(FluidBlock.LEVEL) == 0) continue;
+            if (present.getFluidState().isOf(Fluids.WATER)) continue;
             if (!present.getFluidState().isEmpty())
                 throw new IllegalArgumentException("Wasser-Ziel " + target.toShortString() + " enthält bereits eine andere Flüssigkeit; Nightfall verändert sie nicht automatisch.");
             if (!present.isReplaceable()) {
