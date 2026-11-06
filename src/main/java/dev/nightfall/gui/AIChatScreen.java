@@ -50,6 +50,7 @@ public final class AIChatScreen extends Screen {
     private int sendX, sendY, sendW, sendH;
     private int micX, micY, micW, micH;
     private int ttsX, ttsY, ttsW, ttsH;
+    private int voiceX, voiceY, voiceW, voiceH;
     private int contextToggleX, contextToggleY, contextToggleW, contextToggleH;
     private final int[] suggestionX = new int[3];
     private final int[] suggestionW = new int[3];
@@ -706,6 +707,24 @@ public final class AIChatScreen extends Screen {
         status = enabled
                 ? "Weltkontext aktiviert · Position, Dimension und Hand werden mit KI-Anfragen geteilt"
                 : "Weltkontext deaktiviert · keine Weltinformationen werden automatisch angehängt";
+        history.add(new ChatLine("assistant", status));
+        scroll = Float.MAX_VALUE;
+    }
+
+    private void cycleSpeechVoice() {
+        List<String> voices = AIConfig.supportedSpeechVoices();
+        AIConfig.Settings current = AIConfig.current();
+        int currentIndex = voices.indexOf(current.speechVoice());
+        String nextVoice = voices.get((currentIndex + 1 + voices.size()) % voices.size());
+        AIConfig.Settings updated = AIConfig.updateSpeechVoice(nextVoice);
+        if (!nextVoice.equals(updated.speechVoice())) {
+            status = "Die neue Stimme konnte nicht gespeichert werden.";
+            return;
+        }
+        AIVoiceClient.stopSpeaking();
+        AIRealtimeVoiceClient.updateVoice(updated);
+        String displayName = nextVoice.substring(0, 1).toUpperCase(Locale.ROOT) + nextVoice.substring(1);
+        status = "Nightfall-Stimme geändert: " + displayName;
         history.add(new ChatLine("assistant", status));
         scroll = Float.MAX_VALUE;
     }
