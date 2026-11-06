@@ -312,3 +312,15 @@ im Kreativmodus nach dem Festblock-Aufbau mit einem Wassereimer gesetzt werden; 
 bleiben sie manuell. Fließendes Wasser wird nicht direkt rekonstruiert, sondern muss durch die
 Vanilla-Flusssimulation entstehen. Dynamische Redstone-Zustände und Block-Entity-Sonderdaten
 bleiben Einschränkungen.
+
+
+## Nightfall AI: Basissuche und Fake-Base-Werkzeuge
+
+Die KI kann jetzt den vorhandenen BaseFinder direkt bedienen:
+
+- `search_bases` aktiviert den inkrementellen Scanner. Er wertet ausschließlich bereits geladene Client-Chunks aus; er lädt keine entfernten Chunks, teleportiert nicht und verwendet keine Serverbefehle.
+- `get_base_findings` liest SUS-, GONE- und DECOY-Markierungen inklusive Chunk-Koordinaten, Score, Hinweisen und Datendeckung. SUS ist eine Heuristik und kein Beweis für eine Spielerbasis.
+- `mark_fake_base` markiert den aktuellen Chunk lokal als FakeBase/Decoy. Optionales `learn=true` speichert zusätzlich dessen geladene Block-Entity-Signatur als Fake-Base-Vorlage.
+- `list_fake_base_templates` zeigt die lokal gespeicherten Vorlagennamen.
+
+Fake-Base-Markierungen und Vorlagen werden lokal im bestehenden Waypoint-/FakeBase-System gespeichert. Sie verändern keine Weltblöcke. Erkennungsvorlagen können nur ähnliche geladene Block-Entity-Anordnungen erkennen; sie sind kein zuverlässiger Beweis und können Fehlalarme oder übersehene Treffer verursachen. Server, die Daten maskieren oder nicht an den Client senden, bleiben außerhalb der Erkennung.
