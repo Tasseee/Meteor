@@ -1086,7 +1086,7 @@ public final class AIBuilder {
         }
         if (pendingWaterTarget != null) {
             BlockState current = mc.world.getBlockState(pendingWaterTarget);
-            if (current.getFluidState().isOf(Fluids.WATER)) {
+            if (current.isOf(Blocks.WATER) && current.get(FluidBlock.LEVEL) == 0) {
                 waterIndex++;
                 pendingWaterTarget = null;
                 pendingWaterTicks = 0;
@@ -1115,7 +1115,7 @@ public final class AIBuilder {
         if (waterIndex >= WATER_PLAN.size()) return;
         BlockPos target = WATER_PLAN.get(waterIndex);
         BlockState present = mc.world.getBlockState(target);
-        if (present.getFluidState().isOf(Fluids.WATER)) {
+        if (present.isOf(Blocks.WATER) && present.get(FluidBlock.LEVEL) == 0) {
             waterIndex++;
             saveCheckpointProgress(waterIndex, WATER_PLAN.size());
             return;
