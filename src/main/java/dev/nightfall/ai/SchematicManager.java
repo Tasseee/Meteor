@@ -45,9 +45,10 @@ public final class SchematicManager {
             .getConfigDir().resolve("nightfall").resolve("schematics");
     private static final long MAX_FILE_BYTES = 32L * 1024L * 1024L;
     private static final long MAX_NBT_BYTES = 64L * 1024L * 1024L;
-    private static final int MAX_DIMENSION = 64;
-    private static final long MAX_VOLUME = 262_144L;
-    private static final int MAX_BUILDABLE_BLOCKS = 10_000;
+    private static final int MAX_DIMENSION = 256;
+    private static final long MAX_VOLUME = 2_000_000L;
+    private static final int MAX_BUILDABLE_BLOCKS = 700_000;
+    private static final int BUILD_PART_SIZE = 32;
     private static final Pattern SAFE_FILE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._ -]{0,100}\\.(?i:schem|litematic)");
 
     public record Imported(String fileName, String format, String sourceName,
@@ -84,7 +85,11 @@ public final class SchematicManager {
                 out.append("\nBeispiele nicht automatisch platzierbarer Blöcke:");
                 examples.forEach(value -> out.append("\n- ").append(value));
             }
-            out.append("\n\nSICHERHEIT: Nightfall räumt vor dem Setzen die als Luft markierten Zellen im Schematic-Volumen frei "
+            out.append("\nBauabschnitte: ").append((width + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE)
+                    .append(" × ").append((height + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE)
+                    .append(" × ").append((length + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE)
+                    .append(" (je maximal 32 × 32 × 32 Blöcke). Flüssigkeiten bleiben vorerst manuell.\n")
+                    .append("\nSICHERHEIT: Nightfall räumt vor dem Setzen die als Luft markierten Zellen im Schematic-Volumen frei "
                     + "und entfernt ersetzte Blöcke an Bauzielen. Es übernimmt die gespeicherten BlockStates und sucht mit Minecrafts "
                     + "normaler BlockItem-Platzierlogik nach einer passenden Ansetzfläche und Blickrichtung. Ein Block zählt erst nach "
                     + "exakter Serverbestätigung als gebaut; nicht reproduzierbare Zustände brechen den Bau ab. Block-Entity-Blöcke "
@@ -98,6 +103,7 @@ public final class SchematicManager {
     private record ParsedState(BlockState state, boolean valid) {}
     private record RawBlock(int x, int y, int z, BlockState state) {}
     private record Region(int x, int y, int z, int width, int height, int length,
+                          int stepX, int stepY, int stepZ,
                           List<BlockState> palette, long[] packedStates, boolean hasBlockEntities,
                           boolean hasEntities) {}
 
@@ -204,13 +210,45 @@ public final class SchematicManager {
     }
 
     public static String prepareBuild(String fileName) {
+        return prepareBuild(fileName, 0, 0, 0);
+    }
+
+    public static String prepareBuild(String fileName, int partX, int partY, int partZ) {
         Imported imported = inspect(fileName);
-        if (imported.buildPlan().isEmpty())
-            throw new IllegalArgumentException("Diese Schematic enthält keine sicher automatisch platzierbaren Standard-Blöcke.");
-        String preview = AIBuilder.prepareImportedStructure(imported.sourceName().isBlank()
-                        ? stripExtension(imported.fileName()) : imported.sourceName(),
-                imported.buildPlan(), imported.clearPlan());
-        return imported.summary() + "\n\n" + preview;
+        int partsX = (imported.width() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
+        int partsY = (imported.height() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
+        int partsZ = (imported.length() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
+        if (partX < 0 || partX >= partsX || partY < 0 || partY >= partsY || partZ < 0 || partZ >= partsZ)
+            throw new IllegalArgumentException("Bauabschnitt außerhalb des Rasters. Gültig: X 0–" + (partsX - 1)
+                    + ", Y 0–" + (partsY - 1) + ", Z 0–" + (partsZ - 1) + ".");
+        int startX = partX * BUILD_PART_SIZE, startY = partY * BUILD_PART_SIZE, startZ = partZ * BUILD_PART_SIZE;
+        int endX = Math.min(imported.width(), startX + BUILD_PART_SIZE);
+        int endY = Math.min(imported.height(), startY + BUILD_PART_SIZE);
+        int endZ = Math.min(imported.length(), startZ + BUILD_PART_SIZE);
+        List<AIBuilder.RelativeBlock> partBuild = new ArrayList<>();
+        for (AIBuilder.RelativeBlock block : imported.buildPlan()) {
+            if (block.x() >= startX && block.x() < endX && block.y() >= startY && block.y() < endY
+                    && block.z() >= startZ && block.z() < endZ)
+                partBuild.add(new AIBuilder.RelativeBlock(block.x() - startX, block.y() - startY,
+                        block.z() - startZ, block.materialId(), block.state()));
+        }
+        List<AIBuilder.RelativeBlock> partClear = new ArrayList<>();
+        for (AIBuilder.RelativeBlock block : imported.clearPlan()) {
+            if (block.x() >= startX && block.x() < endX && block.y() >= startY && block.y() < endY
+                    && block.z() >= startZ && block.z() < endZ)
+                partClear.add(new AIBuilder.RelativeBlock(block.x() - startX, block.y() - startY,
+                        block.z() - startZ));
+        }
+        if (partBuild.isEmpty())
+            throw new IllegalArgumentException("Dieser Abschnitt enthält keine automatisch platzierbaren Blöcke; er besteht nur aus Luft, Flüssigkeit oder nicht unterstützten Blöcken.");
+        String label = (imported.sourceName().isBlank() ? stripExtension(imported.fileName()) : imported.sourceName())
+                + " · Abschnitt X" + partX + " Y" + partY + " Z" + partZ;
+        String preview = AIBuilder.prepareImportedStructure(label, partBuild, partClear);
+        return imported.summary() + "\n\nABSCHNITT X" + partX + "/" + (partsX - 1)
+                + " Y" + partY + "/" + (partsY - 1) + " Z" + partZ + "/" + (partsZ - 1)
+                + ": " + partBuild.size() + " Bau-Blöcke, " + partClear.size() + " Luftzellen.\n"
+                + "Dieser Abschnitt wird um deine aktuelle Position herum platziert. Für jeden Abschnitt musst du dich zum passenden Abschnittszentrum bewegen und die passenden X/Y/Z-Indizes angeben.\n\n"
+                + preview;
     }
 
     private static Imported readSponge(String fileName, NbtCompound root, MinecraftClient mc)
@@ -323,10 +361,11 @@ public final class SchematicManager {
             NbtCompound position = region.getCompoundOrEmpty("Position");
             NbtCompound size = region.getCompoundOrEmpty("Size");
             int px = position.getInt("x", 0), py = position.getInt("y", 0), pz = position.getInt("z", 0);
-            int sx = size.getInt("x", 0), sy = size.getInt("y", 0), sz = size.getInt("z", 0);
-            if (sx <= 0 || sy <= 0 || sz <= 0)
-                throw new IllegalArgumentException("Region „" + regionName
-                        + "“ hat eine negative oder leere Größe. Speichere diese Region ohne Spiegelung erneut.");
+            int signedX = size.getInt("x", 0), signedY = size.getInt("y", 0), signedZ = size.getInt("z", 0);
+            if (signedX == 0 || signedY == 0 || signedZ == 0)
+                throw new IllegalArgumentException("Region „" + regionName + "“ hat eine leere Größe.");
+            int stepX = signedX < 0 ? -1 : 1, stepY = signedY < 0 ? -1 : 1, stepZ = signedZ < 0 ? -1 : 1;
+            int sx = Math.abs(signedX), sy = Math.abs(signedY), sz = Math.abs(signedZ);
             validateDimensions(sx, sy, sz);
             long volume = (long) sx * sy * sz;
 
@@ -363,14 +402,17 @@ public final class SchematicManager {
             NbtList entities = region.getListOrEmpty("Entities");
             containsBlockEntities |= !blockEntities.isEmpty();
             containsEntities |= !entities.isEmpty();
-            parsedRegions.add(new Region(px, py, pz, sx, sy, sz, palette, packed,
+            parsedRegions.add(new Region(px, py, pz, sx, sy, sz, stepX, stepY, stepZ, palette, packed,
                     !blockEntities.isEmpty(), !entities.isEmpty()));
-            minX = Math.min(minX, px);
-            minY = Math.min(minY, py);
-            minZ = Math.min(minZ, pz);
-            maxX = Math.max(maxX, px + sx - 1);
-            maxY = Math.max(maxY, py + sy - 1);
-            maxZ = Math.max(maxZ, pz + sz - 1);
+            int endX = px + (sx - 1) * stepX;
+            int endY = py + (sy - 1) * stepY;
+            int endZ = pz + (sz - 1) * stepZ;
+            minX = Math.min(minX, Math.min(px, endX));
+            minY = Math.min(minY, Math.min(py, endY));
+            minZ = Math.min(minZ, Math.min(pz, endZ));
+            maxX = Math.max(maxX, Math.max(px, endX));
+            maxY = Math.max(maxY, Math.max(py, endY));
+            maxZ = Math.max(maxZ, Math.max(pz, endZ));
         }
 
         int width = maxX - minX + 1;
@@ -391,9 +433,12 @@ public final class SchematicManager {
                 if (paletteIndex < 0 || paletteIndex >= region.palette().size())
                     throw new IllegalArgumentException("Litematic-BlockStateIndex außerhalb der Palette.");
                 BlockState state = region.palette().get(paletteIndex);
-                int x = region.x() - minX + i % region.width();
-                int z = region.z() - minZ + (i / region.width()) % region.length();
-                int y = region.y() - minY + i / (region.width() * region.length());
+                int localX = i % region.width();
+                int localZ = (i / region.width()) % region.length();
+                int localY = i / (region.width() * region.length());
+                int x = region.x() + localX * region.stepX() - minX;
+                int y = region.y() + localY * region.stepY() - minY;
+                int z = region.z() + localZ * region.stepZ() - minZ;
                 if (state.isAir()) {
                     clearPlan.add(new AIBuilder.RelativeBlock(x, y, z));
                     continue;
