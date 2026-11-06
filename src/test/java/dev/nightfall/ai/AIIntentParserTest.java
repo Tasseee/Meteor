@@ -39,6 +39,24 @@ class AIIntentParserTest {
     }
 
     @Test
+    void recognizesExplicitSavedTaskDeletionRequests() {
+        org.junit.jupiter.api.Assertions.assertTrue(
+                AIChatClient.isClearSavedTaskRequest("Lösch bitte den gespeicherten Auftrag"));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                AIChatClient.isClearSavedTaskRequest("delete the saved task"));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                AIChatClient.isClearSavedTaskRequest("Vergiss den gespeicherten Sammelauftrag"));
+        org.junit.jupiter.api.Assertions.assertFalse(
+                AIChatClient.isClearSavedTaskRequest("Stoppe die aktuelle Aufgabe"));
+        org.junit.jupiter.api.Assertions.assertFalse(
+                AIChatClient.isClearSavedTaskRequest("Lösche alle Blöcke"));
+        org.junit.jupiter.api.Assertions.assertFalse(
+                AIChatClient.isClearSavedTaskRequest("Lösche den Bau-Checkpoint"));
+        org.junit.jupiter.api.Assertions.assertFalse(
+                AIChatClient.isClearSavedTaskRequest(null));
+    }
+
+    @Test
     void keepsUnknownBiomeLabelsReadable() {
         assertEquals("minecraft:unknown", AIIntentParser.biomeLabel("minecraft:unknown"));
         assertEquals("jungle", AIIntentParser.biomeLabel("minecraft:jungle"));
