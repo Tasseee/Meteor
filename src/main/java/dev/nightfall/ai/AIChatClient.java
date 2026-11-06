@@ -129,6 +129,15 @@ public final class AIChatClient {
         return new ArrayList<>(history.subList(turnStarts.get(firstTurn), history.size()));
     }
 
+    /** Compact the caller's stored transcript as well as the outgoing request copy. */
+    public static void compactHistoryInPlace(List<Message> history) {
+        if (history == null || history.isEmpty()) return;
+        List<Message> compacted = compactHistory(history);
+        if (compacted.size() == history.size()) return;
+        history.clear();
+        history.addAll(compacted);
+    }
+
     private static long historySizeFrom(List<Message> history, int start) {
         long size = 0;
         for (int i = start; i < history.size(); i++) {
