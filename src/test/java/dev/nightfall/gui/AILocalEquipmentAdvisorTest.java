@@ -117,7 +117,7 @@ class AILocalEquipmentAdvisorTest {
     @Test
     void invalidCategoriesDurabilityAndEnchantmentsAreRejected() {
         assertThrows(IllegalArgumentException.class, () -> gear(
-                "minecraft:diamond_sword", "Diamantschwert", "weapon",
+                "minecraft:unsupported_item", "Nicht unterstütztes Item", "unsupported",
                 "Hotbar", false, 100, 0, 0.0F));
         assertThrows(IllegalArgumentException.class, () -> gear(
                 "minecraft:diamond_helmet", "Diamanthelm", "armor:head",
