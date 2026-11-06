@@ -192,7 +192,7 @@ public final class AIActionRegistry {
                 + "Material-shortage workflow: the current section requires its exact materials in the player's inventory; Creative mode only requires one representative stack per material. In Survival, obtain the missing counts before building the section. Do not claim the entire schematic is complete after building one section.",
                 schematicSchema));
         JsonObject schematicProgressSchema = objectSchema(
-                property("file", "string", "Exact local .schem or .litematic filename.").get("schema"), "file");
+                property("file", "string", "Exact local .schem or .litematic filename.").get("schema").getAsJsonObject(), "file");
         schematicProgressSchema.getAsJsonObject("properties").getAsJsonObject("file").addProperty("maxLength", 110);
         tools.add(tool("get_schematic_progress",
                 "Read-only durable progress for a local schematic. Reports fully completed sections for the current server and dimension and the next unfinished section in bottom-up order. Does not create or move the farm anchor and does not start building.",
