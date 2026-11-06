@@ -210,7 +210,27 @@ public final class SchematicManager {
     }
 
     public static String inspectSummary(String fileName) {
-        return inspect(fileName).summary();
+        return inspectSummary(fileName, 0, 0, 0);
+    }
+
+    public static String inspectSummary(String fileName, int partX, int partY, int partZ) {
+        Imported imported = inspect(fileName);
+        int partsX = (imported.width() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
+        int partsY = (imported.height() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
+        int partsZ = (imported.length() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
+        if (partX < 0 || partX >= partsX || partY < 0 || partY >= partsY || partZ < 0 || partZ >= partsZ)
+            throw new IllegalArgumentException("Bauabschnitt außerhalb des Rasters. Gültig: X 0–" + (partsX - 1)
+                    + ", Y 0–" + (partsY - 1) + ", Z 0–" + (partsZ - 1) + ".");
+        BlockPos anchor = resolveBuildAnchor(fileName, partX, partY, partZ);
+        int sectionWidth = Math.min(BUILD_PART_SIZE, imported.width() - partX * BUILD_PART_SIZE);
+        int sectionHeight = Math.min(BUILD_PART_SIZE, imported.height() - partY * BUILD_PART_SIZE);
+        int sectionLength = Math.min(BUILD_PART_SIZE, imported.length() - partZ * BUILD_PART_SIZE);
+        BlockPos center = anchor.add(
+                partX * BUILD_PART_SIZE + sectionWidth / 2 - BUILD_PART_SIZE / 2,
+                partY * BUILD_PART_SIZE + sectionHeight / 2 - BUILD_PART_SIZE / 2,
+                partZ * BUILD_PART_SIZE + sectionLength / 2 - BUILD_PART_SIZE / 2);
+        return imported.summary() + "\n\nAUSGEWÄHLTER ABSCHNITT X" + partX + " Y" + partY + " Z" + partZ
+                + ": Zentrum " + center.toShortString() + ". Navigiere zuerst dorthin, damit die Ziel-Chunks geladen sind; danach build_schematic mit denselben Indizes aufrufen.";
     }
 
     private static BlockPos resolveBuildAnchor(String fileName, int partX, int partY, int partZ) {
