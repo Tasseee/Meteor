@@ -1440,7 +1440,8 @@ public final class AIChatScreen extends Screen {
             int armorPoints = 0;
             float armorToughness = 0.0F;
             if (snapshot.armorSlot() != null) {
-                armorPoints = armorAttributeValue(stack, snapshot.armorSlot(), EntityAttributes.ARMOR);
+                armorPoints = (int) Math.round(
+                        armorAttributeValue(stack, snapshot.armorSlot(), EntityAttributes.ARMOR));
                 armorToughness = (float) armorAttributeValue(
                         stack, snapshot.armorSlot(), EntityAttributes.ARMOR_TOUGHNESS);
             }
