@@ -241,6 +241,13 @@ public final class AIChatClient {
             addTools(selected, "stop_current_action", "stop_movement", "pause_build", "stop_build");
         }
 
+        if (hasAny(query, "fortsetzen", "fortsetze", "weiter machen", "weitermachen",
+                "weiterführen", "weiterfuehren", "wieder aufnehmen", "wiederaufnehmen",
+                "resume", "continue", "nach reconnect", "nach verbindungsabbruch")) {
+            addTools(selected, "resume_saved_task", "resume_saved_build", "resume_build",
+                    "get_player_status", "stop_current_action");
+        }
+
         if (hasAny(query, "esp", "spieler", "player", "players", "online player", "mob", "mobs",
                 "entity", "entities", "creeper", "zombie", "cow", "sheep", "animal", "animals",
                 "item-drop", "dropped", "ground item", "items on ground", "items nearby", "gedroppt",
