@@ -238,13 +238,13 @@ public final class AIBuilder {
         List<AIMaterialPlanner.CraftableCandidate> craftableAlternatives =
                 AIPlayerController.findCraftableBlockMaterials(required);
         if (craftableAlternatives.isEmpty()) {
-            summary.append("\\nKeine weitere vollständige Crafting-Kette für Blockmaterialien wurde im freigeschalteten Rezeptbuch "
+            summary.append("\nKeine weitere vollständige Crafting-Kette für Blockmaterialien wurde im freigeschalteten Rezeptbuch "
                     + "mit den aktuell vorhandenen Zutaten gefunden.");
         } else {
-            summary.append("\\nHerstellbare Materialalternativen aus dem freigeschalteten Rezeptbuch (höchstens fünf):");
+            summary.append("\nHerstellbare Materialalternativen aus dem freigeschalteten Rezeptbuch (höchstens fünf):");
             for (int index = 0; index < craftableAlternatives.size(); index++) {
                 AIMaterialPlanner.CraftableCandidate option = craftableAlternatives.get(index);
-                summary.append("\\n").append(index + 1).append(". ")
+                summary.append("\n").append(index + 1).append(". ")
                         .append(option.displayName()).append(" [").append(option.itemId()).append("]: Bestand ")
                         .append(option.owned()).append(", noch herzustellen ").append(option.missing())
                         .append(", Rezeptschritte ").append(option.recipeSteps())
@@ -252,7 +252,7 @@ public final class AIBuilder {
                         .append(option.needsCraftingTable() ? ", benötigt 3×3-Crafting-Table" : ", 2×2 reicht")
                         .append(". ").append(option.recipeSummary());
             }
-            summary.append("\\nDiese Ketten sind nur Planvorschläge. Nightfall startet kein Crafting automatisch.");
+            summary.append("\nDiese Ketten sind nur Planvorschläge. Nightfall startet kein Crafting automatisch.");
         }
         summary.append(" Das ist nur eine Bestands- und Rezeptbuchprüfung: Bauplatz, Untergrund, Hindernisse und Platzierungsrisiken "
                 + "werden erst in der eigentlichen Bauvorschau geprüft. Es wurde kein Bauplan vorbereitet "
