@@ -51,6 +51,15 @@ public final class AIChatScreen extends Screen {
     private int micX, micY, micW, micH;
     private int ttsX, ttsY, ttsW, ttsH;
     private int contextToggleX, contextToggleY, contextToggleW, contextToggleH;
+    private final int[] suggestionX = new int[3];
+    private final int[] suggestionW = new int[3];
+    private int suggestionY;
+    private static final String[] SUGGESTION_LABELS = {"Base planen", "Holz sammeln", "Inventar sort."};
+    private static final String[] SUGGESTION_PROMPTS = {
+            "Hilf mir, eine Base zu planen. Frag mich nach Stil, Größe und Materialien und zeig mir zuerst einen Vorschlag.",
+            "Sammle Holz bis ich genug für mein Ziel habe. Prüfe zuerst meinen Bestand und frag nach der gewünschten Menge.",
+            "Analysiere mein Inventar und schlage eine sichere Sortierung vor."
+    };
     private AIActionRegistry.Action pendingAction;
     private AIChatClient.ToolCall pendingToolCall;
     private boolean pendingRealtimeToolCall;
@@ -293,7 +302,28 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, status, panelX + 16, panelY + 47,
                 (waiting || waitingLocate) ? Theme.ACCENT : Theme.TEXT_DIM, false);
 
-        int contentTop = panelY + 65;
+        // Clickable example prompts help new players discover Nightfall's abilities.
+        ctx.drawText(mc.textRenderer, "PROBIER MAL:", panelX + 16, panelY + 63, Theme.TEXT_DIM, true);
+        suggestionY = panelY + 77;
+        int suggestionGap = 5;
+        int suggestionTotalW = panelW - 32;
+        int suggestionEachW = (suggestionTotalW - suggestionGap * 2) / 3;
+        for (int i = 0; i < 3; i++) {
+            suggestionX[i] = panelX + 16 + i * (suggestionEachW + suggestionGap);
+            suggestionW[i] = i == 2 ? panelX + panelW - 16 - suggestionX[i] : suggestionEachW;
+            ctx.fill(suggestionX[i], suggestionY, suggestionX[i] + suggestionW[i], suggestionY + 18,
+                    0xFF293342);
+            ctx.fill(suggestionX[i], suggestionY, suggestionX[i] + suggestionW[i], suggestionY + 1,
+                    0x8835E0D0);
+            String label = SUGGESTION_LABELS[i];
+            while (mc.textRenderer.getWidth(label) > suggestionW[i] - 8 && label.length() > 4)
+                label = label.substring(0, label.length() - 2) + "…";
+            ctx.drawText(mc.textRenderer, label,
+                    suggestionX[i] + (suggestionW[i] - mc.textRenderer.getWidth(label)) / 2,
+                    suggestionY + 6, Theme.TEXT, false);
+        }
+
+        int contentTop = panelY + 101;
         int contentBottom = panelY + panelH - (pendingAction == null ? 53 : 80);
         int contentHeight = Math.max(30, contentBottom - contentTop);
         int left = panelX + 14;
@@ -530,6 +560,16 @@ public final class AIChatScreen extends Screen {
                 && click.y() >= cancelY && click.y() <= cancelY + confirmH) {
             cancelPendingAction();
             return true;
+        }
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && !waiting && pendingAction == null
+                && click.y() >= suggestionY && click.y() <= suggestionY + 18) {
+            for (int i = 0; i < suggestionX.length; i++) {
+                if (click.x() >= suggestionX[i] && click.x() <= suggestionX[i] + suggestionW[i]) {
+                    input = SUGGESTION_PROMPTS[i];
+                    status = "Vorschlag eingefügt · Du kannst ihn noch anpassen";
+                    return true;
+                }
+            }
         }
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
                 && click.x() >= contextToggleX && click.x() <= contextToggleX + contextToggleW
