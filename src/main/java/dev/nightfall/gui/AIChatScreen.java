@@ -10,6 +10,7 @@ import dev.nightfall.ai.AIPlayerController;
 import dev.nightfall.util.Theme;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.util.hit.BlockHitResult;
@@ -1223,6 +1224,36 @@ public final class AIChatScreen extends Screen {
                 ? "keine lebenden Mobs clientseitig im Umkreis von 16 Blöcken erkannt"
                 : String.join(", ", nearbyMobDescriptions);
 
+        List<ItemEntity> nearbyItemEntities = mc.world.getEntitiesByClass(
+                ItemEntity.class,
+                player.getBoundingBox().expand(12.0),
+                ItemEntity::isAlive);
+        nearbyItemEntities.sort((left, right) -> Double.compare(
+                left.squaredDistanceTo(player), right.squaredDistanceTo(player)));
+        Map<String, Integer> nearbyDropCounts = new HashMap<>();
+        Map<String, Double> nearbyDropDistances = new HashMap<>();
+        for (ItemEntity itemEntity : nearbyItemEntities) {
+            ItemStack stack = itemEntity.getStack();
+            if (stack.isEmpty()) continue;
+            String itemName = stack.getName().getString();
+            double distance = Math.sqrt(itemEntity.squaredDistanceTo(player));
+            nearbyDropCounts.merge(itemName, stack.getCount(), Integer::sum);
+            nearbyDropDistances.merge(itemName, distance, Math::min);
+        }
+        String nearbyDropsSummary = nearbyDropCounts.entrySet().stream()
+                .sorted((left, right) -> {
+                    int countOrder = Integer.compare(right.getValue(), left.getValue());
+                    return countOrder != 0 ? countOrder : left.getKey().compareTo(right.getKey());
+                })
+                .limit(10)
+                .map(entry -> entry.getKey() + " x" + entry.getValue()
+                        + " (nächstes in " + String.format(Locale.ROOT, "%.1f",
+                        nearbyDropDistances.getOrDefault(entry.getKey(), 0.0)) + " Blöcken)")
+                .collect(Collectors.joining(", "));
+        if (nearbyDropsSummary.isBlank()) {
+            nearbyDropsSummary = "keine clientseitig erkannten Item-Entities im Umkreis von 12 Blöcken";
+        }
+
         List<MobEntity> nearbyHostiles = nearbyMobs.stream()
                 .filter(mob -> mob instanceof HostileEntity)
                 .toList();
@@ -1282,6 +1313,8 @@ public final class AIChatScreen extends Screen {
                 + "Lichtlevel an der Spielerposition: " + lightLevel + "/15\n"
                 + "Clientseitig erkannte Mobs im Umkreis von 16 Blöcken (höchstens 10): "
                 + nearbyMobsSummary + "\n"
+                + "Fallengelassene Gegenstände im Umkreis von 12 Blöcken (höchstens 10 Itemtypen): "
+                + nearbyDropsSummary + "\n"
                 + localRiskSummary + "\n"
                 + "Gesundheit: " + health + "\n"
                 + "Hunger: " + hunger + ", Sättigung: " + saturation + "\n"
