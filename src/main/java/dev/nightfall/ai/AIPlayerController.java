@@ -71,6 +71,9 @@ public final class AIPlayerController {
     private static final int MAX_CRAFT_CHAIN_STEPS = 32;
     private static final int MAX_CRAFT_CHAIN_BATCHES = 256;
     private static final int MAX_CRAFTING_IDLE_TICKS = 20;
+    private static final int MAX_CRAFT_ALTERNATIVE_RECIPE_SCAN = 256;
+    private static final int MAX_CRAFT_ALTERNATIVE_ITEMS = 16;
+    private static final int MAX_CRAFT_ALTERNATIVE_RESULTS = 5;
     private static final int MAX_GATHER_BLOCKS = 2_048;
     private static final int MAX_SMELT_ITEMS = 16;
     private static final int MAX_SMELT_TICKS = 20 * 60 * 4;
@@ -1890,9 +1893,12 @@ public final class AIPlayerController {
 
         Set<Item> possibleMaterials = new LinkedHashSet<>();
         BlockPos sample = mc.player.getBlockPos();
+        int inspectedRecipes = 0;
         for (RecipeResultCollection collection : mc.player.getRecipeBook().getOrderedResults()) {
             for (RecipeDisplayEntry entry : collection.getAllRecipes()) {
-                if (possibleMaterials.size() >= 32) break;
+                if (inspectedRecipes >= MAX_CRAFT_ALTERNATIVE_RECIPE_SCAN
+                        || possibleMaterials.size() >= MAX_CRAFT_ALTERNATIVE_ITEMS) break;
+                inspectedRecipes++;
                 try {
                     for (ItemStack output : entry.getStacks(EMPTY_RECIPE_CONTEXT)) {
                         if (output == null || output.isEmpty() || !(output.getItem() instanceof BlockItem blockItem))
@@ -1907,13 +1913,14 @@ public final class AIPlayerController {
                                 || state.getCollisionShape(mc.world, sample).isEmpty()
                                 || !state.isFullCube(mc.world, sample)) continue;
                         possibleMaterials.add(item);
-                        if (possibleMaterials.size() >= 32) break;
+                        if (possibleMaterials.size() >= MAX_CRAFT_ALTERNATIVE_ITEMS) break;
                     }
                 } catch (RuntimeException ignored) {
                     // Ignore recipe displays that cannot be resolved on this client.
                 }
             }
-            if (possibleMaterials.size() >= 32) break;
+            if (possibleMaterials.size() >= MAX_CRAFT_ALTERNATIVE_ITEMS
+                    || inspectedRecipes >= MAX_CRAFT_ALTERNATIVE_RECIPE_SCAN) break;
         }
 
         List<AIMaterialPlanner.CraftableCandidate> plans = new ArrayList<>();
@@ -1947,7 +1954,9 @@ public final class AIPlayerController {
             }
             if (plans.size() >= 12) break;
         }
-        return AIMaterialPlanner.rankCraftable(plans).stream().limit(5).toList();
+        return AIMaterialPlanner.rankCraftable(plans).stream()
+                .limit(MAX_CRAFT_ALTERNATIVE_RESULTS)
+                .toList();
     }
 
     /**
