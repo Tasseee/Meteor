@@ -186,13 +186,14 @@ public final class AIChatClient {
         }
 
         boolean baseTopic = hasAny(query, "basis", "base", "versteck", "geheim", "verdächtig",
-                "verdachtig", "sus", "chunk", "decoy", "fakebase", "fake base");
+                "verdachtig", "sus", "chunk", "decoy", "fakebase", "fake base", "fake", "decoy");
         if (baseTopic) {
             addTools(selected, "get_base_findings", "get_module_observations");
             if (hasAny(query, "such", "find", "scann", "scan", "prüf", "pruef", "check", "locate")) {
                 addTools(selected, "search_bases");
             }
-            if (hasAny(query, "markier", "mark ", "set as", "kennzeichn", "decoy", "fake base")) {
+            if (hasAny(query, "markier", "mark as", "mark it", "mark this", "set as", "kennzeichn",
+                    "create fake", "add fake", "save as fake", "als fake markieren")) {
                 addTools(selected, "mark_fake_base");
             }
             if (hasAny(query, "vorlage", "template", "learn", "gelernt", "beispiel", "example")) {
