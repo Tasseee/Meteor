@@ -2607,6 +2607,7 @@ public final class AIPlayerController {
             case CRAFT -> "Crafting · " + (craftingPlan.isEmpty() ? 0 : craftingPlanIndex + 1) + "/" + craftingPlan.size() + " · " + craftingName;
             case SORT -> "Inventar sortieren · " + inventorySortIndex + "/" + inventorySortPlan.size();
             case GATHER -> "Sammle " + gatherMaterialName + " · " + gatherIndex + "/" + gatherTargets.size()
+                    + (isAncientDebrisItem(gatherMaterial) ? " · Spiralabschnitte " + gatherExploreLegs + "/" + MAX_GATHER_EXPLORE_LEGS : "")
                     + (gatherDeadlineNanos > 0L ? " · Zeitlimit " + gatherMaxDurationSeconds + "s" : "")
                     + (gatherTargetY != Integer.MIN_VALUE ? " · Y=" + gatherTargetY : "");
             case GATHER_MINE -> "Baue Rohstoff ab · " + (miningPos == null ? "" : miningPos.toShortString());
