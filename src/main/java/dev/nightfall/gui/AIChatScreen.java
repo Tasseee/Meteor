@@ -15,6 +15,7 @@ import net.minecraft.client.input.CharInput;
 import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
 import org.lwjgl.glfw.GLFW;
 
@@ -1144,16 +1145,93 @@ public final class AIChatScreen extends Screen {
         scroll = Float.MAX_VALUE;
     }
 
+    /**
+     * Builds a bounded snapshot from data already available to the local client.
+     * This method is called only when the player has enabled world-context sharing.
+     */
     private String worldContext() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null) return "";
-        BlockPos pos = mc.player.getBlockPos();
+
+        var player = mc.player;
+        BlockPos pos = player.getBlockPos();
         String dimension = mc.world.getRegistryKey().getValue().toString();
-        String hand = mc.player.getMainHandStack().isEmpty()
-                ? "leer" : mc.player.getMainHandStack().getName().getString()
-                + " x" + mc.player.getMainHandStack().getCount();
-        return "Dimension: " + dimension + "\n"
+        String biome = mc.world.getBiome(pos).getKey()
+                .map(key -> key.getValue().toString())
+                .orElse("unbekannt");
+
+        long dayTime = Math.floorMod(mc.world.getTimeOfDay(), 24_000L);
+        String dayPhase;
+        if (dayTime < 1_000L || dayTime >= 23_000L) {
+            dayPhase = "Morgengrauen";
+        } else if (dayTime < 11_000L) {
+            dayPhase = "Tag";
+        } else if (dayTime < 13_000L) {
+            dayPhase = "Abenddämmerung";
+        } else {
+            dayPhase = "Nacht";
+        }
+
+        String weather = mc.world.isThundering()
+                ? "Gewitter"
+                : mc.world.isRaining() ? "Regen" : "klar";
+        String blockBelow = mc.world.getBlockState(pos.down()).getBlock().getName().getString();
+        int lightLevel = mc.world.getLightLevel(pos);
+
+        String health = String.format(Locale.ROOT, "%.1f/%.1f", player.getHealth(), player.getMaxHealth());
+        String hunger = player.getHungerManager().getFoodLevel() + "/20";
+        String saturation = String.format(Locale.ROOT, "%.1f", player.getHungerManager().getSaturationLevel());
+
+        List<String> conditions = new ArrayList<>();
+        if (player.isOnGround()) conditions.add("am Boden");
+        if (player.isSubmergedInWater()) conditions.add("unter Wasser");
+        if (player.isInLava()) conditions.add("in Lava");
+        if (player.isOnFire()) conditions.add("brennt");
+        if (player.isSprinting()) conditions.add("sprintet");
+        if (player.isSneaking()) conditions.add("schleicht");
+        String movement = conditions.isEmpty() ? "keine besondere Bewegung erkannt" : String.join(", ", conditions);
+
+        List<String> armor = new ArrayList<>();
+        for (ItemStack stack : player.getArmorItems()) {
+            if (!stack.isEmpty()) armor.add(describeStack(stack));
+        }
+        String armorSummary = armor.isEmpty() ? "keine" : String.join(", ", armor);
+
+        Map<String, Integer> inventoryCounts = new HashMap<>();
+        for (int slot = 0; slot < 36; slot++) {
+            ItemStack stack = player.getInventory().getStack(slot);
+            if (stack.isEmpty()) continue;
+            inventoryCounts.merge(stack.getName().getString(), stack.getCount(), Integer::sum);
+        }
+        String inventorySummary = inventoryCounts.entrySet().stream()
+                .sorted((left, right) -> Integer.compare(right.getValue(), left.getValue()))
+                .limit(12)
+                .map(entry -> entry.getKey() + " x" + entry.getValue())
+                .collect(Collectors.joining(", "));
+        if (inventorySummary.isBlank()) inventorySummary = "leer";
+
+        return "Lokaler Minecraft-Weltkontext (Momentaufnahme):\n"
+                + "Dimension: " + dimension + "\n"
+                + "Biome am Spieler: " + biome + "\n"
                 + "Spielerposition: X=" + pos.getX() + ", Y=" + pos.getY() + ", Z=" + pos.getZ() + "\n"
-                + "Haupthand: " + hand;
+                + "Tageszeit: " + dayPhase + " (Tick " + dayTime + " von 24000)\n"
+                + "Wetter: " + weather + "\n"
+                + "Block direkt unter den Füßen: " + blockBelow + "\n"
+                + "Lichtlevel an der Spielerposition: " + lightLevel + "/15\n"
+                + "Gesundheit: " + health + "\n"
+                + "Hunger: " + hunger + ", Sättigung: " + saturation + "\n"
+                + "Lokale Situation: " + movement + "\n"
+                + "Haupthand: " + describeStack(player.getMainHandStack()) + "\n"
+                + "Nebenhand: " + describeStack(player.getOffHandStack()) + "\n"
+                + "Rüstung: " + armorSummary + "\n"
+                + "Inventar (36 Haupt-/Hotbar-Slots, nach Itemnamen zusammengefasst; höchstens 12 Einträge): "
+                + inventorySummary + "\n"
+                + "Grenze: Das sind nur aktuell clientseitig verfügbare Werte, keine Karte der Umgebung. "
+                + "Ungeladene Chunks, versteckte Entities und serverseitig nicht gesendete Daten sind nicht enthalten.";
+    }
+
+    private static String describeStack(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return "leer";
+        return stack.getName().getString() + " x" + stack.getCount();
     }
 }
