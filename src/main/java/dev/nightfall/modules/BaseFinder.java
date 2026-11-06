@@ -27,9 +27,9 @@ import java.util.*;
  * (kein Blockscan). Pro Tick gilt ein festes Zeitbudget. SUS/SUS-WEG-Markierungen werden je Server+Dimension gespeichert.
  */
 public class BaseFinder extends Module {
-    private final NumberSetting range     = add(new NumberSetting("Range (Chunks)", 16, 2, 48, 1));
-    private final NumberSetting budgetMs  = add(new NumberSetting("Budget ms/Tick", 1.0, 0.2, 5.0, 0.1));
-    private final NumberSetting rescan    = add(new NumberSetting("Rescan (s)", 10, 2, 120, 1));
+    private final NumberSetting range     = add(new NumberSetting("Range (Chunks)", 20, 2, 48, 1));
+    private final NumberSetting budgetMs  = add(new NumberSetting("Budget ms/Tick", 1.5, 0.2, 5.0, 0.1));
+    private final NumberSetting rescan    = add(new NumberSetting("Rescan (s)", 8, 2, 120, 1));
     private final NumberSetting threshold = add(new NumberSetting("Min Score", 12, 3, 100, 1));
     private final NumberSetting minSignals = add(new NumberSetting("Min. Signaltypen", 2, 1, 5, 1));
     private final NumberSetting wStorage  = add(new NumberSetting("Gewicht Storage", 1.0, 0.1, 5.0, 0.1));
@@ -220,7 +220,8 @@ public class BaseFinder extends Module {
         Status prev = res.status;
         res.blockScore = blockScore;
         res.blockSignalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
-                + (furnace > 0 ? 1 : 0) + (cluster > 0 ? 1 : 0);
+                + (furnace > 0 ? 1 : 0) + (cluster > 0 ? 1 : 0)
+                + (redstone > 0 && res.redstoneScore <= 0 ? 1 : 0);
         res.serverLimited = maskActive;
         res.stashScore = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + cluster;
