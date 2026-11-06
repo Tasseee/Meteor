@@ -2132,14 +2132,6 @@ public final class AIPlayerController {
                 || stack.getName().getString().equalsIgnoreCase(requested);
     }
 
-    private static boolean matchesCraftItem(ItemStack stack, String requestedItem) {
-        String requested = requestedItem.trim();
-        var id = Registries.ITEM.getId(stack.getItem());
-        return id.toString().equalsIgnoreCase(requested)
-                || id.getPath().equalsIgnoreCase(requested)
-                || stack.getName().getString().equalsIgnoreCase(requested);
-    }
-
     /**
      * Build a stable sort plan for the player's 36 normal inventory/hotbar slots.
      * Armor, offhand, crafting grid and cursor are deliberately never touched.
