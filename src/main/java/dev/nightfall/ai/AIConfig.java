@@ -91,6 +91,23 @@ public final class AIConfig {
         return settings;
     }
 
+    /** Persist the player's explicit world-context sharing choice. */
+    public static synchronized Settings updateWorldContextSharing(boolean enabled) {
+        load();
+        Settings current = settings;
+        Settings updated = new Settings(current.baseUrl(), current.model(), current.apiKey(),
+                enabled, current.audioBaseUrl(), current.transcriptionModel(), current.speechModel(),
+                current.speechVoice(), current.voiceInputEnabled(), current.voiceOutputEnabled());
+        try {
+            writeSettings(updated);
+            settings = updated;
+        } catch (IOException failure) {
+            Nightfall.LOGGER.warn("Nightfall-Weltkontext-Einstellung konnte nicht gespeichert werden: {}",
+                    failure.getClass().getSimpleName());
+        }
+        return settings;
+    }
+
     private static void writeSettings(Settings value) throws IOException {
         Files.createDirectories(FILE.getParent());
         JsonObject root = new JsonObject();
