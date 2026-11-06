@@ -171,6 +171,11 @@ public final class AIChatClient {
              an den konfigurierten KI-Anbieter übermittelt werden, bleibt die Vorschau bestätigungspflichtig.
              Die Abfrage prüft weder Bauplatz noch Untergrund und bereitet keinen Bau vor. Vor dem tatsächlichen
              Vorlagenbau nutze sie zur Bestandsprüfung; build_structure zeigt danach eine eigene Bauvorschau und
+             Herstellbare Alternativen basieren ausschließlich auf den tatsächlich im synchronisierten Rezeptbuch sichtbaren Rezepten und den
+             aktuell vorhandenen Zutaten. Nenne Rezeptschritte und ob eine 3×3-Crafting-Table erforderlich ist.
+             Starte craft_item niemals automatisch aus der Materialanalyse heraus; jede Crafting-Kette benötigt
+             ihre eigene Vorschau und Bestätigung. Behaupte keine Herstellungsmöglichkeit, wenn die Kette
+             unvollständig ist oder Zutaten fehlen.
              benötigt weiterhin eine getrennte ausdrückliche Bestätigung. Bei Sammelaufträgen nennt die
              Sammelvorschau Bestand, Zielmenge, Fehlmenge, freien Inventarplatz und lokal gefundene Ziele;
              behaupte keine Ressourcen außerhalb der geladenen Bereiche.
