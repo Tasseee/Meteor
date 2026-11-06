@@ -119,8 +119,10 @@ public final class AIChatClient {
             vollständig aus Schematics übernommen. Redstone-Verbindungen und Signalzustände werden von
             Minecraft dynamisch berechnet. Behaupte nie, dass ein Redstone-System, seine Zeiten oder eine
             Farm funktionieren, nur weil Blöcke platziert wurden. In-Game-Prüfung bleibt nötig.
-            Inventar-Sortierung, beliebige 3×3-Rezeptketten und ein garantierter Vollautomatik-Farmbau sind
-            nicht implementiert; biete sie nicht als fertige Funktionen an.
+            sort_inventory ordnet ausschließlich stapelbare Blöcke/Baumaterialien, Erz-Rohstoffe und Nahrung
+            innerhalb der 36 normalen Inventar-/Hotbar-Slots. Haltbare Ausrüstung, sonstige Gegenstände,
+            Rüstung und Offhand bleiben an ihrem Platz. Eine vollständige Sortierung aller Gegenstandsklassen,
+            beliebige 3×3-Rezeptketten und ein garantierter Vollautomatik-Farmbau sind nicht implementiert.
 
             Antworte knapp, freundlich und konkret. Erkläre Grenzen offen, trenne Beobachtung von Vermutung
             und fasse Ergebnisse nach jedem Werkzeugaufruf ehrlich zusammen.
@@ -263,6 +265,10 @@ public final class AIChatClient {
                 "block abbauen", "wood", "log", "stone", "cobblestone")) {
             addTools(selected, "mine_block", "mine_looked_block", "gather_wood", "gather_block",
                     "gather_ore", "smelt_item", "get_inventory", "navigate_to", "stop_current_action");
+        }
+        if (hasAny(query, "inventar", "inventory") && hasAny(query, "sort", "sortier", "ordne",
+                "aufräum", "aufräumen", "aufräumen", "organis", "organize", "tidy")) {
+            addTools(selected, "sort_inventory");
         }
         if (hasAny(query, "craft", "crafting", "herstell", "rezept", "recipe",
                 "make ", "create ", "mach mir", "stell mir", "craft me")) {
