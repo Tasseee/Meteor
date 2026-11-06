@@ -82,7 +82,7 @@ public final class AIBuilder {
     private record PlacementCandidate(BlockHitResult hit, float yaw, float pitch) { }
 
     private static final List<BlockPos> PLAN = new ArrayList<>();
-    private static final Map<BlockPos, BlockItem> PLAN_MATERIALS = new LinkedHashMap<>();
+    private static final Map<BlockPos, Item> PLAN_MATERIALS = new LinkedHashMap<>();
     private static final Map<BlockPos, BlockState> PLAN_STATES = new LinkedHashMap<>();
     private static final List<RelativeBlock> CUSTOM_OFFSETS = new ArrayList<>();
     private static final List<RelativeBlock> CUSTOM_CLEAR_OFFSETS = new ArrayList<>();
@@ -104,7 +104,7 @@ public final class AIBuilder {
     private static Blueprint blueprint;
     private static Identifier dimension;
     private static BlockPos pendingTarget;
-    private static BlockItem pendingMaterial;
+    private static Item pendingMaterial;
     private static BlockState pendingExpectedState;
     private static BlockHitResult queuedPlacementHit;
     private static BlockPos queuedPlacementTarget;
@@ -493,26 +493,42 @@ public final class AIBuilder {
             selected = resolveMaterial(counts, preferredMaterialId);
         if (selected == null) selected = mostAvailable(counts);
 
-        Map<BlockItem, Integer> requiredCounts = new LinkedHashMap<>();
-        Map<RelativeBlock, BlockItem> offsetMaterials = new LinkedHashMap<>();
+        Map<Item, Integer> requiredCounts = new LinkedHashMap<>();
+        Map<RelativeBlock, Item> offsetMaterials = new LinkedHashMap<>();
         Map<RelativeBlock, BlockState> offsetStates = new LinkedHashMap<>();
         for (RelativeBlock offset : offsets) {
-            BlockItem blockMaterial = offset.materialId() == null || offset.materialId().isBlank()
-                    ? selected : resolveMaterial(counts, offset.materialId());
+            BlockState targetState = offset.state();
+            Item blockMaterial;
+            if ("minecraft:redstone".equals(offset.materialId()) && targetState != null
+                    && targetState.isOf(Blocks.REDSTONE_WIRE)) {
+                blockMaterial = Items.REDSTONE;
+            } else {
+                BlockItem blockItem = offset.materialId() == null || offset.materialId().isBlank()
+                        ? selected : resolveMaterial(counts, offset.materialId());
+                blockMaterial = blockItem;
+            }
             if (blockMaterial == null)
                 throw new IllegalArgumentException("Für jeden Block ohne eigenes Material muss ein passender Block im Spielerinventar liegen.");
-            BlockState targetState = offset.state() == null ? blockMaterial.getBlock().getDefaultState() : offset.state();
-            if (!targetState.isOf(blockMaterial.getBlock()))
-                throw new IllegalArgumentException("BlockState und Material stimmen an Position "
-                        + offset.x() + "/" + offset.y() + "/" + offset.z() + " nicht überein.");
+            if (targetState == null) {
+                if (!(blockMaterial instanceof BlockItem blockItem))
+                    throw new IllegalArgumentException("Für Redstone-Staub fehlt der gespeicherte Redstone-Blockzustand.");
+                targetState = blockItem.getBlock().getDefaultState();
+            }
+            if (blockMaterial instanceof BlockItem blockItem) {
+                if (!targetState.isOf(blockItem.getBlock()))
+                    throw new IllegalArgumentException("BlockState und Material stimmen an Position "
+                            + offset.x() + "/" + offset.y() + "/" + offset.z() + " nicht überein.");
+            } else if (blockMaterial != Items.REDSTONE || !targetState.isOf(Blocks.REDSTONE_WIRE)) {
+                throw new IllegalArgumentException("Nur Redstone-Staub darf als Nicht-BlockItem in eine Schematic übernommen werden.");
+            }
             offsetMaterials.put(offset, blockMaterial);
             offsetStates.put(offset, targetState);
             requiredCounts.merge(blockMaterial, 1, Integer::sum);
         }
         boolean creative = playerIsCreative(mc);
         List<String> shortages = new ArrayList<>();
-        for (Map.Entry<BlockItem, Integer> requirement : requiredCounts.entrySet()) {
-            int found = counts.getOrDefault(requirement.getKey(), 0);
+        for (Map.Entry<Item, Integer> requirement : requiredCounts.entrySet()) {
+            int found = countInventoryItem(mc, requirement.getKey());
             int needed = creative ? 1 : requirement.getValue();
             if (found < needed) {
                 String itemId = Registries.ITEM.getId(requirement.getKey()).toString();
@@ -525,8 +541,12 @@ public final class AIBuilder {
                     + ". Nightfall hat die exakten Block-IDs erkannt, aber der Bau startet erst, wenn alle Mengen im Spielerinventar liegen. "
                     + "Unterstützte nächste Schritte: passende Vanilla-Holzstämme mit gather_wood sammeln und freigeschaltete 2×2-Rezepte mit craft_item herstellen. "
                     + "Andere Materialtypen müssen derzeit manuell beschafft werden.");
-        if (selected == null && !offsetMaterials.isEmpty())
-            selected = offsetMaterials.values().iterator().next();
+        if (selected == null && !offsetMaterials.isEmpty()) {
+            selected = offsetMaterials.values().stream()
+                    .filter(BlockItem.class::isInstance)
+                    .map(BlockItem.class::cast)
+                    .findFirst().orElse(null);
+        }
 
         ClientPlayerEntity player = mc.player;
         Direction playerForward = player.getHorizontalFacing();
@@ -541,7 +561,7 @@ public final class AIBuilder {
                 : player.getBlockPos().offset(forward, 1).offset(right, -((maxX + 1) / 2));
         List<BlockPos> targets = new ArrayList<>(offsets.size());
         Set<BlockPos> targetSet = new HashSet<>();
-        Map<BlockPos, BlockItem> targetMaterials = new LinkedHashMap<>();
+        Map<BlockPos, Item> targetMaterials = new LinkedHashMap<>();
         Set<BlockPos> excavationSet = new HashSet<>();
         List<BlockPos> nextWater = new ArrayList<>();
         boolean waterAutomationEnabled = playerIsCreative(mc)
@@ -646,6 +666,11 @@ public final class AIBuilder {
         if (ordered.size() != targets.size())
             throw new IllegalArgumentException("Der Bauplan hat schwebende oder getrennte Teile. Alle Blöcke müssen über Seitenflächen mit dem Boden oder bestehenden festen Blöcken verbunden sein.");
 
+        // Complete the structural/support blocks first, then redstone devices, and dust last.
+        // Dust derives its connection shape from neighboring blocks, so placing it after its
+        // supports and devices avoids comparing against a deliberately incomplete wire shape.
+        ordered.sort(Comparator.comparingInt(pos -> redstonePlacementPhase(targetMaterials.get(pos))));
+
         PLAN.clear();
         PLAN.addAll(ordered);
         PLAN_MATERIALS.clear();
@@ -734,13 +759,13 @@ public final class AIBuilder {
     }
 
     private static String customLayoutPreview(List<RelativeBlock> offsets,
-                                               Map<RelativeBlock, BlockItem> offsetMaterials,
+                                               Map<RelativeBlock, Item> offsetMaterials,
                                                int maxX, int maxY, int maxZ) {
-        Map<BlockItem, Character> palette = new LinkedHashMap<>();
+        Map<Item, Character> palette = new LinkedHashMap<>();
         Map<String, Character> groundPlan = new LinkedHashMap<>();
         Map<Integer, Integer> layerCounts = new LinkedHashMap<>();
         for (RelativeBlock offset : offsets) {
-            BlockItem blockMaterial = offsetMaterials.get(offset);
+            Item blockMaterial = offsetMaterials.get(offset);
             Character symbol = palette.get(blockMaterial);
             if (symbol == null) {
                 symbol = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(palette.size());
@@ -767,7 +792,7 @@ public final class AIBuilder {
         preview.append(String.join(", ", layers));
         preview.append("\nLegende: ");
         List<String> legend = new ArrayList<>();
-        for (Map.Entry<BlockItem, Character> entry : palette.entrySet())
+        for (Map.Entry<Item, Character> entry : palette.entrySet())
             legend.add(entry.getValue() + "=" + entry.getKey().getName().getString());
         preview.append(String.join(", ", legend));
         return preview.toString();
@@ -848,11 +873,55 @@ public final class AIBuilder {
         return selected;
     }
 
-    private static String describeMaterials(Map<BlockItem, Integer> requirements) {
+    private static String describeMaterials(Map<Item, Integer> requirements) {
         List<String> parts = new ArrayList<>();
-        for (Map.Entry<BlockItem, Integer> entry : requirements.entrySet())
+        for (Map.Entry<Item, Integer> entry : requirements.entrySet())
             parts.add(entry.getKey().getName().getString() + " × " + entry.getValue());
         return String.join(", ", parts);
+    }
+
+    private static int redstonePlacementPhase(Item item) {
+        if (item == Items.REDSTONE) return 2;
+        if (item == null) return 0;
+        String path = Registries.ITEM.getId(item).getPath();
+        return switch (path) {
+            case "repeater", "comparator", "observer", "piston", "sticky_piston",
+                    "dispenser", "dropper", "hopper", "redstone_block", "redstone_torch",
+                    "redstone_wall_torch", "redstone_lamp", "lever", "tripwire",
+                    "tripwire_hook", "daylight_detector", "target", "tnt",
+                    "lightning_rod" -> 1;
+            default -> path.endsWith("_button") || path.endsWith("_pressure_plate") ? 1 : 0;
+        };
+    }
+
+    private static boolean hasDynamicRedstoneProperty(BlockState state, String propertyName) {
+        String path = Registries.BLOCK.getId(state.getBlock()).getPath();
+        return switch (path) {
+            case "redstone_wire" -> Set.of("power", "north", "east", "south", "west").contains(propertyName);
+            case "repeater" -> Set.of("powered", "locked").contains(propertyName);
+            case "comparator", "observer", "lever", "redstone_lamp",
+                    "redstone_torch", "redstone_wall_torch", "dispenser", "dropper",
+                    "lightning_rod" -> propertyName.equals("powered") || propertyName.equals("lit")
+                    || propertyName.equals("triggered");
+            case "piston", "sticky_piston" -> propertyName.equals("extended");
+            case "hopper" -> propertyName.equals("enabled");
+            case "tripwire" -> Set.of("powered", "attached", "disarmed").contains(propertyName);
+            case "tripwire_hook" -> Set.of("powered", "attached").contains(propertyName);
+            default -> (path.endsWith("_button") || path.endsWith("_pressure_plate"))
+                    && propertyName.equals("powered");
+        };
+    }
+
+    /** Compare stable schematic properties while allowing redstone's neighbor/tick-driven state to settle. */
+    private static boolean matchesSchematicState(BlockState expected, BlockState actual) {
+        if (expected == null || actual == null || !expected.isOf(actual.getBlock())) return false;
+        if (expected.equals(actual)) return true;
+        for (var entry : expected.getEntries().entrySet()) {
+            var property = entry.getKey();
+            if (hasDynamicRedstoneProperty(expected, property.getName())) continue;
+            if (!entry.getValue().equals(actual.get(property))) return false;
+        }
+        return true;
     }
 
     private static BlockPos at(BlockPos origin, Direction right, Direction forward, int x, int z, int y) {
@@ -974,7 +1043,7 @@ public final class AIBuilder {
 
         if (pendingTarget != null) {
             BlockState pendingState = mc.world.getBlockState(pendingTarget);
-            if (pendingExpectedState != null && pendingState.equals(pendingExpectedState)) {
+            if (pendingExpectedState != null && matchesSchematicState(pendingExpectedState, pendingState)) {
                 pendingMaterial = null;
                 index++;
                 saveCheckpointProgress(index, PLAN.size());
@@ -986,14 +1055,15 @@ public final class AIBuilder {
                 return;
             }
             if (!pendingState.isReplaceable()
-                    && (pendingMaterial == null || !pendingState.isOf(pendingMaterial.getBlock()))) {
+                    && (pendingExpectedState == null || !pendingState.isOf(pendingExpectedState.getBlock()))) {
                 stopInternal("Bau gestoppt: Der Server meldet an der Zielposition einen anderen Block. "
                         + "Erwartet: " + (pendingExpectedState == null ? "unbekannt" : pendingExpectedState)
                         + ", erhalten: " + pendingState + ".", true);
                 return;
             }
             if (++pendingTicks < CONFIRMATION_TIMEOUT_TICKS) { delay = 1; return; }
-            if (pendingMaterial != null && pendingState.isOf(pendingMaterial.getBlock())) {
+            if (pendingMaterial != null && pendingExpectedState != null
+                    && pendingState.isOf(pendingExpectedState.getBlock())) {
                 stopInternal("Bau gestoppt: Der Block wurde platziert, aber die vom Server bestätigte Ausrichtung/Zustandskombination stimmt nicht. "
                         + "Erwartet: " + pendingExpectedState + ", erhalten: " + pendingState + ".", true);
                 return;
@@ -1031,13 +1101,19 @@ public final class AIBuilder {
         }
         BlockPos target = PLAN.get(index);
         BlockState present = mc.world.getBlockState(target);
-        BlockItem targetMaterial = PLAN_MATERIALS.getOrDefault(target, material);
+        Item targetMaterial = PLAN_MATERIALS.getOrDefault(target, material);
         if (targetMaterial == null) {
             stopInternal("Bau gestoppt: Für den nächsten Block ist kein Baumaterial zugeordnet.", true);
             return;
         }
-        BlockState expectedState = PLAN_STATES.getOrDefault(target, targetMaterial.getBlock().getDefaultState());
-        if (present.equals(expectedState)) {
+        BlockState expectedState = PLAN_STATES.get(target);
+        if (expectedState == null && targetMaterial instanceof BlockItem blockItem)
+            expectedState = blockItem.getBlock().getDefaultState();
+        if (expectedState == null) {
+            stopInternal("Bau gestoppt: Für das nächste Material fehlt ein sicherer Blockzustand.", true);
+            return;
+        }
+        if (matchesSchematicState(expectedState, present)) {
             index++;
             placementApproachAttempts = 0;
             placementWaitingNotice = false;
@@ -1090,24 +1166,57 @@ public final class AIBuilder {
         }
         placementApproachAttempts = 0;
         placementWaitingNotice = false;
-        PlacementCandidate candidate = findPlacementCandidate(mc, player, target, targetMaterial, expectedState);
-        if (candidate == null) {
-            stopInternal("Bau gestoppt: Für " + expectedState + " wurde mit normaler Minecraft-Platzierung keine sichere Ansetzfläche/Ausrichtung gefunden. "
-                    + "Nightfall setzt den Block nicht falsch herum.", true);
+        waitingForReach = false;
+        if (targetMaterial instanceof BlockItem blockItem) {
+            PlacementCandidate candidate = findPlacementCandidate(mc, player, target, blockItem, expectedState);
+            if (candidate == null) {
+                stopInternal("Bau gestoppt: Für " + expectedState + " wurde mit normaler Minecraft-Platzierung keine sichere Ansetzfläche/Ausrichtung gefunden. "
+                        + "Nightfall setzt den Block nicht falsch herum.", true);
+                return;
+            }
+            status = "Richte Block aus " + (index + 1) + "/" + PLAN.size();
+            queuedPlacementHit = candidate.hit();
+            queuedPlacementTarget = target.toImmutable();
+            queuedPlacementMaterial = blockItem;
+            queuedPlacementState = expectedState;
+            queuedPlacementYaw = candidate.yaw();
+            queuedPlacementPitch = candidate.pitch();
+            player.setYaw(candidate.yaw());
+            player.setPitch(candidate.pitch());
+            delay = 1;
             return;
         }
 
-        waitingForReach = false;
-        status = "Richte Block aus " + (index + 1) + "/" + PLAN.size();
-        queuedPlacementHit = candidate.hit();
-        queuedPlacementTarget = target.toImmutable();
-        queuedPlacementMaterial = targetMaterial;
-        queuedPlacementState = expectedState;
-        queuedPlacementYaw = candidate.yaw();
-        queuedPlacementPitch = candidate.pitch();
-        player.setYaw(candidate.yaw());
-        player.setPitch(candidate.pitch());
-        delay = 1;
+        if (targetMaterial == Items.REDSTONE && expectedState.isOf(Blocks.REDSTONE_WIRE)) {
+            BlockPos support = target.down();
+            BlockState supportState = mc.world.getBlockState(support);
+            if (supportState.getCollisionShape(mc.world, support).isEmpty()) {
+                stopInternal("Bau gestoppt: Redstone-Staub bei " + target.toShortString()
+                        + " braucht einen gültigen Block direkt darunter.", true);
+                return;
+            }
+            Vec3d hitPos = support.toCenterPos().add(0.0, 0.5, 0.0);
+            if (player.getEyePos().squaredDistanceTo(hitPos)
+                    > Math.min(REACH_SQUARED, player.getBlockInteractionRange() * player.getBlockInteractionRange())) {
+                waitingForReach = true;
+                status = "Warte auf Reichweite für Redstone-Staub";
+                return;
+            }
+            BlockHitResult hit = new BlockHitResult(hitPos, Direction.UP, support, false);
+            player.setYaw(player.getYaw());
+            mc.interactionManager.interactBlock(player, Hand.MAIN_HAND, hit);
+            player.swingHand(Hand.MAIN_HAND);
+            pendingTarget = target.toImmutable();
+            pendingMaterial = Items.REDSTONE;
+            pendingExpectedState = expectedState;
+            pendingTicks = 0;
+            delay = 2;
+            status = "Setze Redstone-Staub " + (index + 1) + "/" + PLAN.size();
+            return;
+        }
+
+        stopInternal("Bau gestoppt: Nicht unterstützter Nicht-BlockItem-Baustein "
+                + targetMaterial.getName().getString() + ".", true);
     }
 
     private static void tickWaterPlacement(MinecraftClient mc, ClientPlayerEntity player) {
@@ -1330,7 +1439,7 @@ public final class AIBuilder {
                         if (context == null || !context.getBlockPos().equals(target)) continue;
                         BlockState predicted = ((BlockItemPlacementAccessor) (Object) item)
                                 .nightfall$invokeGetPlacementState(context);
-                        if (expectedState.equals(predicted))
+                        if (matchesSchematicState(expectedState, predicted))
                             return new PlacementCandidate(hit, yaw, pitch);
                     }
                 }
@@ -1438,7 +1547,7 @@ public final class AIBuilder {
         try {
             JsonObject root = new JsonObject();
             savedServerKey = currentServerKey(mc);
-            root.addProperty("version", 5);
+            root.addProperty("version", 6);
             root.addProperty("server", savedServerKey);
             root.addProperty("dimension", mc.world.getRegistryKey().getValue().toString());
             root.addProperty("name", blueprintName);
@@ -1458,14 +1567,16 @@ public final class AIBuilder {
             }
             JsonArray blocks = new JsonArray();
             for (BlockPos pos : PLAN) {
-                BlockItem item = PLAN_MATERIALS.getOrDefault(pos, material);
+                Item item = PLAN_MATERIALS.getOrDefault(pos, material);
                 if (item == null) throw new IllegalStateException("Material für gespeicherten Bauplan fehlt.");
                 JsonObject block = new JsonObject();
                 block.addProperty("x", pos.getX());
                 block.addProperty("y", pos.getY());
                 block.addProperty("z", pos.getZ());
                 block.addProperty("item", Registries.ITEM.getId(item).toString());
-                BlockState state = PLAN_STATES.getOrDefault(pos, item.getBlock().getDefaultState());
+                BlockState state = PLAN_STATES.get(pos);
+                if (state == null && item instanceof BlockItem blockItem) state = blockItem.getBlock().getDefaultState();
+                if (state == null) throw new IllegalStateException("Blockzustand für gespeicherten Bauplan fehlt.");
                 block.addProperty("state", state.toString());
                 blocks.add(block);
             }
@@ -1527,7 +1638,8 @@ public final class AIBuilder {
             if (!root.has("version"))
                 throw new IllegalArgumentException("Checkpoint-Version fehlt.");
             int checkpointVersion = root.get("version").getAsInt();
-            if ((checkpointVersion != 2 && checkpointVersion != 3 && checkpointVersion != 4 && checkpointVersion != 5)
+            if ((checkpointVersion != 2 && checkpointVersion != 3 && checkpointVersion != 4
+                    && checkpointVersion != 5 && checkpointVersion != 6)
                     || !root.has("blocks") || !root.get("blocks").isJsonArray()
                     || root.getAsJsonArray("blocks").size() > 32_768
                     || !root.has("excavation") || !root.get("excavation").isJsonArray()
@@ -1558,20 +1670,25 @@ public final class AIBuilder {
                         || !restoredPlanPositions.add(pos))
                     throw new IllegalArgumentException("Der gespeicherte Bauplan enthält ungültige oder doppelte Blockpositionen.");
                 Identifier itemId = Identifier.tryParse(block.get("item").getAsString());
-                if (itemId == null || !(Registries.ITEM.get(itemId) instanceof BlockItem item)
-                        || !Registries.ITEM.getId(item).equals(itemId))
+                Item item = itemId == null ? Items.AIR : Registries.ITEM.get(itemId);
+                if (itemId == null || item == Items.AIR || !Registries.ITEM.getId(item).equals(itemId))
                     throw new IllegalArgumentException("Ein gespeichertes Baumaterial existiert in dieser Minecraft-Version nicht mehr.");
                 BlockState state;
                 if (block.has("state")) {
                     state = BlockArgumentParser.block(mc.world.getRegistryManager().getOrThrow(RegistryKeys.BLOCK),
                             block.get("state").getAsString(), false).blockState();
                 } else {
-                    if (checkpointVersion >= 3 || !item.getBlock().getStateManager().getProperties().isEmpty())
+                    if (checkpointVersion >= 3 || !(item instanceof BlockItem blockItem)
+                            || !blockItem.getBlock().getStateManager().getProperties().isEmpty())
                         throw new IllegalArgumentException("Der gespeicherte Bauplan enthält keinen sicheren Blockzustand für ein Material mit Eigenschaften.");
-                    state = item.getBlock().getDefaultState();
+                    state = ((BlockItem) item).getBlock().getDefaultState();
                 }
-                if (!state.isOf(item.getBlock()))
-                    throw new IllegalArgumentException("Ein gespeicherter BlockState passt nicht zum Baumaterial.");
+                if (item instanceof BlockItem blockItem) {
+                    if (!state.isOf(blockItem.getBlock()))
+                        throw new IllegalArgumentException("Ein gespeicherter BlockState passt nicht zum Baumaterial.");
+                } else if (item != Items.REDSTONE || !state.isOf(Blocks.REDSTONE_WIRE)) {
+                    throw new IllegalArgumentException("Ein gespeicherter Nicht-BlockItem-Baustein wird nicht unterstützt.");
+                }
                 PLAN.add(pos); PLAN_MATERIALS.put(pos, item); PLAN_STATES.put(pos, state);
             }
             WATER_PLAN.clear();
@@ -1648,7 +1765,8 @@ public final class AIBuilder {
             materialName = root.has("materialName") ? root.get("materialName").getAsString() : "Gespeicherte Materialien";
             Identifier primaryId = root.has("material") ? Identifier.tryParse(root.get("material").getAsString()) : null;
             BlockItem primary = primaryId != null && Registries.ITEM.get(primaryId) instanceof BlockItem item
-                    ? item : (PLAN_MATERIALS.isEmpty() ? null : PLAN_MATERIALS.values().iterator().next());
+                    ? item : PLAN_MATERIALS.values().stream()
+                        .filter(BlockItem.class::isInstance).map(BlockItem.class::cast).findFirst().orElse(null);
             material = primary;
             blueprint = Blueprint.CUSTOM;
             dimension = storedDimension;
