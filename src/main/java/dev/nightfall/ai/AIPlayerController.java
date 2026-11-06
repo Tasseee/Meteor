@@ -1984,16 +1984,12 @@ public final class AIPlayerController {
         for (int slot = 0; slot < 36; slot++) {
             if (!mc.player.getInventory().getStack(slot).isEmpty()) filled++;
         }
-        int fixed = 0;
-        for (int slot = 0; slot < 36; slot++) {
-            ItemStack stack = mc.player.getInventory().getStack(slot);
-            if (!stack.isEmpty() && inventorySortCategory(stack) > 2) fixed++;
-        }
-        return "Nightfall sortiert nach deiner Bestätigung Blöcke/Baumaterialien, Erze/Rohstoffe und Nahrung "
-                + "innerhalb der 36 normalen Inventar-/Hotbar-Slots. Geplant sind " + plan.size()
-                + " sichere Slot-Tausche; " + fixed + " Slots mit sonstigen Gegenständen bleiben exakt an ihrem Platz. "
-                + "Haltbare Ausrüstung, Kampf-Gegenstände, Munition, Rüstung, Offhand, Crafting-Felder und Cursor "
-                + "werden nicht verschoben. Die Aktion nutzt normale Minecraft-Inventar-Klicks und stoppt bei einem Containerwechsel.";
+        return "Nightfall ordnet nach deiner Bestätigung alle Gegenstände in den 36 normalen Inventar- und Hotbar-Slots. "
+                + "Kompatible Stacks mit identischen Komponenten werden zuerst zusammengeführt; danach werden alle "
+                + "Gegenstandskategorien nach Typ und Item-ID sortiert. Geplant sind " + plan.size()
+                + " bestätigte Slot-Tausche. Rüstung, Offhand, Crafting-Felder und Maus-Cursor bleiben unangetastet. "
+                + "Beschädigte/verzauberte Varianten werden nur zusammengeführt, wenn Minecraft sie als exakt stapelbar bewertet. "
+                + "Die Aktion nutzt normale Minecraft-Inventar-Klicks und stoppt bei einem Containerwechsel oder fehlender Serverbestätigung.";
     }
 
     /** Start sorting only after the player accepted the preview. */
@@ -2010,30 +2006,51 @@ public final class AIPlayerController {
     }
 
     private static List<InventorySwap> createInventorySortPlan(MinecraftClient mc) {
-        List<Integer> sortableSlots = new ArrayList<>();
-        List<ItemStack> working = new ArrayList<>();
+        List<ItemStack> working = new ArrayList<>(36);
+        List<ItemStack> contents = new ArrayList<>();
         for (int slot = 0; slot < 36; slot++) {
-            ItemStack current = mc.player.getInventory().getStack(slot);
-            int category = inventorySortCategory(current);
-            // Keep durable gear and all other miscellaneous items exactly where the player left them.
-            if (current.isEmpty() || category <= 2) {
-                sortableSlots.add(slot);
-                working.add(current.copy());
+            ItemStack stack = mc.player.getInventory().getStack(slot).copy();
+            working.add(stack.copy());
+            if (!stack.isEmpty()) contents.add(stack);
+        }
+
+        // Merge only stacks Minecraft itself considers compatible. Enchants, damage,
+        // names and other item components remain distinct; no item count is discarded.
+        List<ItemStack> packed = new ArrayList<>();
+        for (ItemStack original : contents) {
+            int remaining = original.getCount();
+            for (ItemStack destination : packed) {
+                if (!ItemStack.areItemsAndComponentsEqual(destination, original)
+                        || destination.getCount() >= destination.getMaxCount()) continue;
+                int moved = Math.min(remaining, destination.getMaxCount() - destination.getCount());
+                destination.increment(moved);
+                remaining -= moved;
+                if (remaining <= 0) break;
+            }
+            while (remaining > 0) {
+                ItemStack part = original.copy();
+                int placed = Math.min(remaining, part.getMaxCount());
+                part.setCount(placed);
+                packed.add(part);
+                remaining -= placed;
             }
         }
 
-        List<ItemStack> desired = new ArrayList<>();
-        for (ItemStack stack : working) if (!stack.isEmpty()) desired.add(stack.copy());
-        desired.sort(Comparator.comparingInt(AIPlayerController::inventorySortCategory)
-                .thenComparing(stack -> Registries.ITEM.getId(stack.getItem()).toString()));
-        while (desired.size() < sortableSlots.size()) desired.add(ItemStack.EMPTY);
+        packed.sort(Comparator.comparingInt(AIPlayerController::inventorySortCategory)
+                .thenComparing(stack -> Registries.ITEM.getId(stack.getItem()).toString())
+                .thenComparing(stack -> stack.getName().getString())
+                .thenComparing(Comparator.comparingInt(ItemStack::getCount).reversed()));
+
+        List<ItemStack> desired = new ArrayList<>(36);
+        for (ItemStack stack : packed) desired.add(stack.copy());
+        while (desired.size() < 36) desired.add(ItemStack.EMPTY);
 
         List<InventorySwap> swaps = new ArrayList<>();
-        for (int target = 0; target < sortableSlots.size(); target++) {
+        for (int target = 0; target < 36; target++) {
             ItemStack wanted = desired.get(target);
             if (ItemStack.areEqual(working.get(target), wanted)) continue;
             int source = -1;
-            for (int candidate = target + 1; candidate < sortableSlots.size(); candidate++) {
+            for (int candidate = target + 1; candidate < 36; candidate++) {
                 if (ItemStack.areEqual(working.get(candidate), wanted)) {
                     source = candidate;
                     break;
@@ -2041,7 +2058,7 @@ public final class AIPlayerController {
             }
             if (source < 0)
                 throw new IllegalStateException("Das Inventar hat sich während der Sortiervorschau geändert. Bitte erneut versuchen.");
-            swaps.add(new InventorySwap(sortableSlots.get(target), sortableSlots.get(source)));
+            swaps.add(new InventorySwap(target, source));
             ItemStack temporary = working.get(target);
             working.set(target, working.get(source));
             working.set(source, temporary);
@@ -2049,23 +2066,25 @@ public final class AIPlayerController {
         return swaps;
     }
 
-    /**
-     * Only stackable materials, ore resources and food are rearranged.
-     * Durable equipment, combat gear, ammunition and miscellaneous items stay untouched.
-     */
+    /** Stable, broad categories; every normal inventory item participates in sorting. */
     private static int inventorySortCategory(ItemStack stack) {
-        if (stack.isEmpty()) return 5;
-        String path = Registries.ITEM.getId(stack.getItem()).getPath();
-        if (path.equals("tnt") || path.contains("arrow") || path.equals("firework_rocket")
-                || path.equals("end_crystal") || path.equals("fire_charge")) return 4;
+        if (stack.isEmpty()) return 8;
         if (stack.getItem() instanceof BlockItem) return 0;
+        String path = Registries.ITEM.getId(stack.getItem()).getPath();
         if (path.contains("ore") || path.startsWith("raw_") || path.contains("ingot")
                 || path.contains("nugget") || path.contains("diamond") || path.contains("emerald")
                 || path.contains("lapis") || path.contains("redstone") || path.contains("coal")
                 || path.contains("quartz") || path.contains("ancient_debris")
                 || path.contains("amethyst")) return 1;
         if (stack.contains(DataComponentTypes.FOOD) || stack.contains(DataComponentTypes.CONSUMABLE)) return 2;
-        return 4;
+        if (stack.getMaxDamage() > 0) return 3;
+        if (path.contains("potion") || path.contains("splash") || path.contains("lingering")
+                || path.contains("book") || path.contains("enchanted_book")) return 4;
+        if (path.contains("music_disc") || path.contains("banner") || path.contains("dye")
+                || path.contains("shulker_box") || path.contains("bundle")) return 5;
+        if (path.contains("arrow") || path.equals("firework_rocket") || path.equals("fire_charge")
+                || path.equals("tnt") || path.equals("end_crystal")) return 6;
+        return 7;
     }
 
     private static int inventorySlotToPlayerHandlerSlot(int inventorySlot) {
