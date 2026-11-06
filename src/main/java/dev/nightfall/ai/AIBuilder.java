@@ -732,6 +732,8 @@ public final class AIBuilder {
                 + "Wasserquellen: " + nextWater.size() + " werden nach den festen Blöcken mit einem wiederverwendeten Wassereimer gesetzt"
                 + (manualWaterSources > 0 ? "; " + manualWaterSources + " bleiben manuell (Survival oder kein Wassereimer)." : ".")
                 + " Block-Entities, andere Flüssigkeiten und unzerstörbare Blöcke bleiben geschützt."
+                + " Redstone-Bauteile werden nach ihren Stützblöcken, Redstone-Staub zuletzt platziert. "
+                + "Dynamische Verbindungs-/Signalwerte werden erst im entstandenen Weltkontext bewertet."
                 + " Teile sind mit festen vorhandenen Blöcken oder dem Boden verbunden."
                 + customLayoutPreview(offsets, offsetMaterials, maxX, maxY, maxZ);
     }
@@ -1203,7 +1205,6 @@ public final class AIBuilder {
                 return;
             }
             BlockHitResult hit = new BlockHitResult(hitPos, Direction.UP, support, false);
-            player.setYaw(player.getYaw());
             mc.interactionManager.interactBlock(player, Hand.MAIN_HAND, hit);
             player.swingHand(Hand.MAIN_HAND);
             pendingTarget = target.toImmutable();
