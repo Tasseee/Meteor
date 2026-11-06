@@ -65,6 +65,7 @@ The AI model can select from a fixed client-side allow-list:
 | `add_waypoint` | Saves a waypoint at the current player position | Required |
 | `set_module_state` | Enables or disables one existing Nightfall module by exact name | Required |
 | `get_inventory` | Reads item names, exact Minecraft item IDs, and counts; separates the 9-slot hotbar from the remaining inventory | Required; inventory data is sent to the AI provider |
+| `sort_inventory` | Sorts building blocks/materials, ores/resources and food in the 36 normal inventory/hotbar slots; keeps equipment, combat gear, miscellaneous items, armor and offhand fixed | Required |
 | `get_player_status` | Reads current dimension, coordinates, and health | Required; player state is sent to the AI provider |
 | `random_teleport` | Sends the common `/rtp` request to the server | Required; server must support it |
 | `run_server_command` | Sends one ordinary player-requested Minecraft or plugin command and watches briefly for a related server chat response | Required; dangerous server administration and world-edit command roots are blocked |
