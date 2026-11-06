@@ -2630,7 +2630,72 @@ public final class AIPlayerController {
         return stop(reason);
     }
 
-    public static void onDisconnect() { stop(null); }
+    private static void saveResumableTaskBeforeDisconnect(MinecraftClient mc) {
+        if (mc == null || mc.player == null || mc.world == null) return;
+        AITaskCheckpoint.Task task = null;
+        if (gatherMaterial != null && (mode == Mode.GATHER || mode == Mode.NAVIGATE)) {
+            int remainingSeconds = gatherDeadlineNanos > 0L
+                    ? (int) Math.max(1L, Math.min(1_200L,
+                    (gatherDeadlineNanos - System.nanoTime() + 999_999_999L) / 1_000_000_000L))
+                    : 0;
+            if (gatherDeadlineNanos == 0L || gatherDeadlineNanos > System.nanoTime()) {
+                String itemId = Registries.ITEM.getId(gatherMaterial).toString();
+                String kind = gatherRequiresSuitableTool ? "gather_ore"
+                        : isGatherableWoodPath(Registries.ITEM.getId(gatherMaterial).getPath())
+                        ? "gather_wood" : "gather_block";
+                task = new AITaskCheckpoint.Task(kind, itemId, gatherGoalCount,
+                        remainingSeconds, gatherTargetY, 0, 0, 0);
+            }
+        } else if (mode == Mode.NAVIGATE && navigationGoal != null) {
+            task = new AITaskCheckpoint.Task("navigate", "", 1, 0,
+                    Integer.MIN_VALUE, navigationGoal.getX(), navigationGoal.getY(), navigationGoal.getZ());
+        }
+        if (task != null) AITaskCheckpoint.save(mc, task);
+    }
+
+    /** Read-only preview of a same-server, same-dimension task intent saved at disconnect. */
+    public static String previewSavedTask() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        AITaskCheckpoint.Task task = AITaskCheckpoint.loadForCurrentWorld(mc);
+        if (task == null)
+            return "Kein gültiger gespeicherter Sammel- oder Navigationsauftrag für diese Welt und Dimension vorhanden.";
+        return switch (task.kind()) {
+            case "gather_wood" -> previewGatherWood(task.item(), task.count(), task.durationSeconds(), task.targetY())
+                    + " Gespeicherter Auftrag; Ziele werden nach Bestätigung neu gesucht.";
+            case "gather_block" -> previewGatherBlock(task.item(), task.count(), task.durationSeconds())
+                    + " Gespeicherter Auftrag; Ziele werden nach Bestätigung neu gesucht.";
+            case "gather_ore" -> previewGatherOre(task.item(), task.count(), task.durationSeconds(), task.targetY())
+                    + " Gespeicherter Auftrag; Ziele werden nach Bestätigung neu gesucht.";
+            case "navigate" -> previewNavigation(task.x(), task.y(), task.z())
+                    + " Gespeichertes Ziel; der Weg wird vollständig neu geplant.";
+            default -> "Der gespeicherte Auftragstyp wird nicht unterstützt.";
+        };
+    }
+
+    /** Revalidates and starts a fresh scan/path only after the chat action is confirmed. */
+    public static String resumeSavedTask() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        AITaskCheckpoint.Task task = AITaskCheckpoint.loadForCurrentWorld(mc);
+        if (task == null)
+            throw new IllegalArgumentException("Kein gültiger gespeicherter Auftrag für diese Welt und Dimension vorhanden.");
+        String result = switch (task.kind()) {
+            case "gather_wood" -> gatherWood(task.item(), task.count(), task.durationSeconds(), task.targetY());
+            case "gather_block" -> gatherBlock(task.item(), task.count(), task.durationSeconds());
+            case "gather_ore" -> gatherOre(task.item(), task.count(), task.durationSeconds(), task.targetY());
+            case "navigate" -> navigateTo(task.x(), task.y(), task.z());
+            default -> throw new IllegalArgumentException("Der gespeicherte Auftragstyp wird nicht unterstützt.");
+        };
+        AITaskCheckpoint.clear();
+        return "Gespeicherter Auftrag nach erneuter Weltprüfung gestartet. " + result;
+    }
+
+    public static void onDisconnect() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        saveResumableTaskBeforeDisconnect(mc);
+        stop(null);
+    }
     public static boolean isWalking() { return mode == Mode.WALK; }
     public static boolean isNavigating() { return mode == Mode.NAVIGATE; }
     public static boolean isBusy() { return mode != Mode.NONE; }
