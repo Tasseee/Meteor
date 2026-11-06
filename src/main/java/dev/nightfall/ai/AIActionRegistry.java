@@ -17,6 +17,10 @@ import dev.nightfall.gui.ClickGuiScreen;
 import dev.nightfall.scanner.Waypoint;
 import dev.nightfall.scanner.WaypointManager;
 import dev.nightfall.modules.BaseFinder;
+import dev.nightfall.modules.BlockEntityEsp;
+import dev.nightfall.modules.ChunkEsp;
+import dev.nightfall.modules.EntityScanEsp;
+import dev.nightfall.modules.IntelligenceScanner;
 import dev.nightfall.modules.FakeBases;
 import dev.nightfall.scanner.ChunkResult;
 import net.minecraft.client.MinecraftClient;
@@ -83,6 +87,12 @@ public final class AIActionRegistry {
         tools.add(tool("get_base_findings",
                 "Read the latest BaseFinder results: suspected chunks, score, observed evidence, scan completeness and whether server masking limited the data. Read-only; do not describe a SUS result as a confirmed player base.",
                 objectSchema()));
+        JsonObject observationSchema = objectSchema();
+        observationSchema.getAsJsonObject("properties").add("module",
+                property("module", "string", "Optional exact Nightfall module name, e.g. PlayerESP, EntityESP, StorageESP, BaseFinder, ChunkESP or Intelligence. Omit to inspect all relevant modules.").get("schema"));
+        tools.add(tool("get_module_observations",
+                "Read live observations from existing enabled Nightfall modules. Uses PlayerESP/EntityESP/ItemESP and StorageESP/BlockEntityESP caches plus BaseFinder/ChunkESP SUS findings and Intelligence scanner counters. Read-only; reports only client-visible loaded data. If a requested module is disabled, report that and ask before enabling it.",
+                observationSchema));
         JsonObject fakeBaseSchema = objectSchema(property("name", "string", "Short local label for this fake/decoy base, max 32 characters."),
                 "name");
         fakeBaseSchema.getAsJsonObject("properties").add("learn",
@@ -379,6 +389,11 @@ public final class AIActionRegistry {
             case "search_bases" -> new Action(name, args,
                     "Nightfall aktiviert den BaseFinder und beginnt mit dem inkrementellen Scan bereits geladener Chunks. Das Ergebnis ist eine lokale Heuristik, kein bestätigter Basisfund.");
             case "get_base_findings" -> new Action(name, args, baseFindingsSummary());
+            case "get_module_observations" -> {
+                String module = args.has("module") ? requiredString(args, "module", 64).trim() : null;
+                if (module != null && module.isBlank()) throw new IllegalArgumentException("Modulname darf nicht leer sein.");
+                yield new Action(name, args, moduleObservationSummary(module));
+            }
             case "mark_fake_base" -> {
                 String label = requiredString(args, "name", 32).trim();
                 if (label.isBlank() || !label.matches("[\\p{L}0-9 _.-]{1,32}"))
@@ -532,8 +547,53 @@ public final class AIActionRegistry {
     /** Called only from the Minecraft client thread after explicit player confirmation. */
     public static boolean requiresConfirmation(String actionName) {
         return !Set.of("search_blueprints", "list_schematics", "inspect_schematic", "get_module_settings", "open_nightfall_menu",
-                "get_build_status", "get_schematic_progress", "get_base_findings", "list_fake_base_templates",
+                "get_build_status", "get_schematic_progress", "get_base_findings", "get_module_observations", "list_fake_base_templates",
                 "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
+    }
+
+    private static String moduleObservationSummary(String requestedModule) {
+        String filter = requestedModule == null ? null : requestedModule.trim();
+        StringBuilder out = new StringBuilder("Nightfall-Modulbeobachtungen (nur clientseitig sichtbare Daten):");
+        int matched = 0;
+        for (Module module : ModuleManager.all()) {
+            boolean relevant = module instanceof BaseFinder || module instanceof ChunkEsp
+                    || module instanceof IntelligenceScanner || module instanceof EntityScanEsp
+                    || module instanceof BlockEntityEsp;
+            if (!relevant || (filter != null && !module.getName().equalsIgnoreCase(filter))) continue;
+            matched++;
+            out.append("\\n\\n").append(module.getName()).append(" [")
+                    .append(module.isEnabled() ? "AN" : "AUS").append("]");
+            if (!module.isEnabled()) {
+                out.append(" — nicht aktiv; keine aktuellen Modulbeobachtungen.");
+                continue;
+            }
+            if (module instanceof BaseFinder) {
+                out.append("\\n").append(baseFindingsSummary());
+            } else if (module instanceof IntelligenceScanner scanner) {
+                out.append("\\nDeep-Scan-Chunks: ").append(scanner.scannedChunks())
+                        .append("; offene Scan-Aufträge: ").append(scanner.pendingChunks())
+                        .append("; unterirdische Entity-Hinweise: ").append(scanner.undergroundEntityCount())
+                        .append(". Detaillierte SUS-Einstufungen stehen beim BaseFinder.");
+            } else if (module instanceof EntityScanEsp entityEsp) {
+                List<String> observations = entityEsp.aiObservations(10);
+                out.append("\\nTreffer: ").append(observations.size()).append(" (max. 10 angezeigt).");
+                for (String observation : observations) out.append("\\n- ").append(observation);
+                if (observations.isEmpty()) out.append("\\nKeine passenden Entities im aktuellen Modulbereich.");
+            } else if (module instanceof BlockEntityEsp blockEsp) {
+                List<String> observations = blockEsp.aiObservations(10);
+                out.append("\\nTreffer im aktuellen ESP-Cache: ").append(observations.size()).append(" (max. 10 angezeigt).");
+                for (String observation : observations) out.append("\\n- ").append(observation);
+                if (observations.isEmpty()) out.append("\\nKeine passenden BlockEntities im aktuellen ESP-Cache.");
+            } else if (module instanceof ChunkEsp) {
+                out.append("\\nVisualisiert die SUS/GONE-Ergebnisse des BaseFinder; Details werden dort ausgegeben.");
+            }
+            if (out.length() > 10000) return out.append("\\n(gekürzt)").toString();
+        }
+        if (matched == 0) return filter == null
+                ? "Keine passenden Nightfall-Module gefunden."
+                : "Kein unterstütztes Nightfall-Modul mit dem Namen „" + filter + "“ gefunden.";
+        out.append("\\n\\nHinweis: ESP- und Scanner-Treffer sind lokale Beobachtungen aus bereits geladenen Chunks/Entities. Fehlende Treffer beweisen nicht, dass dort nichts existiert.");
+        return out.toString();
     }
 
     private static String baseFindingsSummary() {
@@ -623,6 +683,8 @@ public final class AIActionRegistry {
                         + ". Der Scan verarbeitet schrittweise nur bereits geladene Chunks. Frage mit get_base_findings nach den aktuellen Ergebnissen.";
             }
             case "get_base_findings" -> baseFindingsSummary();
+            case "get_module_observations" -> moduleObservationSummary(
+                    args.has("module") ? args.get("module").getAsString() : null);
             case "mark_fake_base" -> {
                 int cx = mc.player.getBlockX() >> 4, cz = mc.player.getBlockZ() >> 4;
                 String label = args.get("name").getAsString().trim();
