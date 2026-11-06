@@ -349,3 +349,19 @@ Berechtigungsstatus ableiten: fehlende Tab-Einträge und nicht geladene Entities
 mögliche Ursachen. `AntiVanishHints` verwendet dieselben StaffWatch-Stichproben und ist keine
 unabhängige Erkennung. Es werden keine fremden Inventare oder nicht übertragene Serverdaten
 ausgelesen.
+
+
+## KI-Performance und Voice-Stabilität
+
+Die KI-Anfragen und die Chat-Oberfläche begrenzen unnötige Arbeit und behalten trotzdem den für Aktionen nötigen Gesprächskontext:
+
+- Der Werkzeug-Katalog wird beim ersten Zugriff aufgebaut und danach zwischengespeichert. Für jede Anfrage wird nur eine defensive Kopie verwendet.
+- Die Chat-Anfrage enthält höchstens die letzten sechs vollständigen Benutzerrunden und versucht, den Kontext auf etwa 24.000 Zeichen zu begrenzen. Vollständige neueste Aktionen und ihre Tool-Ergebnisse bleiben zusammen, damit keine ungültigen, verwaisten Tool-Aufrufe entstehen.
+- Die Werkzeugauswahl richtet sich nach den letzten drei Benutzernachrichten. Normale Unterhaltung sendet keine Funktionsschemata; Folgefragen behalten den ursprünglichen Aufgabenkontext. Unpassende Suchwerkzeuge werden nicht allein durch ein allgemeines Wort wie „suche“ hinzugefügt.
+- Die Oberfläche hält höchstens 80 sichtbare Nachrichten, kürzt sehr lange Anzeigetexte und begrenzt eine einzelne Eingabe auf 8.000 Zeichen. Das Abschneiden der sichtbaren Eingabe wird mit einer binären Suche statt mit wiederholtem Entfernen einzelner Zeichen berechnet.
+- Der System-Prompt wurde verkürzt, behält aber die Regeln für Tool-Auswahl, Vorschau und Bestätigung, Serverrechte, geladene Client-Daten, Abbruch, Build-Status und ehrliche Grenzen bei.
+- Der Realtime-Sprachmodus hält höchstens etwa drei Sekunden Audio in der Wiedergabewarteschlange. Bei Überlast werden ältere Audiopakete verworfen, damit die Ausgabe nicht immer weiter hinterherläuft. Mikrofonpakete werden nicht unbegrenzt aufgestaut, wenn der WebSocket noch mit dem vorherigen Paket beschäftigt ist.
+- Realtime-WebSocket-Sendungen sind an die jeweilige Anruf-Sitzung gebunden. Verspätete Pakete einer beendeten Sitzung werden nicht in einen neu gestarteten Anruf übertragen.
+- Push-to-talk-TTS bricht eine ältere Syntheseanfrage und laufende Wiedergabe ab, sobald eine neue Antwort gesprochen werden soll. Leere, fehlgeschlagene oder übermäßig große TTS-Antworten werden ignoriert.
+
+Die Grenzen für Verlauf und Audio dienen der Reaktionsfähigkeit; bei sehr langen Gesprächen können ältere Chat-Details aus dem KI-Kontext herausfallen. Die sichtbare Unterhaltung wird davon getrennt verwaltet. Diese Änderungen wurden durch den CI-Build geprüft, sind aber nicht als Minecraft-Laufzeittest oder Mikrofon-/Lautsprechertest zu verstehen.
