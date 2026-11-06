@@ -124,6 +124,8 @@ public final class AIBuilder {
     private static int delay;
     private static int pendingTicks;
     private static int placementRetries;
+    private static BlockPos redstoneAdjustmentTarget;
+    private static int redstoneAdjustmentAttempts;
     private static int originalSlot = -1;
     private static boolean prepared;
     private static boolean running;
@@ -914,6 +916,12 @@ public final class AIBuilder {
         };
     }
 
+    private static boolean isRedstonePlacementTunable(BlockState state, String propertyName) {
+        String path = Registries.BLOCK.getId(state.getBlock()).getPath();
+        return (path.equals("repeater") && propertyName.equals("delay"))
+                || (path.equals("comparator") && propertyName.equals("mode"));
+    }
+
     /** Compare stable schematic properties while allowing redstone's neighbor/tick-driven state to settle. */
     private static boolean matchesSchematicState(BlockState expected, BlockState actual) {
         if (expected == null || actual == null || !expected.isOf(actual.getBlock())) return false;
@@ -923,6 +931,70 @@ public final class AIBuilder {
             if (hasDynamicRedstoneProperty(expected, property.getName())) continue;
             if (!entry.getValue().equals(actual.get(property))) return false;
         }
+        return true;
+    }
+
+    /** Initial BlockItem placement cannot choose repeater delay or comparator mode; configure them by vanilla use. */
+    private static boolean matchesPlacementState(BlockState expected, BlockState actual) {
+        if (expected == null || actual == null || !expected.isOf(actual.getBlock())) return false;
+        if (expected.equals(actual)) return true;
+        for (var entry : expected.getEntries().entrySet()) {
+            String name = entry.getKey().getName();
+            if (hasDynamicRedstoneProperty(expected, name) || isRedstonePlacementTunable(expected, name)) continue;
+            if (!entry.getValue().equals(actual.get(entry.getKey()))) return false;
+        }
+        return true;
+    }
+
+    private static String statePropertyValue(BlockState state, String propertyName) {
+        for (var entry : state.getEntries().entrySet())
+            if (entry.getKey().getName().equals(propertyName)) return String.valueOf(entry.getValue());
+        return "";
+    }
+
+    private static boolean hasOnlyTunableRedstoneDifferences(BlockState expected, BlockState actual) {
+        if (expected == null || actual == null || !expected.isOf(actual.getBlock())) return false;
+        boolean needsAdjustment = false;
+        for (var entry : expected.getEntries().entrySet()) {
+            String name = entry.getKey().getName();
+            if (hasDynamicRedstoneProperty(expected, name)) continue;
+            if (entry.getValue().equals(actual.get(entry.getKey()))) continue;
+            if (isRedstonePlacementTunable(expected, name)) {
+                needsAdjustment = true;
+                continue;
+            }
+            return false;
+        }
+        return needsAdjustment;
+    }
+
+    private static boolean adjustRedstoneState(MinecraftClient mc, ClientPlayerEntity player,
+                                               BlockPos target, BlockState expected, BlockState actual) {
+        if (!hasOnlyTunableRedstoneDifferences(expected, actual)) return false;
+        double reach = player.getBlockInteractionRange();
+        Vec3d hitPos = target.toCenterPos().add(0.0, 0.5, 0.0);
+        if (player.getEyePos().squaredDistanceTo(hitPos) > Math.min(REACH_SQUARED, reach * reach)) {
+            waitingForReach = true;
+            status = "Warte auf Reichweite zum Einstellen eines Redstone-Bauteils bei " + target.toShortString();
+            return true;
+        }
+        if (!target.equals(redstoneAdjustmentTarget)) {
+            redstoneAdjustmentTarget = target.toImmutable();
+            redstoneAdjustmentAttempts = 0;
+        }
+        if (redstoneAdjustmentAttempts >= 4) {
+            stopInternal("Redstone-Bauteil bei " + target.toShortString()
+                    + " ließ sich mit normaler Interaktion nicht auf den gespeicherten Verzögerungs-/Moduswert einstellen. "
+                    + "Der Abschnitt bleibt unvollständig.", true);
+            return true;
+        }
+        BlockHitResult hit = new BlockHitResult(hitPos, Direction.UP, target, false);
+        mc.interactionManager.interactBlock(player, Hand.MAIN_HAND, hit);
+        player.swingHand(Hand.MAIN_HAND);
+        redstoneAdjustmentAttempts++;
+        delay = 2;
+        status = "Stelle Redstone-Bauteil ein " + (index + 1) + "/" + PLAN.size()
+                + " · Versuch " + redstoneAdjustmentAttempts + "/4";
         return true;
     }
 
@@ -1045,8 +1117,12 @@ public final class AIBuilder {
 
         if (pendingTarget != null) {
             BlockState pendingState = mc.world.getBlockState(pendingTarget);
+            if (pendingExpectedState != null && adjustRedstoneState(mc, player, pendingTarget,
+                    pendingExpectedState, pendingState)) return;
             if (pendingExpectedState != null && matchesSchematicState(pendingExpectedState, pendingState)) {
                 pendingMaterial = null;
+                redstoneAdjustmentTarget = null;
+                redstoneAdjustmentAttempts = 0;
                 index++;
                 saveCheckpointProgress(index, PLAN.size());
                 pendingTarget = null;
@@ -1116,6 +1192,8 @@ public final class AIBuilder {
             return;
         }
         if (matchesSchematicState(expectedState, present)) {
+            redstoneAdjustmentTarget = null;
+            redstoneAdjustmentAttempts = 0;
             index++;
             placementApproachAttempts = 0;
             placementWaitingNotice = false;
@@ -1123,6 +1201,8 @@ public final class AIBuilder {
             progressNotice();
             return;
         }
+        if (present.isOf(expectedState.getBlock())
+                && adjustRedstoneState(mc, player, target, expectedState, present)) return;
         if (!present.isReplaceable()) {
             stopInternal("Bau gestoppt: Bei X=" + target.getX() + ", Y=" + target.getY() + ", Z=" + target.getZ()
                     + " ist inzwischen ein anderer Block im Weg.", true);
@@ -1440,7 +1520,7 @@ public final class AIBuilder {
                         if (context == null || !context.getBlockPos().equals(target)) continue;
                         BlockState predicted = ((BlockItemPlacementAccessor) (Object) item)
                                 .nightfall$invokeGetPlacementState(context);
-                        if (matchesSchematicState(expectedState, predicted))
+                        if (matchesPlacementState(expectedState, predicted))
                             return new PlacementCandidate(hit, yaw, pitch);
                     }
                 }
@@ -1850,6 +1930,8 @@ public final class AIBuilder {
         restoredCheckpoint = false;
         schematicSourceFile = "";
         schematicPartX = schematicPartY = schematicPartZ = -1;
+        redstoneAdjustmentTarget = null;
+        redstoneAdjustmentAttempts = 0;
         prepared = false;
         PLAN.clear();
         PLAN_MATERIALS.clear();
@@ -1985,6 +2067,8 @@ public final class AIBuilder {
         restoredCheckpoint = false;
         schematicSourceFile = "";
         schematicPartX = schematicPartY = schematicPartZ = -1;
+        redstoneAdjustmentTarget = null;
+        redstoneAdjustmentAttempts = 0;
         index = 0;
         preparedPlayerPos = null;
         preparedFacing = null;
