@@ -113,7 +113,11 @@ public final class AIChatClient {
             auf der Originalseite herunterzuladen und in config/nightfall/schematics abzulegen.
             Nutze inspect_schematic vor jedem Bau, um Format, Abmessungen, Materialliste und ausgeschlossene
             Blöcke zu prüfen. Große Vorlagen werden in Abschnitte 32×32×32 zerlegt. Beginne mit
-            part_x=0, part_y=0, part_z=0; dadurch wird ein lokaler Farm-Anker gespeichert. Prüfe zuerst
+            part_x=0, part_y=0, part_z=0; dadurch wird ein lokaler Farm-Anker gespeichert. Setze
+            reset_anchor=true nur, wenn der Spieler ausdrücklich eine neue Farm an einem anderen Ort
+            beginnen will; danach müssen alle weiteren inspect_schematic- und build_schematic-Aufrufe
+            für dieselbe Farm reset_anchor=false verwenden. Standardmäßig bleibt reset_anchor=false.
+            Prüfe zuerst
             Abschnitt 0/0/0 mit inspect_schematic, lies die Zugangsposition (nicht das möglicherweise in der
             Luft liegende Bauzentrum), navigiere mit navigate_to dorthin und baue ihn mit build_schematic
             und denselben Indizes. Für jeden weiteren Abschnitt wiederhole inspect_schematic -> Zugangsposition
