@@ -2671,8 +2671,12 @@ public final class AIPlayerController {
                     + " Gespeicherter Auftrag; Ziele werden nach Bestätigung neu gesucht.";
             case "gather_ore" -> previewGatherOre(task.item(), task.count(), task.durationSeconds(), task.targetY())
                     + " Gespeicherter Auftrag; Ziele werden nach Bestätigung neu gesucht.";
-            case "navigate" -> previewNavigation(task.x(), task.y(), task.z())
-                    + " Gespeichertes Ziel; der Weg wird vollständig neu geplant.";
+            case "navigate" -> {
+                BlockPos target = new BlockPos(task.x(), task.y(), task.z());
+                validateNavigationTarget(mc, target);
+                yield "Gespeichertes Navigationsziel X=" + task.x() + ", Y=" + task.y() + ", Z=" + task.z()
+                        + ". Nach deiner Bestätigung plant Nightfall die gesamte Route in sicheren, neu geprüften Abschnitten durch geladene Chunks.";
+            }
             default -> "Der gespeicherte Auftragstyp wird nicht unterstützt.";
         };
     }
