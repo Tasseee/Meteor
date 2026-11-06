@@ -275,8 +275,17 @@ Navigiere mit `navigate_to` zur Zugangsposition (nicht zum eventuell in der Luft
 bevor du den Abschnitt vorbereitest, damit seine Ziel-Chunks geladen sind. Baue die Abschnitte in
 aufsteigender `part_y`-Reihenfolge (unterste Ebene zuerst), danach über X/Z, damit obere Teile an
 bereits bestätigte untere Blöcke anschließen können. Zum bewussten Neusetzen des Startpunkts muss
-`config/nightfall/schematic_build_session.json` gelöscht werden. Die Abschnitte sind keine Garantie für einen
-funktionierenden Farmaufbau. Stille Wasserquellen können im Kreativmodus nach dem Festblock-Aufbau
-mit einem Wassereimer gesetzt werden; im Survival-Modus bleiben sie manuell. Fließendes Wasser wird
-nicht rekonstruiert, sondern muss durch die Vanilla-Flusssimulation entstehen. Dynamische
-Redstone-Zustände und Block-Entity-Sonderdaten bleiben Einschränkungen.
+`config/nightfall/schematic_build_session.json` gelöscht werden. Auch Abschnitte, die ausschließlich Aushubzellen oder Wasserquellen enthalten, können
+als eigene Bauaufträge vorbereitet und nach einem Neustart wiederhergestellt werden. Der Builderstatus
+zeigt Aushub, feste Blöcke und Wasserquellen getrennt an.
+
+Der Farm-Anker ist an Datei, Server und Dimension gebunden. Beim normalen Fortsetzen wird er nicht
+verschoben. Für eine neue Kopie an einem anderen Ort kann `inspect_schematic` oder
+`build_schematic` nur beim ersten Abschnitt X0/Y0/Z0 mit `reset_anchor=true` aufgerufen werden.
+Alle weiteren Aufrufe für diese Kopie müssen `reset_anchor=false` verwenden.
+
+Die Abschnitte sind keine Garantie für einen funktionierenden Farmaufbau. Stille Wasserquellen können
+im Kreativmodus nach dem Festblock-Aufbau mit einem Wassereimer gesetzt werden; im Survival-Modus
+bleiben sie manuell. Fließendes Wasser wird nicht direkt rekonstruiert, sondern muss durch die
+Vanilla-Flusssimulation entstehen. Dynamische Redstone-Zustände und Block-Entity-Sonderdaten
+bleiben Einschränkungen.
