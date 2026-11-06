@@ -316,6 +316,16 @@ Vanilla-Flusssimulation entstehen. Dynamische Redstone-Zustände und Block-Entit
 bleiben Einschränkungen.
 
 
+## Wegpunkte mit Nightfall abfragen
+
+Das read-only Werkzeug `list_waypoints` zeigt die lokal gespeicherten Wegpunkte des aktuellen Servers
+mit Name, Kategorie, Dimension und Blockkoordinaten an (maximal 30 Einträge pro Antwort).
+Die Liste wird nicht an einen anderen Server übertragen und verändert keine Wegpunkte.
+Ein angezeigter Wegpunkt startet keine Bewegung: Für eine Navigation muss der Spieler diese
+ausdrücklich anfordern; erst dann wird `navigate_to` mit den gespeicherten Koordinaten verwendet.
+Nightfall übernimmt Dimension und Koordinaten unverändert und behauptet nicht, dass ein Wegpunkt
+in einer anderen Dimension erreichbar ist.
+
 ## Gespeicherte Aufgaben fortsetzen oder löschen
 
 Nightfall speichert beim Verbindungsabbruch höchstens einen lokalen Aufgaben-Checkpoint für einen ausdrücklich gestarteten Sammelauftrag oder ein ausdrücklich gesetztes Navigationsziel. Gespeichert werden nur die Absicht und Server-/Dimensionskennung, keine alten Blockziele, Pfade, Inventar-Snapshots oder Zugangsdaten. Der Checkpoint läuft nach 24 Stunden ab und wird bei Fortsetzung neu validiert. `resume_saved_task` zeigt eine Vorschau und startet die Aufgabe erst nach ausdrücklicher Bestätigung. `clear_saved_task` löscht nach separater Vorschau und Bestätigung ausschließlich den passenden Aufgaben-Checkpoint der aktuellen Server-/Dimensionskombination. Checkpoints anderer Welten bleiben erhalten; laufende Aktionen und Baufortschritt bleiben unverändert.
