@@ -575,17 +575,18 @@ public final class AIPlayerController {
             if (findSafeGatherHeightPlan(mc, targetY) == null)
                 throw new IllegalArgumentException("Ich finde keinen sicheren Weg zu einer begehbaren Position auf Y=" + targetY
                         + " in den aktuell geladenen Chunks. Gehe näher an einen sicheren Abstieg oder lade die Umgebung.");
-        } else if (candidates.isEmpty()) {
+        } else if (candidates.isEmpty() && durationSeconds <= 0) {
             throw new IllegalArgumentException("Im geladenen Umkreis von " + GATHER_HORIZONTAL_RADIUS
                     + " Blöcken habe ich keine passenden " + item.getName().getString()
-                    + " gefunden. Erkunde zuerst die Gegend oder gehe näher an passende Blöcke.");
+                    + " gefunden. Für einen zeitbegrenzten Erkundungsauftrag kannst du stattdessen eine Laufzeit angeben.");
         }
-        int toolEligible = needsHeightMove ? 0 : countToolEligibleTargets(mc, candidates, oreOnly);
-        if (!needsHeightMove && toolEligible == 0)
+        int toolEligible = needsHeightMove || candidates.isEmpty() ? 0 : countToolEligibleTargets(mc, candidates, oreOnly);
+        if (!needsHeightMove && !candidates.isEmpty() && toolEligible == 0)
             throw new IllegalArgumentException("Ich habe " + candidates.size() + " passende Blöcke gefunden, "
                     + "aber für diese Blöcke fehlt ein geeignetes Werkzeug. Lege das passende Werkzeug in dein Inventar.");
-        int available = Math.min(Math.min(missing, needsHeightMove ? inventoryCapacity : Math.min(MAX_GATHER_BLOCKS, toolEligible)),
-                inventoryCapacity);
+        int available = Math.min(missing, inventoryCapacity);
+        if (!needsHeightMove && !candidates.isEmpty())
+            available = Math.min(available, Math.min(MAX_GATHER_BLOCKS, toolEligible));
         String kind = woodOnly ? "Holzblöcke" : oreOnly ? "Erzblöcke" : "freigegebene Rohstoffblöcke";
         String ancientNote = isAncientDebrisItem(item)
                 ? " Für Ancient Debris prüft Nightfall zusätzlich kurze horizontale Stollen (max. "
@@ -597,6 +598,9 @@ public final class AIPlayerController {
                 : " Ohne Laufzeitlimit endet die Aktion beim Mengenziel oder wenn keine sicheren Ziele/Inventarplätze mehr verfügbar sind.";
         String heightNote = needsHeightMove ? " Nightfall sucht zuerst einen sicheren Weg zu Y=" + targetY + " und beginnt dort mit dem Scannen."
                 : targetY != Integer.MIN_VALUE ? " Sammelhöhe: Y=" + targetY + "." : "";
+        String scanNote = candidates.isEmpty() && durationSeconds > 0
+                ? " Im aktuellen Scan gibt es noch keine passenden Ziele; Nightfall versucht zuerst einen sicheren Erkundungsweg und scannt nach neu geladenen Chunks erneut."
+                : "";
         return "Nightfall sammelt nach deiner Bestätigung bis zu " + available + " zusätzliche "
                 + item.getName().getString() + " (Ziel: " + targetCount + " im Inventar). "
                 + (needsHeightMove ? "Nach dem sicheren Höhenwechsel wird neu gescannt." :
@@ -605,7 +609,7 @@ public final class AIPlayerController {
                 + "Bis zu " + MAX_GATHER_BLOCKS + " abgebauten Zielblöcken pro Langauftrag und höchstens 20 Minuten. "
                 + "Nightfall sucht sichere Standpunkte, nutzt bei toolpflichtigen Blöcken nur ein geeignetes Werkzeug "
                 + "und wartet auf Block- und Item-Updates. Freier Inventarplatz für " + inventoryCapacity
-                + " weitere Items." + runtimeNote + heightNote + ancientNote;
+                + " weitere Items." + runtimeNote + heightNote + scanNote + ancientNote;
     }
 
     private static String gatherResource(String requestedItem, int targetCount,
