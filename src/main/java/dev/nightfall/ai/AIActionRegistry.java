@@ -120,7 +120,7 @@ public final class AIActionRegistry {
         tools.add(tool("add_waypoint", "Save a waypoint at the player's current position. The player must confirm first.",
                 objectSchema(property("name", "string", "Short waypoint name, max 32 characters."), "name")));
         tools.add(tool("list_waypoints",
-                "Read the locally saved waypoints for the current server, including dimension and coordinates. Read-only; does not navigate, add, edit or remove anything.",
+                "Read the locally saved waypoints for the current server, including names, dimensions and coordinates. This location data is sent to the configured AI provider, so the player must confirm first. Read-only; does not navigate, add, edit or remove anything.",
                 objectSchema()));
         tools.add(tool("search_bases",
                 "Start or resume Nightfall's incremental BaseFinder scan. It inspects only chunks already loaded and sent to this client; it does not teleport, issue server commands, or reveal server-side hidden data. Requires player confirmation.",
@@ -486,7 +486,8 @@ public final class AIActionRegistry {
                 yield new Action(name, args, "Nightfall speichert nach deiner Bestätigung einen Wegpunkt namens „"
                         + waypointName + "“ an deiner aktuellen Position.");
             }
-            case "list_waypoints" -> new Action(name, args, waypointSummary());
+            case "list_waypoints" -> new Action(name, args,
+                    "Nightfall liest die lokalen Wegpunkte dieses Servers und übermittelt Namen, Dimensionen und Koordinaten an den konfigurierten KI-Anbieter. Es wird nichts geändert und keine Navigation gestartet.\n\n" + waypointSummary());
             case "search_bases" -> new Action(name, args,
                     "Nightfall aktiviert den BaseFinder und beginnt mit dem inkrementellen Scan bereits geladener Chunks. Das Ergebnis ist eine lokale Heuristik, kein bestätigter Basisfund.");
             case "get_base_findings" -> new Action(name, args, baseFindingsSummary());
@@ -670,7 +671,7 @@ public final class AIActionRegistry {
     public static boolean requiresConfirmation(String actionName) {
         return !Set.of("search_blueprints", "list_schematics", "inspect_schematic", "get_module_settings", "open_nightfall_menu",
                 "get_build_status", "get_schematic_progress", "verify_schematic_section", "get_base_findings", "get_module_observations", "list_fake_base_templates",
-                "get_player_action_status", "list_waypoints", "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
+                "get_player_action_status", "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
     }
 
     private static String moduleObservationSummary(String requestedModule) {
