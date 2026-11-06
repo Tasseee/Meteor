@@ -268,7 +268,7 @@ public final class AIChatScreen extends Screen {
         ctx.fill(panelX, panelY + panelH - 1, panelX + panelW, panelY + panelH, 0x5535E0D0);
 
         // Compact animated hologram mark and a calmer, more personal chat header.
-        drawHologram(ctx, panelX + 29, panelY + 24, waiting || AIRealtimeVoiceClient.isSpeaking());
+        drawHologram(ctx, panelX + 29, panelY + 15, waiting || AIRealtimeVoiceClient.isSpeaking());
         ctx.drawText(mc.textRenderer, "NIGHTFALL", panelX + 54, panelY + 10, Theme.TEXT, true);
         ctx.drawText(mc.textRenderer, "DEIN KI-COMPANION", panelX + 54, panelY + 23, Theme.ACCENT, false);
         String modeLabel = AIRealtimeVoiceClient.isActive() ? "VOICE LINK" : "HOLO INTERFACE";
@@ -427,17 +427,17 @@ public final class AIChatScreen extends Screen {
         int[] widths = {8, 14, 20, 24, 20, 14, 8};
         for (int row = 0; row < widths.length; row++) {
             int w = widths[row];
-            int y = centerY - 13 + row * 4;
-            ctx.fill(centerX - w / 2, y, centerX + w / 2, y + 3,
+            int y = centerY - 10 + row * 3;
+            ctx.fill(centerX - w / 2, y, centerX + w / 2, y + 2,
                     row == 3 ? 0xFFB8FFF5 : glow);
         }
         // Layered scan rings and a moving scan line create a subtle hologram effect.
         int ringWidth = 28 + pulse * 2;
-        int ringY = centerY + 17 + (active ? pulse - 1 : 0);
+        int ringY = centerY + 12 + (active ? pulse - 1 : 0);
         ctx.fill(centerX - ringWidth / 2, ringY, centerX + ringWidth / 2, ringY + 1, 0xAA35E0D0);
         ctx.fill(centerX - 10, ringY + 3, centerX + 10, ringY + 4, 0x7735E0D0);
         int scanX = centerX - 10 + (int) (tick % 21L);
-        ctx.fill(scanX, centerY - 10, scanX + 1, centerY + 10, 0x887BFFF0);
+        ctx.fill(scanX, centerY - 8, scanX + 1, centerY + 8, 0x887BFFF0);
         if (active) {
             ctx.fill(centerX - 17, centerY - 2, centerX - 14, centerY + 2, 0xCCB8FFF5);
             ctx.fill(centerX + 14, centerY - 2, centerX + 17, centerY + 2, 0xCCB8FFF5);
