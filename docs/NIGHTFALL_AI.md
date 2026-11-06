@@ -336,3 +336,16 @@ Fake-Base-Markierungen und Vorlagen werden lokal im bestehenden Waypoint-/FakeBa
 - `Intelligence`: Deep-Scan-Fortschritt, offene Aufträge und unterirdische Entity-Hinweise
 
 Die KI soll je nach Frage das passende Modul abfragen und Ergebnisse nicht erfinden. Ist ein Modul deaktiviert, muss sie das offen sagen und vor dem Aktivieren um Bestätigung bitten. Modulbeobachtungen verwenden nur bereits clientseitig bekannte Entities und geladene Chunks. Sie umgehen keine Serverrechte und können keine verborgenen oder nicht übertragenen Daten sichtbar machen.
+
+
+## StaffWatch- und AntiVanish-Beobachtungen für Nightfall AI
+
+`get_module_observations` kann zusätzlich die Module `StaffWatch` und
+`AntiVanishHints` auslesen. Es werden ausschließlich die vom Spieler selbst in
+StaffWatch eingetragenen Namen und die bereits clientseitig erhobenen Tab-/Entity-Stichproben
+ausgegeben (maximal zehn Einträge). Dazu gehören aktuelle Sichtbarkeit, Verlaufslücken und
+gegebenenfalls der im Tab angezeigte Spielmodus. Die KI darf daraus keinen Vanish-, Staff- oder
+Berechtigungsstatus ableiten: fehlende Tab-Einträge und nicht geladene Entities haben viele
+mögliche Ursachen. `AntiVanishHints` verwendet dieselben StaffWatch-Stichproben und ist keine
+unabhängige Erkennung. Es werden keine fremden Inventare oder nicht übertragene Serverdaten
+ausgelesen.
