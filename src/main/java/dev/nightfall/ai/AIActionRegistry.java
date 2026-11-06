@@ -20,7 +20,8 @@ import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.BlockEntityEsp;
 import dev.nightfall.modules.ChunkEsp;
 import dev.nightfall.modules.EntityScanEsp;
-import dev.nightfall.modules.IntelligenceScanner;\nimport dev.nightfall.modules.StaffWatch;\nimport dev.nightfall.modules.AntiVanishHints;
+import dev.nightfall.modules.IntelligenceScanner;import dev.nightfall.modules.StaffWatch;
+import dev.nightfall.modules.AntiVanishHints;
 import dev.nightfall.modules.FakeBases;
 import dev.nightfall.scanner.ChunkResult;
 import net.minecraft.client.MinecraftClient;
@@ -558,7 +559,8 @@ public final class AIActionRegistry {
         for (Module module : ModuleManager.all()) {
             boolean relevant = module instanceof BaseFinder || module instanceof ChunkEsp
                     || module instanceof IntelligenceScanner || module instanceof EntityScanEsp
-                    || module instanceof BlockEntityEsp || module instanceof StaffWatch\n                    || module instanceof AntiVanishHints;
+                    || module instanceof BlockEntityEsp || module instanceof StaffWatch
+                    || module instanceof AntiVanishHints;
             if (!relevant || (filter != null && !module.getName().equalsIgnoreCase(filter))) continue;
             matched++;
             out.append("\n\n").append(module.getName()).append(" [")
