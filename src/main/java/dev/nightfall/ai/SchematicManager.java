@@ -497,6 +497,159 @@ public final class SchematicManager {
         return out.toString();
     }
 
+    /**
+     * Read-only structural verification of a previously anchored schematic section.
+     * This checks observable block placement only; it cannot simulate farm logic.
+     */
+    public static String verifyPlacedSection(String requestedFile, int partX, int partY, int partZ) {
+        Imported imported = inspect(requestedFile);
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null || mc.getNetworkHandler() == null)
+            throw new IllegalArgumentException("Für die Schematic-Prüfung brauchst du eine verbundene Welt.");
+
+        int partsX = (imported.width() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
+        int partsY = (imported.height() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
+        int partsZ = (imported.length() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
+        if (partX < 0 || partX >= partsX || partY < 0 || partY >= partsY || partZ < 0 || partZ >= partsZ)
+            throw new IllegalArgumentException("Abschnitt außerhalb des Schematic-Rasters. Gültig: X 0–"
+                    + (partsX - 1) + ", Y 0–" + (partsY - 1) + ", Z 0–" + (partsZ - 1) + ".");
+
+        BlockPos anchor = readExistingBuildAnchor(imported.fileName(), mc);
+        int startX = partX * BUILD_PART_SIZE;
+        int startY = partY * BUILD_PART_SIZE;
+        int startZ = partZ * BUILD_PART_SIZE;
+        int endX = Math.min(imported.width(), startX + BUILD_PART_SIZE);
+        int endY = Math.min(imported.height(), startY + BUILD_PART_SIZE);
+        int endZ = Math.min(imported.length(), startZ + BUILD_PART_SIZE);
+
+        int expectedBlocks = 0, checkedBlocks = 0, unloaded = 0;
+        int blockMismatches = 0, stateDifferences = 0, missingBlockEntities = 0;
+        int expectedWater = 0, checkedWater = 0, missingWater = 0;
+        int clearCells = 0, checkedClearCells = 0, occupiedClearCells = 0;
+        List<String> examples = new ArrayList<>();
+
+        for (AIBuilder.RelativeBlock block : imported.buildPlan()) {
+            if (!insideSection(block, startX, endX, startY, endY, startZ, endZ)) continue;
+            expectedBlocks++;
+            BlockPos target = anchor.add(block.x(), block.y(), block.z());
+            if (!mc.world.isChunkLoaded(target)) {
+                unloaded++;
+                continue;
+            }
+            checkedBlocks++;
+            BlockState actual = mc.world.getBlockState(target);
+            BlockState expected = block.state();
+            if (expected == null || actual.getBlock() != expected.getBlock()) {
+                blockMismatches++;
+                addVerificationExample(examples, "Block fehlt/anders bei " + target.toShortString()
+                        + " (erwartet " + (expected == null ? block.materialId() : expected.getBlock().getName().getString())
+                        + ", vorhanden " + actual.getBlock().getName().getString() + ")");
+                continue;
+            }
+            if (expected.hasBlockEntity()) {
+                if (mc.world.getBlockEntity(target) == null) {
+                    missingBlockEntities++;
+                    addVerificationExample(examples, "Block-Entity fehlt bei " + target.toShortString());
+                }
+            }
+            if (!actual.equals(expected)) {
+                stateDifferences++;
+                addVerificationExample(examples, "Blockstate weicht ab bei " + target.toShortString()
+                        + " (Blocktyp stimmt; Nachbarschaft/Ticks können Eigenschaften ändern)");
+            }
+        }
+
+        for (AIBuilder.RelativeBlock water : imported.waterPlan()) {
+            if (!insideSection(water, startX, endX, startY, endY, startZ, endZ)) continue;
+            expectedWater++;
+            BlockPos target = anchor.add(water.x(), water.y(), water.z());
+            if (!mc.world.isChunkLoaded(target)) {
+                unloaded++;
+                continue;
+            }
+            checkedWater++;
+            BlockState actual = mc.world.getBlockState(target);
+            if (!actual.isOf(Blocks.WATER) || actual.get(FluidBlock.LEVEL) != 0) {
+                missingWater++;
+                addVerificationExample(examples, "Stille Wasserquelle fehlt/ist verändert bei " + target.toShortString());
+            }
+        }
+
+        for (AIBuilder.RelativeBlock clear : imported.clearPlan()) {
+            if (!insideSection(clear, startX, endX, startY, endY, startZ, endZ)) continue;
+            clearCells++;
+            BlockPos target = anchor.add(clear.x(), clear.y(), clear.z());
+            if (!mc.world.isChunkLoaded(target)) {
+                unloaded++;
+                continue;
+            }
+            checkedClearCells++;
+            if (!mc.world.getBlockState(target).isAir()) {
+                occupiedClearCells++;
+                addVerificationExample(examples, "Freizuhaltende Zelle ist nicht leer bei " + target.toShortString());
+            }
+        }
+
+        int mismatches = blockMismatches + missingWater + occupiedClearCells;
+        String assessment = unloaded > 0 ? "TEILWEISE NICHT ÜBERPRÜFBAR"
+                : mismatches > 0 || missingBlockEntities > 0 ? "STRUKTURELLE ABWEICHUNGEN"
+                : "UNTERSUCHTE PLATZIERUNGEN STRUKTURELL PASSEND";
+        StringBuilder out = new StringBuilder("SCHEMATIC-STRUKTURPRÜFUNG: ")
+                .append(imported.fileName()).append(" · Abschnitt X").append(partX)
+                .append(" Y").append(partY).append(" Z").append(partZ)
+                .append("\nErgebnis: ").append(assessment)
+                .append("\nFeste Blöcke: ").append(checkedBlocks).append("/").append(expectedBlocks)
+                .append(" geprüft, ").append(blockMismatches).append(" Blocktyp-Abweichungen")
+                .append(", ").append(stateDifferences).append(" Blockstate-Abweichungen")
+                .append(", ").append(missingBlockEntities).append(" fehlende Block-Entities")
+                .append("\nWasserquellen: ").append(checkedWater).append("/").append(expectedWater)
+                .append(" geprüft, ").append(missingWater).append(" fehlen/abweichen")
+                .append("\nLuft-/Freizellen: ").append(checkedClearCells).append("/").append(clearCells)
+                .append(" geprüft, ").append(occupiedClearCells).append(" sind belegt")
+                .append("\nNicht geladene Positionen: ").append(unloaded);
+        if (!examples.isEmpty()) {
+            out.append("\nBeispiele:");
+            examples.forEach(example -> out.append("\n- ").append(example));
+        }
+        out.append("\n\nDiese Prüfung misst Blockzustände und geladene Positionen. Sie prüft NICHT Villager-Verhalten, "
+                + "Inventarinhalte, Flüssigkeitsfluss, Redstone-Signalpfade, Timing oder Farm-Ertrag. "
+                + "„Strukturell passend“ bedeutet nicht „Farm funktioniert“.");
+        return out.toString();
+    }
+
+    private static BlockPos readExistingBuildAnchor(String fileName, MinecraftClient mc) {
+        try {
+            if (!Files.isRegularFile(BUILD_SESSION_PATH))
+                throw new IllegalArgumentException("Kein gespeicherter Schematic-Anker vorhanden. Baue zuerst Abschnitt X0 Y0 Z0.");
+            JsonObject session = JsonParser.parseString(Files.readString(BUILD_SESSION_PATH)).getAsJsonObject();
+            boolean matching = session.has("version") && session.get("version").getAsInt() == 1
+                    && session.has("file") && session.get("file").getAsString().equals(fileName)
+                    && session.has("server") && session.get("server").getAsString().equals(currentServerKey(mc))
+                    && session.has("dimension")
+                    && session.get("dimension").getAsString().equals(mc.world.getRegistryKey().getValue().toString());
+            if (!matching || !session.has("x") || !session.has("y") || !session.has("z"))
+                throw new IllegalArgumentException("Es gibt keinen passenden Anker für diese Datei, diesen Server und diese Dimension.");
+            return new BlockPos(session.get("x").getAsInt(), session.get("y").getAsInt(),
+                    session.get("z").getAsInt()).toImmutable();
+        } catch (IllegalArgumentException failure) {
+            throw failure;
+        } catch (Exception failure) {
+            throw new IllegalArgumentException("Der gespeicherte Schematic-Anker konnte nicht gelesen werden: "
+                    + failure.getClass().getSimpleName());
+        }
+    }
+
+    private static boolean insideSection(AIBuilder.RelativeBlock block,
+                                         int startX, int endX, int startY, int endY, int startZ, int endZ) {
+        return block.x() >= startX && block.x() < endX
+                && block.y() >= startY && block.y() < endY
+                && block.z() >= startZ && block.z() < endZ;
+    }
+
+    private static void addVerificationExample(List<String> examples, String example) {
+        if (examples.size() < 12) examples.add(example);
+    }
+
     /** Mark only a fully completed schematic section; never creates or changes the farm anchor. */
     public static boolean markSectionComplete(String fileName, int partX, int partY, int partZ) {
         MinecraftClient mc = MinecraftClient.getInstance();
