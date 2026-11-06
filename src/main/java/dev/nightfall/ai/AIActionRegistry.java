@@ -270,6 +270,18 @@ public final class AIActionRegistry {
         tools.add(tool("get_schematic_progress",
                 "Read-only durable progress for a local schematic. Reports fully completed sections for the current server and dimension and the next unfinished section in bottom-up order. Does not create or move the farm anchor and does not start building.",
                 schematicProgressSchema));
+        JsonObject verifySchematicSchema = objectSchema(
+                property("file", "string", "Exact local .schem or .litematic filename.").get("schema").getAsJsonObject(), "file");
+        verifySchematicSchema.getAsJsonObject("properties").getAsJsonObject("file").addProperty("maxLength", 110);
+        for (String axis : List.of("part_x", "part_y", "part_z")) {
+            JsonObject index = property(axis, "integer", "Zero-based 32-block section index (0–15).").get("schema").getAsJsonObject();
+            index.addProperty("minimum", 0);
+            index.addProperty("maximum", 15);
+            verifySchematicSchema.getAsJsonObject("properties").add(axis, index);
+        }
+        tools.add(tool("verify_schematic_section",
+                "Read-only in-world structural check for one previously anchored schematic section. Compares expected imported block types/states, still-water sources, clear cells and presence of default block entities against already-loaded client chunks. Reports unloaded positions separately. Does not test villager behavior, custom block-entity inventories, fluid flow, redstone timing/signal paths or farm output; it cannot certify a working farm.",
+                verifySchematicSchema));
         JsonObject walkTicks = property("ticks", "integer", "Dauer der kurzen Vorwärtsbewegung in Ticks (1 bis 100).").get("schema").getAsJsonObject();
         walkTicks.addProperty("minimum", 1);
         walkTicks.addProperty("maximum", 100);
@@ -555,6 +567,11 @@ public final class AIActionRegistry {
                             args.has("reset_anchor") && args.get("reset_anchor").getAsBoolean()));
             case "get_schematic_progress" -> new Action(name, args,
                     SchematicManager.progressSummary(requiredString(args, "file", 110)));
+            case "verify_schematic_section" -> new Action(name, args,
+                    SchematicManager.verifyPlacedSection(requiredString(args, "file", 110),
+                            args.has("part_x") ? readBoundedInteger(args, "part_x", 0, 15) : 0,
+                            args.has("part_y") ? readBoundedInteger(args, "part_y", 0, 15) : 0,
+                            args.has("part_z") ? readBoundedInteger(args, "part_z", 0, 15) : 0));
             case "walk_forward" -> {
                 int ticks = readBoundedInteger(args, "ticks", 1, 100);
                 yield new Action(name, args, "Nightfall hält die Vorwärtstaste für höchstens " + ticks
@@ -619,7 +636,7 @@ public final class AIActionRegistry {
     /** Called only from the Minecraft client thread after explicit player confirmation. */
     public static boolean requiresConfirmation(String actionName) {
         return !Set.of("search_blueprints", "list_schematics", "inspect_schematic", "get_module_settings", "open_nightfall_menu",
-                "get_build_status", "get_schematic_progress", "get_base_findings", "get_module_observations", "list_fake_base_templates",
+                "get_build_status", "get_schematic_progress", "verify_schematic_section", "get_base_findings", "get_module_observations", "list_fake_base_templates",
                 "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
     }
 
@@ -837,6 +854,11 @@ public final class AIActionRegistry {
             case "repair_schematic" -> SchematicManager.repairToSupportedSchematic(args.get("file").getAsString());
             case "build_schematic" -> AIBuilder.startPreparedStructure();
             case "get_schematic_progress" -> SchematicManager.progressSummary(requiredString(args, "file", 110));
+            case "verify_schematic_section" -> SchematicManager.verifyPlacedSection(
+                    requiredString(args, "file", 110),
+                    args.has("part_x") ? readBoundedInteger(args, "part_x", 0, 15) : 0,
+                    args.has("part_y") ? readBoundedInteger(args, "part_y", 0, 15) : 0,
+                    args.has("part_z") ? readBoundedInteger(args, "part_z", 0, 15) : 0);
             case "walk_forward" -> AIPlayerController.walkForward(readBoundedInteger(args, "ticks", 1, 100));
             case "stop_movement" -> AIPlayerController.stop("Auf deinen Befehl gestoppt.");
             case "navigate_to" -> AIPlayerController.navigateTo(
