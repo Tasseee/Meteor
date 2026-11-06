@@ -172,12 +172,21 @@ public final class AIActionRegistry {
                 "Exact local filename inside config/nightfall/schematics, ending in .schem or .litematic.").get("schema").getAsJsonObject();
         schematicFile.addProperty("maxLength", 110);
         JsonObject schematicSchema = objectSchema(schematicFile, "file");
+        JsonObject partX = property("part_x", "integer", "0-basierter Abschnitt entlang der X-Achse; jeder Abschnitt ist maximal 32 Blöcke breit.").get("schema").getAsJsonObject();
+        partX.addProperty("minimum", 0); partX.addProperty("maximum", 7);
+        JsonObject partY = property("part_y", "integer", "0-basierter Abschnitt entlang der Y-Achse; jeder Abschnitt ist maximal 32 Blöcke hoch.").get("schema").getAsJsonObject();
+        partY.addProperty("minimum", 0); partY.addProperty("maximum", 7);
+        JsonObject partZ = property("part_z", "integer", "0-basierter Abschnitt entlang der Z-Achse; jeder Abschnitt ist maximal 32 Blöcke lang.").get("schema").getAsJsonObject();
+        partZ.addProperty("minimum", 0); partZ.addProperty("maximum", 7);
+        schematicSchema.getAsJsonObject("properties").add("part_x", partX);
+        schematicSchema.getAsJsonObject("properties").add("part_y", partY);
+        schematicSchema.getAsJsonObject("properties").add("part_z", partZ);
         tools.add(tool("inspect_schematic",
-                "Inspect one locally downloaded Sponge v2 .schem or Litematica v5-v7 .litematic file. Reports dimensions, materials, automatic-build subset and blocks requiring manual placement. Read-only.",
+                "Inspect a local Sponge v2 .schem or Litematica v5-v7 .litematic file, including mirrored/negative region axes and large designs up to 256 blocks per axis and 2 million volume. Reports the 32x32x32 build-section grid, materials, automatic subset and manual-only blocks. Read-only.",
                 schematicSchema));
         tools.add(tool("build_schematic",
-                "Prepare a local schematic for building. Nightfall preserves each supported BlockState and tests vanilla BlockItem placement contexts across possible support faces and player orientations. It clears air cells and occupied build positions with normal mining interactions, approaches nearby excavation targets through loaded terrain, and only counts exact server-confirmed states. It stops instead of placing a state it cannot reproduce. Block-entity blocks such as hoppers and chests can be placed with fresh default data, but inventories/custom NBT, fluids, falling blocks and entities are not recreated.\n"
-                + "Material-shortage workflow: if the preview reports exact missing item IDs/counts, inspect those requirements. If the missing item ID itself is in the safe gather_block allowlist (for example dirt, cobblestone, granite, diorite, andesite, tuff, sandstone, netherrack, blackstone or stone_bricks), use gather_block with that exact ID and the required total inventory count. For missing vanilla plank blocks whose corresponding log type is supported, use gather_wood toward the required log total and then craft_item for the exact plank ID with count equal to the additional plank amount; craft_item only works for recipes already unlocked in the 2x2 recipe book. After any gathering/crafting, call build_schematic again for a fresh preview from the current inventory; never assume the old preview is still valid. Each world-changing gather/craft/build action needs its own player confirmation. Do not guess recipes or claim automatic collection for ores, sand/gravel, fluids, glass, Silk Touch-dependent or unsupported resources; report those exact shortages for manual collection.",
+                "Prepare exactly one 32x32x32 section of a local schematic for building. For oversized structures, pass part_x, part_y and part_z (zero-based); inspect_schematic reports the valid grid. Each section is anchored around the player's current position, so the player must move to the matching section center before preparing the next section. Nightfall approaches reachable placement targets using bounded A* navigation and saves/resumes section progress across client restarts. It preserves supported BlockStates and stops when a state cannot be reproduced. Fluids (including water), falling blocks, entities and custom block-entity NBT/inventories are not reconstructed; those remain manual. A full farm may therefore need additional manual fluid/mechanism work before it functions.\n"
+                + "Material-shortage workflow: the current section requires its exact materials in the player's inventory; Creative mode only requires one representative stack per material. In Survival, obtain the missing counts before building the section. Do not claim the entire schematic is complete after building one section.",
                 schematicSchema));
         JsonObject walkTicks = property("ticks", "integer", "Dauer der kurzen Vorwärtsbewegung in Ticks (1 bis 100).").get("schema").getAsJsonObject();
         walkTicks.addProperty("minimum", 1);
@@ -411,7 +420,10 @@ public final class AIActionRegistry {
             case "inspect_schematic" -> new Action(name, args,
                     SchematicManager.inspectSummary(requiredString(args, "file", 110)));
             case "build_schematic" -> new Action(name, args,
-                    SchematicManager.prepareBuild(requiredString(args, "file", 110)));
+                    SchematicManager.prepareBuild(requiredString(args, "file", 110),
+                            args.has("part_x") ? readBoundedInteger(args, "part_x", 0, 7) : 0,
+                            args.has("part_y") ? readBoundedInteger(args, "part_y", 0, 7) : 0,
+                            args.has("part_z") ? readBoundedInteger(args, "part_z", 0, 7) : 0));
             case "walk_forward" -> {
                 int ticks = readBoundedInteger(args, "ticks", 1, 100);
                 yield new Action(name, args, "Nightfall hält die Vorwärtstaste für höchstens " + ticks
