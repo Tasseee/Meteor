@@ -3,6 +3,7 @@ package dev.nightfall.modules;
 import dev.nightfall.module.HudModule;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.util.Theme;
+import dev.nightfall.util.HudStyle;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.item.Items;
 
@@ -28,8 +29,7 @@ public final class CooldownHud extends HudModule {
         for (boolean e : enabled) if (e) count++;
         w = 120;
         h = 7 + count * 16;
-        ctx.fill(0, 0, w, h, 0xA0101014);
-        ctx.fill(0, 0, 2, h, Theme.ACCENT);
+        HudStyle.panel(ctx, w, h);
         int line = 0;
         for (int i = 0; i < items.length; i++) {
             if (!enabled[i]) continue;

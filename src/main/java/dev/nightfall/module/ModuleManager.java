@@ -41,8 +41,13 @@ public final class ModuleManager {
         MODULES.add(new LongJump());
         MODULES.add(new Jesus());
         MODULES.add(new WaterWalk());
+        MODULES.add(new Noclip());
+        MODULES.add(new BoatFly());
+        MODULES.add(new Freecam());
         // Visuals
         MODULES.add(new PlayerEsp());
+        MODULES.add(new NameTags());
+        MODULES.add(new Lyrics());
         MODULES.add(new EntityEsp());
         MODULES.add(new ItemEsp());
         MODULES.add(new StorageEsp());
@@ -65,6 +70,7 @@ public final class ModuleManager {
         MODULES.add(new Waypoints());
         MODULES.add(new FakeBases());
         // Basefinder
+        MODULES.add(new IntelligenceScanner());
         MODULES.add(new BaseFinder());
         // Misc
         MODULES.add(new AutoTpa());
@@ -72,6 +78,7 @@ public final class ModuleManager {
         MODULES.add(new SpawnerProtect());
         MODULES.add(new StaffWatch());
         MODULES.add(new AntiVanishHints());
+        MODULES.add(new InvSeeValue());
         // HUD
         MODULES.add(new Watermark());
         MODULES.add(new Coordinates());
@@ -115,8 +122,9 @@ public final class ModuleManager {
 
     /** @return Fehlertext bei Konflikt, sonst null (Tastenzuweisung erfolgreich). */
     public static String assignKey(Module m, int key) {
+        if (key < -1 || key > GLFW.GLFW_KEY_LAST) return "Ungueltige Taste";
         if (key >= 0) {
-            if (key == Config.guiKey || key == Config.hudKey || key == Config.mapKey) return "Taste ist bereits fuer GUI/HUD/Karte belegt";
+            if (key == Config.guiKey || key == Config.hudKey || key == Config.mapKey || key == Config.aiKey) return "Taste ist bereits fuer eine globale Nightfall-Funktion belegt";
             for (Module o : MODULES) if (o != m && o.getKey() == key) return "Taste bereits belegt von " + o.getName();
         }
         m.setKey(key);
@@ -126,12 +134,32 @@ public final class ModuleManager {
     public static void pollKeys(MinecraftClient mc) {
         if (mc.getWindow() == null) return;
         long h = mc.getWindow().getHandle();
-        for (Module m : MODULES) {
-            int k = m.getKey();
-            if (k < 0 || k > GLFW.GLFW_KEY_LAST) continue;
-            boolean d = GLFW.glfwGetKey(h, k) == GLFW.GLFW_PRESS;
-            if (d && !KEY_DOWN[k] && mc.currentScreen == null && mc.player != null) m.toggle();
-            KEY_DOWN[k] = d;
+        boolean[] checked = new boolean[KEY_DOWN.length];
+        for (Module module : MODULES) {
+            int key = module.getKey();
+            if (key < 0 || key > GLFW.GLFW_KEY_LAST || checked[key]) continue;
+            checked[key] = true;
+
+            boolean down = GLFW.glfwGetKey(h, key) == GLFW.GLFW_PRESS;
+            if (down && !KEY_DOWN[key] && mc.currentScreen == null && mc.player != null) {
+                // Toggle every module sharing a key. Config loading also rejects
+                // collisions, but handling them here keeps polling deterministic.
+                for (Module target : MODULES) if (target.getKey() == key) target.toggle();
+            }
+            KEY_DOWN[key] = down;
+        }
+    }
+
+    /** Releases resources owned by enabled modules while preserving saved enabled states. */
+    public static void shutdown() {
+        for (Module module : MODULES) {
+            if (!module.isEnabled()) continue;
+            try {
+                module.onDisable();
+            } catch (Throwable t) {
+                Nightfall.LOGGER.error("Fehler beim Beenden von Modul {}", module.getName(), t);
+                errorCount++;
+            }
         }
     }
 
@@ -145,8 +173,17 @@ public final class ModuleManager {
             } catch (Throwable t) {
                 Nightfall.LOGGER.error("Fehler in Modul {} - Modul wird deaktiviert", m.getName(), t);
                 errorCount++;
-                m.setEnabled(false);
+                disableAfterFailure(m);
             }
+        }
+    }
+
+    private static void disableAfterFailure(Module module) {
+        try {
+            module.setEnabled(false);
+        } catch (Throwable cleanupError) {
+            Nightfall.LOGGER.error("Cleanup-Fehler in Modul {}", module.getName(), cleanupError);
+            errorCount++;
         }
     }
 
@@ -161,7 +198,7 @@ public final class ModuleManager {
             } catch (Throwable t) {
                 Nightfall.LOGGER.error("Render-Fehler in Modul {} - Modul wird deaktiviert", m.getName(), t);
                 errorCount++;
-                m.setEnabled(false);
+                disableAfterFailure(m);
             }
         }
     }

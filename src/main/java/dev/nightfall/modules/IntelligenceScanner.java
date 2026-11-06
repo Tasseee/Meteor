@@ -1,0 +1,533 @@
+package dev.nightfall.modules;
+
+import dev.nightfall.module.Category;
+import dev.nightfall.module.Module;
+import dev.nightfall.module.setting.BoolSetting;
+import dev.nightfall.module.setting.ColorSetting;
+import dev.nightfall.module.setting.NumberSetting;
+import dev.nightfall.util.Draw;
+import dev.nightfall.util.Projection;
+import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.world.ClientWorld;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.entity.decoration.ItemFrameEntity;
+import net.minecraft.entity.passive.VillagerEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
+import net.minecraft.world.Heightmap;
+import net.minecraft.world.chunk.WorldChunk;
+
+import java.util.*;
+
+/**
+ * Progressive client-side intelligence scanner.
+ * It only reads chunks already loaded by the client. Entity scope is limited to item frames
+ * (including glow item frames), villagers and armor stands; player activity is tracked separately.
+ */
+public final class IntelligenceScanner extends Module {
+    private static final int MAX_QUEUED_CHUNKS = 256;
+    private static final int MAX_SNAPSHOTS = 4096;
+    private static final int MAX_PLAYER_SIGHTINGS = 2048;
+    private static final int MAX_CLUSTER_ENTITIES = 512;
+    private final NumberSetting range = add(new NumberSetting("Intel-Reichweite (Chunks)", 16, 2, 32, 1));
+    private final NumberSetting budgetMs = add(new NumberSetting("Deep-Scan Budget ms/Tick", 1.5, 0.2, 5.0, 0.1));
+    private final NumberSetting rescanSeconds = add(new NumberSetting("Deep-Rescan (s)", 90, 15, 600, 5));
+    private final NumberSetting undergroundDepth = add(new NumberSetting("Untergrund ab (Bloecke)", 5, 3, 20, 1));
+    private final BoolSetting entityEsp = add(new BoolSetting("Underground Entity ESP", true));
+    private final BoolSetting crystalEsp = add(new BoolSetting("Geoden-Kristalle ESP", true));
+    private final BoolSetting geodeBoxEsp = add(new BoolSetting("Geoden-Box ESP", true));
+    private final ColorSetting entityColor = add(new ColorSetting("Entity-ESP Farbe", 0xFFB84D));
+    private final ColorSetting smallBudColor = add(new ColorSetting("Geode: kleiner Bud", 0xB9A1FF));
+    private final ColorSetting mediumBudColor = add(new ColorSetting("Geode: mittlerer Bud", 0x9B5CF6));
+    private final ColorSetting largeBudColor = add(new ColorSetting("Geode: grosser Bud", 0x7E57C2));
+    private final ColorSetting clusterColor = add(new ColorSetting("Geode: Cluster", 0xE0C4FF));
+    private final ColorSetting geodeColor = add(new ColorSetting("Geoden-Box Farbe", 0x6C55D9));
+
+    private final Map<Long, ScanSnapshot> snapshots = new HashMap<>();
+    private final ArrayDeque<ScanJob> queue = new ArrayDeque<>();
+    private final Set<Long> inQueue = new HashSet<>();
+    private final Set<Long> entityKnownChunks = new HashSet<>();
+    private final Map<Long, EntityEvidence> entityEvidence = new HashMap<>();
+    private final Map<UUID, Integer> playerSightings = new HashMap<>();
+    private final List<Entity> undergroundEntities = new ArrayList<>();
+
+    private ClientWorld lastWorld;
+    private long tick, lastEntityRefresh, resumeAfterMaskTick;
+    private int scannedChunks, lastEntityCount;
+    private boolean maskStateInitialized, lastMaskActive;
+
+    public IntelligenceScanner() {
+        super("Intelligence", "Untergrund-Entities, Geoden, wertvolle Bloecke, Redstone- und Farmhinweise; scannt nur geladene Chunks.", Category.BASEFINDER);
+    }
+
+    private static long key(int cx, int cz) {
+        return ((long) cx & 0xFFFFFFFFL) | ((long) cz << 32);
+    }
+
+    public int scannedChunks() { return scannedChunks; }
+    public int undergroundEntityCount() { return lastEntityCount; }
+    public int pendingChunks() { return queue.size(); }
+
+    @Override
+    protected void onDisable() {
+        queue.clear();
+        inQueue.clear();
+        snapshots.clear();
+        entityKnownChunks.clear();
+        entityEvidence.clear();
+        playerSightings.clear();
+        undergroundEntities.clear();
+        lastWorld = null;
+        lastEntityRefresh = 0;
+        lastEntityCount = 0;
+        maskStateInitialized = false;
+    }
+
+    @Override
+    public void onTick() {
+        if (mc.world == null || mc.player == null) return;
+        if (lastWorld != mc.world) {
+            lastWorld = mc.world;
+            tick = 0;
+            queue.clear();
+            inQueue.clear();
+            snapshots.clear();
+            entityEvidence.clear();
+            entityKnownChunks.clear();
+            playerSightings.clear();
+            undergroundEntities.clear();
+            scannedChunks = 0;
+            lastEntityCount = 0;
+            lastEntityRefresh = 0;
+            maskStateInitialized = false;
+        }
+        tick++;
+
+        boolean maskActive = hugoMaskActive();
+        if (!maskStateInitialized) {
+            lastMaskActive = maskActive;
+            maskStateInitialized = true;
+        } else if (maskActive != lastMaskActive) {
+            lastMaskActive = maskActive;
+            Set<Long> oldSnapshots = new HashSet<>(snapshots.keySet());
+            snapshots.clear();
+            queue.clear();
+            inQueue.clear();
+            // Drop stale geode/farm contributions before the newly visible block data is rescanned.
+            for (long key : oldSnapshots) publish(key, null);
+            resumeAfterMaskTick = maskActive ? tick : tick + 40;
+        }
+
+        if (tick - lastEntityRefresh >= 20) refreshEntities();
+        if (tick % 20 == 0) refillQueue();
+        runDeepScan();
+    }
+
+    private boolean underground(Entity entity) {
+        int surface = mc.world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES,
+                entity.getBlockX(), entity.getBlockZ());
+        return entity.getY() <= surface - undergroundDepth.get();
+    }
+
+    private void refreshEntities() {
+        lastEntityRefresh = tick;
+        undergroundEntities.clear();
+        Map<Long, EntityEvidence> next = new HashMap<>();
+        List<Entity> accepted = new ArrayList<>();
+
+        for (Entity entity : mc.world.getEntities()) {
+            if (entity == mc.player || !underground(entity)) continue;
+            if (entity instanceof ItemFrameEntity || entity instanceof VillagerEntity
+                    || entity instanceof ArmorStandEntity) {
+                if (accepted.size() < MAX_CLUSTER_ENTITIES) accepted.add(entity);
+                if (undergroundEntities.size() < 512) undergroundEntities.add(entity);
+                long k = key(entity.getBlockX() >> 4, entity.getBlockZ() >> 4);
+                EntityEvidence ev = next.computeIfAbsent(k, ignored -> new EntityEvidence());
+                if (entity instanceof ItemFrameEntity) ev.frames++;
+                else if (entity instanceof VillagerEntity) ev.villagers++;
+                else if (entity instanceof ArmorStandEntity) ev.armorStands++;
+            } else if (entity instanceof PlayerEntity player) {
+                long k = key(player.getBlockX() >> 4, player.getBlockZ() >> 4);
+                int seen = Math.min(10, playerSightings.merge(player.getUuid(), 1, Integer::sum));
+                if (playerSightings.size() > MAX_PLAYER_SIGHTINGS) {
+                    Iterator<UUID> oldest = playerSightings.keySet().iterator();
+                    if (oldest.hasNext()) {
+                        oldest.next();
+                        oldest.remove();
+                    }
+                }
+                EntityEvidence ev = next.computeIfAbsent(k, ignored -> new EntityEvidence());
+                ev.activityScore = Math.min(3.0, seen * 0.35);
+                ev.playerCount++;
+            }
+        }
+
+        // Loose connected grouping: groups can reinforce across a radius of up to 6 chunks.
+        for (int i = 0; i < accepted.size(); i++) {
+            Entity a = accepted.get(i);
+            int nearby = 0;
+            for (int j = 0; j < accepted.size(); j++) {
+                if (i != j && a.squaredDistanceTo(accepted.get(j)) <= 96.0 * 96.0) nearby++;
+            }
+            if (nearby > 0) {
+                long k = key(a.getBlockX() >> 4, a.getBlockZ() >> 4);
+                next.computeIfAbsent(k, ignored -> new EntityEvidence()).clusterBonus
+                        += Math.min(1.5, nearby * 0.25);
+            }
+        }
+
+        Set<Long> affected = new HashSet<>(entityKnownChunks);
+        affected.addAll(next.keySet());
+        entityKnownChunks.clear();
+        entityKnownChunks.addAll(next.keySet());
+        entityEvidence.clear();
+        entityEvidence.putAll(next);
+        lastEntityCount = undergroundEntities.size();
+        for (long k : affected) publish(k, null);
+    }
+
+    private void refillQueue() {
+        int pcx = mc.player.getBlockX() >> 4, pcz = mc.player.getBlockZ() >> 4;
+        int r = range.getInt();
+        long minAge = rescanSeconds.getInt() * 20L;
+        List<long[]> candidates = new ArrayList<>();
+        for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
+            int d2 = dx * dx + dz * dz;
+            if (d2 > r * r) continue;
+            int cx = pcx + dx, cz = pcz + dz;
+            long k = key(cx, cz);
+            if (inQueue.contains(k)) continue;
+            ScanSnapshot old = snapshots.get(k);
+            if (old != null && tick - old.lastCompleteTick < minAge) continue;
+            if (mc.world.getChunkManager().getWorldChunk(cx, cz) == null) continue;
+            candidates.add(new long[]{d2, k});
+        }
+        // Discard queued work and cached snapshots well outside the active scan area.
+        // This keeps memory bounded when the player travels across many regions.
+        int retention = r + 4;
+        long retentionSquared = (long) retention * retention;
+        queue.removeIf(job -> {
+            long dx = (long) job.cx - pcx, dz = (long) job.cz - pcz;
+            if (dx * dx + dz * dz <= retentionSquared) return false;
+            inQueue.remove(job.key);
+            return true;
+        });
+        Iterator<Map.Entry<Long, ScanSnapshot>> cached = snapshots.entrySet().iterator();
+        while (cached.hasNext()) {
+            Map.Entry<Long, ScanSnapshot> entry = cached.next();
+            int cx = (int) (long) entry.getKey(), cz = (int) (entry.getKey() >> 32);
+            long dx = (long) cx - pcx, dz = (long) cz - pcz;
+            if (dx * dx + dz * dz > retentionSquared) {
+                long staleKey = entry.getKey();
+                cached.remove();
+                publish(staleKey, null);
+            }
+        }
+
+        candidates.sort(Comparator.comparingLong(a -> a[0]));
+        int capacity = Math.max(0, MAX_QUEUED_CHUNKS - queue.size());
+        for (long[] candidate : candidates) {
+            if (capacity <= 0) break;
+            long k = candidate[1];
+            inQueue.add(k);
+            queue.add(new ScanJob((int) k, (int) (k >> 32),
+                    mc.world.getBottomY(), mc.world.getHeight()));
+            capacity--;
+        }
+        while (snapshots.size() > MAX_SNAPSHOTS) {
+            Iterator<Long> oldest = snapshots.keySet().iterator();
+            if (!oldest.hasNext()) break;
+            long staleKey = oldest.next();
+            oldest.remove();
+            publish(staleKey, null);
+        }
+    }
+
+    private boolean hugoMaskActive() {
+        try {
+            return dev.nightfall.module.ModuleManager.get(BaseFinder.class).isHugoSmpMaskActive();
+        } catch (IllegalStateException ignored) {
+            return false;
+        }
+    }
+
+    private void runDeepScan() {
+        if (tick < resumeAfterMaskTick) return;
+        boolean maskActive = hugoMaskActive();
+        long deadline = System.nanoTime() + (long) (budgetMs.get() * 1_000_000.0);
+        while (!queue.isEmpty() && System.nanoTime() < deadline) {
+            ScanJob job = queue.poll();
+            WorldChunk chunk = mc.world.getChunkManager().getWorldChunk(job.cx, job.cz);
+            if (chunk == null) {
+                inQueue.remove(job.key);
+                continue;
+            }
+            int processed = 0;
+            BlockPos.Mutable pos = new BlockPos.Mutable();
+            while (job.cursor < job.total && System.nanoTime() < deadline && processed < 4096) {
+                int column = job.cursor / job.height;
+                int y = job.bottomY + job.cursor % job.height;
+                int x = column & 15, z = column >> 4;
+                if (maskActive && y <= 0) {
+                    // HugoSMP may send fake block updates below Y=0 while the player is above Y=5.
+                    job.cursor++;
+                    processed++;
+                    continue;
+                }
+                Block block = chunk.getBlockState(pos.set(job.cx * 16 + x, y, job.cz * 16 + z)).getBlock();
+                job.accept(block, pos.getX(), pos.getY(), pos.getZ());
+                job.validScanned++;
+                job.cursor++;
+                processed++;
+            }
+            if (job.cursor >= job.total) {
+                ScanSnapshot previous = snapshots.get(job.key);
+                job.harvestObserved = previous != null && previous.matureCrystals > job.matureCrystals
+                        && job.budding >= previous.budding;
+                ScanSnapshot complete = job.snapshot(tick);
+                snapshots.put(job.key, complete);
+                scannedChunks++;
+                inQueue.remove(job.key);
+                publish(job.key, complete);
+            } else {
+                publish(job.key, job.snapshot(tick));
+                queue.add(job);
+            }
+        }
+    }
+
+    private void publish(long k, ScanSnapshot supplied) {
+        ScanSnapshot scan = supplied != null ? supplied : snapshots.get(k);
+        EntityEvidence entities = entityEvidence.getOrDefault(k, new EntityEvidence());
+        double entityScore = Math.max(0, entities.frames - 2) * 1.25
+                + entities.villagers * 3.0 + entities.armorStands * 2.5 + entities.clusterBonus;
+        double geodeScore = 0, valuableScore = 0, redstoneScore = 0, farmScore = 0;
+        double completeness = scan == null ? 0 : scan.completeness;
+        List<String> reasons = new ArrayList<>();
+
+        if (entities.frames > 0) reasons.add(entities.frames + " Item Frames unterirdisch (Glow inklusive)");
+        if (entities.villagers > 0) reasons.add(entities.villagers + " Villager unterirdisch");
+        if (entities.armorStands > 0) reasons.add(entities.armorStands + " Armor Stands unterirdisch");
+        if (entities.clusterBonus > 0) reasons.add("Entity-Gruppe innerhalb 6 Chunks");
+        if (entities.playerCount > 0) reasons.add(entities.playerCount + " Spielerbeobachtung(en) unterirdisch");
+
+        if (scan != null) {
+            if (scan.budding > 0) {
+                geodeScore += 0.45;
+                reasons.add("Geode: " + scan.budding + " Budding, " + scan.buds
+                        + " Buds, " + scan.matureCrystals + " reife Cluster");
+            }
+            if (scan.harvestObserved) {
+                geodeScore += 1.75;
+                reasons.add("Harvest-Verdacht: Kristallzahl seit letzter Messung gesunken");
+            }
+            if (scan.budding >= 4 && scan.matureCrystals >= 8) {
+                geodeScore += 1.0;
+                farmScore += 1.25;
+                reasons.add("Geodenfarm-Kandidat (Budding + reife Kristalle)");
+            }
+            if (scan.valuableBlocks > 0) {
+                valuableScore = Math.min(15.0, scan.valuableBlocks * 3.0);
+                reasons.add(scan.valuableBlocks + " wertvolle Bloecke (Netherite/Diamond/Dragon Head/Emerald/Iron)");
+            }
+            if (scan.redstoneBlocks > 0) {
+                redstoneScore = scan.redstoneBlocks >= 12
+                        ? Math.min(4.0, 0.35 + scan.redstoneBlocks * 0.12)
+                        : scan.redstoneBlocks * 0.08;
+                reasons.add(scan.redstoneBlocks + " Redstone-/Maschinenbloecke (Sculk Sensor ausgeschlossen)");
+            }
+            if (scan.farmBlocks > 0) {
+                int farmTypes = Integer.bitCount(scan.farmKinds);
+                double densityScore = scan.farmBlocks >= 24
+                        ? Math.min(5.0, scan.farmBlocks / 16.0) : scan.farmBlocks * 0.025;
+                farmScore = Math.max(farmScore, Math.min(6.0, densityScore + farmTypes * 0.35));
+                reasons.add(scan.farmBlocks + " Farm-/Anbaubloecke in " + farmTypes + " Kategorie(n)");
+            }
+            if (scan.calcite + scan.smoothBasalt > 0 && scan.budding > 0)
+                reasons.add("Geodenstruktur mit Calcite/Smooth Basalt");
+        }
+
+        double activityScore = entities.activityScore;
+        if (activityScore > 0) reasons.add("Wiederholte unterirdische Spieleraktivitaet");
+        try {
+            dev.nightfall.module.ModuleManager.get(BaseFinder.class).updateIntelligence(
+                    (int) k, (int) (k >> 32), entityScore, geodeScore, valuableScore,
+                    redstoneScore, farmScore, activityScore, completeness, reasons);
+        } catch (IllegalStateException ignored) { }
+    }
+
+    private final class ScanJob {
+        final int cx, cz, bottomY, height, total;
+        final long key;
+        int cursor, validScanned;
+        int budding, smallBuds, mediumBuds, largeBuds, matureCrystals, amethystBlocks, calcite, smoothBasalt;
+        int valuableBlocks, redstoneBlocks, farmBlocks, farmKinds;
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+        boolean harvestObserved;
+        final List<BlockPos> crystalPositions = new ArrayList<>();
+        final List<BlockPos> smallCrystalPositions = new ArrayList<>();
+        final List<BlockPos> mediumCrystalPositions = new ArrayList<>();
+        final List<BlockPos> largeCrystalPositions = new ArrayList<>();
+        final List<BlockPos> clusterPositions = new ArrayList<>();
+
+        ScanJob(int cx, int cz, int bottomY, int height) {
+            this.cx = cx; this.cz = cz; this.bottomY = bottomY; this.height = Math.max(1, height);
+            this.total = 256 * this.height;
+            this.key = key(cx, cz);
+        }
+
+        void accept(Block b, int x, int y, int z) {
+            boolean geode = false;
+            if (b == Blocks.BUDDING_AMETHYST) { budding++; geode = true; }
+            else if (b == Blocks.SMALL_AMETHYST_BUD) { smallBuds++; geode = true; addCrystal(smallCrystalPositions, x, y, z); }
+            else if (b == Blocks.MEDIUM_AMETHYST_BUD) { mediumBuds++; geode = true; addCrystal(mediumCrystalPositions, x, y, z); }
+            else if (b == Blocks.LARGE_AMETHYST_BUD) { largeBuds++; geode = true; addCrystal(largeCrystalPositions, x, y, z); }
+            else if (b == Blocks.AMETHYST_CLUSTER) { matureCrystals++; geode = true; addCrystal(clusterPositions, x, y, z); }
+            else if (b == Blocks.AMETHYST_BLOCK) { amethystBlocks++; geode = true; }
+            else if (b == Blocks.CALCITE) { calcite++; geode = true; }
+            else if (b == Blocks.SMOOTH_BASALT) { smoothBasalt++; geode = true; }
+            if (geode) {
+                minX = Math.min(minX, x); minY = Math.min(minY, y); minZ = Math.min(minZ, z);
+                maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); maxZ = Math.max(maxZ, z);
+            }
+            if (b == Blocks.NETHERITE_BLOCK || b == Blocks.DIAMOND_BLOCK || b == Blocks.DRAGON_HEAD
+                    || b == Blocks.EMERALD_BLOCK || b == Blocks.IRON_BLOCK) valuableBlocks++;
+            if (isRedstone(b)) redstoneBlocks++;
+            if (isFarmBlock(b)) {
+                farmBlocks++;
+                farmKinds |= farmKind(b);
+            }
+        }
+
+        void addCrystal(List<BlockPos> stage, int x, int y, int z) {
+            if (crystalPositions.size() < 256) {
+                BlockPos pos = new BlockPos(x, y, z);
+                crystalPositions.add(pos);
+                if (stage.size() < 256) stage.add(pos);
+            }
+        }
+
+        ScanSnapshot snapshot(long now) {
+            ScanSnapshot s = new ScanSnapshot();
+            s.budding = budding;
+            s.smallBuds = smallBuds; s.mediumBuds = mediumBuds; s.largeBuds = largeBuds;
+            s.buds = smallBuds + mediumBuds + largeBuds;
+            s.matureCrystals = matureCrystals; s.amethystBlocks = amethystBlocks;
+            s.calcite = calcite; s.smoothBasalt = smoothBasalt;
+            s.valuableBlocks = valuableBlocks; s.redstoneBlocks = redstoneBlocks;
+            s.farmBlocks = farmBlocks; s.farmKinds = farmKinds;
+            s.completeness = Math.min(1.0, (double) validScanned / total);
+            s.harvestObserved = harvestObserved;
+            s.lastCompleteTick = cursor >= total ? now : 0;
+            s.crystals.addAll(crystalPositions);
+            s.smallCrystals.addAll(smallCrystalPositions);
+            s.mediumCrystals.addAll(mediumCrystalPositions);
+            s.largeCrystals.addAll(largeCrystalPositions);
+            s.clusters.addAll(clusterPositions);
+            if (minX != Integer.MAX_VALUE && maxX - minX <= 64 && maxY - minY <= 64 && maxZ - minZ <= 64)
+                s.bounds = new Box(minX, minY, minZ, maxX + 1, maxY + 1, maxZ + 1);
+            return s;
+        }
+    }
+
+    private static final class ScanSnapshot {
+        int budding, smallBuds, mediumBuds, largeBuds, buds, matureCrystals, amethystBlocks;
+        int calcite, smoothBasalt, valuableBlocks, redstoneBlocks, farmBlocks, farmKinds;
+        boolean harvestObserved;
+        long lastCompleteTick;
+        double completeness;
+        Box bounds;
+        final List<BlockPos> crystals = new ArrayList<>();
+        final List<BlockPos> smallCrystals = new ArrayList<>();
+        final List<BlockPos> mediumCrystals = new ArrayList<>();
+        final List<BlockPos> largeCrystals = new ArrayList<>();
+        final List<BlockPos> clusters = new ArrayList<>();
+    }
+
+    private static final class EntityEvidence {
+        int frames, villagers, armorStands, playerCount;
+        double clusterBonus, activityScore;
+    }
+
+    private void drawCrystalStage(DrawContext ctx, List<BlockPos> positions, int rgb) {
+        for (BlockPos pos : positions) {
+            double dx = pos.getX() + 0.5 - mc.player.getX();
+            double dy = pos.getY() + 0.5 - mc.player.getY();
+            double dz = pos.getZ() + 0.5 - mc.player.getZ();
+            if (dx * dx + dy * dy + dz * dz > 96.0 * 96.0) continue;
+            Draw.box(ctx, new Box(pos.getX(), pos.getY(), pos.getZ(),
+                    pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1),
+                    0xFF000000 | rgb, 1, true);
+        }
+    }
+
+    private static boolean isRedstone(Block b) {
+        return b == Blocks.REDSTONE_WIRE || b == Blocks.REPEATER || b == Blocks.COMPARATOR
+                || b == Blocks.REDSTONE_TORCH || b == Blocks.REDSTONE_WALL_TORCH || b == Blocks.REDSTONE_BLOCK
+                || b == Blocks.OBSERVER || b == Blocks.DISPENSER || b == Blocks.DROPPER
+                || b == Blocks.PISTON || b == Blocks.STICKY_PISTON || b == Blocks.LEVER
+                || b == Blocks.TRIPWIRE_HOOK || b == Blocks.DAYLIGHT_DETECTOR || b == Blocks.TARGET
+                || b == Blocks.CRAFTER;
+    }
+
+    private static int farmKind(Block b) {
+        if (b == Blocks.WHEAT || b == Blocks.CARROTS || b == Blocks.POTATOES
+                || b == Blocks.BEETROOTS || b == Blocks.NETHER_WART) return 1;
+        if (b == Blocks.SUGAR_CANE || b == Blocks.BAMBOO || b == Blocks.CACTUS
+                || b == Blocks.KELP || b == Blocks.KELP_PLANT) return 1 << 1;
+        if (b == Blocks.MELON || b == Blocks.PUMPKIN || b == Blocks.MELON_STEM
+                || b == Blocks.ATTACHED_MELON_STEM || b == Blocks.PUMPKIN_STEM
+                || b == Blocks.ATTACHED_PUMPKIN_STEM) return 1 << 2;
+        if (b == Blocks.BEEHIVE || b == Blocks.BEE_NEST || b == Blocks.HONEY_BLOCK) return 1 << 3;
+        return 1 << 4;
+    }
+
+    private static boolean isFarmBlock(Block b) {
+        return b == Blocks.WHEAT || b == Blocks.CARROTS || b == Blocks.POTATOES
+                || b == Blocks.BEETROOTS || b == Blocks.SUGAR_CANE || b == Blocks.BAMBOO
+                || b == Blocks.CACTUS || b == Blocks.KELP || b == Blocks.KELP_PLANT
+                || b == Blocks.COCOA || b == Blocks.NETHER_WART || b == Blocks.SWEET_BERRY_BUSH
+                || b == Blocks.MELON || b == Blocks.PUMPKIN || b == Blocks.MELON_STEM
+                || b == Blocks.ATTACHED_MELON_STEM || b == Blocks.PUMPKIN_STEM
+                || b == Blocks.ATTACHED_PUMPKIN_STEM || b == Blocks.MOSS_BLOCK
+                || b == Blocks.POINTED_DRIPSTONE || b == Blocks.BEEHIVE || b == Blocks.BEE_NEST
+                || b == Blocks.HONEY_BLOCK || b == Blocks.CAVE_VINES || b == Blocks.CAVE_VINES_PLANT;
+    }
+
+    @Override
+    public void renderHud(DrawContext ctx) {
+        if (!Projection.valid() || mc.player == null) return;
+        if (entityEsp.get()) {
+            int drawn = 0;
+            for (Entity entity : undergroundEntities) {
+                double dx = entity.getX() - mc.player.getX();
+                double dy = entity.getY() - mc.player.getY();
+                double dz = entity.getZ() - mc.player.getZ();
+                if (dx * dx + dy * dy + dz * dz > 96 * 96) continue;
+                if (!Draw.box(ctx, entity.getBoundingBox(), 0xFF000000 | entityColor.rgb(), 1, true)) continue;
+                if (++drawn >= 96) break;
+            }
+        }
+        for (ScanSnapshot snapshot : snapshots.values()) {
+            if (snapshot.completeness < 1.0 || snapshot.crystals.isEmpty()) continue;
+            if (crystalEsp.get()) {
+                drawCrystalStage(ctx, snapshot.smallCrystals, smallBudColor.rgb());
+                drawCrystalStage(ctx, snapshot.mediumCrystals, mediumBudColor.rgb());
+                drawCrystalStage(ctx, snapshot.largeCrystals, largeBudColor.rgb());
+                drawCrystalStage(ctx, snapshot.clusters, clusterColor.rgb());
+            }
+            if (geodeBoxEsp.get() && snapshot.bounds != null) {
+                double bx = (snapshot.bounds.minX + snapshot.bounds.maxX) * 0.5 - mc.player.getX();
+                double by = (snapshot.bounds.minY + snapshot.bounds.maxY) * 0.5 - mc.player.getY();
+                double bz = (snapshot.bounds.minZ + snapshot.bounds.maxZ) * 0.5 - mc.player.getZ();
+                if (bx * bx + by * by + bz * bz <= 96.0 * 96.0)
+                    Draw.box(ctx, snapshot.bounds, 0xAA000000 | geodeColor.rgb(), 2, true);
+            }
+        }
+    }
+}

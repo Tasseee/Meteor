@@ -25,7 +25,7 @@ public class MapScreen extends Screen {
     private static int filter = 1;
     private static boolean init;
 
-    private boolean prevL, prevR, prevM, prevC, prev1, prev2, prev3;
+    private boolean prevL, prevR, prevM, prevC, prev1, prev2, prev3, prev4;
     private double lastMx, lastMy;
 
     public MapScreen() {
@@ -41,6 +41,7 @@ public class MapScreen extends Screen {
         prev1 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_1) == GLFW.GLFW_PRESS;
         prev2 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_2) == GLFW.GLFW_PRESS;
         prev3 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_3) == GLFW.GLFW_PRESS;
+        prev4 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_4) == GLFW.GLFW_PRESS;
     }
 
     @Override public boolean shouldPause() { return false; }
@@ -71,14 +72,16 @@ public class MapScreen extends Screen {
         boolean k1 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_1) == GLFW.GLFW_PRESS;
         boolean k2 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_2) == GLFW.GLFW_PRESS;
         boolean k3 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_3) == GLFW.GLFW_PRESS;
+        boolean k4 = GLFW.glfwGetKey(h, GLFW.GLFW_KEY_4) == GLFW.GLFW_PRESS;
         boolean clickR = r && !prevR;
         if (mk && !prevM) { close(); return; }
         if (k1 && !prev1) filter = 1;
         if (k2 && !prev2) filter = 2;
         if (k3 && !prev3) filter = 3;
+        if (k4 && !prev4) filter = 4;
         if (ck && !prevC && mc.player != null) { cx = mc.player.getX(); cz = mc.player.getZ(); }
         if (l && prevL) { cx -= (mx - lastMx) / zoom * 16.0; cz -= (my - lastMy) / zoom * 16.0; }
-        prevL = l; prevR = r; prevM = mk; prevC = ck; prev1 = k1; prev2 = k2; prev3 = k3;
+        prevL = l; prevR = r; prevM = mk; prevC = ck; prev1 = k1; prev2 = k2; prev3 = k3; prev4 = k4;
         lastMx = mx; lastMy = my;
 
         BaseFinder bf = ModuleManager.get(BaseFinder.class);
@@ -90,6 +93,7 @@ public class MapScreen extends Screen {
             boolean show = switch (filter) {
                 case 2 -> res.status == ChunkResult.Status.SUS;
                 case 3 -> res.status == ChunkResult.Status.GONE;
+                case 4 -> res.status == ChunkResult.Status.DECOY;
                 default -> true;
             };
             if (!show) continue;
@@ -98,6 +102,7 @@ public class MapScreen extends Screen {
             int rgb = switch (res.status) {
                 case SUS -> Theme.lerp(0x9B5CF6, 0xFF3B5C, (float) (res.score / (bf.thresholdValue() * 3.0)));
                 case GONE -> 0x2F6FDB;
+                case DECOY -> 0xA84D74;
                 default -> 0x24242E;
             };
             ctx.fill(x0, y0, x0 + cell, y0 + cell, 0xFF000000 | rgb);
@@ -142,16 +147,23 @@ public class MapScreen extends Screen {
         String coords = "Block " + (int) Math.floor(bx) + ", " + (int) Math.floor(bz) + "   Chunk " + hcx + ", " + hcz;
         ctx.drawText(mc.textRenderer, coords, 8, 8, Theme.TEXT, true);
         if (hr != null && hr.status != ChunkResult.Status.CLEAN) {
-            String t1 = (hr.status == ChunkResult.Status.SUS ? "SUS" : "SUS WEG") + "  Score " + String.format("%.1f", hr.score);
+            String t1 = (hr.status == ChunkResult.Status.SUS ? "SUS" : (hr.status == ChunkResult.Status.DECOY ? "FAKE/DECOY" : "SUS WEG")) + "  Score " + String.format("%.1f", hr.score);
             String t2 = String.join(", ", hr.reasons);
-            String t3 = hr.foundAtMillis > 0 ? "erkannt vor " + ago(System.currentTimeMillis() - hr.foundAtMillis) : "";
-            int tw = Math.max(mc.textRenderer.getWidth(t1), Math.max(mc.textRenderer.getWidth(t2), mc.textRenderer.getWidth(t3))) + 10;
-            int tx = Math.min(mx + 10, width - tw - 4), ty = Math.min(my + 10, height - 40);
-            ctx.fill(tx, ty, tx + tw, ty + 34, 0xF0141418);
-            ctx.fill(tx, ty, tx + 2, ty + 34, Theme.ACCENT);
+            String t3 = "Entity " + fmt(hr.entityScore) + " | Geode " + fmt(hr.geodeScore)
+                    + " | Wertbloecke " + fmt(hr.valuableScore) + " | Stash " + fmt(hr.stashScore);
+            String t4 = "Redstone " + fmt(hr.redstoneScore) + " | Farm " + fmt(hr.farmScore)
+                    + " | Activity " + fmt(hr.activityScore) + " | Deep-Scan " + Math.round(hr.dataCompleteness * 100) + "%";
+            String t5 = hr.foundAtMillis > 0 ? "erkannt vor " + ago(System.currentTimeMillis() - hr.foundAtMillis) : "";
+            int tw = Math.max(Math.max(mc.textRenderer.getWidth(t1), mc.textRenderer.getWidth(t2)),
+                    Math.max(mc.textRenderer.getWidth(t3), Math.max(mc.textRenderer.getWidth(t4), mc.textRenderer.getWidth(t5)))) + 10;
+            int tx = Math.min(mx + 10, width - tw - 4), ty = Math.min(my + 10, height - 64);
+            ctx.fill(tx, ty, tx + tw, ty + 58, 0xF0141418);
+            ctx.fill(tx, ty, tx + 2, ty + 58, Theme.ACCENT);
             ctx.drawText(mc.textRenderer, t1, tx + 6, ty + 3, Theme.TEXT, false);
             ctx.drawText(mc.textRenderer, t2, tx + 6, ty + 13, Theme.TEXT_DIM, false);
             ctx.drawText(mc.textRenderer, t3, tx + 6, ty + 23, Theme.TEXT_DIM, false);
+            ctx.drawText(mc.textRenderer, t4, tx + 6, ty + 33, Theme.TEXT_DIM, false);
+            ctx.drawText(mc.textRenderer, t5, tx + 6, ty + 45, Theme.TEXT_DIM, false);
         }
 
         // Waypoint setzen/loeschen
@@ -162,13 +174,13 @@ public class MapScreen extends Screen {
         }
 
         // Legende + Filter
-        String[] names = {"Alle", "Verdaechtig", "Verschwunden"};
+        String[] names = {"Alle", "Verdaechtig", "Verschwunden", "Fake/Decoy"};
         ctx.fill(6, height - 52, 150, height - 6, 0xE6141418);
         ctx.fill(6, height - 52, 8, height - 6, Theme.ACCENT);
         legend(ctx, mc, 14, height - 46, 0x9B5CF6, "SUS (Score steigt: rot)");
         legend(ctx, mc, 14, height - 34, 0x2F6FDB, "SUS WEG");
         legend(ctx, mc, 14, height - 22, 0x24242E, "gescannt, unauffaellig");
-        String f = "Filter [1/2/3]: " + names[filter - 1] + "   C: zentrieren   RMB: Waypoint";
+        String f = "Filter [1/2/3/4]: " + names[filter - 1] + "   C: zentrieren   RMB: Waypoint";
         ctx.drawText(mc.textRenderer, f, width - mc.textRenderer.getWidth(f) - 8, 8, Theme.TEXT_DIM, true);
     }
 
@@ -176,6 +188,8 @@ public class MapScreen extends Screen {
         ctx.fill(x, y, x + 8, y + 8, 0xFF000000 | rgb);
         ctx.drawText(mc.textRenderer, t, x + 12, y, Theme.TEXT, false);
     }
+
+    private static String fmt(double value) { return String.format(java.util.Locale.ROOT, "%.1f", value); }
 
     private static String ago(long ms) {
         long s = ms / 1000;

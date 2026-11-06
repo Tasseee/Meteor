@@ -21,6 +21,8 @@ public final class Config {
     public static int guiKey = GLFW.GLFW_KEY_RIGHT_SHIFT;
     public static int hudKey = GLFW.GLFW_KEY_H;
     public static int mapKey = GLFW.GLFW_KEY_M;
+    /** Opens the Nightfall AI companion chat. */
+    public static int aiKey = GLFW.GLFW_KEY_J;
     public static boolean snapGrid = true;
     /** Soft keyboard click feedback while Nightfall GUI/editor is open. */
     public static boolean keySounds = true;
@@ -42,6 +44,7 @@ public final class Config {
             root.addProperty("guiKey", guiKey);
             root.addProperty("hudKey", hudKey);
             root.addProperty("mapKey", mapKey);
+            root.addProperty("aiKey", aiKey);
             root.addProperty("snapGrid", snapGrid);
             root.addProperty("keySounds", keySounds);
             root.addProperty("gridSize", gridSize);
@@ -60,9 +63,14 @@ public final class Config {
             root.add("panels", mapToJson(panels));
             root.add("hud", mapToJson(hud));
 
+            Files.createDirectories(FILE.getParent());
             Path tmp = FILE.resolveSibling("nightfall.json.tmp");
             Files.writeString(tmp, GSON.toJson(root));
-            Files.move(tmp, FILE, StandardCopyOption.REPLACE_EXISTING);
+            try {
+                Files.move(tmp, FILE, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException ignored) {
+                Files.move(tmp, FILE, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             Nightfall.LOGGER.error("Config konnte nicht gespeichert werden", e);
         }
@@ -81,40 +89,118 @@ public final class Config {
     private static void jsonToMap(JsonObject o, Map<String, int[]> map, int len) {
         map.clear();
         for (Map.Entry<String, JsonElement> e : o.entrySet()) {
-            JsonArray a = e.getValue().getAsJsonArray();
-            if (a.size() != len) continue;
-            int[] v = new int[len];
-            for (int i = 0; i < len; i++) v[i] = a.get(i).getAsInt();
-            map.put(e.getKey(), v);
+            try {
+                if (!e.getValue().isJsonArray()) continue;
+                JsonArray a = e.getValue().getAsJsonArray();
+                if (a.size() != len) continue;
+                int[] v = new int[len];
+                for (int i = 0; i < len; i++) v[i] = a.get(i).getAsInt();
+                map.put(e.getKey(), v);
+            } catch (RuntimeException invalidEntry) {
+                Nightfall.LOGGER.warn("Ungueltiger Config-Eintrag '{}' wird ignoriert", e.getKey());
+            }
+        }
+    }
+
+    private static int readKey(JsonObject root, String name, int fallback) {
+        try {
+            int key = root.has(name) ? root.get(name).getAsInt() : fallback;
+            return key >= 0 && key <= GLFW.GLFW_KEY_LAST ? key : fallback;
+        } catch (RuntimeException invalidKey) {
+            Nightfall.LOGGER.warn("Ungueltiger globaler Keybind '{}' - Standardtaste wird verwendet", name);
+            return fallback;
+        }
+    }
+
+    private static boolean readBoolean(JsonObject root, String name, boolean fallback) {
+        try {
+            return root.has(name) ? root.get(name).getAsBoolean() : fallback;
+        } catch (RuntimeException invalidValue) {
+            Nightfall.LOGGER.warn("Ungueltiger Config-Wert '{}' - Standardwert wird verwendet", name);
+            return fallback;
+        }
+    }
+
+    private static int readInt(JsonObject root, String name, int fallback, int min, int max) {
+        try {
+            int value = root.has(name) ? root.get(name).getAsInt() : fallback;
+            return Math.max(min, Math.min(max, value));
+        } catch (RuntimeException invalidValue) {
+            Nightfall.LOGGER.warn("Ungueltiger Config-Wert '{}' - Standardwert wird verwendet", name);
+            return fallback;
         }
     }
 
     public static void load() {
         if (!Files.exists(FILE)) return;
         try {
-            JsonObject root = JsonParser.parseString(Files.readString(FILE)).getAsJsonObject();
-            if (root.has("guiKey")) guiKey = root.get("guiKey").getAsInt();
-            if (root.has("hudKey")) hudKey = root.get("hudKey").getAsInt();
-            if (root.has("mapKey")) mapKey = root.get("mapKey").getAsInt();
-            if (root.has("snapGrid")) snapGrid = root.get("snapGrid").getAsBoolean();
-            if (root.has("keySounds")) keySounds = root.get("keySounds").getAsBoolean();
-            if (root.has("gridSize")) gridSize = Math.max(1, root.get("gridSize").getAsInt());
+            JsonElement parsed = JsonParser.parseString(Files.readString(FILE));
+            if (!parsed.isJsonObject()) throw new JsonParseException("Config-Wurzel ist kein JSON-Objekt");
+            JsonObject root = parsed.getAsJsonObject();
 
-            JsonObject mods = root.has("modules") ? root.getAsJsonObject("modules") : new JsonObject();
+            guiKey = readKey(root, "guiKey", GLFW.GLFW_KEY_RIGHT_SHIFT);
+            hudKey = readKey(root, "hudKey", GLFW.GLFW_KEY_H);
+            mapKey = readKey(root, "mapKey", GLFW.GLFW_KEY_M);
+            aiKey = readKey(root, "aiKey", GLFW.GLFW_KEY_J);
+            if (aiKey == guiKey || aiKey == hudKey || aiKey == mapKey) aiKey = GLFW.GLFW_KEY_J;
+            snapGrid = readBoolean(root, "snapGrid", true);
+            keySounds = readBoolean(root, "keySounds", true);
+            gridSize = readInt(root, "gridSize", 4, 1, 64);
+
+            JsonObject mods = root.has("modules") && root.get("modules").isJsonObject()
+                    ? root.getAsJsonObject("modules") : new JsonObject();
             for (Module m : ModuleManager.all()) {
-                if (!mods.has(m.getName())) continue;
+                if (!mods.has(m.getName()) || !mods.get(m.getName()).isJsonObject()) continue;
                 JsonObject o = mods.getAsJsonObject(m.getName());
-                if (o.has("settings")) {
-                    JsonObject s = o.getAsJsonObject("settings");
-                    for (Setting<?> st : m.getSettings()) if (s.has(st.getName())) st.load(s.get(st.getName()));
+
+                if (o.has("settings") && o.get("settings").isJsonObject()) {
+                    JsonObject settings = o.getAsJsonObject("settings");
+                    for (Setting<?> setting : m.getSettings()) {
+                        if (!settings.has(setting.getName())) continue;
+                        try {
+                            setting.load(settings.get(setting.getName()));
+                        } catch (RuntimeException invalidSetting) {
+                            Nightfall.LOGGER.warn("Setting '{}' in Modul '{}' ist ungueltig und wird ignoriert",
+                                    setting.getName(), m.getName());
+                        }
+                    }
                 }
-                if (o.has("key")) m.setKey(o.get("key").getAsInt());
-                if (o.has("enabled")) m.setEnabled(o.get("enabled").getAsBoolean());
+
+                if (o.has("key")) {
+                    try {
+                        int configuredKey = o.get("key").getAsInt();
+                        String conflict = ModuleManager.assignKey(m, configuredKey);
+                        if (conflict != null) Nightfall.LOGGER.warn(
+                                "Keybind fuer '{}' wird ignoriert: {}", m.getName(), conflict);
+                    } catch (RuntimeException invalidKey) {
+                        Nightfall.LOGGER.warn("Ungueltiger Keybind fuer Modul '{}'", m.getName());
+                    }
+                }
+
+                if (o.has("enabled")) {
+                    try {
+                        m.setEnabled(o.get("enabled").getAsBoolean());
+                    } catch (RuntimeException | Error activationFailure) {
+                        Nightfall.LOGGER.error("Modul '{}' konnte aus der Config nicht aktiviert werden",
+                                m.getName(), activationFailure);
+                    }
+                }
             }
-            if (root.has("panels")) jsonToMap(root.getAsJsonObject("panels"), panels, 3);
-            if (root.has("hud")) jsonToMap(root.getAsJsonObject("hud"), hud, 4);
+
+            if (root.has("panels") && root.get("panels").isJsonObject())
+                jsonToMap(root.getAsJsonObject("panels"), panels, 3);
+            if (root.has("hud") && root.get("hud").isJsonObject())
+                jsonToMap(root.getAsJsonObject("hud"), hud, 4);
         } catch (Exception e) {
-            Nightfall.LOGGER.error("Config ist defekt und wird ignoriert: {}", FILE, e);
+            Path backup = FILE.resolveSibling("nightfall.json.corrupt-" + System.currentTimeMillis());
+            try {
+                Files.copy(FILE, backup, StandardCopyOption.REPLACE_EXISTING);
+                Nightfall.LOGGER.error("Defekte Config wurde gesichert unter {}; Nightfall startet mit Defaults",
+                        backup, e);
+            } catch (IOException backupError) {
+                Nightfall.LOGGER.error("Config ist defekt und konnte nicht gesichert werden: {}", FILE, e);
+                Nightfall.LOGGER.warn("Config-Backup fehlgeschlagen", backupError);
+            }
         }
     }
 

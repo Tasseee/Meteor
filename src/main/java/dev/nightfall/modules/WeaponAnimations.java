@@ -13,11 +13,14 @@ public final class WeaponAnimations extends Module {
     private final ModeSetting swing = add(new ModeSetting("Swing-Stil", "Vanilla+", "Vanilla+", "Punch", "Sweep", "Spin", "Snap"));
     private final BoolSetting inspect = add(new BoolSetting("Inspektion aktiv", false));
     private final NumberSetting inspectSpeed = add(new NumberSetting("Inspektionsgeschwindigkeit", 1.0, 0.25, 2.5, 0.05));
-    private final NumberSetting swingPower = add(new NumberSetting("Swing-Stärke", 1.0, 0.25, 2.0, 0.05));
+    private final NumberSetting swingPower = add(new NumberSetting("Swing-Staerke", 1.0, 0.25, 2.0, 0.05));
+    private final BoolSetting bothHands = add(new BoolSetting("Beide Haende animieren", true));
 
     public WeaponAnimations() {
         super("WeaponAnimations", "Waffeninspektion und lokale First-Person-Swing-Animationen.", Category.VISUALS);
     }
+
+    public boolean affectsHand(boolean leftHand) { return bothHands.get() || !leftHand; }
 
     public void transform(MatrixStack matrices, float swingProgress, boolean leftHand) {
         float side = leftHand ? -1f : 1f;

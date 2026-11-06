@@ -3,6 +3,7 @@ package dev.nightfall.modules;
 import dev.nightfall.module.HudModule;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.util.Theme;
+import dev.nightfall.util.HudStyle;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.item.ItemStack;
 import net.minecraft.entity.EquipmentSlot;
@@ -22,8 +23,7 @@ public final class ArmorHud extends HudModule {
         if (mc.player == null) return;
         w = 144;
         h = 38;
-        ctx.fill(0, 0, w, h, 0xA0101014);
-        ctx.fill(0, 0, w, 2, Theme.ACCENT);
+        HudStyle.panel(ctx, w, h);
         // Minecraft armor inventory order: boots, leggings, chestplate, helmet.
         for (int i = 0; i < 4; i++) {
             ItemStack stack = switch (i) { case 0 -> mc.player.getEquippedStack(EquipmentSlot.FEET); case 1 -> mc.player.getEquippedStack(EquipmentSlot.LEGS); case 2 -> mc.player.getEquippedStack(EquipmentSlot.CHEST); default -> mc.player.getEquippedStack(EquipmentSlot.HEAD); };

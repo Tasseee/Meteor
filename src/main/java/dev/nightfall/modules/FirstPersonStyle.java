@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import net.minecraft.client.util.math.MatrixStack;
@@ -16,11 +17,14 @@ public final class FirstPersonStyle extends Module {
     private final NumberSetting pitch = add(new NumberSetting("X-Rotation", 0, -45, 45, 1));
     private final NumberSetting yaw = add(new NumberSetting("Y-Rotation", 0, -45, 45, 1));
     private final NumberSetting roll = add(new NumberSetting("Z-Rotation", 0, -90, 90, 1));
-    private final NumberSetting scale = add(new NumberSetting("3D-Skalierung", 1.0, 0.65, 1.35, 0.01));
+    private final NumberSetting scale = add(new NumberSetting("Hand-/Item-Groesse", 0.85, 0.35, 1.35, 0.01));
+    private final BoolSetting bothHands = add(new BoolSetting("Beide Haende bewegen", true));
 
     public FirstPersonStyle() {
         super("ViewModel", "Arme und gehaltenes Item frei auf dem Bildschirm positionieren, drehen und skalieren.", Category.VISUALS);
     }
+
+    public boolean affectsHand(boolean leftHand) { return bothHands.get() || !leftHand; }
 
     public void transform(MatrixStack matrices, boolean leftHand) {
         float side = leftHand ? -1f : 1f;

@@ -3,6 +3,7 @@ package dev.nightfall;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.nightfall.config.Config;
 import dev.nightfall.module.ModuleManager;
@@ -11,6 +12,8 @@ import dev.nightfall.modules.AutoText;
 import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.TrapperBot;
 import dev.nightfall.modules.FakeBases;
+import dev.nightfall.modules.InvSeeValue;
+import dev.nightfall.modules.Lyrics;
 import dev.nightfall.modules.StaffWatch;
 import dev.nightfall.module.setting.ListSetting;
 import dev.nightfall.scanner.Waypoint;
@@ -19,6 +22,8 @@ import dev.nightfall.util.Storage;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
 import net.minecraft.text.Text;
 import java.util.List;
 
@@ -127,8 +132,11 @@ public final class Commands {
                 .then(literal("add").then(argument("name", StringArgumentType.word()).executes(c -> {
                     MinecraftClient mc = MinecraftClient.getInstance();
                     if (mc.player == null) return 0;
-                    WaypointManager.add(str(c, "name"), FakeBases.CATEGORY, mc.player.getBlockX(), mc.player.getBlockY(), mc.player.getBlockZ());
-                    return say(c, "Lokale TEST/DECOY-Markierung gesetzt: " + str(c, "name"));
+                    String name = str(c, "name");
+                    WaypointManager.add(name, FakeBases.CATEGORY, mc.player.getBlockX(), mc.player.getBlockY(), mc.player.getBlockZ());
+                    var chunk = mc.world.getChunkManager().getWorldChunk(mc.player.getBlockX() >> 4, mc.player.getBlockZ() >> 4);
+                    String learned = FakeBases.learn(name, chunk);
+                    return say(c, "Lokale DECOY-Markierung gesetzt: " + name + " | " + learned);
                 })))
                 .then(literal("del").then(argument("name", StringArgumentType.word()).executes(c -> {
                     String name = str(c, "name");
@@ -140,8 +148,51 @@ public final class Commands {
                 })))
                 .then(literal("list").executes(c -> {
                     int n = 0;
-                    for (Waypoint w : WaypointManager.all()) if (FakeBases.CATEGORY.equalsIgnoreCase(w.category)) { say(c, "[TEST/DECOY] " + w.name + " " + w.x + " " + w.y + " " + w.z); n++; }
+                    for (Waypoint w : WaypointManager.all()) if (FakeBases.CATEGORY.equalsIgnoreCase(w.category)) { say(c, "[DECOY] " + w.name + " " + w.x + " " + w.y + " " + w.z); n++; }
                     return say(c, n + " lokale Fake-Markierung(en)");
+                }))
+                .then(literal("learn").then(argument("name", StringArgumentType.word()).executes(c -> {
+                    MinecraftClient mc = MinecraftClient.getInstance();
+                    if (mc.player == null || mc.world == null) return 0;
+                    var chunk = mc.world.getChunkManager().getWorldChunk(mc.player.getBlockX() >> 4, mc.player.getBlockZ() >> 4);
+                    return say(c, FakeBases.learn(str(c, "name"), chunk));
+                })))
+                .then(literal("templates").executes(c -> {
+                    List<String> names = FakeBases.templateNames();
+                    for (String name : names) say(c, "[AUTO-FAKE] " + name);
+                    return say(c, names.size() + " gelernte FakeBase-Template(s); 90/180/270-Grad-Rotationen werden mitgeprueft");
+                }))
+                .then(literal("unlearn").then(argument("name", StringArgumentType.word()).executes(c ->
+                        say(c, FakeBases.forgetTemplate(str(c, "name")) ? "FakeBase-Template entfernt" : "Template nicht gefunden")))));
+
+        // ---- InvSee value HUD: prices are configured locally by item ID ----
+        root.then(literal("invvalue")
+                .then(literal("hand").then(argument("price", DoubleArgumentType.doubleArg(0)).executes(c -> {
+                    MinecraftClient mc = MinecraftClient.getInstance();
+                    if (mc.player == null || mc.player.getMainHandStack().isEmpty()) return say(c, "Halte zuerst ein Item in der Haupthand.");
+                    String id = InvSeeValue.itemId(mc.player.getMainHandStack());
+                    InvSeeValue.setPrice(id, DoubleArgumentType.getDouble(c, "price"));
+                    return say(c, id + " = " + DoubleArgumentType.getDouble(c, "price") + " (lokal gespeichert)");
+                })))
+                .then(literal("set").then(argument("item", StringArgumentType.word())
+                        .then(argument("price", DoubleArgumentType.doubleArg(0)).executes(c -> {
+                            String raw = str(c, "item");
+                            Identifier id = Identifier.tryParse(raw);
+                            if (id == null || !Registries.ITEM.containsId(id)) return say(c, "Unbekannte Item-ID: " + raw);
+                            String canonical = Registries.ITEM.getId(Registries.ITEM.get(id)).toString();
+                            double price = DoubleArgumentType.getDouble(c, "price");
+                            InvSeeValue.setPrice(canonical, price);
+                            return say(c, canonical + " = " + price + " (lokal gespeichert)");
+                        }))))
+                .then(literal("remove").then(argument("item", StringArgumentType.word()).executes(c -> {
+                    Identifier id = Identifier.tryParse(str(c, "item"));
+                    String canonical = id == null ? str(c, "item") : id.toString();
+                    return say(c, InvSeeValue.removePrice(canonical) ? canonical + " entfernt" : "Kein Preis fuer " + canonical);
+                })))
+                .then(literal("list").executes(c -> {
+                    var entries = new java.util.TreeMap<>(InvSeeValue.prices());
+                    for (var entry : entries.entrySet()) say(c, entry.getKey() + " = " + entry.getValue());
+                    return say(c, entries.size() + " Itempreis(e) gespeichert");
                 })));
 
         // ---- Staff list: visible client data only, no confirmed vanish claims ----
@@ -162,6 +213,15 @@ public final class Commands {
                     Config.keySounds = state.equalsIgnoreCase("on");
                     Config.save();
                     return say(c, "Tastatur-Klicksounds: " + (Config.keySounds ? "AN" : "AUS"));
+                })));
+
+        // ---- Lyrics playback sidecar ----
+        Lyrics lyrics = ModuleManager.get(Lyrics.class);
+        root.then(literal("lyrics")
+                .then(literal("status").executes(c -> say(c, "Lyrics " + (lyrics.isEnabled() ? "AN" : "AUS") + " | " + lyrics.status())))
+                .then(literal("reconnect").executes(c -> {
+                    lyrics.reconnect();
+                    return say(c, "Lyrics-Verbindung wird neu aufgebaut.");
                 })));
 
         // ---- BaseFinder Pro controls: pause/resume/status ----

@@ -37,6 +37,14 @@ jobs:
           test -f src/main/resources/fabric.mod.json
           test -f src/main/resources/nightfall.mixins.json
 
+      - name: Validate Lyrics sidecar syntax
+        run: python3 -m py_compile src/main/resources/nightfall-lyrics/lyrics_sidecar.py
+
+      - name: Validate bundled blueprint database
+        run: python3 -m json.tool src/main/resources/nightfall/blueprints.json > /dev/null
+      - name: Validate bundled community schematic index
+        run: python3 -m json.tool src/main/resources/nightfall/community_schematics.json > /dev/null
+
       - name: Build Nightfall
         run: gradle build --no-daemon
 
@@ -56,7 +64,30 @@ jobs:
                   names = set(jar.namelist())
                   if "fabric.mod.json" not in names:
                       raise SystemExit(f"{path} is missing fabric.mod.json")
+                  for resource in (
+                      "nightfall-lyrics/lyrics_sidecar.py",
+                      "nightfall-lyrics/requirements.txt",
+                      "nightfall-lyrics/requirements-windows.txt",
+                      "nightfall/blueprints.json",
+                      "nightfall/community_schematics.json",
+                  ):
+                      if resource not in names:
+                          raise SystemExit(f"{path} is missing bundled resource {resource}")
                   metadata = json.loads(jar.read("fabric.mod.json"))
+                  if "dev/nightfall/ai/AIVoiceClient.class" not in names:
+                      raise SystemExit(f"{path} is missing the Nightfall voice client")
+                  if "dev/nightfall/ai/SchematicManager.class" not in names:
+                      raise SystemExit(f"{path} is missing the schematic importer")
+                  community = json.loads(jar.read("nightfall/community_schematics.json"))
+                  sources = community.get("sources", [])
+                  source_ids = [entry.get("id") for entry in sources]
+                  if community.get("schemaVersion") != 1 or not sources or len(source_ids) != len(set(source_ids)):
+                      raise SystemExit(f"{path} contains an invalid community schematic index")
+                  database = json.loads(jar.read("nightfall/blueprints.json"))
+                  entries = database.get("entries", [])
+                  ids = [entry.get("id") for entry in entries]
+                  if database.get("schemaVersion") != 1 or not entries or len(ids) != len(set(ids)):
+                      raise SystemExit(f"{path} contains an invalid blueprint database")
                   if metadata.get("id") != "nightfall":
                       raise SystemExit(f"{path} has unexpected mod id: {metadata.get('id')!r}")
                   if "dev.nightfall.Nightfall" not in metadata.get("entrypoints", {}).get("client", []):

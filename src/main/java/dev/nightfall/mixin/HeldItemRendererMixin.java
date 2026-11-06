@@ -35,8 +35,14 @@ public abstract class HeldItemRendererMixin {
         boolean mainArmLeft = player.getMainArm() == Arm.LEFT;
         boolean leftHand = hand == Hand.MAIN_HAND ? mainArmLeft : !mainArmLeft;
         try {
-            if (styleEnabled) ModuleManager.get(FirstPersonStyle.class).transform(matrices, leftHand);
-            if (weaponEnabled) ModuleManager.get(WeaponAnimations.class).transform(matrices, swingProgress, leftHand);
+            if (styleEnabled) {
+                FirstPersonStyle style = ModuleManager.get(FirstPersonStyle.class);
+                if (style.affectsHand(leftHand)) style.transform(matrices, leftHand);
+            }
+            if (weaponEnabled) {
+                WeaponAnimations animations = ModuleManager.get(WeaponAnimations.class);
+                if (animations.affectsHand(leftHand)) animations.transform(matrices, swingProgress, leftHand);
+            }
         } catch (Throwable ignored) {
             // Never let cosmetic transforms interfere with vanilla item rendering.
         }
