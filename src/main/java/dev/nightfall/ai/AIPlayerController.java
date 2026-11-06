@@ -1958,7 +1958,9 @@ public final class AIPlayerController {
         String path = Registries.ITEM.getId(item).getPath();
         return path.endsWith("_sword") || path.endsWith("_axe") || path.equals("bow")
                 || path.equals("crossbow") || path.equals("trident") || path.equals("mace")
-                || path.equals("shield") || path.equals("tnt") || path.equals("end_crystal")
+                || path.equals("shield") || path.equals("arrow") || path.equals("spectral_arrow")
+                || path.equals("tipped_arrow") || path.equals("firework_rocket")
+                || path.equals("firework_star") || path.equals("tnt") || path.equals("end_crystal")
                 || path.equals("fire_charge");
     }
 
