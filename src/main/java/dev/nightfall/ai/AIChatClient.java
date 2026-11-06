@@ -11,7 +11,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.CompletionException;
 import java.util.function.Consumer;
 
@@ -220,6 +224,154 @@ public final class AIChatClient {
 
     private AIChatClient() {}
 
+    private static final int MAX_HISTORY_TURNS = 6;
+    private static final int MAX_HISTORY_CHARS = 24_000;
+
+    /**
+     * Keep complete recent user turns. Starting at a user message preserves
+     * assistant tool-call / tool-result pairs required by OpenAI-compatible APIs.
+     */
+    private static List<Message> compactHistory(List<Message> history) {
+        if (history == null || history.isEmpty()) return List.of();
+
+        List<Integer> turnStarts = new ArrayList<>();
+        for (int i = 0; i < history.size(); i++) {
+            Message message = history.get(i);
+            if (message != null && "user".equals(message.role())) turnStarts.add(i);
+        }
+        if (turnStarts.isEmpty()) return List.of();
+
+        int firstTurn = Math.max(0, turnStarts.size() - MAX_HISTORY_TURNS);
+        while (firstTurn < turnStarts.size() - 1
+                && historySizeFrom(history, turnStarts.get(firstTurn)) > MAX_HISTORY_CHARS) {
+            firstTurn++;
+        }
+        return new ArrayList<>(history.subList(turnStarts.get(firstTurn), history.size()));
+    }
+
+    private static long historySizeFrom(List<Message> history, int start) {
+        long size = 0;
+        for (int i = start; i < history.size(); i++) {
+            Message message = history.get(i);
+            if (message == null) continue;
+            if (message.content() != null) size += message.content().length();
+            if (message.rawAssistantMessage() != null) size += message.rawAssistantMessage().length();
+            if (message.name() != null) size += message.name().length();
+            if (message.toolCallId() != null) size += message.toolCallId().length();
+            size += 32;
+        }
+        return size;
+    }
+
+    /**
+     * Expose only tools relevant to the latest user request. This cuts repeated
+     * schema tokens and gives the model fewer unrelated choices. A compact
+     * read-only/stop set remains available for ordinary questions and recovery.
+     */
+    private static JsonArray toolsFor(List<Message> history) {
+        String latestUserText = "";
+        for (int i = history.size() - 1; i >= 0; i--) {
+            Message message = history.get(i);
+            if (message != null && "user".equals(message.role())) {
+                latestUserText = message.content() == null ? "" : message.content();
+                break;
+            }
+        }
+        String query = latestUserText.toLowerCase(Locale.ROOT);
+        Set<String> selected = new LinkedHashSet<>(List.of(
+                "get_player_status", "get_inventory", "get_module_observations",
+                "get_module_settings", "get_build_status", "get_schematic_progress",
+                "stop_current_action", "stop_movement", "pause_build", "stop_build"
+        ));
+
+        if (hasAny(query, "esp", "spieler", "player", "mob", "entity", "creeper", "zombie",
+                "item-drop", "gedroppt", "kiste", "truhe", "hopper", "fass", "storage",
+                "blockentity", "staffwatch", "vanish", "tab-list", "tabliste")) {
+            addTools(selected, "get_module_observations", "get_module_settings", "set_module_state");
+        }
+        if (hasAny(query, "basis", "base", "versteck", "geheim", "verdächtig", "verdachtig",
+                "sus", "chunk", "decoy", "fakebase", "fake base")) {
+            addTools(selected, "search_bases", "get_base_findings", "get_module_observations",
+                    "mark_fake_base", "list_fake_base_templates");
+        }
+        if (hasAny(query, "modul", "module", "setting", "einstellung", "option", "clickgui",
+                "menü", "menu", "reichweite", "geschwindigkeit", "farbe", "modus", "mode")) {
+            addTools(selected, "get_module_settings", "set_module_state", "set_module_setting",
+                    "open_nightfall_menu", "get_module_observations");
+        }
+        if (hasAny(query, "bau", "baue", "bauen", "bauplan", "haus", "hütte", "huette", "turm",
+                "farm", "schematic", "litematic", ".schem", "blueprint", "vorlage", "build",
+                "house", "shelter", "tower", "struktur bauen")) {
+            addTools(selected, "build_structure", "build_starter_shelter", "build_custom_structure",
+                    "search_blueprints", "list_schematics", "inspect_schematic", "build_schematic",
+                    "get_schematic_progress", "get_build_status", "resume_saved_build", "resume_build",
+                    "pause_build", "stop_build", "navigate_to", "get_inventory", "gather_block",
+                    "gather_wood", "gather_ore", "craft_item", "eat_food");
+        }
+        if (hasAny(query, "abbau", "abbaue", "abbauen", "mining", "holz", "erz", "rohstoff",
+                "sammel", "grabe", "schürf", "schuerf", "ore", "diamond", "diamant",
+                "ancient debris", "netherite", "schmelz", "smelt", "block abbauen")) {
+            addTools(selected, "mine_block", "mine_looked_block", "gather_wood", "gather_block",
+                    "gather_ore", "smelt_item", "get_inventory", "navigate_to", "stop_current_action");
+        }
+        if (hasAny(query, "craft", "crafting", "herstell", "rezept", "recipe")) {
+            addTools(selected, "craft_item", "get_inventory");
+        }
+        if (hasAny(query, "essen", "iss ", "hunger", "food", "fütter", "fuetter")) {
+            addTools(selected, "eat_food", "get_inventory", "get_player_status");
+        }
+        if (hasAny(query, "angreif", "attack", "kämpf", "kaempf", "kampf", "fight", "gegner",
+                "feind", "hostile", "beschütz", "beschuetz", "guard")) {
+            addTools(selected, "attack_nearest_hostile", "guard_nearby_hostiles",
+                    "stop_current_action", "stop_movement", "get_player_status");
+        }
+        if (hasAny(query, "geh ", "gehe ", "lauf", "walk", "beweg", "navigate", "navigation",
+                "koordinat", "wegpunkt", "waypoint", "route", "teleport", "rtp", "stopp",
+                "stop", "halt", "abbrechen")) {
+            addTools(selected, "walk_forward", "navigate_to", "stop_movement",
+                    "stop_current_action", "add_waypoint", "random_teleport",
+                    "resume_saved_build", "pause_build", "resume_build");
+        }
+        if (hasAny(query, "such", "suche", "finde", "finden", "find ", "locate", "biom",
+                "struktur", "village", "dorf", "stronghold", "bastion", "festung",
+                "ancient city", "trial chamber", "dschungel", "jungle", "wüste", "wueste",
+                "desert", "taiga", "sumpf", "swamp")) {
+            addTools(selected, "search_structures", "locate_structure", "locate_biome",
+                    "search_bases", "get_base_findings", "navigate_to", "add_waypoint",
+                    "random_teleport");
+        }
+        if (hasAny(query, "befehl", "command", "serverbefehl", "/", "trigger")) {
+            addTools(selected, "run_server_command", "get_player_status");
+        }
+        if (hasAny(query, "rtp", "random teleport", "zufällig teleport", "zufaellig teleport")) {
+            addTools(selected, "random_teleport");
+        }
+        if (selected.size() == 10 && hasAny(query, "spieler", "player", "inventar", "inventory",
+                "position", "gesundheit", "health", "status", "hp")) {
+            addTools(selected, "get_player_status", "get_inventory", "get_module_observations");
+        }
+
+        JsonArray filtered = new JsonArray();
+        for (JsonElement element : AIActionRegistry.toolDefinitions()) {
+            if (!element.isJsonObject()) continue;
+            JsonObject function = element.getAsJsonObject().getAsJsonObject("function");
+            if (function == null || !function.has("name")) continue;
+            if (selected.contains(function.get("name").getAsString())) filtered.add(element);
+        }
+        return filtered;
+    }
+
+    private static boolean hasAny(String text, String... values) {
+        for (String value : values) {
+            if (text.contains(value)) return true;
+        }
+        return false;
+    }
+
+    private static void addTools(Set<String> selected, String... names) {
+        for (String name : names) selected.add(name);
+    }
+
     public record Message(String role, String content, String toolCallId, String name,
                           String rawAssistantMessage) {
         public Message(String role, String content) {
@@ -278,7 +430,8 @@ public final class AIChatClient {
                 messages.add(context);
             }
 
-            for (Message message : history) {
+            List<Message> recentHistory = compactHistory(history);
+            for (Message message : recentHistory) {
                 if (message.rawAssistantMessage() != null) {
                     messages.add(JsonParser.parseString(message.rawAssistantMessage()));
                     continue;
@@ -293,7 +446,7 @@ public final class AIChatClient {
                 messages.add(item);
             }
             payload.add("messages", messages);
-            payload.add("tools", AIActionRegistry.toolDefinitions());
+            payload.add("tools", toolsFor(recentHistory));
 
             HttpRequest.Builder builder = HttpRequest.newBuilder(endpoint)
                     .timeout(Duration.ofSeconds(45))
