@@ -1978,11 +1978,12 @@ public final class AIPlayerController {
             throw new IllegalArgumentException("Die benötigte Materialmenge muss zwischen 1 und 256 liegen.");
 
         List<AIMaterialPlanner.IncompleteCraftableCandidate> incomplete = new ArrayList<>();
+        CraftingDiagnosticBudget budget = new CraftingDiagnosticBudget();
         for (Item materialItem : findCraftableBlockMaterialItems(mc, requiredTotal)) {
+            if (budget.exhausted()) break;
             int owned = countInventoryItem(mc, materialItem);
             int missing = requiredTotal - owned;
             if (missing <= 0) continue;
-            CraftingDiagnosticBudget budget = new CraftingDiagnosticBudget();
             Map<Item, Integer> inventory = new HashMap<>();
             for (int slot = 0; slot < 36; slot++) {
                 ItemStack stack = mc.player.getInventory().getStack(slot);
