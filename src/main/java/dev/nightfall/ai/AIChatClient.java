@@ -200,7 +200,9 @@ public final class AIChatClient {
                 "verdachtig", "sus", "chunk", "decoy", "fakebase", "fake base", "fake", "decoy");
         if (baseTopic) {
             addTools(selected, "get_base_findings", "get_module_observations");
-            if (hasAny(query, "such", "find", "scann", "scan", "prüf", "pruef", "check", "locate")) {
+            if (hasAny(query, "such", "find a", "find the", "find me", "find base", "find bases",
+                    "search for", "search base", "search bases", "look for", "scan for", "scan base",
+                    "scan nearby", "scann", "prüf", "pruef", "check for", "locate")) {
                 addTools(selected, "search_bases");
             }
             if (hasAny(query, "markier", "mark as", "mark it", "mark this", "set as", "kennzeichn",
