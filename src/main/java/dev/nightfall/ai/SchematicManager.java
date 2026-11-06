@@ -5,6 +5,8 @@ import com.google.gson.JsonParser;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.nightfall.Nightfall;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.FluidBlock;
 import net.minecraft.block.FallingBlock;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.command.argument.BlockArgumentParser;
@@ -60,11 +62,13 @@ public final class SchematicManager {
                            int buildableBlocks, int manualOnlyBlocks,
                            List<AIBuilder.RelativeBlock> buildPlan,
                            List<AIBuilder.RelativeBlock> clearPlan,
+                           List<AIBuilder.RelativeBlock> waterPlan,
                            Map<String, Integer> materials, List<String> examples,
                            boolean containsBlockEntities, boolean containsEntities) {
         public Imported {
             buildPlan = List.copyOf(buildPlan);
             clearPlan = List.copyOf(clearPlan);
+            waterPlan = List.copyOf(waterPlan);
             materials = Map.copyOf(materials);
             examples = List.copyOf(examples);
         }
@@ -77,6 +81,7 @@ public final class SchematicManager {
                     .append("\nNicht-Luft-Blöcke: ").append(totalBlocks)
                     .append("\nLuftzellen für automatische Geländefreimachung: ").append(clearPlan.size())
                     .append("\nAutomatisch platzierbar: ").append(buildableBlocks)
+                    .append("\nWasserquellen (Eimer-Placement im Kreativmodus): ").append(waterPlan.size())
                     .append("\nManuell erforderlich/übersprungen: ").append(manualOnlyBlocks)
                     .append("\nBlock-Entities enthalten: ").append(containsBlockEntities ? "ja (NBT wird nicht übernommen)" : "nein")
                     .append("\nEntities enthalten: ").append(containsEntities ? "ja (werden nicht gespawnt)" : "nein");
@@ -317,8 +322,15 @@ public final class SchematicManager {
                 partClear.add(new AIBuilder.RelativeBlock(block.x() - startX, block.y() - startY,
                         block.z() - startZ));
         }
-        if (partBuild.isEmpty())
-            throw new IllegalArgumentException("Dieser Abschnitt enthält keine automatisch platzierbaren Blöcke; er besteht nur aus Luft, Flüssigkeit oder nicht unterstützten Blöcken.");
+        List<AIBuilder.RelativeBlock> partWater = new ArrayList<>();
+        for (AIBuilder.RelativeBlock block : imported.waterPlan()) {
+            if (block.x() >= startX && block.x() < endX && block.y() >= startY && block.y() < endY
+                    && block.z() >= startZ && block.z() < endZ)
+                partWater.add(new AIBuilder.RelativeBlock(block.x() - startX, block.y() - startY,
+                        block.z() - startZ, null, block.state()));
+        }
+        if (partBuild.isEmpty() && partWater.isEmpty())
+            throw new IllegalArgumentException("Dieser Abschnitt enthält keine automatisch platzierbaren Blöcke oder Wasserquellen.");
         String label = (imported.sourceName().isBlank() ? stripExtension(imported.fileName()) : imported.sourceName())
                 + " · Abschnitt X" + partX + " Y" + partY + " Z" + partZ;
         BlockPos farmAnchor = resolveBuildAnchor(fileName, partX, partY, partZ);
@@ -327,11 +339,12 @@ public final class SchematicManager {
                 startX + sectionWidth / 2 - BUILD_PART_SIZE / 2,
                 startY + sectionHeight / 2 - BUILD_PART_SIZE / 2,
                 startZ + sectionLength / 2 - BUILD_PART_SIZE / 2);
-        String preview = AIBuilder.prepareImportedStructure(label, partBuild, partClear,
+        String preview = AIBuilder.prepareImportedStructure(label, partBuild, partClear, partWater,
                 sectionCenter, sectionWidth, sectionHeight, sectionLength);
         return imported.summary() + "\n\nABSCHNITT X" + partX + "/" + (partsX - 1)
                 + " Y" + partY + "/" + (partsY - 1) + " Z" + partZ + "/" + (partsZ - 1)
-                + ": " + partBuild.size() + " Bau-Blöcke, " + partClear.size() + " Luftzellen.\n"
+                + ": " + partBuild.size() + " Bau-Blöcke, " + partClear.size() + " Luftzellen, "
+                + partWater.size() + " Wasserquellen.\n"
                 + "Dauerhafter Farm-Anker: " + farmAnchor.toShortString() + ". Abschnittszentrum: "
                 + sectionCenter.toShortString() + ". Die Gesamtposition bleibt über alle Abschnitte stabil. "
                 + "Bewege dich vor der Vorschau zum angezeigten Abschnittszentrum, damit die Ziel-Chunks geladen sind.\n\n"
@@ -388,6 +401,7 @@ public final class SchematicManager {
         int unsupported = 0;
         List<AIBuilder.RelativeBlock> buildPlan = new ArrayList<>();
         List<AIBuilder.RelativeBlock> clearPlan = new ArrayList<>();
+        List<AIBuilder.RelativeBlock> waterPlan = new ArrayList<>();
         Map<String, Integer> materials = new TreeMap<>();
         List<String> examples = new ArrayList<>();
         int[] cursor = {0};
@@ -407,6 +421,15 @@ public final class SchematicManager {
                 continue;
             }
             total++;
+            if (!state.getFluidState().isEmpty()) {
+                if (state.isOf(Blocks.WATER) && state.get(FluidBlock.LEVEL) == 0)
+                    waterPlan.add(new AIBuilder.RelativeBlock(x, y, z, null, state));
+                else {
+                    unsupported++;
+                    addExample(examples, state);
+                }
+                continue;
+            }
             BlockItem item = safeBuildItem(state, mc, x, y, z);
             if (item == null) {
                 unsupported++;
@@ -423,7 +446,7 @@ public final class SchematicManager {
         NbtList blockEntities = root.getListOrEmpty("BlockEntities");
         NbtList entities = root.getListOrEmpty("Entities");
         return new Imported(fileName, "Sponge .schem v2", "", width, height, length, total,
-                buildable, unsupported, buildPlan, clearPlan, materials, examples,
+                buildable, unsupported, buildPlan, clearPlan, waterPlan, materials, examples,
                 !blockEntities.isEmpty(), !entities.isEmpty());
     }
 
@@ -509,6 +532,7 @@ public final class SchematicManager {
 
         List<AIBuilder.RelativeBlock> buildPlan = new ArrayList<>();
         List<AIBuilder.RelativeBlock> clearPlan = new ArrayList<>();
+        List<AIBuilder.RelativeBlock> waterPlan = new ArrayList<>();
         Map<String, Integer> materials = new TreeMap<>();
         List<String> examples = new ArrayList<>();
         int total = 0, buildable = 0, unsupported = 0;
@@ -531,6 +555,15 @@ public final class SchematicManager {
                     continue;
                 }
                 total++;
+                if (!state.getFluidState().isEmpty()) {
+                    if (state.isOf(Blocks.WATER) && state.get(FluidBlock.LEVEL) == 0)
+                        waterPlan.add(new AIBuilder.RelativeBlock(x, y, z, null, state));
+                    else {
+                        unsupported++;
+                        addExample(examples, state);
+                    }
+                    continue;
+                }
                 BlockItem item = safeBuildItem(state, mc, x, y, z);
                 if (item == null) {
                     unsupported++;
@@ -546,7 +579,7 @@ public final class SchematicManager {
         String name = metadata.getString("Name", "");
         return new Imported(fileName, "Litematica .litematic v" + version, name,
                 width, height, length, total, buildable, unsupported,
-                buildPlan, clearPlan, materials, examples, containsBlockEntities, containsEntities);
+                buildPlan, clearPlan, waterPlan, materials, examples, containsBlockEntities, containsEntities);
     }
 
     private static BlockItem safeBuildItem(BlockState state, MinecraftClient mc, int x, int y, int z) {
