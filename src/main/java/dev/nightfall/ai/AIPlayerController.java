@@ -2637,7 +2637,9 @@ public final class AIPlayerController {
     private static void saveResumableTaskBeforeDisconnect(MinecraftClient mc) {
         if (mc == null || mc.player == null || mc.world == null) return;
         AITaskCheckpoint.Task task = null;
-        if (gatherMaterial != null && (mode == Mode.GATHER || mode == Mode.NAVIGATE)) {
+        if (gatherMaterial != null && (mode == Mode.GATHER || mode == Mode.GATHER_MINE
+                || mode == Mode.GATHER_TUNNEL || mode == Mode.GATHER_TUNNEL_MINE
+                || mode == Mode.NAVIGATE)) {
             int remainingSeconds = gatherDeadlineNanos > 0L
                     ? (int) Math.max(1L, Math.min(1_200L,
                     (gatherDeadlineNanos - System.nanoTime() + 999_999_999L) / 1_000_000_000L))
