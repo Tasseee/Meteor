@@ -52,11 +52,11 @@ import java.util.regex.Pattern;
 public final class SchematicManager {
     private static final Path DIRECTORY = net.fabricmc.loader.api.FabricLoader.getInstance()
             .getConfigDir().resolve("nightfall").resolve("schematics");
-    private static final long MAX_FILE_BYTES = 32L * 1024L * 1024L;
-    private static final long MAX_NBT_BYTES = 64L * 1024L * 1024L;
-    private static final int MAX_DIMENSION = 256;
-    private static final long MAX_VOLUME = 2_000_000L;
-    private static final int MAX_BUILDABLE_BLOCKS = 700_000;
+    private static final long MAX_FILE_BYTES = 64L * 1024L * 1024L;
+    private static final long MAX_NBT_BYTES = 128L * 1024L * 1024L;
+    private static final int MAX_DIMENSION = 512;
+    private static final long MAX_VOLUME = 8_000_000L;
+    private static final int MAX_BUILDABLE_BLOCKS = 1_000_000;
     private static final int BUILD_PART_SIZE = 32;
     private static final Path BUILD_SESSION_PATH = net.fabricmc.loader.api.FabricLoader.getInstance()
             .getConfigDir().resolve("nightfall").resolve("schematic_build_session.json");
@@ -92,6 +92,8 @@ public final class SchematicManager {
                     .append("\nAutomatisch platzierbar: ").append(buildableBlocks)
                     .append("\nWasserquellen (Eimer-Placement im Kreativmodus): ").append(waterPlan.size())
                     .append("\nManuell erforderlich/übersprungen: ").append(manualOnlyBlocks)
+                    .append("\nBlockstate-Abdeckung: ").append(totalBlocks == 0 ? "100,0 %" :
+                            String.format(java.util.Locale.ROOT, "%.1f %%", buildableBlocks * 100.0 / totalBlocks))
                     .append("\nBlock-Entities enthalten: ").append(containsBlockEntities ? "ja (NBT wird nicht übernommen)" : "nein")
                     .append("\nEntities enthalten: ").append(containsEntities ? "ja (werden nicht gespawnt)" : "nein");
             if (!materials.isEmpty()) {
@@ -206,7 +208,7 @@ public final class SchematicManager {
             long size = Files.size(file);
             long modified = Files.getLastModifiedTime(file).toMillis();
             if (size <= 0 || size > MAX_FILE_BYTES)
-                throw new IllegalArgumentException("Die Datei muss zwischen 1 Byte und 32 MB groß sein.");
+                throw new IllegalArgumentException("Die Datei muss zwischen 1 Byte und 64 MB groß sein.");
             Imported cached = cachedImport.get();
             if (cached != null && file.equals(cachedPath) && size == cachedSize && modified == cachedModified)
                 return cached;
@@ -335,7 +337,7 @@ public final class SchematicManager {
     public static boolean markSectionComplete(String fileName, int partX, int partY, int partZ) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null || mc.getNetworkHandler() == null
-                || partX < 0 || partX > 7 || partY < 0 || partY > 7 || partZ < 0 || partZ > 7)
+                || partX < 0 || partX > 15 || partY < 0 || partY > 15 || partZ < 0 || partZ > 15)
             return false;
         try {
             if (!Files.isRegularFile(BUILD_SESSION_PATH)) return false;
@@ -607,8 +609,8 @@ public final class SchematicManager {
             throw new IllegalArgumentException("Unterstützt werden Litematica-Schemaversionen 5 bis 7. Gefunden: " + version + ".");
         NbtCompound metadata = root.getCompoundOrEmpty("Metadata");
         NbtCompound regions = root.getCompoundOrEmpty("Regions");
-        if (regions.isEmpty() || regions.getSize() > 32)
-            throw new IllegalArgumentException("Die Litematic-Datei hat keine Regionen oder mehr als 32 Regionen.");
+        if (regions.isEmpty() || regions.getSize() > 64)
+            throw new IllegalArgumentException("Die Litematic-Datei hat keine Regionen oder mehr als 64 Regionen.");
 
         List<Region> parsedRegions = new ArrayList<>();
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
