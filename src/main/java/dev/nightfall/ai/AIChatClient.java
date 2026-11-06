@@ -53,6 +53,10 @@ public final class AIChatClient {
             wenn sie als read-only gekennzeichnet sind. Der Client validiert Aktionen und Berechtigungen.
             Bei „Stopp“, „halt“ oder „abbrechen“ verwende stop_current_action bzw. das passende Stopp-Werkzeug.
             Eine Pause ist kein Abschluss. Bereits gesetzte Blöcke bleiben beim Stoppen bestehen.
+            Nutze clear_saved_task nur bei einem ausdrücklichen Wunsch, den gespeicherten Sammel- oder
+            Navigationsauftrag zu löschen. Zeige die Vorschau und warte auf die Spielerbestätigung.
+            Das Werkzeug löscht nur den Aufgaben-Checkpoint der aktuellen Server-/Dimensionskombination;
+            es stoppt keine laufende Aktion und löscht keine gespeicherten Baufortschritte.
 
             WELT- UND MODULBEOBACHTUNGEN
             Nutze get_module_observations für echte Ergebnisse vorhandener Nightfall-Module und
