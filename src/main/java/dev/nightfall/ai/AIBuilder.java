@@ -743,6 +743,16 @@ public final class AIBuilder {
         return mc.player != null && mc.player.getAbilities().creativeMode;
     }
 
+    private static int countInventoryItem(MinecraftClient mc, Item item) {
+        if (mc.player == null) return 0;
+        int count = 0;
+        for (int slot = 0; slot < 36; slot++) {
+            ItemStack stack = mc.player.getInventory().getStack(slot);
+            if (!stack.isEmpty() && stack.isOf(item)) count += stack.getCount();
+        }
+        return count;
+    }
+
     private static Map<BlockItem, Integer> collectInventoryMaterials(MinecraftClient mc) {
         return collectInventoryMaterials(mc, true);
     }
@@ -976,7 +986,13 @@ public final class AIBuilder {
         }
 
         if (index >= PLAN.size()) {
-            stopInternal("Bau abgeschlossen: " + blueprintName + " wurde vom Server bestätigt.", true);
+            if (waterIndex < WATER_PLAN.size() || pendingWaterTarget != null) {
+                tickWaterPlacement(mc, player);
+                return;
+            }
+            stopInternal("Bauabschnitt abgeschlossen: " + blueprintName + " · " + PLAN.size()
+                    + " feste Blöcke und " + waterIndex + "/" + WATER_PLAN.size()
+                    + " Wasserquellen vom Client bestätigt. Nicht unterstützte Teile bleiben manuell.", true);
             return;
         }
         BlockPos target = PLAN.get(index);
@@ -1058,6 +1074,105 @@ public final class AIBuilder {
         player.setYaw(candidate.yaw());
         player.setPitch(candidate.pitch());
         delay = 1;
+    }
+
+    private static void tickWaterPlacement(MinecraftClient mc, ClientPlayerEntity player) {
+        if (!playerIsCreative(mc)) {
+            WATER_PLAN.clear();
+            waterIndex = 0;
+            return;
+        }
+        if (pendingWaterTarget != null) {
+            BlockState current = mc.world.getBlockState(pendingWaterTarget);
+            if (current.getFluidState().isOf(Fluids.WATER)) {
+                waterIndex++;
+                pendingWaterTarget = null;
+                pendingWaterTicks = 0;
+                saveCheckpointProgress(waterIndex, WATER_PLAN.size());
+                if (waterIndex == 1 || waterIndex % 25 == 0 || waterIndex == WATER_PLAN.size())
+                    notifyPlayer("Wasserquellen bestätigt: " + waterIndex + "/" + WATER_PLAN.size() + ".");
+                delay = 1;
+                return;
+            }
+            if (!current.isReplaceable() && current.getFluidState().isEmpty()) {
+                stopInternal("Wasserplatzierung gestoppt: Das Ziel " + pendingWaterTarget.toShortString()
+                        + " wurde durch " + current + " blockiert.", true);
+                return;
+            }
+            if (++pendingWaterTicks < CONFIRMATION_TIMEOUT_TICKS) {
+                delay = 1;
+                return;
+            }
+            stopInternal("Wasserplatzierung gestoppt: Der Server hat Wasser bei "
+                    + pendingWaterTarget.toShortString() + " nicht bestätigt. Der Checkpoint bleibt für eine manuelle Prüfung erhalten.", true);
+            preserveCheckpointOnStop = true;
+            return;
+        }
+
+        if (waterIndex >= WATER_PLAN.size()) return;
+        BlockPos target = WATER_PLAN.get(waterIndex);
+        BlockState present = mc.world.getBlockState(target);
+        if (present.getFluidState().isOf(Fluids.WATER)) {
+            waterIndex++;
+            saveCheckpointProgress(waterIndex, WATER_PLAN.size());
+            return;
+        }
+        if (!present.isReplaceable() || !mc.world.getFluidState(target).isEmpty()) {
+            stopInternal("Wasserplatzierung gestoppt: Das Ziel " + target.toShortString()
+                    + " ist nicht mehr frei.", true);
+            preserveCheckpointOnStop = true;
+            return;
+        }
+
+        int slot = findMaterialSlot(mc, player, Items.WATER_BUCKET);
+        if (slot == MATERIAL_SWAP_PENDING) {
+            status = "Hole Wassereimer aus dem Inventar";
+            delay = 1;
+            return;
+        }
+        if (slot < 0) {
+            stopInternal("Wasserplatzierung pausiert: Ein Wassereimer fehlt im Inventar. Der übrige Farmabschnitt bleibt gespeichert.", true);
+            preserveCheckpointOnStop = true;
+            return;
+        }
+        if (player.getInventory().getSelectedSlot() != slot) {
+            player.getInventory().setSelectedSlot(slot);
+            delay = 1;
+            return;
+        }
+
+        double reach = player.getBlockInteractionRange();
+        BlockHitResult hit = null;
+        for (Direction direction : Direction.values()) {
+            BlockPos support = target.offset(direction);
+            BlockState supportState = mc.world.getBlockState(support);
+            if (supportState.getCollisionShape(mc.world, support).isEmpty()) continue;
+            Direction face = direction.getOpposite();
+            Vec3d hitPos = support.toCenterPos().add(face.getOffsetX() * 0.5,
+                    face.getOffsetY() * 0.5, face.getOffsetZ() * 0.5);
+            if (player.getEyePos().squaredDistanceTo(hitPos) > reach * reach) continue;
+            hit = new BlockHitResult(hitPos, face, support, false);
+            break;
+        }
+        if (hit == null) {
+            if (placementApproachAttempts < 3 && AIPlayerController.navigateNear(target, 2)) {
+                placementNavigationPending = true;
+                placementApproachAttempts++;
+                status = "Gehe zur Wasserstelle " + target.toShortString();
+                return;
+            }
+            stopInternal("Wasserplatzierung pausiert: Keine erreichbare Ansetzfläche bei "
+                    + target.toShortString() + ". Geh näher heran oder setze diese Wasserstelle manuell.", true);
+            preserveCheckpointOnStop = true;
+            return;
+        }
+        placementApproachAttempts = 0;
+        mc.interactionManager.interactBlock(player, Hand.MAIN_HAND, hit);
+        player.swingHand(Hand.MAIN_HAND);
+        pendingWaterTarget = target.toImmutable();
+        pendingWaterTicks = 0;
+        status = "Setze Wasser " + (waterIndex + 1) + "/" + WATER_PLAN.size();
+        delay = 2;
     }
 
     private static void tickExcavation(MinecraftClient mc, ClientPlayerEntity player) {
@@ -1198,7 +1313,7 @@ public final class AIBuilder {
      * into the source inventory slot.
      */
     private static int findMaterialSlot(MinecraftClient mc, ClientPlayerEntity player,
-                                        BlockItem expectedMaterial) {
+                                        Item expectedMaterial) {
         if (pendingInventoryMaterial != null) {
             if (pendingInventoryMaterial != expectedMaterial) {
                 pendingInventoryMaterial = null;
