@@ -24,6 +24,28 @@ public abstract class EntityScanEsp extends EspBase {
     protected abstract boolean accept(Entity e);
     protected String nameOf(Entity e) { return e.getName().getString(); }
 
+    /** Read-only observations for Nightfall AI; mirrors this module's own filters and range. */
+    public List<String> aiObservations(int limit) {
+        List<Entity> found = new ArrayList<>();
+        if (!isEnabled() || mc.world == null || mc.player == null) return List.of();
+        double rangeSquared = range.get() * range.get();
+        for (Entity entity : mc.world.getEntities()) {
+            if (entity == mc.player || !accept(entity)) continue;
+            if (entity.squaredDistanceTo(mc.player) > rangeSquared) continue;
+            if (visibleOnly.get() && !mc.player.canSee(entity)) continue;
+            found.add(entity);
+        }
+        found.sort(Comparator.comparingDouble(entity -> entity.squaredDistanceTo(mc.player)));
+        List<String> observations = new ArrayList<>();
+        for (int i = 0; i < Math.min(Math.max(0, limit), found.size()); i++) {
+            Entity entity = found.get(i);
+            observations.add(nameOf(entity) + " @ " + entity.getBlockX() + ","
+                    + entity.getBlockY() + "," + entity.getBlockZ() + " ("
+                    + Math.round(Math.sqrt(entity.squaredDistanceTo(mc.player))) + "m)");
+        }
+        return observations;
+    }
+
     @Override
     public void renderHud(DrawContext ctx) {
         if (mc.world == null || mc.player == null || !Projection.valid()) return;
