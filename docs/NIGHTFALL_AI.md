@@ -269,9 +269,13 @@ normalisiert deren Koordinaten. `build_schematic` akzeptiert die optionalen Para
 `part_x`, `part_y` und `part_z` (jeweils nullbasiert); jeder Abschnitt umfasst maximal
 32×32×32 Zellen. Die KI muss bei großen Vorlagen alle benötigten Abschnitte einzeln planen.
 Der erste Abschnitt (0/0/0) speichert einen lokalen, an Server/Dimension/Datei gebundenen Farm-Anker
-in `config/nightfall/schematic_build_session.json`. Alle weiteren Abschnittszentren werden aus diesem
-Anker berechnet; `inspect_schematic` zeigt die exakten Weltkoordinaten. Navigiere mit `navigate_to`
-zum angezeigten Zentrum, bevor du den Abschnitt vorbereitest, damit seine Ziel-Chunks geladen sind. Die Abschnitte sind keine Garantie für einen
+in `config/nightfall/schematic_build_session.json`. Alle weiteren Bauzentren werden aus diesem
+Anker berechnet; `inspect_schematic` zeigt zusätzlich eine Zugangsposition auf Höhe des Startankers.
+Navigiere mit `navigate_to` zur Zugangsposition (nicht zum eventuell in der Luft liegenden Bauzentrum),
+bevor du den Abschnitt vorbereitest, damit seine Ziel-Chunks geladen sind. Baue die Abschnitte in
+aufsteigender `part_y`-Reihenfolge (unterste Ebene zuerst), danach über X/Z, damit obere Teile an
+bereits bestätigte untere Blöcke anschließen können. Zum bewussten Neusetzen des Startpunkts muss
+`config/nightfall/schematic_build_session.json` gelöscht werden. Die Abschnitte sind keine Garantie für einen
 funktionierenden Farmaufbau. Stille Wasserquellen können im Kreativmodus nach dem Festblock-Aufbau
 mit einem Wassereimer gesetzt werden; im Survival-Modus bleiben sie manuell. Fließendes Wasser wird
 nicht rekonstruiert, sondern muss durch die Vanilla-Flusssimulation entstehen. Dynamische
