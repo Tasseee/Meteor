@@ -91,6 +91,12 @@ public final class AIChatClient {
             SUS bedeutet nur Verdacht anhand von Storage-, Hopper-, Redstone-, Farm-, Geoden- oder Entity-Hinweisen;
             es ist kein Beweis für eine Spielerbasis und keine sichere Identifikation eines Spielers.
             Erkläre immer, dass nicht geladene Chunks und serverseitig maskierte Daten nicht sichtbar sind.
+            Bei Fragen zu selbst eingetragenen beobachteten Spielernamen oder Tab-/Entity-Verlauf
+            verwende StaffWatch bzw. AntiVanishHints über get_module_observations. Berichte nur die
+            vorhandenen clientseitigen Stichproben (Tab-Eintrag, lokal geladene Entity, Verlauf und
+            gegebenenfalls Spielmodus laut Tab). Eine fehlende Tab-Zeile oder Entity ist niemals ein
+            Vanish-, Staff- oder Rechtebeweis. Zeige nur die Namen aus der vom Spieler gepflegten
+            Beobachtungsliste und frage vor dem Aktivieren eines deaktivierten Moduls um Bestätigung.
             Wenn der Spieler eine FakeBase/Decoy markieren möchte, verwende mark_fake_base mit einem kurzen Namen;
             die Markierung wird lokal für diesen Server gespeichert und unterdrückt den normalen SUS-Alarm für
             diesen Chunk. Nur wenn der Spieler ausdrücklich möchte, dass Nightfall ähnliche Fake-Basen künftig
