@@ -1949,12 +1949,17 @@ public final class AIPlayerController {
         }
         if (item == null || item == Items.AIR)
             throw new IllegalArgumentException("Ich kenne kein Item mit der ID oder dem Namen „" + requested + "“.");
-        String path = Registries.ITEM.getId(item).getPath();
-        if (path.endsWith("_sword") || path.equals("bow") || path.equals("crossbow")
-                || path.equals("trident") || path.equals("mace") || path.equals("shield")
-                || path.equals("tnt") || path.equals("end_crystal"))
+        if (isRestrictedCraftItem(item))
             throw new IllegalArgumentException("Diese Gegenstandskategorie ist für die KI-Crafting-Automation nicht freigegeben.");
         return item;
+    }
+
+    private static boolean isRestrictedCraftItem(Item item) {
+        String path = Registries.ITEM.getId(item).getPath();
+        return path.endsWith("_sword") || path.endsWith("_axe") || path.equals("bow")
+                || path.equals("crossbow") || path.equals("trident") || path.equals("mace")
+                || path.equals("shield") || path.equals("tnt") || path.equals("end_crystal")
+                || path.equals("fire_charge");
     }
 
     private record CraftingPlanStep(RecipeDisplayEntry recipe, Item resultItem, ItemStack resultStack,
@@ -1982,6 +1987,7 @@ public final class AIPlayerController {
     private static boolean planCraftingItem(MinecraftClient mc, Item target, int requiredTotal,
                                             Map<Item, Integer> available, List<CraftingPlanStep> steps,
                                             Set<Item> visiting, int depth) {
+        if (isRestrictedCraftItem(target)) return false;
         if (available.getOrDefault(target, 0) >= requiredTotal) return true;
         if (depth > MAX_CRAFT_CHAIN_DEPTH || steps.size() >= MAX_CRAFT_CHAIN_STEPS
                 || !visiting.add(target)) return false;
