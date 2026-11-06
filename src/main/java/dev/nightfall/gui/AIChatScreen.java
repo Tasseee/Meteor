@@ -50,6 +50,7 @@ public final class AIChatScreen extends Screen {
     private int sendX, sendY, sendW, sendH;
     private int micX, micY, micW, micH;
     private int ttsX, ttsY, ttsW, ttsH;
+    private int contextToggleX, contextToggleY, contextToggleW, contextToggleH;
     private AIActionRegistry.Action pendingAction;
     private AIChatClient.ToolCall pendingToolCall;
     private boolean pendingRealtimeToolCall;
@@ -278,6 +279,17 @@ public final class AIChatScreen extends Screen {
                 : "Weltkontext aus";
         ctx.drawText(mc.textRenderer, contextState, panelX + 16, panelY + 34,
                 settings.shareWorldContext() ? Theme.ACCENT : Theme.TEXT_DIM, false);
+        contextToggleW = 112;
+        contextToggleH = 18;
+        contextToggleX = panelX + panelW - contextToggleW - 14;
+        contextToggleY = panelY + 30;
+        int contextButtonColor = settings.shareWorldContext() ? 0xFF267B69 : 0xFF343848;
+        ctx.fill(contextToggleX, contextToggleY, contextToggleX + contextToggleW,
+                contextToggleY + contextToggleH, contextButtonColor);
+        String contextToggleLabel = settings.shareWorldContext() ? "WELTKONTEXT: AN" : "WELTKONTEXT: AUS";
+        int contextLabelX = contextToggleX + (contextToggleW - mc.textRenderer.getWidth(contextToggleLabel)) / 2;
+        ctx.drawText(mc.textRenderer, contextToggleLabel, contextLabelX, contextToggleY + 5,
+                Theme.TEXT, true);
         ctx.drawText(mc.textRenderer, status, panelX + 16, panelY + 47,
                 (waiting || waitingLocate) ? Theme.ACCENT : Theme.TEXT_DIM, false);
 
@@ -494,6 +506,12 @@ public final class AIChatScreen extends Screen {
             return true;
         }
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && click.x() >= contextToggleX && click.x() <= contextToggleX + contextToggleW
+                && click.y() >= contextToggleY && click.y() <= contextToggleY + contextToggleH) {
+            toggleWorldContextSharing();
+            return true;
+        }
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
                 && click.x() >= ttsX && click.x() <= ttsX + ttsW
                 && click.y() >= ttsY && click.y() <= ttsY + ttsH) {
             toggleVoiceOutput();
@@ -583,6 +601,21 @@ public final class AIChatScreen extends Screen {
             AIRealtimeVoiceClient.sendFunctionOutput(call.id(),
                     "Nightfall hat die Aktion abgelehnt: " + detail);
         }
+    }
+
+    private void toggleWorldContextSharing() {
+        AIConfig.Settings settings = AIConfig.current();
+        boolean enabled = !settings.shareWorldContext();
+        AIConfig.Settings updated = AIConfig.updateWorldContextSharing(enabled);
+        if (updated.shareWorldContext() != enabled) {
+            status = "Weltkontext-Einstellung konnte nicht gespeichert werden.";
+            return;
+        }
+        status = enabled
+                ? "Weltkontext aktiviert · Position, Dimension und Hand werden mit KI-Anfragen geteilt"
+                : "Weltkontext deaktiviert · keine Weltinformationen werden automatisch angehängt";
+        history.add(new ChatLine("assistant", status));
+        scroll = Float.MAX_VALUE;
     }
 
     private void toggleVoiceOutput() {
