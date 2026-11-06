@@ -29,6 +29,9 @@ import java.util.stream.Collectors;
 public final class AIChatScreen extends Screen {
     private static AIChatScreen active;
     private static final int MAX_ACTION_ROUND_TRIPS = 10;
+    private static final int MAX_VISIBLE_HISTORY_LINES = 80;
+    private static final int MAX_VISIBLE_MESSAGE_CHARS = 6_000;
+    private static final int MAX_USER_MESSAGE_CHARS = 8_000;
     private static final Pattern LOCATE_COORDINATES =
             Pattern.compile("(?s).*\\[\\s*(-?\\d+)\\s*,\\s*(~|-?\\d+)\\s*,\\s*(-?\\d+)\\s*\\].*");
 
@@ -243,6 +246,7 @@ public final class AIChatScreen extends Screen {
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         if (AIBuilder.isRunning()) status = AIBuilder.statusLabel();
         MinecraftClient mc = MinecraftClient.getInstance();
+        trimVisibleHistory();
         ctx.fill(0, 0, width, height, 0xA9000000);
 
         panelW = Math.min(570, Math.max(260, width - 24));
@@ -347,9 +351,21 @@ public final class AIChatScreen extends Screen {
         int inputW = ttsX - inputX - 8;
         ctx.fill(inputX, sendY, inputX + inputW, sendY + sendH, 0xE5080B12);
         ctx.fill(inputX, sendY + sendH - 1, inputX + inputW, sendY + sendH, Theme.ACCENT_DIM);
-        String shownInput = input + ((System.currentTimeMillis() / 500) % 2 == 0 ? "_" : "");
-        while (!shownInput.isEmpty() && mc.textRenderer.getWidth(shownInput) > inputW - 12) {
-            shownInput = shownInput.substring(1);
+        boolean showCursor = (System.currentTimeMillis() / 500) % 2 == 0;
+        String shownInput = input + (showCursor ? "_" : "");
+        int maxInputTextWidth = Math.max(8, inputW - 12);
+        if (mc.textRenderer.getWidth(shownInput) > maxInputTextWidth) {
+            int low = 0;
+            int high = input.length();
+            while (low < high) {
+                int middle = (low + high + 1) >>> 1;
+                String candidate = (middle < input.length() ? "…" : "")
+                        + input.substring(input.length() - middle) + (showCursor ? "_" : "");
+                if (mc.textRenderer.getWidth(candidate) <= maxInputTextWidth) low = middle;
+                else high = middle - 1;
+            }
+            shownInput = (low < input.length() ? "…" : "")
+                    + input.substring(input.length() - low) + (showCursor ? "_" : "");
         }
         ctx.drawText(mc.textRenderer, shownInput, inputX + 7, sendY + 7,
                 input.isEmpty() ? Theme.TEXT_DIM : Theme.TEXT, false);
@@ -577,11 +593,29 @@ public final class AIChatScreen extends Screen {
                 : "Sprachausgabe ausgeschaltet.";
     }
 
+    private void trimVisibleHistory() {
+        int excess = history.size() - MAX_VISIBLE_HISTORY_LINES;
+        if (excess > 0) history.subList(0, excess).clear();
+
+        for (int i = 0; i < history.size(); i++) {
+            ChatLine line = history.get(i);
+            if (line.content() != null && line.content().length() > MAX_VISIBLE_MESSAGE_CHARS) {
+                String shortened = line.content().substring(0, MAX_VISIBLE_MESSAGE_CHARS)
+                        + "\n… Nachricht für die Anzeige gekürzt …";
+                history.set(i, new ChatLine(line.role(), shortened));
+            }
+        }
+    }
+
     private void sendMessage() {
         if (waiting || pendingAction != null || input.isBlank()) return;
         String prompt = input.trim();
         input = "";
+        boolean truncated = prompt.length() > MAX_USER_MESSAGE_CHARS;
+        if (truncated) prompt = prompt.substring(0, MAX_USER_MESSAGE_CHARS);
         history.add(new ChatLine("user", prompt));
+        if (truncated) history.add(new ChatLine("assistant",
+                "Hinweis: Deine Nachricht wurde auf " + MAX_USER_MESSAGE_CHARS + " Zeichen begrenzt, damit die Anfrage schnell bleibt."));
         apiHistory.add(new AIChatClient.Message("user", prompt));
         actionRoundTrips = 0;
         scroll = Float.MAX_VALUE;
