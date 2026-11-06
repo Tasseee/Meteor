@@ -413,9 +413,10 @@ public final class AIBuilder {
         if (name == null || name.isBlank() || !name.matches("[\\p{L}0-9 _.-]{1,48}"))
             throw new IllegalArgumentException("Der Bauplanname ist ungültig.");
         if (maxBlocks < 1 || maxHorizontal < 1 || maxVerticalLimit < 1
-                || offsets == null || offsets.isEmpty() || offsets.size() > maxBlocks
+                || offsets == null || offsets.size() > maxBlocks
                 || clearOffsets == null || clearOffsets.size() > 262_144
-                || waterOffsets == null || waterOffsets.size() > 32_768)
+                || waterOffsets == null || waterOffsets.size() > 32_768
+                || (offsets.isEmpty() && waterOffsets.isEmpty()))
             throw new IllegalArgumentException("Der Bauplan oder sein Aushub überschreitet das sichere Volumenlimit.");
 
         Set<String> uniqueCoordinates = new HashSet<>();
@@ -495,7 +496,8 @@ public final class AIBuilder {
                     + ". Nightfall hat die exakten Block-IDs erkannt, aber der Bau startet erst, wenn alle Mengen im Spielerinventar liegen. "
                     + "Unterstützte nächste Schritte: passende Vanilla-Holzstämme mit gather_wood sammeln und freigeschaltete 2×2-Rezepte mit craft_item herstellen. "
                     + "Andere Materialtypen müssen derzeit manuell beschafft werden.");
-        if (selected == null) selected = offsetMaterials.values().iterator().next();
+        if (selected == null && !offsetMaterials.isEmpty())
+            selected = offsetMaterials.values().iterator().next();
 
         ClientPlayerEntity player = mc.player;
         Direction playerForward = player.getHorizontalFacing();
@@ -1489,11 +1491,13 @@ public final class AIBuilder {
             int checkpointVersion = root.get("version").getAsInt();
             if ((checkpointVersion != 2 && checkpointVersion != 3 && checkpointVersion != 4)
                     || !root.has("blocks") || !root.get("blocks").isJsonArray()
-                    || root.getAsJsonArray("blocks").isEmpty() || root.getAsJsonArray("blocks").size() > 32_768
+                    || root.getAsJsonArray("blocks").size() > 32_768
                     || !root.has("excavation") || !root.get("excavation").isJsonArray()
                     || root.getAsJsonArray("excavation").size() > MAX_EXCAVATION_BLOCKS
                     || (checkpointVersion >= 4 && (!root.has("water") || !root.get("water").isJsonArray()
-                    || root.getAsJsonArray("water").size() > 32_768)))
+                    || root.getAsJsonArray("water").size() > 32_768
+                    || (root.getAsJsonArray("blocks").isEmpty() && root.getAsJsonArray("water").isEmpty())))
+                    || (checkpointVersion < 4 && root.getAsJsonArray("blocks").isEmpty()))
                 throw new IllegalArgumentException("Ungültiges oder nicht unterstütztes Speicherformat.");
             String storedServer = root.get("server").getAsString();
             if (!storedServer.equals(currentServerKey(mc))) {
@@ -1584,9 +1588,9 @@ public final class AIBuilder {
             if (blueprintName.isBlank() || blueprintName.length() > 48)
                 throw new IllegalArgumentException("Der gespeicherte Bauplanname ist ungültig.");
             materialName = root.has("materialName") ? root.get("materialName").getAsString() : "Gespeicherte Materialien";
-            Identifier primaryId = Identifier.tryParse(root.get("material").getAsString());
+            Identifier primaryId = root.has("material") ? Identifier.tryParse(root.get("material").getAsString()) : null;
             BlockItem primary = primaryId != null && Registries.ITEM.get(primaryId) instanceof BlockItem item
-                    ? item : PLAN_MATERIALS.values().iterator().next();
+                    ? item : (PLAN_MATERIALS.isEmpty() ? null : PLAN_MATERIALS.values().iterator().next());
             material = primary;
             blueprint = Blueprint.CUSTOM;
             dimension = storedDimension;
