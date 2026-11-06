@@ -1,5 +1,7 @@
 package dev.nightfall.ai;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.nightfall.Nightfall;
 import net.minecraft.block.BlockState;
@@ -49,6 +51,8 @@ public final class SchematicManager {
     private static final long MAX_VOLUME = 2_000_000L;
     private static final int MAX_BUILDABLE_BLOCKS = 700_000;
     private static final int BUILD_PART_SIZE = 32;
+    private static final Path BUILD_SESSION_PATH = net.fabricmc.loader.api.FabricLoader.getInstance()
+            .getConfigDir().resolve("nightfall").resolve("schematic_build_session.json");
     private static final Pattern SAFE_FILE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._ -]{0,100}\\.(?i:schem|litematic)");
 
     public record Imported(String fileName, String format, String sourceName,
@@ -209,6 +213,60 @@ public final class SchematicManager {
         return inspect(fileName).summary();
     }
 
+    private static BlockPos resolveBuildAnchor(String fileName, int partX, int partY, int partZ) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null || mc.getNetworkHandler() == null)
+            throw new IllegalArgumentException("Für den Schematic-Bau brauchst du eine verbundene Welt.");
+        String server = currentServerKey(mc);
+        String dimension = mc.world.getRegistryKey().getValue().toString();
+        try {
+            Files.createDirectories(BUILD_SESSION_PATH.getParent());
+            if (partX == 0 && partY == 0 && partZ == 0) {
+                BlockPos anchor = mc.player.getBlockPos().toImmutable();
+                JsonObject session = new JsonObject();
+                session.addProperty("version", 1);
+                session.addProperty("file", fileName);
+                session.addProperty("server", server);
+                session.addProperty("dimension", dimension);
+                session.addProperty("x", anchor.getX());
+                session.addProperty("y", anchor.getY());
+                session.addProperty("z", anchor.getZ());
+                Path temporary = BUILD_SESSION_PATH.resolveSibling(BUILD_SESSION_PATH.getFileName() + ".tmp");
+                Files.writeString(temporary, session.toString());
+                try {
+                    Files.move(temporary, BUILD_SESSION_PATH, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                            java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+                } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
+                    Files.move(temporary, BUILD_SESSION_PATH, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+                return anchor;
+            }
+            if (!Files.isRegularFile(BUILD_SESSION_PATH))
+                throw new IllegalArgumentException("Es gibt noch keinen Farm-Anker. Beginne mit Abschnitt X0 Y0 Z0.");
+            JsonObject session = JsonParser.parseString(Files.readString(BUILD_SESSION_PATH)).getAsJsonObject();
+            if (session.get("version").getAsInt() != 1
+                    || !session.get("file").getAsString().equals(fileName)
+                    || !session.get("server").getAsString().equals(server)
+                    || !session.get("dimension").getAsString().equals(dimension))
+                throw new IllegalArgumentException("Der gespeicherte Farm-Anker gehört zu einer anderen Datei, einem anderen Server oder einer anderen Dimension. Beginne Abschnitt X0 Y0 Z0 neu.");
+            return new BlockPos(session.get("x").getAsInt(), session.get("y").getAsInt(), session.get("z").getAsInt());
+        } catch (IllegalArgumentException failure) {
+            throw failure;
+        } catch (Exception failure) {
+            throw new IllegalArgumentException("Der lokale Farm-Bauanker konnte nicht sicher gelesen/gespeichert werden: "
+                    + failure.getClass().getSimpleName());
+        }
+    }
+
+    private static String currentServerKey(MinecraftClient mc) {
+        if (mc.getCurrentServerEntry() != null)
+            return "server:" + mc.getCurrentServerEntry().address.toLowerCase(java.util.Locale.ROOT);
+        if (mc.isInSingleplayer() && mc.getServer() != null)
+            return "singleplayer:" + mc.getServer().getSavePath(net.minecraft.util.WorldSavePath.ROOT)
+                    .toAbsolutePath().normalize();
+        return "unknown";
+    }
+
     public static String prepareBuild(String fileName) {
         return prepareBuild(fileName, 0, 0, 0);
     }
@@ -243,11 +301,20 @@ public final class SchematicManager {
             throw new IllegalArgumentException("Dieser Abschnitt enthält keine automatisch platzierbaren Blöcke; er besteht nur aus Luft, Flüssigkeit oder nicht unterstützten Blöcken.");
         String label = (imported.sourceName().isBlank() ? stripExtension(imported.fileName()) : imported.sourceName())
                 + " · Abschnitt X" + partX + " Y" + partY + " Z" + partZ;
-        String preview = AIBuilder.prepareImportedStructure(label, partBuild, partClear);
+        BlockPos farmAnchor = resolveBuildAnchor(fileName, partX, partY, partZ);
+        int sectionWidth = endX - startX, sectionHeight = endY - startY, sectionLength = endZ - startZ;
+        BlockPos sectionCenter = farmAnchor.add(
+                startX + (sectionWidth - BUILD_PART_SIZE) / 2,
+                startY + (sectionHeight - BUILD_PART_SIZE) / 2,
+                startZ + (sectionLength - BUILD_PART_SIZE) / 2);
+        String preview = AIBuilder.prepareImportedStructure(label, partBuild, partClear,
+                sectionCenter, sectionWidth, sectionHeight, sectionLength);
         return imported.summary() + "\n\nABSCHNITT X" + partX + "/" + (partsX - 1)
                 + " Y" + partY + "/" + (partsY - 1) + " Z" + partZ + "/" + (partsZ - 1)
                 + ": " + partBuild.size() + " Bau-Blöcke, " + partClear.size() + " Luftzellen.\n"
-                + "Dieser Abschnitt wird um deine aktuelle Position herum platziert. Für jeden Abschnitt musst du dich zum passenden Abschnittszentrum bewegen und die passenden X/Y/Z-Indizes angeben.\n\n"
+                + "Dauerhafter Farm-Anker: " + farmAnchor.toShortString() + ". Abschnittszentrum: "
+                + sectionCenter.toShortString() + ". Die Gesamtposition bleibt über alle Abschnitte stabil. "
+                + "Bewege dich vor der Vorschau zum angezeigten Abschnittszentrum, damit die Ziel-Chunks geladen sind.\n\n"
                 + preview;
     }
 
