@@ -957,16 +957,16 @@ public final class AIActionRegistry {
         for (Waypoint waypoint : waypoints) {
             if (waypoint == null) continue;
             if (shown++ >= 30) break;
-            out.append("\\n- ").append(waypoint.name == null || waypoint.name.isBlank() ? "(ohne Namen)" : waypoint.name)
+            out.append("\n- ").append(waypoint.name == null || waypoint.name.isBlank() ? "(ohne Namen)" : waypoint.name)
                     .append(" [").append(waypoint.category == null ? "Default" : waypoint.category).append("]")
                     .append(": ").append(waypoint.dim == null ? "Dimension unbekannt" : waypoint.dim)
                     .append(" · X=").append(waypoint.x).append(", Y=").append(waypoint.y).append(", Z=").append(waypoint.z);
             if (out.length() > 5_500) {
-                out.append("\\n(gekürzt)");
+                out.append("\n(gekürzt)");
                 break;
             }
         }
-        if (waypoints.size() > 30) out.append("\\nWeitere Wegpunkte sind in der lokalen Wegpunktliste sichtbar.");
+        if (waypoints.size() > 30) out.append("\nWeitere Wegpunkte sind in der lokalen Wegpunktliste sichtbar.");
         return out.toString();
     }
 
