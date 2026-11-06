@@ -1403,12 +1403,13 @@ public final class AIBuilder {
         try {
             JsonObject root = new JsonObject();
             savedServerKey = currentServerKey(mc);
-            root.addProperty("version", 3);
+            root.addProperty("version", 4);
             root.addProperty("server", savedServerKey);
             root.addProperty("dimension", mc.world.getRegistryKey().getValue().toString());
             root.addProperty("name", blueprintName);
             root.addProperty("index", index);
             root.addProperty("excavationIndex", excavationIndex);
+            root.addProperty("waterIndex", waterIndex);
             root.addProperty("materialName", materialName);
             root.addProperty("material", material == null ? "" : Registries.ITEM.getId(material).toString());
             root.addProperty("maxBlocks", preparedMaxBlocks);
@@ -1428,6 +1429,15 @@ public final class AIBuilder {
                 blocks.add(block);
             }
             root.add("blocks", blocks);
+            JsonArray water = new JsonArray();
+            for (BlockPos pos : WATER_PLAN) {
+                JsonObject block = new JsonObject();
+                block.addProperty("x", pos.getX());
+                block.addProperty("y", pos.getY());
+                block.addProperty("z", pos.getZ());
+                water.add(block);
+            }
+            root.add("water", water);
             JsonArray excavation = new JsonArray();
             for (BlockPos pos : EXCAVATION_PLAN) {
                 JsonObject block = new JsonObject();
@@ -1476,11 +1486,13 @@ public final class AIBuilder {
             if (!root.has("version"))
                 throw new IllegalArgumentException("Checkpoint-Version fehlt.");
             int checkpointVersion = root.get("version").getAsInt();
-            if ((checkpointVersion != 2 && checkpointVersion != 3)
+            if ((checkpointVersion != 2 && checkpointVersion != 3 && checkpointVersion != 4)
                     || !root.has("blocks") || !root.get("blocks").isJsonArray()
                     || root.getAsJsonArray("blocks").isEmpty() || root.getAsJsonArray("blocks").size() > 32_768
                     || !root.has("excavation") || !root.get("excavation").isJsonArray()
-                    || root.getAsJsonArray("excavation").size() > MAX_EXCAVATION_BLOCKS)
+                    || root.getAsJsonArray("excavation").size() > MAX_EXCAVATION_BLOCKS
+                    || (checkpointVersion >= 4 && (!root.has("water") || !root.get("water").isJsonArray()
+                    || root.getAsJsonArray("water").size() > 32_768)))
                 throw new IllegalArgumentException("Ungültiges oder nicht unterstütztes Speicherformat.");
             String storedServer = root.get("server").getAsString();
             if (!storedServer.equals(currentServerKey(mc))) {
@@ -1518,6 +1530,20 @@ public final class AIBuilder {
                     throw new IllegalArgumentException("Ein gespeicherter BlockState passt nicht zum Baumaterial.");
                 PLAN.add(pos); PLAN_MATERIALS.put(pos, item); PLAN_STATES.put(pos, state);
             }
+            WATER_PLAN.clear();
+            Set<BlockPos> restoredWaterPositions = new HashSet<>();
+            if (checkpointVersion >= 4) {
+                for (var element : root.getAsJsonArray("water")) {
+                    JsonObject block = element.getAsJsonObject();
+                    BlockPos waterPos = new BlockPos(block.get("x").getAsInt(),
+                            block.get("y").getAsInt(), block.get("z").getAsInt());
+                    if (waterPos.getY() < mc.world.getBottomY()
+                            || waterPos.getY() >= mc.world.getBottomY() + mc.world.getHeight()
+                            || !restoredWaterPositions.add(waterPos) || restoredPlanPositions.contains(waterPos))
+                        throw new IllegalArgumentException("Der gespeicherte Wasserplan enthält ungültige oder doppelte Positionen.");
+                    WATER_PLAN.add(waterPos);
+                }
+            }
             EXCAVATION_PLAN.clear();
             EXCAVATION_EXPECTED_BLOCKS.clear();
             Set<BlockPos> restoredExcavationPositions = new HashSet<>();
@@ -1527,7 +1553,8 @@ public final class AIBuilder {
                 if (excavationPos.getY() < mc.world.getBottomY()
                         || excavationPos.getY() >= mc.world.getBottomY() + mc.world.getHeight()
                         || !restoredExcavationPositions.add(excavationPos)
-                        || restoredPlanPositions.contains(excavationPos))
+                        || restoredPlanPositions.contains(excavationPos)
+                        || restoredWaterPositions.contains(excavationPos))
                     throw new IllegalArgumentException("Der gespeicherte Aushub enthält ungültige, doppelte oder überlappende Positionen.");
                 if (!block.has("expected"))
                     throw new IllegalArgumentException("Für einen gespeicherten Aushub-Block fehlt die erwartete Block-ID; aus Sicherheitsgründen wird nicht fortgesetzt.");
@@ -1541,11 +1568,17 @@ public final class AIBuilder {
                 throw new IllegalArgumentException("Der gespeicherte Baufortschritt ist unvollständig.");
             int storedIndex = root.get("index").getAsInt();
             int storedExcavationIndex = root.get("excavationIndex").getAsInt();
+            int storedWaterIndex = checkpointVersion >= 4 && root.has("waterIndex")
+                    ? root.get("waterIndex").getAsInt() : 0;
             if (storedIndex < 0 || storedIndex > PLAN.size()
-                    || storedExcavationIndex < 0 || storedExcavationIndex > EXCAVATION_PLAN.size())
+                    || storedExcavationIndex < 0 || storedExcavationIndex > EXCAVATION_PLAN.size()
+                    || storedWaterIndex < 0 || storedWaterIndex > WATER_PLAN.size())
                 throw new IllegalArgumentException("Der gespeicherte Baufortschritt liegt außerhalb des Bauplans.");
             index = storedIndex;
             excavationIndex = storedExcavationIndex;
+            waterIndex = storedWaterIndex;
+            pendingWaterTarget = null;
+            pendingWaterTicks = 0;
             blueprintName = root.get("name").getAsString();
             if (blueprintName.isBlank() || blueprintName.length() > 48)
                 throw new IllegalArgumentException("Der gespeicherte Bauplanname ist ungültig.");
@@ -1636,6 +1669,10 @@ public final class AIBuilder {
         CUSTOM_CLEAR_OFFSETS.clear();
         EXCAVATION_PLAN.clear();
         EXCAVATION_EXPECTED_BLOCKS.clear();
+        WATER_PLAN.clear();
+        waterIndex = 0;
+        pendingWaterTarget = null;
+        pendingWaterTicks = 0;
         excavationIndex = 0;
         excavationRetries = 0;
         pendingExcavationTarget = null;
@@ -1733,6 +1770,10 @@ public final class AIBuilder {
         CUSTOM_CLEAR_OFFSETS.clear();
         EXCAVATION_PLAN.clear();
         EXCAVATION_EXPECTED_BLOCKS.clear();
+        WATER_PLAN.clear();
+        waterIndex = 0;
+        pendingWaterTarget = null;
+        pendingWaterTicks = 0;
         excavationIndex = 0;
         excavationRetries = 0;
         excavationApproachAttempts = 0;
