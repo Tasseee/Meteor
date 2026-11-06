@@ -414,7 +414,8 @@ public final class AIBuilder {
             throw new IllegalArgumentException("Der Bauplanname ist ungültig.");
         if (maxBlocks < 1 || maxHorizontal < 1 || maxVerticalLimit < 1
                 || offsets == null || offsets.isEmpty() || offsets.size() > maxBlocks
-                || clearOffsets == null || clearOffsets.size() > 262_144)
+                || clearOffsets == null || clearOffsets.size() > 262_144
+                || waterOffsets == null || waterOffsets.size() > 32_768)
             throw new IllegalArgumentException("Der Bauplan oder sein Aushub überschreitet das sichere Volumenlimit.");
 
         Set<String> uniqueCoordinates = new HashSet<>();
@@ -431,6 +432,16 @@ public final class AIBuilder {
             maxX = Math.max(maxX, block.x());
             maxY = Math.max(maxY, block.y());
             maxZ = Math.max(maxZ, block.z());
+        }
+        Set<String> uniqueWaterCoordinates = new HashSet<>();
+        for (RelativeBlock water : waterOffsets) {
+            if (water == null || water.x() < 0 || water.x() > maxHorizontal
+                    || water.y() < 0 || water.y() > maxVerticalLimit
+                    || water.z() < 0 || water.z() > maxHorizontal)
+                throw new IllegalArgumentException("Wasserquellen überschreiten das erlaubte Schematic-Raster.");
+            String key = water.x() + ":" + water.y() + ":" + water.z();
+            if (!uniqueWaterCoordinates.add(key) || uniqueCoordinates.contains(key))
+                throw new IllegalArgumentException("Wasserquellen enthalten doppelte Positionen oder überschneiden sich mit Bau-Blöcken.");
         }
         Set<String> uniqueClearCoordinates = new HashSet<>();
         for (RelativeBlock clear : clearOffsets) {
@@ -501,6 +512,9 @@ public final class AIBuilder {
         Set<BlockPos> targetSet = new HashSet<>();
         Map<BlockPos, BlockItem> targetMaterials = new LinkedHashMap<>();
         Set<BlockPos> excavationSet = new HashSet<>();
+        List<BlockPos> nextWater = new ArrayList<>();
+        boolean waterAutomationEnabled = playerIsCreative(mc)
+                && countInventoryItem(mc, Items.WATER_BUCKET) > 0;
         for (RelativeBlock offset : offsets) {
             BlockPos target = origin.add(right.getOffsetX() * offset.x() + forward.getOffsetX() * offset.z(),
                     offset.y(), right.getOffsetZ() * offset.x() + forward.getOffsetZ() * offset.z());
@@ -524,6 +538,28 @@ public final class AIBuilder {
             if (!targetSet.add(target))
                 throw new IllegalArgumentException("Der Bauplan enthält doppelte Zielpositionen.");
             targetMaterials.put(target, offsetMaterials.get(offset));
+        }
+
+        // Water source cells are placed after solid blocks, and only in Creative mode where the
+        // same bucket can be reused without consuming resources.
+        for (RelativeBlock water : waterOffsets) {
+            BlockPos target = origin.add(right.getOffsetX() * water.x() + forward.getOffsetX() * water.z(),
+                    water.y(), right.getOffsetZ() * water.x() + forward.getOffsetZ() * water.z());
+            if (target.getY() < mc.world.getBottomY()
+                    || target.getY() >= mc.world.getBottomY() + mc.world.getHeight()
+                    || !mc.world.isChunkLoaded(target))
+                throw new IllegalArgumentException("Wasser-Ziel liegt außerhalb der Welt oder in einem nicht geladenen Chunk: " + target.toShortString());
+            BlockState present = mc.world.getBlockState(target);
+            if (present.isOf(Blocks.WATER) && present.get(FluidBlock.LEVEL) == 0) continue;
+            if (!present.getFluidState().isEmpty())
+                throw new IllegalArgumentException("Wasser-Ziel " + target.toShortString() + " enthält bereits eine andere Flüssigkeit; Nightfall verändert sie nicht automatisch.");
+            if (!present.isReplaceable()) {
+                if (present.hasBlockEntity() || present.getHardness(mc.world, target) < 0.0f)
+                    throw new IllegalArgumentException("Wasser-Ziel " + target.toShortString()
+                            + " ist durch eine Block-Entity oder einen unzerstörbaren Block geschützt.");
+                excavationSet.add(target.toImmutable());
+            }
+            if (waterAutomationEnabled) nextWater.add(target.toImmutable());
         }
 
         // Air cells in the schematic volume are real clearance instructions: remove terrain
@@ -582,6 +618,11 @@ public final class AIBuilder {
         PLAN_STATES.clear();
         EXCAVATION_PLAN.clear();
         EXCAVATION_PLAN.addAll(nextExcavation);
+        WATER_PLAN.clear();
+        WATER_PLAN.addAll(nextWater);
+        waterIndex = 0;
+        pendingWaterTarget = null;
+        pendingWaterTicks = 0;
         EXCAVATION_EXPECTED_BLOCKS.clear();
         for (BlockPos target : nextExcavation)
             EXCAVATION_EXPECTED_BLOCKS.put(target, Registries.BLOCK.getId(mc.world.getBlockState(target).getBlock()));
@@ -624,11 +665,14 @@ public final class AIBuilder {
         absoluteSchematicOrientation = preserveSchematicOrientation;
         status = "Eigener Bauplan geprüft";
         saveCheckpoint();
+        int manualWaterSources = waterOffsets.size() - nextWater.size();
         return "Eigener Bauplan geprüft: „" + blueprintName + "“, " + offsets.size() + " Blöcke, "
                 + (maxX + 1) + " × " + (maxY + 1) + " × " + (maxZ + 1)
                 + " Raster, Materialien: " + materialName
                 + ". Aushub: " + nextExcavation.size() + " vorhandene Blöcke werden vor dem Bau entfernt. "
-                + "Block-Entities, Flüssigkeiten und unzerstörbare Blöcke bleiben geschützt."
+                + "Wasserquellen: " + nextWater.size() + " werden nach den festen Blöcken mit einem wiederverwendeten Wassereimer gesetzt"
+                + (manualWaterSources > 0 ? "; " + manualWaterSources + " bleiben manuell (Survival oder kein Wassereimer)." : ".")
+                + " Block-Entities, andere Flüssigkeiten und unzerstörbare Blöcke bleiben geschützt."
                 + " Teile sind mit festen vorhandenen Blöcken oder dem Boden verbunden."
                 + customLayoutPreview(offsets, offsetMaterials, maxX, maxY, maxZ);
     }
