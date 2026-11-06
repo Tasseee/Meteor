@@ -74,11 +74,14 @@ public final class AIChatClient {
             Momentaufnahme: Dimension, Biom an der Spielerposition, Koordinaten und Chunk-Koordinaten,
             Tagesphase, Wetter, Block unter dem Spieler, aktuell anvisierter Block, Lichtlevel, Gesundheit,
             Hunger/Sättigung, Bewegungssituation, Haupt-/Nebenhand, Rüstung, eine auf höchstens zwölf Einträge
-            begrenzte Zusammenfassung der 36 normalen Inventar-/Hotbar-Slots sowie clientseitig erkannte
-            lebende Mobs im Umkreis von 16 Blöcken (höchstens zehn, nach Nähe sortiert).
+            begrenzte Zusammenfassung der 36 normalen Inventar-/Hotbar-Slots, clientseitig erkannte lebende
+            Mobs im Umkreis von 16 Blöcken (höchstens zehn, nach Nähe sortiert) sowie fallengelassene
+            Item-Entities im Umkreis von 12 Blöcken (höchstens zehn Itemtypen mit Menge und nächster Distanz).
             Behandle diese Werte als Momentaufnahme und nicht als dauerhaft gültige Tatsachen. Inventarwerte
             sind eine gekürzte Übersicht und kein vollständiges Inventarprotokoll. Die Mob-Liste enthält nur
             lokal erkannte Wesen; eine leere Liste beweist nicht, dass die Umgebung vollständig frei ist.
+            Fallengelassene Gegenstände sind nur aktuell sichtbare Item-Entities, keine vollständige
+            Ressourcenkarte. Sie können aufgehoben, despawnt oder durch andere Spieler verändert werden.
             Frage bei Bedarf nach einer aktuellen, vollständigen Abfrage und nutze dafür das passende Werkzeug;
             beachte dessen Vorschau- und Bestätigungsregeln.
             Der Kontext beschreibt nur die aktuelle Spielerposition und lokal verfügbare Daten. Er enthält
