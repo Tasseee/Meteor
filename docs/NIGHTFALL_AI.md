@@ -284,6 +284,18 @@ verschoben. Für eine neue Kopie an einem anderen Ort kann `inspect_schematic` o
 `build_schematic` nur beim ersten Abschnitt X0/Y0/Z0 mit `reset_anchor=true` aufgerufen werden.
 Alle weiteren Aufrufe für diese Kopie müssen `reset_anchor=false` verwenden.
 
+**Dauerhafte Abschnittsübersicht:** get_schematic_progress liest die lokale Datei
+config/nightfall/schematic_build_session.json und zeigt für die aktuelle Datei, den aktuellen Server
+und die aktuelle Dimension an, welche 32³-Abschnitte vollständig abgeschlossen sind und welcher
+Abschnitt als Nächstes offen ist. Die KI soll diese Übersicht vor der Auswahl und nach jedem fertigen
+Teil abfragen. Ein Abschnitt wird erst nach bestätigtem Aushub, Festblock-Placement und der gesamten
+Wasserphase als abgeschlossen eingetragen. Pausierte, abgebrochene oder fehlgeschlagene Teilpläne
+werden nicht als fertig markiert. Der laufende Bau-Checkpoint bleibt separat in
+config/nightfall/builder_resume.json; so kann ein Teilabschnitt nach Client-Neustart oder
+Verbindungsabbruch fortgesetzt werden, ohne dass er schon in der Gesamtübersicht als erledigt gilt.
+Die Übersicht bestätigt nur den automatisierten Abschnitt, nicht manuelle Restblöcke oder die
+tatsächliche Farmfunktion.
+
 Die Abschnitte sind keine Garantie für einen funktionierenden Farmaufbau. Stille Wasserquellen können
 im Kreativmodus nach dem Festblock-Aufbau mit einem Wassereimer gesetzt werden; im Survival-Modus
 bleiben sie manuell. Fließendes Wasser wird nicht direkt rekonstruiert, sondern muss durch die
