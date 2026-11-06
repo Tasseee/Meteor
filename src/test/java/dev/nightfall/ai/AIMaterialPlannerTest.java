@@ -71,10 +71,22 @@ class AIMaterialPlannerTest {
     void craftableAlternativesUseStableItemIdTieBreaking() {
         List<AIMaterialPlanner.CraftableCandidate> ranked = AIMaterialPlanner.rankCraftable(List.of(
                 new AIMaterialPlanner.CraftableCandidate("minecraft:stone", "Stein", 0, 54, 2, 8, false, "Kette"),
-                new AIMaterialPlanner.CraftableCandidate("minecraft:andesite", "Andesit", 0, 54, 2, 8, true, "Kette")
+                new AIMaterialPlanner.CraftableCandidate("minecraft:andesite", "Andesit", 0, 54, 2, 8, false, "Kette")
         ));
 
         assertEquals("minecraft:andesite", ranked.get(0).itemId());
+    }
+
+    @Test
+    void craftableAlternativesPreferNoTableWhenOtherCostsMatch() {
+        List<AIMaterialPlanner.CraftableCandidate> ranked = AIMaterialPlanner.rankCraftable(List.of(
+                new AIMaterialPlanner.CraftableCandidate("minecraft:oak_planks", "Eichenbretter",
+                        0, 54, 2, 8, true, "Kette mit Tisch"),
+                new AIMaterialPlanner.CraftableCandidate("minecraft:birch_planks", "Birkenbretter",
+                        0, 54, 2, 8, false, "Kette ohne Tisch")
+        ));
+
+        assertEquals("minecraft:birch_planks", ranked.get(0).itemId());
     }
 
     @Test
