@@ -11,6 +11,8 @@ import net.minecraft.block.FallingBlock;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.command.argument.BlockArgumentParser;
 import net.minecraft.item.BlockItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
@@ -41,10 +43,11 @@ import java.util.regex.Pattern;
  * - Litematica v5-v7 (.litematic), including signed/mirrored region axes
  *
  * NBT is parsed with strict byte/file/volume limits. Supported BlockItems keep their complete
- * BlockState; block-entity blocks can be placed with fresh default data. Still-water sources
- * can be placed with a reusable water bucket in Creative mode. Flowing fluids, Lava, falling
- * blocks, entities and custom block-entity NBT/inventories are not recreated. The builder tests
- * vanilla placement contexts and confirms each placed state against the client world.
+ * BlockState; redstone dust uses its dedicated vanilla item interaction while supported
+ * redstone devices use their BlockItems. Block-entity blocks can be placed with fresh default
+ * data. Still-water sources can be placed with a reusable water bucket in Creative mode.
+ * Flowing fluids, Lava, falling blocks, entities and custom block-entity NBT/inventories are not
+ * recreated. The builder tests vanilla placement contexts and confirms each placed state.
  */
 public final class SchematicManager {
     private static final Path DIRECTORY = net.fabricmc.loader.api.FabricLoader.getInstance()
@@ -726,10 +729,12 @@ public final class SchematicManager {
                 buildPlan, clearPlan, waterPlan, materials, examples, containsBlockEntities, containsEntities);
     }
 
-    private static BlockItem safeBuildItem(BlockState state, MinecraftClient mc, int x, int y, int z) {
+    private static Item safeBuildItem(BlockState state, MinecraftClient mc, int x, int y, int z) {
         if (state == null || state.isAir() || !state.getFluidState().isEmpty())
             return null;
         if (state.getBlock() instanceof FallingBlock) return null;
+        // Redstone wire is placed by RedstoneItem.useOnBlock, not by BlockItem placement.
+        if (state.isOf(Blocks.REDSTONE_WIRE)) return Items.REDSTONE;
         return state.getBlock().asItem() instanceof BlockItem item ? item : null;
     }
 
