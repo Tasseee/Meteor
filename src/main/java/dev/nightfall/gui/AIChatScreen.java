@@ -54,9 +54,9 @@ public final class AIChatScreen extends Screen {
     private final int[] suggestionX = new int[3];
     private final int[] suggestionW = new int[3];
     private int suggestionY;
-    private static final String[] SUGGESTION_LABELS = {"Base planen", "Holz sammeln", "Inventar sort."};
+    private static final String[] SUGGESTION_LABELS = {"Kleines Haus", "Holz sammeln", "Inventar sort."};
     private static final String[] SUGGESTION_PROMPTS = {
-            "Hilf mir, eine Base zu planen. Frag mich nach Stil, Größe und Materialien und zeig mir zuerst einen Vorschlag.",
+            "Baue mir ein kleines Starterhaus, wenn die vorhandenen Baupläne und Materialien dafür passen. Zeig mir zuerst die Vorschau und frag vor dem Bauen nach meiner Bestätigung.",
             "Sammle Holz bis ich genug für mein Ziel habe. Prüfe zuerst meinen Bestand und frag nach der gewünschten Menge.",
             "Analysiere mein Inventar und schlage eine sichere Sortierung vor."
     };
