@@ -166,6 +166,37 @@ public final class StaffWatch extends Module {
         return value == null || value.tabHistory.isEmpty() ? null : new ObservationView(value);
     }
 
+    /** Read-only summary for Nightfall AI; reports only the configured watch list and client samples. */
+    public java.util.List<String> aiObservations(int limit) {
+        sampleObservations();
+        java.util.List<String> out = new java.util.ArrayList<>();
+        int max = Math.max(0, Math.min(16, limit));
+        for (String raw : staffNames.get()) {
+            if (out.size() >= max) break;
+            String name = raw == null ? "" : raw.trim();
+            if (name.isEmpty()) continue;
+            ObservationView o = observation(name);
+            if (o == null) {
+                out.add(name + ": noch keine Stichprobe.");
+                continue;
+            }
+            StringBuilder line = new StringBuilder(name)
+                    .append(": Tab=").append(o.inTab ? "vorhanden" : "nicht sichtbar")
+                    .append(", Entity=").append(o.entityLoaded ? "geladen" : "nicht geladen")
+                    .append(", Stichproben=").append(o.samples)
+                    .append(", Tab-Lücken=").append(o.tabAbsentSamples).append("/")
+                    .append(o.samples)
+                    .append(", Entity-Lücken=").append(o.entityAbsentSamples).append("/")
+                    .append(o.samples);
+            if (!o.gameMode.isBlank()) line.append(", Spielmodus laut Tab=").append(o.gameMode);
+            if (o.invisible) line.append(", Entity meldet Unsichtbarkeit");
+            line.append(". Abwesenheit ist kein Vanish- oder Staff-Beweis.");
+            out.add(line.toString());
+        }
+        if (out.isEmpty()) out.add("Keine Namen in der persönlichen StaffWatch-Liste konfiguriert.");
+        return out;
+    }
+
     private static String normalize(String name) {
         return name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
     }
