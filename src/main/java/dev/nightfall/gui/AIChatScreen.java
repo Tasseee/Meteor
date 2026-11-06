@@ -628,6 +628,8 @@ public final class AIChatScreen extends Screen {
 
     private void requestAI() {
         if (waiting || apiHistory.isEmpty()) return;
+        AIChatClient.compactHistoryInPlace(apiHistory);
+        if (apiHistory.isEmpty()) return;
         if (actionRoundTrips >= MAX_ACTION_ROUND_TRIPS) {
             history.add(new ChatLine("assistant",
                     "Ich habe mehrere Aktionen nacheinander ausgeführt. Bitte gib mir den nächsten Auftrag separat."));
