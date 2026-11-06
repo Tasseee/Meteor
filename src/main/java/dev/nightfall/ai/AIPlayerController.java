@@ -157,6 +157,8 @@ public final class AIPlayerController {
     private static int craftingIdleTicks;
     private static int craftingBatchesTaken;
     private static boolean craftingNeedsRefill;
+    private static int craftingPendingBatchExpectedCount;
+    private static int craftingPendingBatchWaitTicks;
     private static RecipeDisplayEntry craftingRecipe;
     private static AbstractCraftingScreenHandler craftingHandler;
     private static List<CraftingPlanStep> craftingPlan = List.of();
@@ -1932,6 +1934,8 @@ public final class AIPlayerController {
         craftingIdleTicks = 0;
         craftingBatchesTaken = 0;
         craftingNeedsRefill = false;
+        craftingPendingBatchExpectedCount = 0;
+        craftingPendingBatchWaitTicks = 0;
         if (!startCraftingPlanStep(mc)) {
             resetCraftingState();
             throw new IllegalArgumentException("Minecraft konnte den ersten Schritt der Rezeptkette nicht in die geöffnete Craftingfläche legen.");
@@ -2156,6 +2160,8 @@ public final class AIPlayerController {
         craftingIdleTicks = 0;
         craftingBatchesTaken = 0;
         craftingNeedsRefill = false;
+        craftingPendingBatchExpectedCount = 0;
+        craftingPendingBatchWaitTicks = 0;
         try {
             mc.interactionManager.clickRecipe(craftingHandler.syncId, craftingRecipe.id(), false);
             return true;
@@ -2451,13 +2457,25 @@ public final class AIPlayerController {
         }
 
         if (craftingNeedsRefill) {
+            // Do not prepare the next batch until the server-synchronized inventory
+            // count proves that the previous output actually arrived.
+            if (currentCount < craftingPendingBatchExpectedCount) {
+                if (++craftingPendingBatchWaitTicks > MAX_CRAFTING_IDLE_TICKS) {
+                    stop("Crafting gestoppt: Der Server hat die letzte Ausgabe nicht im Inventar bestätigt. "
+                            + "Bestätigt hergestellt: " + Math.max(0, currentCount - craftingCountBefore)
+                            + " zusätzliche " + craftingName + ".");
+                }
+                return;
+            }
+            craftingNeedsRefill = false;
+            craftingPendingBatchExpectedCount = 0;
+            craftingPendingBatchWaitTicks = 0;
             try {
                 mc.interactionManager.clickRecipe(handler.syncId, craftingRecipe.id(), false);
-                craftingNeedsRefill = false;
                 craftingIdleTicks = 0;
             } catch (RuntimeException failure) {
                 stop("Crafting beendet: " + Math.max(0, currentCount - craftingCountBefore)
-                        + " zusätzliche " + craftingName + " hergestellt; weitere Zutaten konnten nicht eingesetzt werden.");
+                        + " zusätzliche " + craftingName + " serverbestätigt hergestellt; weitere Zutaten konnten nicht eingesetzt werden.");
             }
             return;
         }
@@ -2488,6 +2506,8 @@ public final class AIPlayerController {
                     return;
                 }
                 craftingBatchesTaken++;
+                craftingPendingBatchExpectedCount = currentCount + output.getCount();
+                craftingPendingBatchWaitTicks = 0;
                 craftingNeedsRefill = true;
                 craftingIdleTicks = 0;
             } catch (RuntimeException failure) {
@@ -2532,6 +2552,8 @@ public final class AIPlayerController {
         craftingIdleTicks = 0;
         craftingBatchesTaken = 0;
         craftingNeedsRefill = false;
+        craftingPendingBatchExpectedCount = 0;
+        craftingPendingBatchWaitTicks = 0;
     }
 
     private static void tickEating(MinecraftClient mc) {
