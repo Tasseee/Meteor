@@ -555,19 +555,19 @@ public final class AIActionRegistry {
                 .append("; zuletzt gescannt: ").append(finder.lastScanned())
                 .append("; Fortschritt des letzten Durchlaufs: ")
                 .append(Math.round(finder.progress() * 100)).append("%.");
-        if (findings.isEmpty()) return out.append("\\nNoch keine SUS-, GONE- oder DECOY-Markierungen.").toString();
-        out.append("\\nMarkierte Chunks (max. 12):");
+        if (findings.isEmpty()) return out.append("\nNoch keine SUS-, GONE- oder DECOY-Markierungen.").toString();
+        out.append("\nMarkierte Chunks (max. 12):");
         int count = 0;
         for (ChunkResult r : findings) {
             if (count++ >= 12) break;
-            out.append("\\n- ").append(r.status).append(" Chunk ").append(r.cx).append(",").append(r.cz)
+            out.append("\n- ").append(r.status).append(" Chunk ").append(r.cx).append(",").append(r.cz)
                     .append(" (ungefähres Zentrum X=").append(r.blockX()).append(", Z=").append(r.blockZ())
                     .append("), Score ").append(String.format(Locale.ROOT, "%.1f", r.score))
                     .append(", Datendeckung ").append(Math.round(r.dataCompleteness * 100)).append("%");
             if (r.serverLimited) out.append(", serverseitig maskierte Daten");
             if (!r.reasons.isEmpty()) out.append(": ").append(String.join("; ", r.reasons));
         }
-        out.append("\\nWichtig: SUS ist nur ein Verdacht anhand clientseitig geladener Daten, kein Beweis für eine Spielerbasis.");
+        out.append("\nWichtig: SUS ist nur ein Verdacht anhand clientseitig geladener Daten, kein Beweis für eine Spielerbasis.");
         return out.toString();
     }
 
@@ -735,9 +735,9 @@ public final class AIActionRegistry {
     private static String playerStatus(MinecraftClient mc) {
         var pos = mc.player.getBlockPos();
         return "Spielerstatus:"
-                + "\\nDimension: " + mc.world.getRegistryKey().getValue()
-                + "\\nPosition: X=" + pos.getX() + ", Y=" + pos.getY() + ", Z=" + pos.getZ()
-                + "\\nLeben: " + String.format(Locale.ROOT, "%.1f", mc.player.getHealth())
+                + "\nDimension: " + mc.world.getRegistryKey().getValue()
+                + "\nPosition: X=" + pos.getX() + ", Y=" + pos.getY() + ", Z=" + pos.getZ()
+                + "\nLeben: " + String.format(Locale.ROOT, "%.1f", mc.player.getHealth())
                 + " / " + String.format(Locale.ROOT, "%.1f", mc.player.getMaxHealth());
     }
 
