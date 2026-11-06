@@ -65,12 +65,12 @@ public final class AIPlayerController {
     private static final double MIN_PROGRESS = 0.025;
     private static final int MAX_CRAFTING_TICKS = 20 * 30;
     private static final int MAX_CRAFTING_IDLE_TICKS = 20;
-    private static final int MAX_GATHER_BLOCKS = 32;
+    private static final int MAX_GATHER_BLOCKS = 2_048;
     private static final int MAX_SMELT_ITEMS = 16;
     private static final int MAX_SMELT_TICKS = 20 * 60 * 4;
     private static final int MAX_SMELT_OPEN_TICKS = 40;
-    private static final int MAX_GATHER_TARGETS = 96;
-    private static final int GATHER_HORIZONTAL_RADIUS = 16;
+    private static final int MAX_GATHER_TARGETS = 4_096;
+    private static final int GATHER_HORIZONTAL_RADIUS = 32;
     private static final int GATHER_VERTICAL_BELOW = 4;
     private static final int GATHER_VERTICAL_ABOVE = 16;
     private static final Set<String> GATHERABLE_SELF_DROP_BLOCKS = Set.of(
@@ -87,7 +87,7 @@ public final class AIPlayerController {
     private static final int GATHER_ORE_VERTICAL_ABOVE = 12;
     private static final int MAX_ANCIENT_TUNNEL_LENGTH = 8;
     private static final int MAX_ANCIENT_TUNNEL_BLOCKS = 16;
-    private static final int MAX_ANCIENT_DEBRIS_RESCANS = 6;
+    private static final int MAX_ANCIENT_DEBRIS_RESCANS = 64;
     private static final Set<String> ANCIENT_TUNNEL_BLOCKS = Set.of("netherrack", "basalt", "blackstone");
     private static final Map<String, String> GATHERABLE_ORE_DROPS = Map.ofEntries(
             Map.entry("minecraft:coal_ore", "minecraft:coal"),
@@ -156,6 +156,9 @@ public final class AIPlayerController {
     private static boolean gatherRequiresSuitableTool;
     private static String gatherMaterialName = "";
     private static int gatherGoalCount;
+    private static int gatherMaxDurationSeconds;
+    private static long gatherDeadlineNanos;
+    private static int gatherTargetY = Integer.MIN_VALUE;
     private static List<BlockPos> gatherTargets = List.of();
     private static int gatherIndex;
     private static int gatherBlocksBrokenThisRequest;
@@ -473,40 +476,79 @@ public final class AIPlayerController {
      * Only vanilla log/wood/stem/hyphae block-items whose block and item IDs match are accepted.
      */
     public static String previewGatherWood(String requestedItem, int targetCount) {
-        return previewGatherResource(requestedItem, targetCount, true, false);
+        return previewGatherWood(requestedItem, targetCount, 0, Integer.MIN_VALUE);
+    }
+
+    public static String previewGatherWood(String requestedItem, int targetCount, int durationSeconds, int targetY) {
+        return previewGatherResource(requestedItem, targetCount, true, false, durationSeconds, targetY);
     }
 
     public static String gatherWood(String requestedItem, int targetCount) {
-        return gatherResource(requestedItem, targetCount, true, false);
+        return gatherWood(requestedItem, targetCount, 0, Integer.MIN_VALUE);
     }
 
-    /** Preview a bounded collection request for a whitelisted vanilla self-dropping block. */
+    public static String gatherWood(String requestedItem, int targetCount, int durationSeconds, int targetY) {
+        return gatherResource(requestedItem, targetCount, true, false, durationSeconds, targetY);
+    }
+
+    /** Preview a collection request for a whitelisted vanilla self-dropping block. */
     public static String previewGatherBlock(String requestedItem, int targetCount) {
-        return previewGatherResource(requestedItem, targetCount, false, false);
+        return previewGatherBlock(requestedItem, targetCount, 0);
     }
 
-    /** Start a confirmed, bounded collection task for a whitelisted vanilla self-dropping block. */
+    public static String previewGatherBlock(String requestedItem, int targetCount, int durationSeconds) {
+        return previewGatherResource(requestedItem, targetCount, false, false, durationSeconds, Integer.MIN_VALUE);
+    }
+
+    /** Start a confirmed collection task for a whitelisted vanilla self-dropping block. */
     public static String gatherBlock(String requestedItem, int targetCount) {
-        return gatherResource(requestedItem, targetCount, false, false);
+        return gatherBlock(requestedItem, targetCount, 0);
+    }
+
+    public static String gatherBlock(String requestedItem, int targetCount, int durationSeconds) {
+        return gatherResource(requestedItem, targetCount, false, false, durationSeconds, Integer.MIN_VALUE);
     }
 
     /** Preview collection of known ore drops using vanilla-correct tool requirements. */
     public static String previewGatherOre(String requestedItem, int targetCount) {
-        return previewGatherResource(requestedItem, targetCount, false, true);
+        return previewGatherOre(requestedItem, targetCount, 0, Integer.MIN_VALUE);
     }
 
-    /** Start a confirmed, bounded collection task for a known ore drop. */
+    public static String previewGatherOre(String requestedItem, int targetCount, int durationSeconds, int targetY) {
+        return previewGatherResource(requestedItem, targetCount, false, true, durationSeconds, targetY);
+    }
+
+    /** Start a confirmed collection task for a known ore drop. */
     public static String gatherOre(String requestedItem, int targetCount) {
-        return gatherResource(requestedItem, targetCount, false, true);
+        return gatherOre(requestedItem, targetCount, 0, Integer.MIN_VALUE);
+    }
+
+    public static String gatherOre(String requestedItem, int targetCount, int durationSeconds, int targetY) {
+        return gatherResource(requestedItem, targetCount, false, true, durationSeconds, targetY);
     }
 
     private static String previewGatherResource(String requestedItem, int targetCount,
                                                 boolean woodOnly, boolean oreOnly) {
+        return previewGatherResource(requestedItem, targetCount, woodOnly, oreOnly, 0, Integer.MIN_VALUE);
+    }
+
+    private static String previewGatherResource(String requestedItem, int targetCount,
+                                                boolean woodOnly, boolean oreOnly,
+                                                int durationSeconds, int targetY) {
         MinecraftClient mc = MinecraftClient.getInstance();
         requireWorld(mc);
-        int maxTargetCount = woodOnly || oreOnly ? 64 : 256;
+        int maxTargetCount = oreOnly ? 256 : 1_024;
         if (targetCount < 1 || targetCount > maxTargetCount)
             throw new IllegalArgumentException("Die Zielmenge muss zwischen 1 und " + maxTargetCount + " liegen.");
+        if (durationSeconds < 0 || durationSeconds > 1_200)
+            throw new IllegalArgumentException("Die Laufzeit muss zwischen 0 und 1.200 Sekunden (20 Minuten) liegen.");
+        if (targetY != Integer.MIN_VALUE) {
+            if (!oreOnly) throw new IllegalArgumentException("Eine Zielhöhe wird nur bei Erz-Sammelaufträgen unterstützt.");
+            if (targetY < mc.world.getBottomY() + 1 || targetY + 2 >= mc.world.getBottomY() + mc.world.getHeight())
+                throw new IllegalArgumentException("Die gewünschte Zielhöhe liegt außerhalb der Weltgrenzen.");
+            if (isAncientDebrisItem(resolveGatherableItem(requestedItem, woodOnly, oreOnly)) && !isInNether(mc))
+                throw new IllegalArgumentException("Ancient Debris kann nur im Nether gesammelt werden.");
+        }
         if (mc.player.currentScreenHandler != mc.player.playerScreenHandler)
             throw new IllegalArgumentException("Schließe zuerst den geöffneten Container.");
         Item item = resolveGatherableItem(requestedItem, woodOnly, oreOnly);
@@ -522,65 +564,101 @@ public final class AIPlayerController {
             throw new IllegalArgumentException("Dein Inventar hat keinen freien Platz für "
                     + item.getName().getString() + ". Räume zuerst einen Slot frei.");
 
-        List<BlockPos> candidates = findGatherableBlocks(mc, item, oreOnly);
-        if (candidates.isEmpty())
+        boolean needsHeightMove = targetY != Integer.MIN_VALUE && Math.abs(mc.player.getBlockY() - targetY) > 1;
+        List<BlockPos> candidates = needsHeightMove ? List.of() : findGatherableBlocks(mc, item, oreOnly);
+        if (needsHeightMove) {
+            if (findSafeGatherHeightPath(mc, targetY).isEmpty())
+                throw new IllegalArgumentException("Ich finde keinen sicheren Weg zu einer begehbaren Position auf Y=" + targetY
+                        + " in den aktuell geladenen Chunks. Gehe näher an einen sicheren Abstieg oder lade die Umgebung.");
+        } else if (candidates.isEmpty()) {
             throw new IllegalArgumentException("Im geladenen Umkreis von " + GATHER_HORIZONTAL_RADIUS
                     + " Blöcken habe ich keine passenden " + item.getName().getString()
                     + " gefunden. Erkunde zuerst die Gegend oder gehe näher an passende Blöcke.");
-        int toolEligible = countToolEligibleTargets(mc, candidates, oreOnly);
-        if (toolEligible == 0)
+        }
+        int toolEligible = needsHeightMove ? 0 : countToolEligibleTargets(mc, candidates, oreOnly);
+        if (!needsHeightMove && toolEligible == 0)
             throw new IllegalArgumentException("Ich habe " + candidates.size() + " passende Blöcke gefunden, "
                     + "aber für diese Blöcke fehlt ein geeignetes Werkzeug. Lege das passende Werkzeug in dein Inventar.");
-        int available = Math.min(Math.min(Math.min(missing, MAX_GATHER_BLOCKS), toolEligible), inventoryCapacity);
+        int available = Math.min(Math.min(missing, needsHeightMove ? inventoryCapacity : Math.min(MAX_GATHER_BLOCKS, toolEligible)),
+                inventoryCapacity);
         String kind = woodOnly ? "Holzblöcke" : oreOnly ? "Erzblöcke" : "freigegebene Rohstoffblöcke";
         String ancientNote = isAncientDebrisItem(item)
                 ? " Für Ancient Debris prüft Nightfall zusätzlich kurze horizontale Stollen (max. "
                     + MAX_ANCIENT_TUNNEL_LENGTH + " Schritte) durch Netherrack, Basalt und Schwarzstein; "
                     + "nur mit passender Spitzhacke und nur wenn im Tunnel kein Lava-/Flüssigkeitsrisiko erkannt wird."
                 : "";
+        String runtimeNote = durationSeconds > 0
+                ? " Laufzeitlimit: " + durationSeconds + " Sekunden; die Aktion endet früher, wenn das Mengenziel erreicht ist."
+                : " Ohne Laufzeitlimit endet die Aktion beim Mengenziel oder wenn keine sicheren Ziele/Inventarplätze mehr verfügbar sind.";
+        String heightNote = needsHeightMove ? " Nightfall sucht zuerst einen sicheren Weg zu Y=" + targetY + " und beginnt dort mit dem Scannen."
+                : targetY != Integer.MIN_VALUE ? " Sammelhöhe: Y=" + targetY + "." : "";
         return "Nightfall sammelt nach deiner Bestätigung bis zu " + available + " zusätzliche "
                 + item.getName().getString() + " (Ziel: " + targetCount + " im Inventar). "
-                + "Gefunden: " + candidates.size() + " passende " + kind + " im bereits geladenen Umkreis; "
-                + toolEligible + " davon haben ein verfügbares passendes Werkzeug. "
-                + "Höchstens " + MAX_GATHER_BLOCKS + " zusätzliche Zielblöcke pro Auftrag. "
+                + (needsHeightMove ? "Nach dem sicheren Höhenwechsel wird neu gescannt." :
+                    "Gefunden: " + candidates.size() + " passende " + kind + " im bereits geladenen Umkreis; "
+                    + toolEligible + " davon haben ein verfügbares passendes Werkzeug. ")
+                + "Bis zu " + MAX_GATHER_BLOCKS + " abgebauten Zielblöcken pro Langauftrag und höchstens 20 Minuten. "
                 + "Nightfall sucht sichere Standpunkte, nutzt bei toolpflichtigen Blöcken nur ein geeignetes Werkzeug "
                 + "und wartet auf Block- und Item-Updates. Freier Inventarplatz für " + inventoryCapacity
-                + " weitere Items. Es werden höchstens " + available + " Ziele eingeplant."
-                + ancientNote;
+                + " weitere Items." + runtimeNote + heightNote + ancientNote;
     }
 
     private static String gatherResource(String requestedItem, int targetCount,
                                          boolean woodOnly, boolean oreOnly) {
+        return gatherResource(requestedItem, targetCount, woodOnly, oreOnly, 0, Integer.MIN_VALUE);
+    }
+
+    private static String gatherResource(String requestedItem, int targetCount,
+                                         boolean woodOnly, boolean oreOnly,
+                                         int durationSeconds, int targetY) {
         MinecraftClient mc = MinecraftClient.getInstance();
         requireWorld(mc);
-        previewGatherResource(requestedItem, targetCount, woodOnly, oreOnly);
+        previewGatherResource(requestedItem, targetCount, woodOnly, oreOnly, durationSeconds, targetY);
         Item item = resolveGatherableItem(requestedItem, woodOnly, oreOnly);
-        List<BlockPos> candidates = findGatherableBlocks(mc, item, oreOnly);
-        List<BlockPos> usableTargets = new ArrayList<>();
-        for (BlockPos pos : candidates) {
-            BlockState state = mc.world.getBlockState(pos);
-            if (hasSuitableMiningTool(mc, state, oreOnly))
-                usableTargets.add(pos);
-        }
-        if (usableTargets.isEmpty())
-            throw new IllegalArgumentException("Die passenden Rohstoffblöcke oder Werkzeuge sind inzwischen nicht mehr verfügbar.");
+        List<BlockPos> heightPath = targetY != Integer.MIN_VALUE
+                && Math.abs(mc.player.getBlockY() - targetY) > 1
+                ? findSafeGatherHeightPath(mc, targetY) : List.of();
 
         stop(null);
         gatherMaterial = item;
         gatherRequiresSuitableTool = oreOnly;
         gatherMaterialName = item.getName().getString();
         gatherGoalCount = targetCount;
-        gatherTargets = List.copyOf(usableTargets);
+        gatherMaxDurationSeconds = durationSeconds;
+        gatherDeadlineNanos = durationSeconds > 0
+                ? System.nanoTime() + durationSeconds * 1_000_000_000L : 0L;
+        gatherTargetY = targetY;
+        gatherTargets = List.of();
         gatherIndex = 0;
         gatherBlocksBrokenThisRequest = 0;
         gatherAwaitingPickup = false;
         gatherPickupTicks = 0;
         gatherCountBeforeBreak = 0;
-        mode = Mode.GATHER;
-        statusNotice(mc, "Sammle " + gatherMaterialName + " · Ziel " + targetCount
-                + " im Inventar. Ich baue nur freigegebene Blöcke im geladenen Nahbereich ab.");
-        return (woodOnly ? "Holzsammeln" : oreOnly ? "Erzabbau" : "Materialsammlung") + " gestartet. Nightfall sucht passende Blöcke, "
-                + "navigiert über sichere geladene Wege, verwendet erforderliche Werkzeuge und wartet auf bestätigte Drops. „Stopp“ bricht ab.";
+
+        if (!heightPath.isEmpty()) {
+            path = List.copyOf(heightPath);
+            pathIndex = 0;
+            navigationGoal = heightPath.get(heightPath.size() - 1).toImmutable();
+            actionTicks = 0;
+            stuckTicks = 0;
+            lastWaypointDistance = Double.MAX_VALUE;
+            mode = Mode.NAVIGATE;
+            statusNotice(mc, "Sammelauftrag gestartet · gehe sicher zu Y=" + targetY
+                    + " und beginne dort mit der Suche. Du kannst jederzeit „Stopp“ sagen.");
+        } else {
+            if (!refreshGatherTargets(mc)) {
+                stop(null);
+                throw new IllegalArgumentException("Im geladenen Bereich sind keine passenden, sicher erreichbaren Rohstoffblöcke mehr verfügbar.");
+            }
+            mode = Mode.GATHER;
+            statusNotice(mc, "Sammle " + gatherMaterialName + " · Ziel " + targetCount
+                    + " im Inventar. Nachscans bleiben auf geladene Chunks und sichere Wege begrenzt.");
+        }
+        return (woodOnly ? "Holzsammeln" : oreOnly ? "Erzabbau" : "Materialsammlung") + " gestartet. "
+                + "Ziel: " + targetCount + " im Inventar."
+                + (durationSeconds > 0 ? " Maximal " + durationSeconds + " Sekunden." : "")
+                + (targetY != Integer.MIN_VALUE ? " Zielhöhe Y=" + targetY + "." : "")
+                + " Nightfall scannt wiederholt geladene Chunks, navigiert über sichere Wege und wartet auf bestätigte Drops. „Stopp“ bricht ab.";
     }
 
     private static Item resolveGatherableItem(String requestedItem, boolean woodOnly, boolean oreOnly) {
@@ -690,7 +768,7 @@ public final class AIPlayerController {
     }
 
     private static void tickGather(MinecraftClient mc) {
-        if (gatherMaterial == null || gatherTargets.isEmpty()) {
+        if (gatherMaterial == null) {
             stop("Materialsammlung gestoppt: Es gibt keinen gültigen Sammelplan mehr.");
             return;
         }
@@ -723,9 +801,9 @@ public final class AIPlayerController {
         }
 
         if (gatherBlocksBrokenThisRequest >= MAX_GATHER_BLOCKS) {
-            stop("Sammelauftrag beendet: " + currentCount + "/" + gatherGoalCount + " "
-                    + gatherMaterialName + " im Inventar. Pro bestätigtem Auftrag werden höchstens "
-                    + MAX_GATHER_BLOCKS + " Blöcke abgebaut; du kannst die verbleibende Menge erneut anfordern.");
+            stop("Sammelauftrag sicher begrenzt: " + currentCount + "/" + gatherGoalCount + " "
+                    + gatherMaterialName + " im Inventar. Das Langauftragslimit von "
+                    + MAX_GATHER_BLOCKS + " abgebauten Zielblöcken ist erreicht.");
             return;
         }
 
@@ -782,9 +860,9 @@ public final class AIPlayerController {
             return;
         }
 
-        if (isAncientDebrisItem(gatherMaterial) && refreshAncientDebrisTargets(mc)) return;
+        if (refreshGatherTargets(mc)) return;
         stop("Materialsammlung beendet: " + currentCount + "/" + gatherGoalCount + " "
-                + gatherMaterialName + " im Inventar. Im geladenen Nahbereich sind keine weiteren passenden Rohstoffblöcke erreichbar.");
+                + gatherMaterialName + " im Inventar. Im aktuell geladenen Bereich sind keine weiteren passenden, sicheren Ziele erreichbar.");
     }
 
 
@@ -794,25 +872,54 @@ public final class AIPlayerController {
         gatherIndex++;
     }
 
-    /** Refreshes a bounded local Ancient Debris scan around the player's updated position. */
-    private static boolean refreshAncientDebrisTargets(MinecraftClient mc) {
-        if (!isInNether(mc) || !isAncientDebrisItem(gatherMaterial)
-                || gatherRescanCount >= MAX_ANCIENT_DEBRIS_RESCANS) return false;
-
+    /** Re-scan loaded nearby chunks so long gathering tasks can process more than one snapshot. */
+    private static boolean refreshGatherTargets(MinecraftClient mc) {
+        if (gatherMaterial == null || gatherRescanCount >= MAX_ANCIENT_DEBRIS_RESCANS) return false;
         gatherRescanCount++;
-        List<BlockPos> candidates = findGatherableBlocks(mc, gatherMaterial, true, gatherVisitedTargets);
+        List<BlockPos> candidates = findGatherableBlocks(mc, gatherMaterial, gatherRequiresSuitableTool, gatherVisitedTargets);
         List<BlockPos> usableTargets = new ArrayList<>();
         for (BlockPos pos : candidates) {
             BlockState state = mc.world.getBlockState(pos);
-            if (hasSuitableMiningTool(mc, state, true)) usableTargets.add(pos);
+            if (hasSuitableMiningTool(mc, state, gatherRequiresSuitableTool)) usableTargets.add(pos);
         }
         if (usableTargets.isEmpty()) return false;
-
         gatherTargets = List.copyOf(usableTargets);
         gatherIndex = 0;
-        statusNotice(mc, "Suche weiter nach Ancient Debris rund um deine aktuelle Position (Nachsuche "
-                + gatherRescanCount + "/" + MAX_ANCIENT_DEBRIS_RESCANS + ").");
+        if (gatherRescanCount > 1) {
+            statusNotice(mc, "Nightfall scannt erneut um deine aktuelle Position (" + gatherRescanCount
+                    + "/" + MAX_ANCIENT_DEBRIS_RESCANS + ") und nimmt nur neue, geladene Ziele auf.");
+        }
         return true;
+    }
+
+    /** Compatibility helper retained for the bounded Ancient Debris tunnel flow. */
+    private static boolean refreshAncientDebrisTargets(MinecraftClient mc) {
+        return isInNether(mc) && isAncientDebrisItem(gatherMaterial) && refreshGatherTargets(mc);
+    }
+
+    /** Plan a safe route to a nearby loaded, walkable position at the requested feet-level Y. */
+    private static List<BlockPos> findSafeGatherHeightPath(MinecraftClient mc, int targetY) {
+        BlockPos origin = mc.player.getBlockPos();
+        if (Math.abs(origin.getY() - targetY) <= 1) return List.of();
+        List<BlockPos> candidates = new ArrayList<>();
+        for (int radius = 0; radius <= 8; radius++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
+                    BlockPos feet = new BlockPos(origin.getX() + dx, targetY, origin.getZ() + dz);
+                    if (canStandAt(mc, feet, mc.player)) candidates.add(feet);
+                }
+            }
+        }
+        candidates.sort(Comparator.comparingDouble(p -> mc.player.squaredDistanceTo(
+                p.getX() + 0.5, p.getY(), p.getZ() + 0.5)));
+        int attempts = 0;
+        for (BlockPos candidate : candidates) {
+            List<BlockPos> planned = planNavigationSegment(mc, candidate);
+            if (!planned.isEmpty()) return planned;
+            if (++attempts >= 24) break;
+        }
+        return List.of();
     }
 
     private static boolean isAncientDebrisItem(Item item) {
@@ -1170,6 +1277,9 @@ public final class AIPlayerController {
         gatherRequiresSuitableTool = false;
         gatherMaterialName = "";
         gatherGoalCount = 0;
+        gatherMaxDurationSeconds = 0;
+        gatherDeadlineNanos = 0L;
+        gatherTargetY = Integer.MIN_VALUE;
         gatherTargets = List.of();
         gatherIndex = 0;
         gatherBlocksBrokenThisRequest = 0;
@@ -1485,6 +1595,13 @@ public final class AIPlayerController {
             return;
         }
 
+        if (gatherMaterial != null && gatherDeadlineNanos > 0L && System.nanoTime() >= gatherDeadlineNanos) {
+            int collected = mc.player == null ? 0 : countInventoryItem(mc, gatherMaterial);
+            stop("Zeitlimit erreicht: " + collected + "/" + gatherGoalCount + " " + gatherMaterialName
+                    + " befinden sich jetzt im Inventar.");
+            return;
+        }
+
         switch (mode) {
             case WALK -> tickWalk(mc);
             case NAVIGATE -> tickNavigation(mc);
@@ -1601,8 +1718,15 @@ public final class AIPlayerController {
         actionTicks = 0;
         stuckTicks = 0;
         lastWaypointDistance = Double.MAX_VALUE;
-        mode = gatherTunnelOreTarget != null && gatherTunnelCellIndex < gatherTunnelCells.size()
-                ? Mode.GATHER_TUNNEL : Mode.GATHER;
+        if (gatherTunnelOreTarget != null && gatherTunnelCellIndex < gatherTunnelCells.size()) {
+            mode = Mode.GATHER_TUNNEL;
+            return;
+        }
+        if ((gatherTargets.isEmpty() || gatherIndex >= gatherTargets.size()) && !refreshGatherTargets(mc)) {
+            stop("Sammeln gestoppt: Am erreichten Standort wurden keine passenden, sicher erreichbaren Ziele in geladenen Chunks gefunden.");
+            return;
+        }
+        mode = Mode.GATHER;
     }
 
     private static void tickMining(MinecraftClient mc) {
@@ -1992,7 +2116,9 @@ public final class AIPlayerController {
             case MINE -> "Blockabbau · " + (miningPos == null ? "" : miningPos.toShortString());
             case EAT -> "Nahrungsaufnahme · " + foodName;
             case CRAFT -> "Crafting · " + craftingName;
-            case GATHER -> "Sammle " + gatherMaterialName + " · " + gatherIndex + "/" + gatherTargets.size();
+            case GATHER -> "Sammle " + gatherMaterialName + " · " + gatherIndex + "/" + gatherTargets.size()
+                    + (gatherDeadlineNanos > 0L ? " · Zeitlimit " + gatherMaxDurationSeconds + "s" : "")
+                    + (gatherTargetY != Integer.MIN_VALUE ? " · Y=" + gatherTargetY : "");
             case GATHER_MINE -> "Baue Rohstoff ab · " + (miningPos == null ? "" : miningPos.toShortString());
             case GATHER_TUNNEL -> "Grabe Ancient-Debris-Stollen · " + gatherTunnelCellIndex + "/" + gatherTunnelCells.size();
             case GATHER_TUNNEL_MINE -> "Grabe Tunnelblock · " + (miningPos == null ? "" : miningPos.toShortString());
@@ -2183,10 +2309,24 @@ public final class AIPlayerController {
     private static void aimAt(ClientPlayerEntity player, Vec3d target) {
         Vec3d delta = target.subtract(player.getEyePos());
         double horizontal = Math.sqrt(delta.x * delta.x + delta.z * delta.z);
-        float yaw = (float) (Math.toDegrees(Math.atan2(delta.z, delta.x)) - 90.0);
-        float pitch = (float) -Math.toDegrees(Math.atan2(delta.y, horizontal));
-        player.setYaw(yaw);
-        player.setPitch(pitch);
+        float targetYaw = (float) (Math.toDegrees(Math.atan2(delta.z, delta.x)) - 90.0);
+        float targetPitch = (float) -Math.toDegrees(Math.atan2(delta.y, horizontal));
+        // Ease the camera toward the next waypoint instead of snapping instantly.
+        float yawDelta = wrapDegrees(targetYaw - player.getYaw());
+        float pitchDelta = targetPitch - player.getPitch();
+        player.setYaw(player.getYaw() + clampAngleStep(yawDelta, 9.0f));
+        player.setPitch(player.getPitch() + clampAngleStep(pitchDelta, 7.0f));
+    }
+
+    private static float wrapDegrees(float degrees) {
+        float wrapped = degrees % 360.0f;
+        if (wrapped >= 180.0f) wrapped -= 360.0f;
+        if (wrapped < -180.0f) wrapped += 360.0f;
+        return wrapped;
+    }
+
+    private static float clampAngleStep(float delta, float maximumStep) {
+        return Math.max(-maximumStep, Math.min(maximumStep, delta));
     }
 
     private static BlockHitResult raycastBlock(MinecraftClient mc, BlockPos pos) {
