@@ -70,7 +70,7 @@ public final class AIActionRegistry {
     public record Action(String name, JsonObject arguments, String preview) {}
 
     /** OpenAI-compatible function definitions. The model can suggest, never execute, these tools. */
-    public static JsonArray toolDefinitions() {
+    private static JsonArray cachedToolDefinitions() {
         JsonArray cached = cachedToolDefinitions;
         if (cached == null) {
             synchronized (AIActionRegistry.class) {
@@ -81,7 +81,27 @@ public final class AIActionRegistry {
                 }
             }
         }
-        return cached.deepCopy();
+        return cached;
+    }
+
+    public static JsonArray toolDefinitions() {
+        return cachedToolDefinitions().deepCopy();
+    }
+
+    /** Copy only schemas selected for this request, avoiding a full-catalog clone. */
+    public static JsonArray toolDefinitions(Set<String> selectedNames) {
+        JsonArray filtered = new JsonArray();
+        if (selectedNames == null || selectedNames.isEmpty()) return filtered;
+
+        for (JsonElement element : cachedToolDefinitions()) {
+            if (!element.isJsonObject()) continue;
+            JsonObject function = element.getAsJsonObject().getAsJsonObject("function");
+            if (function == null || !function.has("name")) continue;
+            if (selectedNames.contains(function.get("name").getAsString())) {
+                filtered.add(element.deepCopy());
+            }
+        }
+        return filtered;
     }
 
     private static JsonArray buildToolDefinitions() {
