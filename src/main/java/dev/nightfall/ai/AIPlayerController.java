@@ -59,7 +59,7 @@ public final class AIPlayerController {
     private static final int MAX_PATH_RADIUS = 48;
     private static final int NAVIGATION_SEGMENT_LENGTH = 32;
     private static final int MAX_SEARCH_NODES = 8_000;
-    private static final int MAX_NAVIGATION_TICKS = 20 * 60 * 5;
+    private static final int MAX_NAVIGATION_TICKS = 20 * 60 * 20;
     private static final int MAX_MINING_TICKS = 20 * 30;
     private static final int MAX_EATING_TICKS = 80;
     private static final double MIN_PROGRESS = 0.025;
@@ -564,10 +564,10 @@ public final class AIPlayerController {
             throw new IllegalArgumentException("Dein Inventar hat keinen freien Platz für "
                     + item.getName().getString() + ". Räume zuerst einen Slot frei.");
 
-        boolean needsHeightMove = targetY != Integer.MIN_VALUE && Math.abs(mc.player.getBlockY() - targetY) > 1;
+        boolean needsHeightMove = targetY != Integer.MIN_VALUE && mc.player.getBlockY() != targetY;
         List<BlockPos> candidates = needsHeightMove ? List.of() : findGatherableBlocks(mc, item, oreOnly);
         if (needsHeightMove) {
-            if (findSafeGatherHeightPath(mc, targetY).isEmpty())
+            if (findSafeGatherHeightPlan(mc, targetY) == null)
                 throw new IllegalArgumentException("Ich finde keinen sicheren Weg zu einer begehbaren Position auf Y=" + targetY
                         + " in den aktuell geladenen Chunks. Gehe näher an einen sicheren Abstieg oder lade die Umgebung.");
         } else if (candidates.isEmpty()) {
@@ -615,9 +615,8 @@ public final class AIPlayerController {
         requireWorld(mc);
         previewGatherResource(requestedItem, targetCount, woodOnly, oreOnly, durationSeconds, targetY);
         Item item = resolveGatherableItem(requestedItem, woodOnly, oreOnly);
-        List<BlockPos> heightPath = targetY != Integer.MIN_VALUE
-                && Math.abs(mc.player.getBlockY() - targetY) > 1
-                ? findSafeGatherHeightPath(mc, targetY) : List.of();
+        HeightNavigationPlan heightPlan = targetY != Integer.MIN_VALUE && mc.player.getBlockY() != targetY
+                ? findSafeGatherHeightPlan(mc, targetY) : null;
 
         stop(null);
         gatherMaterial = item;
@@ -635,10 +634,10 @@ public final class AIPlayerController {
         gatherPickupTicks = 0;
         gatherCountBeforeBreak = 0;
 
-        if (!heightPath.isEmpty()) {
-            path = List.copyOf(heightPath);
+        if (heightPlan != null && !heightPlan.path().isEmpty()) {
+            path = List.copyOf(heightPlan.path());
             pathIndex = 0;
-            navigationGoal = heightPath.get(heightPath.size() - 1).toImmutable();
+            navigationGoal = heightPlan.goal().toImmutable();
             actionTicks = 0;
             stuckTicks = 0;
             lastWaypointDistance = Double.MAX_VALUE;
@@ -897,10 +896,10 @@ public final class AIPlayerController {
         return isInNether(mc) && isAncientDebrisItem(gatherMaterial) && refreshGatherTargets(mc);
     }
 
-    /** Plan a safe route to a nearby loaded, walkable position at the requested feet-level Y. */
-    private static List<BlockPos> findSafeGatherHeightPath(MinecraftClient mc, int targetY) {
+    /** Plan a safe route to a nearby loaded, walkable position at the exact requested feet-level Y. */
+    private static HeightNavigationPlan findSafeGatherHeightPlan(MinecraftClient mc, int targetY) {
         BlockPos origin = mc.player.getBlockPos();
-        if (Math.abs(origin.getY() - targetY) <= 1) return List.of();
+        if (origin.getY() == targetY) return new HeightNavigationPlan(origin, List.of());
         List<BlockPos> candidates = new ArrayList<>();
         for (int radius = 0; radius <= 8; radius++) {
             for (int dx = -radius; dx <= radius; dx++) {
@@ -916,10 +915,10 @@ public final class AIPlayerController {
         int attempts = 0;
         for (BlockPos candidate : candidates) {
             List<BlockPos> planned = planNavigationSegment(mc, candidate);
-            if (!planned.isEmpty()) return planned;
+            if (!planned.isEmpty()) return new HeightNavigationPlan(candidate.toImmutable(), List.copyOf(planned));
             if (++attempts >= 24) break;
         }
-        return List.of();
+        return null;
     }
 
     private static boolean isAncientDebrisItem(Item item) {
@@ -2144,6 +2143,8 @@ public final class AIPlayerController {
     private static boolean isAtGoal(MinecraftClient mc, BlockPos goal) {
         double horizontal = Math.hypot(goal.getX() + 0.5 - mc.player.getX(),
                 goal.getZ() + 0.5 - mc.player.getZ());
+        if (gatherMaterial != null && gatherTargetY != Integer.MIN_VALUE)
+            return horizontal <= 1.0 && mc.player.getBlockY() == gatherTargetY;
         return horizontal <= 1.0 && Math.abs(mc.player.getY() - goal.getY()) <= 1.25;
     }
 
@@ -2441,4 +2442,5 @@ public final class AIPlayerController {
     }
 
     private record SearchNode(BlockPos position, double cost, double estimatedTotal) {}
+    private record HeightNavigationPlan(BlockPos goal, List<BlockPos> path) {}
 }
