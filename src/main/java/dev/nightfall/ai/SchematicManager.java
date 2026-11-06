@@ -234,8 +234,10 @@ public final class SchematicManager {
                 partX * BUILD_PART_SIZE + sectionWidth / 2,
                 partY * BUILD_PART_SIZE + sectionHeight / 2,
                 partZ * BUILD_PART_SIZE + sectionLength / 2);
+        BlockPos accessPosition = new BlockPos(center.getX(), anchor.getY(), center.getZ());
         return imported.summary() + "\n\nAUSGEWÄHLTER ABSCHNITT X" + partX + " Y" + partY + " Z" + partZ
-                + ": Zentrum " + center.toShortString() + ". Navigiere zuerst dorthin, damit die Ziel-Chunks geladen sind; danach build_schematic mit denselben Indizes aufrufen.";
+                + ": Bauzentrum " + center.toShortString() + ". Zugangsposition auf Höhe des Startankers: "
+                + accessPosition.toShortString() + ". Navigiere zur Zugangsposition, damit die Ziel-Chunks geladen sind; danach build_schematic mit denselben Indizes aufrufen.";
     }
 
     private static BlockPos resolveBuildAnchor(String fileName, int partX, int partY, int partZ) {
@@ -345,13 +347,15 @@ public final class SchematicManager {
                 startZ + sectionLength / 2);
         String preview = AIBuilder.prepareImportedStructure(label, partBuild, partClear, partWater,
                 sectionCenter, sectionWidth, sectionHeight, sectionLength);
+        BlockPos accessPosition = new BlockPos(sectionCenter.getX(), farmAnchor.getY(), sectionCenter.getZ());
         return imported.summary() + "\n\nABSCHNITT X" + partX + "/" + (partsX - 1)
                 + " Y" + partY + "/" + (partsY - 1) + " Z" + partZ + "/" + (partsZ - 1)
                 + ": " + partBuild.size() + " Bau-Blöcke, " + partClear.size() + " Luftzellen, "
                 + partWater.size() + " Wasserquellen.\n"
-                + "Dauerhafter Farm-Anker: " + farmAnchor.toShortString() + ". Abschnittszentrum: "
-                + sectionCenter.toShortString() + ". Die Gesamtposition bleibt über alle Abschnitte stabil. "
-                + "Bewege dich vor der Vorschau zum angezeigten Abschnittszentrum, damit die Ziel-Chunks geladen sind.\n\n"
+                + "Dauerhafter Farm-Anker: " + farmAnchor.toShortString() + ". Bauzentrum: "
+                + sectionCenter.toShortString() + ". Zugangsposition auf Höhe des Startankers: "
+                + accessPosition.toShortString() + ". Die Gesamtposition bleibt über alle Abschnitte stabil. "
+                + "Navigiere zur Zugangsposition, damit die Ziel-Chunks geladen sind.\n\n"
                 + preview;
     }
 
