@@ -219,6 +219,10 @@ public final class SchematicManager {
     }
 
     public static String inspectSummary(String fileName, int partX, int partY, int partZ) {
+        return inspectSummary(fileName, partX, partY, partZ, false);
+    }
+
+    public static String inspectSummary(String fileName, int partX, int partY, int partZ, boolean resetAnchor) {
         Imported imported = inspect(fileName);
         int partsX = (imported.width() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
         int partsY = (imported.height() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
@@ -226,7 +230,7 @@ public final class SchematicManager {
         if (partX < 0 || partX >= partsX || partY < 0 || partY >= partsY || partZ < 0 || partZ >= partsZ)
             throw new IllegalArgumentException("Bauabschnitt außerhalb des Rasters. Gültig: X 0–" + (partsX - 1)
                     + ", Y 0–" + (partsY - 1) + ", Z 0–" + (partsZ - 1) + ".");
-        BlockPos anchor = resolveBuildAnchor(fileName, partX, partY, partZ);
+        BlockPos anchor = resolveBuildAnchor(fileName, partX, partY, partZ, resetAnchor);
         int sectionWidth = Math.min(BUILD_PART_SIZE, imported.width() - partX * BUILD_PART_SIZE);
         int sectionHeight = Math.min(BUILD_PART_SIZE, imported.height() - partY * BUILD_PART_SIZE);
         int sectionLength = Math.min(BUILD_PART_SIZE, imported.length() - partZ * BUILD_PART_SIZE);
@@ -240,13 +244,16 @@ public final class SchematicManager {
                 + accessPosition.toShortString() + ". Navigiere zur Zugangsposition, damit die Ziel-Chunks geladen sind; danach build_schematic mit denselben Indizes aufrufen.";
     }
 
-    private static BlockPos resolveBuildAnchor(String fileName, int partX, int partY, int partZ) {
+    private static BlockPos resolveBuildAnchor(String fileName, int partX, int partY, int partZ,
+                                                boolean resetAnchor) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null || mc.getNetworkHandler() == null)
             throw new IllegalArgumentException("Für den Schematic-Bau brauchst du eine verbundene Welt.");
         String server = currentServerKey(mc);
         String dimension = mc.world.getRegistryKey().getValue().toString();
         boolean firstSection = partX == 0 && partY == 0 && partZ == 0;
+        if (resetAnchor && !firstSection)
+            throw new IllegalArgumentException("Ein neuer Farm-Startpunkt kann nur bei Abschnitt X0 Y0 Z0 gesetzt werden.");
         try {
             Files.createDirectories(BUILD_SESSION_PATH.getParent());
             if (Files.isRegularFile(BUILD_SESSION_PATH)) {
@@ -255,7 +262,7 @@ public final class SchematicManager {
                         && session.has("file") && session.get("file").getAsString().equals(fileName)
                         && session.has("server") && session.get("server").getAsString().equals(server)
                         && session.has("dimension") && session.get("dimension").getAsString().equals(dimension);
-                if (sameSession)
+                if (sameSession && !resetAnchor)
                     return new BlockPos(session.get("x").getAsInt(), session.get("y").getAsInt(), session.get("z").getAsInt());
                 if (!firstSection)
                     throw new IllegalArgumentException("Der gespeicherte Farm-Anker gehört zu einer anderen Datei, einem anderen Server oder einer anderen Dimension. Beginne Abschnitt X0 Y0 Z0 neu.");
@@ -299,10 +306,14 @@ public final class SchematicManager {
     }
 
     public static String prepareBuild(String fileName) {
-        return prepareBuild(fileName, 0, 0, 0);
+        return prepareBuild(fileName, 0, 0, 0, false);
     }
 
     public static String prepareBuild(String fileName, int partX, int partY, int partZ) {
+        return prepareBuild(fileName, partX, partY, partZ, false);
+    }
+
+    public static String prepareBuild(String fileName, int partX, int partY, int partZ, boolean resetAnchor) {
         Imported imported = inspect(fileName);
         int partsX = (imported.width() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
         int partsY = (imported.height() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
@@ -339,7 +350,7 @@ public final class SchematicManager {
             throw new IllegalArgumentException("Dieser Abschnitt enthält weder Bau-Blöcke, Wasserquellen noch Aushubzellen.");
         String label = (imported.sourceName().isBlank() ? stripExtension(imported.fileName()) : imported.sourceName())
                 + " · Abschnitt X" + partX + " Y" + partY + " Z" + partZ;
-        BlockPos farmAnchor = resolveBuildAnchor(fileName, partX, partY, partZ);
+        BlockPos farmAnchor = resolveBuildAnchor(fileName, partX, partY, partZ, resetAnchor);
         int sectionWidth = endX - startX, sectionHeight = endY - startY, sectionLength = endZ - startZ;
         BlockPos sectionCenter = farmAnchor.add(
                 startX + sectionWidth / 2,
