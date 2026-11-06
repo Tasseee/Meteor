@@ -263,7 +263,9 @@ Creator-Datei wird durch Nightfall mitgeliefert.
 normalisiert deren Koordinaten. `build_schematic` akzeptiert die optionalen Parameter
 `part_x`, `part_y` und `part_z` (jeweils nullbasiert); jeder Abschnitt umfasst maximal
 32×32×32 Zellen. Die KI muss bei großen Vorlagen alle benötigten Abschnitte einzeln planen.
-Jeder Abschnitt wird um die aktuelle Spielerposition herum verankert: Bewege dich vor der
-Vorschau zum passenden Abschnittszentrum. Die Abschnitte sind keine Garantie für einen
+Der erste Abschnitt (0/0/0) speichert einen lokalen, an Server/Dimension/Datei gebundenen Farm-Anker
+in `config/nightfall/schematic_build_session.json`. Alle weiteren Abschnittszentren werden aus diesem
+Anker berechnet; `inspect_schematic` zeigt die exakten Weltkoordinaten. Navigiere mit `navigate_to`
+zum angezeigten Zentrum, bevor du den Abschnitt vorbereitest, damit seine Ziel-Chunks geladen sind. Die Abschnitte sind keine Garantie für einen
 funktionierenden Farmaufbau. Flüssigkeiten (auch Wasserquellen), dynamische Redstone-Zustände
 und Block-Entity-Sonderdaten bleiben Einschränkungen; Wasser muss derzeit manuell ergänzt werden.
