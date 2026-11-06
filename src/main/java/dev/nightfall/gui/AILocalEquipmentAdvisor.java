@@ -32,7 +32,7 @@ final class AILocalEquipmentAdvisor {
             List<EnchantmentInfo> enchantments) {
         GearInfo {
             if (itemId == null || itemId.isBlank() || name == null || name.isBlank()
-                    || category == null || category.isBlank()
+                    || !isSupportedCategory(category)
                     || location == null || location.isBlank()
                     || durabilityPercent < -1 || durabilityPercent > 100
                     || armorPoints < 0 || !Float.isFinite(armorToughness)
@@ -226,6 +226,14 @@ final class AILocalEquipmentAdvisor {
             if (suggestions.size() >= 12) break;
         }
         return List.copyOf(suggestions);
+    }
+
+    private static boolean isSupportedCategory(String category) {
+        return "armor:head".equals(category)
+                || "armor:chest".equals(category)
+                || "armor:legs".equals(category)
+                || "armor:feet".equals(category)
+                || isUtilityTool(category);
     }
 
     private static boolean isUtilityTool(String category) {
