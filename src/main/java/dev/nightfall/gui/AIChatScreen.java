@@ -9,6 +9,7 @@ import dev.nightfall.ai.AIBuilder;
 import dev.nightfall.ai.AIPlayerController;
 import dev.nightfall.util.Theme;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.util.hit.BlockHitResult;
@@ -1195,7 +1196,11 @@ public final class AIChatScreen extends Screen {
         String movement = conditions.isEmpty() ? "keine besondere Bewegung erkannt" : String.join(", ", conditions);
 
         List<String> armor = new ArrayList<>();
-        for (ItemStack stack : player.getArmorItems()) {
+        for (ItemStack stack : List.of(
+                player.getEquippedStack(EquipmentSlot.HEAD),
+                player.getEquippedStack(EquipmentSlot.CHEST),
+                player.getEquippedStack(EquipmentSlot.LEGS),
+                player.getEquippedStack(EquipmentSlot.FEET))) {
             if (!stack.isEmpty()) armor.add(describeStack(stack));
         }
         String armorSummary = armor.isEmpty() ? "keine" : String.join(", ", armor);
