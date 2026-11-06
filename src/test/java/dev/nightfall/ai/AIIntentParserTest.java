@@ -29,6 +29,16 @@ class AIIntentParserTest {
     }
 
     @Test
+    void recognizesNaturalResumeRequests() {
+        org.junit.jupiter.api.Assertions.assertTrue(AIChatClient.isResumeRequest("mach weiter"));
+        org.junit.jupiter.api.Assertions.assertTrue(AIChatClient.isResumeRequest("Mach da weiter bitte"));
+        org.junit.jupiter.api.Assertions.assertTrue(AIChatClient.isResumeRequest("setz fort"));
+        org.junit.jupiter.api.Assertions.assertTrue(AIChatClient.isResumeRequest("continue"));
+        org.junit.jupiter.api.Assertions.assertFalse(AIChatClient.isResumeRequest("weiter"));
+        org.junit.jupiter.api.Assertions.assertFalse(AIChatClient.isResumeRequest(null));
+    }
+
+    @Test
     void keepsUnknownBiomeLabelsReadable() {
         assertEquals("minecraft:unknown", AIIntentParser.biomeLabel("minecraft:unknown"));
         assertEquals("jungle", AIIntentParser.biomeLabel("minecraft:jungle"));
