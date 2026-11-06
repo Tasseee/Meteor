@@ -890,7 +890,7 @@ public final class AIBuilder {
         String path = Registries.ITEM.getId(item).getPath();
         return switch (path) {
             case "repeater", "comparator", "observer", "piston", "sticky_piston",
-                    "dispenser", "dropper", "hopper", "redstone_block", "redstone_torch",
+                    "dispenser", "dropper", "hopper", "redstone_torch",
                     "redstone_wall_torch", "redstone_lamp", "lever", "tripwire",
                     "tripwire_hook", "daylight_detector", "target", "tnt",
                     "lightning_rod" -> 1;
