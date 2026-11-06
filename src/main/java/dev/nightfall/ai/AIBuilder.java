@@ -257,10 +257,10 @@ public final class AIBuilder {
         List<AIMaterialPlanner.IncompleteCraftableCandidate> incompleteAlternatives =
                 AIPlayerController.findIncompleteCraftableBlockMaterials(required);
         if (!incompleteAlternatives.isEmpty()) {
-            summary.append("\\nNoch nicht vollständig herstellbare Materialalternativen (höchstens fünf):");
+            summary.append("\nNoch nicht vollständig herstellbare Materialalternativen (höchstens fünf):");
             for (int index = 0; index < incompleteAlternatives.size(); index++) {
                 AIMaterialPlanner.IncompleteCraftableCandidate option = incompleteAlternatives.get(index);
-                summary.append("\\n").append(index + 1).append(". ")
+                summary.append("\n").append(index + 1).append(". ")
                         .append(option.displayName()).append(" [").append(option.itemId()).append("]: Bestand ")
                         .append(option.owned()).append(", noch benötigt ").append(option.missing())
                         .append(", Rezeptschritte ").append(option.recipeSteps())
@@ -269,7 +269,7 @@ public final class AIBuilder {
                         .append(". Fehlende Zutaten: ").append(option.missingIngredients())
                         .append(". Unvollständige Rezeptkette: ").append(option.recipeSummary());
             }
-            summary.append("\\nDie Fehlmengen sind eine Diagnose der ausgewählten Rezeptvarianten, keine Crafting-Freigabe.");
+            summary.append("\nDie Fehlmengen sind eine Diagnose der ausgewählten Rezeptvarianten, keine Crafting-Freigabe.");
         }
         summary.append(" Das ist nur eine Bestands- und Rezeptbuchprüfung: Bauplatz, Untergrund, Hindernisse und Platzierungsrisiken "
                 + "werden erst in der eigentlichen Bauvorschau geprüft. Es wurde kein Bauplan vorbereitet "
