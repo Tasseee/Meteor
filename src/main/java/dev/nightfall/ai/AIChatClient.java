@@ -304,6 +304,10 @@ public final class AIChatClient {
             addTools(selected, "stop_current_action", "stop_movement", "pause_build", "stop_build");
         }
 
+        if (isClearSavedTaskRequest(query)) {
+            addTools(selected, "clear_saved_task");
+        }
+
         if (isResumeRequest(query)) {
             addTools(selected, "resume_saved_task", "resume_saved_build", "resume_build",
                     "get_player_status", "stop_current_action");
@@ -412,6 +416,18 @@ public final class AIChatClient {
         }
 
         return AIActionRegistry.toolDefinitions(selected);
+    }
+
+    static boolean isClearSavedTaskRequest(String query) {
+        if (query == null || query.isBlank()) return false;
+        String normalized = query.toLowerCase(Locale.ROOT);
+        boolean clearIntent = hasAny(normalized, "lösch", "loesch", "entfern", "vergiss",
+                "lösche", "loesche", "delete", "clear", "forget", "remove");
+        boolean savedTaskReference = hasAny(normalized, "gespeicherte aufgabe",
+                "gespeicherten auftrag", "gespeicherter auftrag", "gespeicherten sammelauftrag",
+                "gespeicherte sammelaufgabe", "saved task", "saved gathering task",
+                "task resume checkpoint");
+        return clearIntent && savedTaskReference;
     }
 
     static boolean isResumeRequest(String query) {
