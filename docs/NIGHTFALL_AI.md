@@ -320,7 +320,9 @@ bleiben Einschränkungen.
 
 Das read-only Werkzeug `list_waypoints` zeigt die lokal gespeicherten Wegpunkte des aktuellen Servers
 mit Name, Kategorie, Dimension und Blockkoordinaten an (maximal 30 Einträge pro Antwort).
-Die Liste wird nicht an einen anderen Server übertragen und verändert keine Wegpunkte.
+Die Wegpunkte bleiben lokal im serverbezogenen Dateisatz gespeichert. Beim Abfragen werden Namen,
+Dimensionen und Koordinaten an den konfigurierten KI-Anbieter übermittelt; deshalb zeigt Nightfall
+vorher eine Vorschau und verlangt eine Bestätigung. Die Abfrage verändert keine Wegpunkte.
 Ein angezeigter Wegpunkt startet keine Bewegung: Für eine Navigation muss der Spieler diese
 ausdrücklich anfordern; erst dann wird `navigate_to` mit den gespeicherten Koordinaten verwendet.
 Nightfall übernimmt Dimension und Koordinaten unverändert und behauptet nicht, dass ein Wegpunkt
