@@ -1513,7 +1513,7 @@ public final class AIChatScreen extends Screen {
         return slot < 9 ? "Hotbar-Slot " + (slot + 1) : "Inventar-Slot " + (slot - 8);
     }
 
-    private static int armorAttributeValue(
+    private static double armorAttributeValue(
             ItemStack stack,
             EquipmentSlot equipmentSlot,
             RegistryEntry<EntityAttribute> attribute) {
@@ -1528,8 +1528,8 @@ public final class AIChatScreen extends Screen {
                 value += modifier.value();
             }
         }
-        if (!Double.isFinite(value)) return 0;
-        return (int) Math.round(Math.max(0.0, value));
+        if (!Double.isFinite(value)) return 0.0;
+        return Math.max(0.0, value);
     }
 
     private static List<AILocalEquipmentAdvisor.EnchantmentInfo> snapshotEnchantments(ItemStack stack) {
@@ -1538,7 +1538,9 @@ public final class AIChatScreen extends Screen {
         for (RegistryEntry<Enchantment> entry : enchantments.getEnchantments()) {
             int level = enchantments.getLevel(entry);
             if (level <= 0) continue;
-            String id = Registries.ENCHANTMENT.getId(entry.value()).toString();
+            String id = entry.getKey()
+                    .map(key -> key.getValue().toString())
+                    .orElse("unregistered:enchantment");
             String name = Enchantment.getName(entry, level).getString();
             result.add(new AILocalEquipmentAdvisor.EnchantmentInfo(id, name, level));
             if (result.size() >= 16) break;
@@ -1566,7 +1568,7 @@ public final class AIChatScreen extends Screen {
 
                     boolean compatible = true;
                     for (RegistryEntry<Enchantment> current : existing.getEnchantments()) {
-                        if (current.equals(candidate)) continue;
+                        if (current.getKeyOrValue().equals(candidate.getKeyOrValue())) continue;
                         if (!Enchantment.canBeCombined(current, candidate)) {
                             compatible = false;
                             break;
