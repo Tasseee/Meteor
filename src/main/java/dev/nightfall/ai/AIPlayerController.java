@@ -2183,6 +2183,10 @@ public final class AIPlayerController {
         int batches() {
             return steps.stream().mapToInt(CraftingPlanStep::batches).sum();
         }
+
+        boolean complete() {
+            return missing.isEmpty() && !limited;
+        }
     }
 
     private static final class CraftingDiagnosticBudget {
