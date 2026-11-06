@@ -2153,11 +2153,15 @@ public final class AIPlayerController {
         for (int slot = 0; slot < 36; slot++) {
             if (!mc.player.getInventory().getStack(slot).isEmpty()) filled++;
         }
-        return "Nightfall sortiert nach deiner Bestätigung alle Gegenstände in den 36 normalen Inventar- und Hotbar-Slots "
+        int protectedSlots = 0;
+        for (int slot = 0; slot < 36; slot++) {
+            if (isProtectedInventoryItem(mc.player.getInventory().getStack(slot))) protectedSlots++;
+        }
+        return "Nightfall sortiert nach deiner Bestätigung normale Gegenstände in den 36 Inventar- und Hotbar-Slots "
                 + "nach Kategorie und Item-ID. Geplant sind " + plan.size()
-                + " bestätigte Slot-Tausche. Stackgrößen und Komponenten bleiben exakt erhalten; Rüstung, Offhand, "
-                + "Crafting-Felder und Maus-Cursor bleiben unangetastet. Die Aktion nutzt normale Minecraft-Inventar-Klicks "
-                + "und stoppt bei einem Containerwechsel oder fehlender Serverbestätigung.";
+                + " bestätigte Slot-Tausche. Stackgrößen und Komponenten bleiben exakt erhalten; "
+                + protectedSlots + " geschützte Slots bleiben unverändert. Rüstung, Offhand, Crafting-Felder "
+                + "und Maus-Cursor werden nicht berührt. Die Aktion wartet auf normale Serverbestätigungen.";
     }
 
     /** Start sorting only after the player accepted the preview. */
@@ -2174,25 +2178,29 @@ public final class AIPlayerController {
     }
 
     private static List<InventorySwap> createInventorySortPlan(MinecraftClient mc) {
-        List<ItemStack> working = new ArrayList<>(36);
-        List<ItemStack> desired = new ArrayList<>();
+        List<Integer> sortableSlots = new ArrayList<>();
+        List<ItemStack> working = new ArrayList<>();
         for (int slot = 0; slot < 36; slot++) {
             ItemStack stack = mc.player.getInventory().getStack(slot).copy();
-            working.add(stack.copy());
-            if (!stack.isEmpty()) desired.add(stack);
+            if (stack.isEmpty() || !isProtectedInventoryItem(stack)) {
+                sortableSlots.add(slot);
+                working.add(stack);
+            }
         }
+        List<ItemStack> desired = new ArrayList<>();
+        for (ItemStack stack : working) if (!stack.isEmpty()) desired.add(stack.copy());
         desired.sort(Comparator.comparingInt(AIPlayerController::inventorySortCategory)
                 .thenComparing(stack -> Registries.ITEM.getId(stack.getItem()).toString())
                 .thenComparing(stack -> stack.getName().getString())
                 .thenComparing(Comparator.comparingInt(ItemStack::getCount).reversed()));
-        while (desired.size() < 36) desired.add(ItemStack.EMPTY);
+        while (desired.size() < sortableSlots.size()) desired.add(ItemStack.EMPTY);
 
         List<InventorySwap> swaps = new ArrayList<>();
-        for (int target = 0; target < 36; target++) {
+        for (int target = 0; target < sortableSlots.size(); target++) {
             ItemStack wanted = desired.get(target);
             if (ItemStack.areEqual(working.get(target), wanted)) continue;
             int source = -1;
-            for (int candidate = target + 1; candidate < 36; candidate++) {
+            for (int candidate = target + 1; candidate < sortableSlots.size(); candidate++) {
                 if (ItemStack.areEqual(working.get(candidate), wanted)) {
                     source = candidate;
                     break;
@@ -2200,12 +2208,23 @@ public final class AIPlayerController {
             }
             if (source < 0)
                 throw new IllegalStateException("Das Inventar hat sich während der Sortiervorschau geändert. Bitte erneut versuchen.");
-            swaps.add(new InventorySwap(target, source));
+            swaps.add(new InventorySwap(sortableSlots.get(target), sortableSlots.get(source)));
             ItemStack temporary = working.get(target);
             working.set(target, working.get(source));
             working.set(source, temporary);
         }
         return swaps;
+    }
+
+    /** Keep combat-oriented items in their original slots instead of rearranging them. */
+    private static boolean isProtectedInventoryItem(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        String path = Registries.ITEM.getId(stack.getItem()).getPath();
+        return path.endsWith("_sword") || path.endsWith("_axe")
+                || path.equals("bow") || path.equals("crossbow") || path.equals("trident")
+                || path.equals("mace") || path.equals("shield")
+                || path.equals("tnt") || path.equals("end_crystal")
+                || path.equals("fire_charge");
     }
 
     /** Stable, broad categories; every normal inventory item participates in sorting. */
