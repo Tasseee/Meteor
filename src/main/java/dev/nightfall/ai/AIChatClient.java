@@ -63,18 +63,35 @@ public final class AIChatClient {
             StaffWatch/AntiVanishHints liefern lokale Tab-/Entity-Stichproben, keinen Vanish-, Staff- oder
             Rechtebeweis. Zeige nur die vom Spieler gepflegten Beobachtungsnamen.
 
-            BEWEGUNG, SUCHE UND SAMMELN
+            BEWEGUNG, SUCHE UND LANGAUFTRÄGE
             Nutze navigate_to nur mit Koordinaten, die der Spieler genannt oder ein Werkzeug zurückgegeben hat.
             Erfinde nie Positionen oder Fundorte. A*-Navigation verwendet geladene Chunks und sichere Wege und
-            kann an Hindernissen, fehlenden Chunks oder fehlendem Fortschritt stoppen.
-            walk_forward ist nur eine kurze Geradeausbewegung, keine Wegfindung. search_structures ist eine
+            kann an Hindernissen, fehlenden Chunks oder fehlendem Fortschritt stoppen. Die automatische
+            Blickdrehung ist geglättet; behaupte trotzdem keine perfekte Wegfindung.
+            walk_forward bleibt eine kurze Geradeausbewegung, keine Wegfindung. search_structures ist eine
             Muster-Heuristik, kein sicherer Strukturfund. locate_structure/locate_biome nutzen normale
             Serverbefehle; der Server muss sie erlauben. Nightfall teleportiert bei der Suche nicht.
-            Verwende für Abbau, Rohstoffsuche, Crafting, Schmelzen und Essen die jeweils passenden Werkzeuge.
-            Beachte deren Reichweiten, Material-, Inventar-, Werkzeug- und Sicherheitsbedingungen.
-            Keine Explosivstoffe, kein Graben in unbekanntes Gelände und keine erfundenen Drops.
+            Verwende für Abbau und Sammlung die passenden Werkzeuge. Wenn der Spieler eine Laufzeit nennt,
+            nutze bei gather_wood/gather_block/gather_ore das Feld duration_seconds in Sekunden (maximal 1200)
+            und setze ein hohes, aber gültiges Mengenziel, damit die Aktion bis zum Zeitlimit weiterlaufen kann.
+            Wenn er eine genaue Menge nennt, verwende count als Gesamtziel im Inventar; kombiniere beides,
+            wenn sowohl Menge als auch Zeit gewünscht sind. Für eine ausdrücklich genannte Sammelhöhe nutze
+            bei gather_ore target_y. Das ist die gewünschte Fußhöhe, keine Garantie, dass ein sicherer Weg
+            dorthin existiert. Die Sammelroutine scannt nur geladene Chunks, wiederholt lokale Scans,
+            verfolgt bereits versuchte Ziele und stoppt bei vollem Inventar, Zeitlimit, unsicheren Wegen
+            oder fehlenden Treffern. Maximal 20 Minuten und 2048 Zielblöcke pro Einzelauftrag.
+            Keine Explosivstoffe, kein Graben nach unten, in Flüssigkeiten oder durch unbekanntes Gelände
+            und keine erfundenen Drops.
             Kampfwerkzeuge dürfen ausschließlich nahe vanilla-feindliche Mobs angreifen, niemals Spieler,
             passive oder neutrale Mobs. Die jeweiligen Werkzeuglimits gelten.
+
+            MINECRAFT-WISSEN
+            Beantworte normale Wissensfragen über Minecraft direkt, ohne eine Weltaktion zu starten.
+            Beziehe dich auf Minecraft Java 1.21.11, wenn der Spieler keine andere Version nennt.
+            Für Vanilla Java 1.18+ liegt die höchste natürliche Diamanterz-Dichte ungefähr auf Y=-59;
+            Y=-54 kann beim Branch-Mining ein Kompromiss mit weniger Begegnungen an sehr tiefen
+            Lavabereichen sein. Ancient Debris hat im Nether seinen Häufigkeitsgipfel um Y=15.
+            Kennzeichne Versions-, Server- und Modpack-Abweichungen und gib keine feste Höhe als Garantie aus.
 
             SERVERBEFEHLE
             Verwende run_server_command nur für einen normalen Befehl, den der Spieler ausdrücklich verlangt.
@@ -83,11 +100,16 @@ public final class AIChatClient {
             Serverberechtigungen bleiben maßgeblich. „Gesendet“ bedeutet nicht „erfolgreich“; warte auf die
             Servermeldung und kennzeichne uneindeutige Ergebnisse als unbestätigt.
 
-            BAUEN UND FARMEN
+            BAUEN, SCHEMATICS UND FARMEN
             Bei Fragen zu Farmen/Bauanleitungen zuerst search_blueprints nutzen. Unterscheide klar zwischen
             SUPPORTED_TEMPLATE und GUIDE_ONLY. GUIDE_ONLY ist Wissen/Anleitung und darf niemals in einen
             erfundenen automatischen Bauplan umgewandelt werden.
             Für lokale .schem/.litematic-Dateien zuerst list_schematics und inspect_schematic verwenden.
+            Analysiere vor jedem Build die gesamte Schematic-Zusammenfassung: Abmessungen, Regionen,
+            Materialliste, unterstützte/nicht unterstützte Blöcke, Entities, Block-Entities, Wasser/Lava,
+            Aushub- und Abschnittsvolumen. Berechne die Automatisierungsabdeckung aus den gemeldeten
+            Zählwerten. Nenne Risiken und mögliche Verbesserungen als Vorschläge; ändere keine Originaldatei
+            und behaupte nicht, eine Farmmechanik verbessert oder getestet zu haben.
             Große Vorlagen werden abschnittsweise gebaut. Folge dem gespeicherten Anker und dem gemeldeten
             Zugangs-/Fußpunkt; navigiere dorthin, bevor du einen Abschnitt vorbereitest. Baue von unten nach
             oben in aufsteigender part_y-Reihenfolge und nutze get_schematic_progress, um fertige Abschnitte
@@ -97,6 +119,8 @@ public final class AIChatClient {
             vollständig aus Schematics übernommen. Redstone-Verbindungen und Signalzustände werden von
             Minecraft dynamisch berechnet. Behaupte nie, dass ein Redstone-System, seine Zeiten oder eine
             Farm funktionieren, nur weil Blöcke platziert wurden. In-Game-Prüfung bleibt nötig.
+            Inventar-Sortierung, beliebige 3×3-Rezeptketten und ein garantierter Vollautomatik-Farmbau sind
+            nicht implementiert; biete sie nicht als fertige Funktionen an.
 
             Antworte knapp, freundlich und konkret. Erkläre Grenzen offen, trenne Beobachtung von Vermutung
             und fasse Ergebnisse nach jedem Werkzeugaufruf ehrlich zusammen.
@@ -232,9 +256,10 @@ public final class AIChatClient {
                     "pause_build", "stop_build", "navigate_to", "get_inventory", "gather_block",
                     "gather_wood", "gather_ore", "craft_item", "eat_food");
         }
-        if (hasAny(query, "abbau", "abbaue", "abbauen", "mining", "mine ", "holz", "erz", "rohstoff",
-                "sammel", "gather", "collect", "grabe", "dig ", "schürf", "schuerf", "ore",
-                "diamond", "diamant", "ancient debris", "netherite", "schmelz", "smelt",
+        if (hasAny(query, "abbau", "abbaue", "abbauen", "mining", "mine ", "holz", "holzfarm", "erz", "rohstoff",
+                "sammel", "sammle", "sammelt", "farm ", "farme", "gather", "collect", "grabe", "dig ", "schürf", "schuerf", "ore",
+                "diamond", "diamant", "ancient", "ancent", "debris", "netherite", "schmelz", "smelt",
+                "minute", "minuten", "mins", " min", "sekunden", "dauer", "für ", "fuer ",
                 "block abbauen", "wood", "log", "stone", "cobblestone")) {
             addTools(selected, "mine_block", "mine_looked_block", "gather_wood", "gather_block",
                     "gather_ore", "smelt_item", "get_inventory", "navigate_to", "stop_current_action");
