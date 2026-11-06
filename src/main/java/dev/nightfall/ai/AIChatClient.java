@@ -173,10 +173,12 @@ public final class AIChatClient {
              Vorlagenbau nutze sie zur Bestandsprüfung; build_structure zeigt danach eine eigene Bauvorschau und
              benötigt weiterhin eine getrennte ausdrückliche Bestätigung. Herstellbare Alternativen basieren
              ausschließlich auf tatsächlich im synchronisierten Rezeptbuch sichtbaren Rezepten und den aktuell
-             vorhandenen Zutaten. Nenne Rezeptschritte und ob eine 3×3-Crafting-Table erforderlich ist.
-             Starte craft_item niemals automatisch aus der Materialanalyse heraus; jede Crafting-Kette benötigt
-             ihre eigene Vorschau und Bestätigung. Behaupte keine Herstellungsmöglichkeit, wenn die Kette
-             unvollständig ist oder Zutaten fehlen. Bei Sammelaufträgen nennt die
+             vorhandenen Zutaten. Nenne bei vollständigen Ketten Rezeptschritte, Zutatenverbrauch und ob eine
+             3×3-Crafting-Table erforderlich ist. Bei unvollständigen Ketten darfst du nur die ausdrücklich
+             ausgewiesenen fehlenden Zutaten samt Mengen und die untersuchte Rezeptvariante nennen; stelle sie
+             niemals als ausführbar oder craftbar dar. Die Diagnose ist begrenzt und kann nicht untersuchte
+             Rezeptvarianten auslassen. Starte craft_item niemals automatisch aus der Materialanalyse heraus;
+             jede Crafting-Kette benötigt ihre eigene Vorschau und Bestätigung. Bei Sammelaufträgen nennt die
              Sammelvorschau Bestand, Zielmenge, Fehlmenge, freien Inventarplatz und lokal gefundene Ziele;
              behaupte keine Ressourcen außerhalb der geladenen Bereiche.
              Große Vorlagen werden abschnittsweise gebaut. Folge dem gespeicherten Anker und dem gemeldeten
