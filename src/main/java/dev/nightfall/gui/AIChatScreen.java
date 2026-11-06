@@ -699,11 +699,15 @@ public final class AIChatScreen extends Screen {
                     AIVoiceClient.speak("Ich möchte folgende Aktion ausführen. " + pendingAction.preview()
                             + ". Bitte bestätige sie im Nightfall-Fenster oder brich sie ab.");
                     scroll = Float.MAX_VALUE;
-                } catch (IllegalArgumentException invalidAction) {
-                    apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(),
-                            "Nightfall hat die Aktion aus Sicherheitsgründen abgelehnt: " + invalidAction.getMessage()));
-                    history.set(responseIndex, new ChatLine("assistant",
-                            "Diese Aktion kann ich nicht ausführen: " + invalidAction.getMessage()));
+                } catch (RuntimeException actionFailure) {
+                    String detail = actionFailure.getMessage();
+                    if (detail == null || detail.isBlank()) detail = actionFailure.getClass().getSimpleName();
+                    detail = detail.replaceAll("[\\r\\n\\t]+", " ").trim();
+                    if (detail.length() > 320) detail = detail.substring(0, 320) + "…";
+                    String failureResult = "Nightfall konnte das Werkzeug nicht ausführen: " + detail
+                            + ". Prüfe den Zustand und wähle nur dann einen sicheren Alternativschritt.";
+                    apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), failureResult));
+                    history.set(responseIndex, new ChatLine("assistant", failureResult));
                     actionRoundTrips++;
                     scroll = Float.MAX_VALUE;
                     requestAI();
