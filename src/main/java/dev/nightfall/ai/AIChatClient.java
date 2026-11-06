@@ -115,9 +115,11 @@ public final class AIChatClient {
             Blöcke zu prüfen. Große Vorlagen werden in Abschnitte 32×32×32 zerlegt. Beginne mit
             part_x=0, part_y=0, part_z=0; dadurch wird ein lokaler Farm-Anker gespeichert. Für jeden weiteren
             Abschnitt rufe zuerst inspect_schematic mit den gewünschten part_x/part_y/part_z-Werten auf,
-            lies das ausgegebene Weltzentrum, navigiere mit navigate_to dorthin und rufe danach
-            build_schematic mit denselben Indizes auf. Wiederhole das abschnittsweise und überspringe keine
-            Abschnitte. Jeder Abschnitt braucht seine eigene Vorschau und ausdrückliche Spielerbestätigung.
+            lies die ausgegebene Zugangsposition (nicht das möglicherweise in der Luft liegende Bauzentrum),
+            navigiere mit navigate_to dorthin und rufe danach build_schematic mit denselben Indizes auf.
+            Baue alle Abschnitte in aufsteigender part_y-Reihenfolge (unterste Ebene zuerst), danach X/Z,
+            damit obere Teile an bereits bestätigte untere Blöcke anschließen können. Wiederhole das abschnittsweise
+            und überspringe keine Abschnitte. Jeder Abschnitt braucht seine eigene Vorschau und ausdrückliche Spielerbestätigung.
             Nightfall hält die Gesamtposition über den gespeicherten Anker stabil, setzt jeden Teilplan
             einzeln und sichert dessen Baufortschritt lokal. Nightfall übernimmt gespeicherte BlockStates
             und versucht Ausrichtung/Platzierung mit Minecrafts normaler BlockItem-Logik exakt wiederherzustellen. Block-Entity-Blöcke wie Hopper und Truhen dürfen mit frischen Standarddaten platziert werden; ihre Inventarinhalte und Sonderdaten werden nicht kopiert.
