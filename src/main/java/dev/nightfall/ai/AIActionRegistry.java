@@ -286,15 +286,20 @@ public final class AIActionRegistry {
         JsonObject gatherWoodCount = property("count", "integer",
                 "Target total amount of this item in the player's inventory (1–256).").get("schema").getAsJsonObject();
         gatherWoodCount.addProperty("minimum", 1);
-        gatherWoodCount.addProperty("maximum", 64);
+        gatherWoodCount.addProperty("maximum", 1_024);
+        JsonObject gatherWoodDuration = property("duration_seconds", "integer",
+                "Optionales Laufzeitlimit in Sekunden (0–1.200). 0 = bis zum Mengenziel bzw. bis keine sicheren Ziele mehr verfügbar sind.").get("schema").getAsJsonObject();
+        gatherWoodDuration.addProperty("minimum", 0);
+        gatherWoodDuration.addProperty("maximum", 1_200);
         gatherWoodSchema.getAsJsonObject("properties").add("item", gatherWoodItem);
         gatherWoodSchema.getAsJsonObject("properties").add("count", gatherWoodCount);
+        gatherWoodSchema.getAsJsonObject("properties").add("duration_seconds", gatherWoodDuration);
         JsonArray gatherWoodRequired = new JsonArray();
         gatherWoodRequired.add("item");
         gatherWoodRequired.add("count");
         gatherWoodSchema.add("required", gatherWoodRequired);
         tools.add(tool("gather_wood",
-                "Gather a target total amount (1–64) of a specific vanilla log/wood/stem/hyphae block item. Scans only already-loaded chunks within 16 horizontal blocks and 4 below/16 above the player; accepts only matching vanilla block/item IDs whose drops are the same wood item. Uses safe nearby A* paths, the suitable tool from the full inventory and normal vanilla block breaking. At most 32 additional blocks per request. It stops if no safe path or confirmed drops are unavailable. Requires player confirmation.",
+                "Gather a target total amount (1–1024) of a specific vanilla log/wood/stem/hyphae item. Optional duration_seconds is 0–1200 (20 minutes maximum); 0 means stop at the count target or when no safe loaded targets remain. Re-scans loaded chunks around the player's current position, up to 32 blocks horizontally, tracks already attempted blocks, uses safe nearby A* paths and normal vanilla block breaking, and waits for confirmed drops. The whole job is capped at 2048 target blocks and the inventory must have room. For a duration-first request, choose a high but valid count target and set duration_seconds. Requires player confirmation.",
                 gatherWoodSchema));
         JsonObject gatherBlockSchema = objectSchema();
         JsonObject gatherBlockItem = property("item", "string",
@@ -304,14 +309,19 @@ public final class AIActionRegistry {
                 "Target total amount of this item in the player's inventory (1–64).").get("schema").getAsJsonObject();
         gatherBlockCount.addProperty("minimum", 1);
         gatherBlockCount.addProperty("maximum", 256);
+        JsonObject gatherBlockDuration = property("duration_seconds", "integer",
+                "Optionales Laufzeitlimit in Sekunden (0–1.200). 0 = bis zum Mengenziel bzw. bis keine sicheren Ziele mehr verfügbar sind.").get("schema").getAsJsonObject();
+        gatherBlockDuration.addProperty("minimum", 0);
+        gatherBlockDuration.addProperty("maximum", 1_200);
         gatherBlockSchema.getAsJsonObject("properties").add("item", gatherBlockItem);
         gatherBlockSchema.getAsJsonObject("properties").add("count", gatherBlockCount);
+        gatherBlockSchema.getAsJsonObject("properties").add("duration_seconds", gatherBlockDuration);
         JsonArray gatherBlockRequired = new JsonArray();
         gatherBlockRequired.add("item");
         gatherBlockRequired.add("count");
         gatherBlockSchema.add("required", gatherBlockRequired);
         tools.add(tool("gather_block",
-                "Gather a target total amount (1–256) of a whitelisted vanilla block item from the loaded nearby area. Supports wood blocks plus a conservative list of same-item self-dropping blocks such as dirt, coarse dirt, cobblestone, granite, diorite, andesite, tuff, calcite, moss block, sandstone, netherrack, end stone, blackstone, basalt, cobbled deepslate, stone bricks and selected masonry. It rejects falling blocks, fluids, block entities, unbreakable blocks, unknown IDs and blocks requiring a tool that the player does not own. Only mines blocks with a verified requested-item drop: the requested block itself for the self-drop allowlist, stone/cobblestone for cobblestone, or deepslate/cobbled deepslate for cobbled deepslate. It does not mine stone to claim a stone item (Silk Touch is not automated). Scans already-loaded chunks within 16 horizontal blocks and 4 below/16 above the player, uses safe nearby A* paths and normal vanilla block breaking, and waits for confirmed drops. At most 32 additional blocks per request. Requires player confirmation.",
+                "Gather a target total amount (1–1024) of a whitelisted vanilla self-dropping block item. Optional duration_seconds is 0–1200. Re-scans already-loaded chunks within 32 horizontal blocks, uses safe A* paths, checks drop correctness and waits for confirmed inventory pickups. Still rejects falling blocks, fluids, block entities, unbreakable or unsupported blocks and items requiring unsupported drop logic. At most 2048 source blocks per task. Requires player confirmation.",
                 gatherBlockSchema));
         JsonObject gatherOreSchema = objectSchema();
         JsonObject gatherOreItem = property("item", "string",
@@ -320,15 +330,25 @@ public final class AIActionRegistry {
         JsonObject gatherOreCount = property("count", "integer",
                 "Target total amount of this drop item in the player's inventory (1–64).").get("schema").getAsJsonObject();
         gatherOreCount.addProperty("minimum", 1);
-        gatherOreCount.addProperty("maximum", 64);
+        gatherOreCount.addProperty("maximum", 256);
+        JsonObject gatherOreDuration = property("duration_seconds", "integer",
+                "Optionales Laufzeitlimit in Sekunden (0–1.200). 0 = bis zum Mengenziel bzw. bis keine sicheren Ziele mehr verfügbar sind.").get("schema").getAsJsonObject();
+        gatherOreDuration.addProperty("minimum", 0);
+        gatherOreDuration.addProperty("maximum", 1_200);
+        JsonObject gatherOreHeight = property("target_y", "integer",
+                "Optionale sichere Zielhöhe der Füße. Nightfall versucht, zu einer begehbaren Position auf dieser Höhe zu navigieren, bevor es scannt.").get("schema").getAsJsonObject();
+        gatherOreHeight.addProperty("minimum", -64);
+        gatherOreHeight.addProperty("maximum", 320);
         gatherOreSchema.getAsJsonObject("properties").add("item", gatherOreItem);
         gatherOreSchema.getAsJsonObject("properties").add("count", gatherOreCount);
+        gatherOreSchema.getAsJsonObject("properties").add("duration_seconds", gatherOreDuration);
+        gatherOreSchema.getAsJsonObject("properties").add("target_y", gatherOreHeight);
         JsonArray gatherOreRequired = new JsonArray();
         gatherOreRequired.add("item");
         gatherOreRequired.add("count");
         gatherOreSchema.add("required", gatherOreRequired);
         tools.add(tool("gather_ore",
-                "Gather a target total amount (1–64) of a supported ore drop item: coal, raw iron, raw copper, raw gold, redstone, lapis lazuli, diamond, emerald, quartz, gold nuggets from nether gold ore, or ancient debris. Includes stone and deepslate ore variants where applicable. It scans only already-loaded chunks within 16 horizontal blocks and 24 below/12 above the player. For Ancient Debris, when the current target queue is exhausted, it refreshes the local scan up to six times around the player's updated position, excluding targets already attempted; each refresh remains limited to loaded chunks and the same bounded radius, so this is not an exhaustive vein search. In the Nether, it may excavate a short horizontal 1x2 tunnel of up to 8 steps through netherrack, basalt or blackstone (at most 16 tunnel blocks), then mine the ore from a safe adjacent stand. Tunnel cells require a solid safe floor and loaded neighbors; immediate adjacent fluids/lava, falling blocks, block entities, hazards, unsupported blocks and unsafe paths are rejected. It never digs downward, into unknown rock, bedrock or through fluids, and does not use TNT/beds/explosives. Ore mining uses vanilla ItemStack.isSuitableFor to require correct drops (diamond/netherite pickaxe for Ancient Debris; correct tier for other ores). It uses normal mining and waits for world updates and confirmed inventory drops. At most 32 ore blocks per request; Fortune may increase yield. Requires player confirmation.",
+                "Gather a target total amount (1–256) of supported ore drops, including Ancient Debris. Optional duration_seconds is 0–1200 (20 minutes maximum); optional target_y requests a safe route to a walkable feet-level position at that Y before scanning. Re-scans loaded chunks up to 32 horizontal blocks around the current position and excludes already attempted targets. Ancient Debris still needs a diamond/netherite pickaxe; it may use a short checked horizontal tunnel (up to 8 steps) through netherrack, basalt or blackstone. It never digs down, into fluids/lava, unknown rock or bedrock, and never uses explosives. All mining uses normal vanilla interactions, correct tool checks and confirmed block/drop updates; the whole task is capped at 2048 source blocks and will stop on timeout, inventory capacity, missing targets or unsafe routes. For duration-first requests, set a high but valid count target plus duration_seconds. Requires player confirmation.",
                 gatherOreSchema));
         JsonObject smeltSchema = objectSchema();
         JsonObject smeltItem = property("item", "string",
@@ -547,13 +567,18 @@ public final class AIActionRegistry {
             case "mine_looked_block" -> new Action(name, args, AIPlayerController.previewLookedBlock());
             case "gather_wood" -> new Action(name, args,
                     AIPlayerController.previewGatherWood(requiredString(args, "item", 64),
-                            readBoundedInteger(args, "count", 1, 64)));
+                            readBoundedInteger(args, "count", 1, 1_024),
+                            args.has("duration_seconds") ? readBoundedInteger(args, "duration_seconds", 0, 1_200) : 0,
+                            Integer.MIN_VALUE));
             case "gather_block" -> new Action(name, args,
                     AIPlayerController.previewGatherBlock(requiredString(args, "item", 64),
-                            readBoundedInteger(args, "count", 1, 256)));
+                            readBoundedInteger(args, "count", 1, 1_024),
+                            args.has("duration_seconds") ? readBoundedInteger(args, "duration_seconds", 0, 1_200) : 0));
             case "gather_ore" -> new Action(name, args,
                     AIPlayerController.previewGatherOre(requiredString(args, "item", 64),
-                            readBoundedInteger(args, "count", 1, 64)));
+                            readBoundedInteger(args, "count", 1, 256),
+                            args.has("duration_seconds") ? readBoundedInteger(args, "duration_seconds", 0, 1_200) : 0,
+                            args.has("target_y") ? readBoundedInteger(args, "target_y", -64, 320) : Integer.MIN_VALUE));
             case "smelt_item" -> new Action(name, args,
                     AIPlayerController.previewSmeltItem(requiredString(args, "item", 64),
                             readBoundedInteger(args, "count", 1, 16)));
@@ -809,11 +834,16 @@ public final class AIActionRegistry {
                     args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt());
             case "mine_looked_block" -> AIPlayerController.mineLookedBlock();
             case "gather_wood" -> AIPlayerController.gatherWood(args.get("item").getAsString(),
-                    readBoundedInteger(args, "count", 1, 64));
+                    readBoundedInteger(args, "count", 1, 1_024),
+                    args.has("duration_seconds") ? readBoundedInteger(args, "duration_seconds", 0, 1_200) : 0,
+                    Integer.MIN_VALUE);
             case "gather_block" -> AIPlayerController.gatherBlock(args.get("item").getAsString(),
-                    readBoundedInteger(args, "count", 1, 256));
+                    readBoundedInteger(args, "count", 1, 1_024),
+                    args.has("duration_seconds") ? readBoundedInteger(args, "duration_seconds", 0, 1_200) : 0);
             case "gather_ore" -> AIPlayerController.gatherOre(args.get("item").getAsString(),
-                    readBoundedInteger(args, "count", 1, 64));
+                    readBoundedInteger(args, "count", 1, 256),
+                    args.has("duration_seconds") ? readBoundedInteger(args, "duration_seconds", 0, 1_200) : 0,
+                    args.has("target_y") ? readBoundedInteger(args, "target_y", -64, 320) : Integer.MIN_VALUE);
             case "smelt_item" -> AIPlayerController.smeltItem(args.get("item").getAsString(),
                     readBoundedInteger(args, "count", 1, 16));
             case "craft_item" -> AIPlayerController.craftItem(args.get("item").getAsString(),
