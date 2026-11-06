@@ -1,11 +1,16 @@
 package dev.nightfall.ai;
 
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.FluidBlock;
 import net.minecraft.block.FallingBlock;
+import net.minecraft.fluid.Fluids;
 import net.minecraft.command.argument.BlockArgumentParser;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.item.BlockItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.Items;
 import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.item.ItemStack;
 import net.minecraft.screen.slot.SlotActionType;
@@ -82,6 +87,10 @@ public final class AIBuilder {
     private static final List<RelativeBlock> CUSTOM_OFFSETS = new ArrayList<>();
     private static final List<RelativeBlock> CUSTOM_CLEAR_OFFSETS = new ArrayList<>();
     private static final List<BlockPos> EXCAVATION_PLAN = new ArrayList<>();
+    private static final List<BlockPos> WATER_PLAN = new ArrayList<>();
+    private static int waterIndex;
+    private static BlockPos pendingWaterTarget;
+    private static int pendingWaterTicks;
     private static final Map<BlockPos, Identifier> EXCAVATION_EXPECTED_BLOCKS = new LinkedHashMap<>();
     private static int excavationIndex;
     private static int excavationRetries;
@@ -106,7 +115,7 @@ public final class AIBuilder {
     private static float originalYaw;
     private static float originalPitch;
     private static boolean absoluteSchematicOrientation;
-    private static BlockItem pendingInventoryMaterial;
+    private static Item pendingInventoryMaterial;
     private static int pendingInventoryHotbarSlot = -1;
     private static int pendingInventorySwapTicks;
     private static BlockPos preparedPlayerPos;
@@ -343,11 +352,19 @@ public final class AIBuilder {
     public static String prepareImportedStructure(String name, List<RelativeBlock> offsets,
                                                   List<RelativeBlock> clearOffsets, BlockPos sectionCenter,
                                                   int sectionWidth, int sectionHeight, int sectionLength) {
+        return prepareImportedStructure(name, offsets, clearOffsets, List.of(),
+                sectionCenter, sectionWidth, sectionHeight, sectionLength);
+    }
+
+    public static String prepareImportedStructure(String name, List<RelativeBlock> offsets,
+                                                  List<RelativeBlock> clearOffsets, List<RelativeBlock> waterOffsets,
+                                                  BlockPos sectionCenter, int sectionWidth,
+                                                  int sectionHeight, int sectionLength) {
         if (sectionCenter == null || sectionWidth < 1 || sectionWidth > 32
                 || sectionHeight < 1 || sectionHeight > 32 || sectionLength < 1 || sectionLength > 32)
             throw new IllegalArgumentException("Ungültiges Zentrum oder ungültige Abmessungen des Schematic-Abschnitts.");
         return prepareCustomStructure(name, null, null, offsets, clearOffsets,
-                32_768, 31, 31, true, sectionCenter, sectionWidth, sectionHeight, sectionLength);
+                32_768, 31, 31, true, sectionCenter, sectionWidth, sectionHeight, sectionLength, waterOffsets);
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial, List<RelativeBlock> offsets) {
@@ -368,7 +385,7 @@ public final class AIBuilder {
                                                  int maxBlocks, int maxHorizontal, int maxVerticalLimit,
                                                  boolean preserveSchematicOrientation) {
         return prepareCustomStructure(name, preferredMaterial, preferredMaterialId, offsets, clearOffsets,
-                maxBlocks, maxHorizontal, maxVerticalLimit, preserveSchematicOrientation, null, 0, 0, 0);
+                maxBlocks, maxHorizontal, maxVerticalLimit, preserveSchematicOrientation, null, 0, 0, 0, List.of());
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial,
@@ -377,6 +394,18 @@ public final class AIBuilder {
                                                  int maxBlocks, int maxHorizontal, int maxVerticalLimit,
                                                  boolean preserveSchematicOrientation, BlockPos fixedSchematicCenter,
                                                  int sectionWidth, int sectionHeight, int sectionLength) {
+        return prepareCustomStructure(name, preferredMaterial, preferredMaterialId, offsets, clearOffsets,
+                maxBlocks, maxHorizontal, maxVerticalLimit, preserveSchematicOrientation,
+                fixedSchematicCenter, sectionWidth, sectionHeight, sectionLength, List.of());
+    }
+
+    private static String prepareCustomStructure(String name, BlockItem preferredMaterial,
+                                                 String preferredMaterialId, List<RelativeBlock> offsets,
+                                                 List<RelativeBlock> clearOffsets,
+                                                 int maxBlocks, int maxHorizontal, int maxVerticalLimit,
+                                                 boolean preserveSchematicOrientation, BlockPos fixedSchematicCenter,
+                                                 int sectionWidth, int sectionHeight, int sectionLength,
+                                                 List<RelativeBlock> waterOffsets) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (running) throw new IllegalArgumentException("Nightfall baut bereits. Stoppe den aktuellen Bau zuerst.");
         if (mc.player == null || mc.world == null || mc.interactionManager == null || mc.getNetworkHandler() == null)
