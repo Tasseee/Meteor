@@ -316,6 +316,10 @@ Vanilla-Flusssimulation entstehen. Dynamische Redstone-Zustände und Block-Entit
 bleiben Einschränkungen.
 
 
+## Gespeicherte Aufgaben fortsetzen oder löschen
+
+Nightfall speichert beim Verbindungsabbruch höchstens einen lokalen Aufgaben-Checkpoint für einen ausdrücklich gestarteten Sammelauftrag oder ein ausdrücklich gesetztes Navigationsziel. Gespeichert werden nur die Absicht und Server-/Dimensionskennung, keine alten Blockziele, Pfade, Inventar-Snapshots oder Zugangsdaten. Der Checkpoint läuft nach 24 Stunden ab und wird bei Fortsetzung neu validiert. `resume_saved_task` zeigt eine Vorschau und startet die Aufgabe erst nach ausdrücklicher Bestätigung. `clear_saved_task` löscht nach separater Vorschau und Bestätigung ausschließlich den passenden Aufgaben-Checkpoint der aktuellen Server-/Dimensionskombination. Checkpoints anderer Welten bleiben erhalten; laufende Aktionen und Baufortschritt bleiben unverändert.
+
 ## Nightfall AI: Basissuche und Fake-Base-Werkzeuge
 
 Die KI kann jetzt den vorhandenen BaseFinder direkt bedienen:
