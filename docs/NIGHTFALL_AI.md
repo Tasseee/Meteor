@@ -242,14 +242,25 @@ statt eine falsch ausgerichtete Farm als fertig zu melden. Materialien können a
 
 **Materialmangel und unterstützte Nachbeschaffung:** Wenn ein Material vollständig fehlt, löst Nightfall eine exakte registrierte Block-Item-ID auch ohne vorhandenen Stack auf und meldet alle fehlenden Materialien gesammelt mit benötigter, vorhandener und fehlender Menge. Für unterstützte Vanilla-Holzarten kann die KI `gather_wood` mit der passenden Log-ID verwenden und fehlende Bretter mit `craft_item` über ein bereits freigeschaltetes 2×2-Rezept herstellen. Ist die fehlende Block-Item-ID selbst in der sicheren Selbst-Drop-Liste enthalten, kann `gather_block` sie direkt sammeln. Danach muss `build_schematic` erneut aufgerufen werden, damit Nightfall eine aktuelle Vorschau mit dem aktualisierten Inventar erzeugt. Jeder Sammel-, Crafting- und Bauauftrag benötigt weiterhin eine eigene Spielerbestätigung. Erze, Rohstoffe mit abweichendem Drop, Sand/Kies, Glas und andere nicht freigegebene Blöcke werden nicht automatisch beschafft.
 
-**Wichtige verbleibende Grenzen:** Block-Entity-Blöcke wie Hopper und Truhen können mit frischen
-Standarddaten platziert werden. Inventarinhalte und benutzerdefiniertes Block-Entity-NBT werden
-aber nicht aus der Vorlage übernommen. Entities, Lavaquellen, fallende Blöcke und komplexe, dynamische Redstone-/Nachbarschaftszustände
-werden noch nicht vollständig rekonstruiert. Stille Wasserquellen werden nur im Kreativmodus
+**Redstone-Unterstützung:** Redstone-Staub wird mit dem normalen Redstone-Item über die
+Vanilla-Interaktion auf dem Block darunter platziert. Er wird nach den strukturellen Stützblöcken
+und den Redstone-Geräten gesetzt, damit seine Verbindungen aus dem bereits vorhandenen Aufbau
+entstehen können. Unterstützte BlockItems wie Repeater, Comparator, Observer, Kolben, Hebel,
+Knöpfe, Druckplatten, Redstone-Lampen, Dispenser, Dropper und Hopper behalten ihre statischen
+BlockState-Eigenschaften (z. B. Ausrichtung, Repeater-Verzögerung und Comparator-Modus).
+Minecraft berechnet dynamische Werte wie Draht-Verbindungen, Signalstärke, powered, locked,
+lit und extended anhand der tatsächlichen Nachbarschaft und der laufenden Ticks; diese Werte
+werden daher nicht als starre Schematic-Vorgabe erzwungen. Das bestätigt weder korrekte
+Signalwege noch Timing, Inventarinhalte, Farm-Ausgabe oder vollständige Funktion. Hopper und
+andere Block-Entities können weiterhin nur mit frischen Standarddaten platziert werden; ihr
+NBT und Inventar werden nicht übernommen.
+
+**Wichtige verbleibende Grenzen:** Entities, Lavaquellen, fallende Blöcke und nicht unterstützte
+Block-Entity-Daten werden nicht rekonstruiert. Stille Wasserquellen werden nur im Kreativmodus
 versuchsweise mit einem Wassereimer gesetzt; das Ergebnis und die Flusssimulation müssen im Spiel
-geprüft werden. Insbesondere kann eine Schematic, deren Block-States von Nachbarblöcken
-oder Redstone-Signalen abhängen, trotz korrekter Grundausrichtung noch Abweichungen enthalten.
-Der Aushub selbst macht eine Farm nicht funktionsfähig, wenn ihre Mechanik nicht unterstützt wird.
+geprüft werden. Auch korrekt ausgerichtete Redstone-Blöcke können in einer realen Farm abhängig
+von Server-Ticks, Nachbarschaft und weiteren nicht übernommenen Daten anders arbeiten.
+Der Aushub und das Setzen der Blöcke allein machen eine Farm nicht funktionsfähig.
 
 **Wiederaufnahme nach Neustart oder Verbindungsabbruch:** Der Builder speichert einen lokalen Checkpoint unter
 `config/nightfall/builder_resume.json`. Darin stehen Server- und Dimensionskennung, Baupositionen,
