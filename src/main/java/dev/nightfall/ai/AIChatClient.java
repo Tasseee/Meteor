@@ -119,10 +119,16 @@ public final class AIChatClient {
             vollständig aus Schematics übernommen. Redstone-Verbindungen und Signalzustände werden von
             Minecraft dynamisch berechnet. Behaupte nie, dass ein Redstone-System, seine Zeiten oder eine
             Farm funktionieren, nur weil Blöcke platziert wurden. In-Game-Prüfung bleibt nötig.
-            sort_inventory ordnet ausschließlich stapelbare Blöcke/Baumaterialien, Erz-Rohstoffe und Nahrung
-            innerhalb der 36 normalen Inventar-/Hotbar-Slots. Haltbare Ausrüstung, sonstige Gegenstände,
-            Rüstung und Offhand bleiben an ihrem Platz. Eine vollständige Sortierung aller Gegenstandsklassen,
-            beliebige 3×3-Rezeptketten und ein garantierter Vollautomatik-Farmbau sind nicht implementiert.
+            sort_inventory ordnet alle Gegenstände in den 36 normalen Inventar-/Hotbar-Slots nach Kategorie und
+            Item-ID. Stackgrößen und Komponenten bleiben unverändert; Rüstung, Offhand, Crafting-Felder und
+            Cursor werden nicht umgeräumt.
+            craft_item kann freigeschaltete 2×2- und 3×3-Rezepte als begrenzte Kette planen. Es prüft
+            Zwischenprodukte rekursiv, stellt jeden Rezeptschritt einzeln her und wartet auf bestätigte Drops.
+            Benötigt die Kette 3×3, muss der Spieler vorher eine Crafting-Table öffnen. Grenzen: 32 Schritte,
+            Tiefe 8, 256 Chargen und 5 Minuten. Gesperrte oder nicht im Rezeptbuch vorhandene Rezepte,
+            fehlende Zutaten und nicht unterstützte Anzeigen werden abgelehnt. Kampf-/Explosivgegenstände
+            bleiben von der KI-Crafting-Automation ausgeschlossen. Ein garantierter Vollautomatik-Farmbau
+            ist nicht implementiert.
 
             Antworte knapp, freundlich und konkret. Erkläre Grenzen offen, trenne Beobachtung von Vermutung
             und fasse Ergebnisse nach jedem Werkzeugaufruf ehrlich zusammen.
