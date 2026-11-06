@@ -1626,8 +1626,12 @@ public final class AIBuilder {
         MinecraftClient mc = MinecraftClient.getInstance();
         if ((!running && !prepared) || mc.world == null || blueprint == null) return;
         try {
-            JsonObject root = new JsonObject();
             savedServerKey = currentServerKey(mc);
+            if ("unknown".equals(savedServerKey)) {
+                status = "Baufortschritt nicht gespeichert: Die Welt lässt sich nicht eindeutig zuordnen.";
+                return;
+            }
+            JsonObject root = new JsonObject();
             root.addProperty("version", 6);
             root.addProperty("server", savedServerKey);
             root.addProperty("dimension", mc.world.getRegistryKey().getValue().toString());
@@ -1715,6 +1719,12 @@ public final class AIBuilder {
         Path file = checkpointPath();
         if (!Files.exists(file)) return;
         try {
+            if ("unknown".equals(currentServerKey(mc))) {
+                status = "Gespeicherter Bau gefunden, aber diese Verbindung lässt sich nicht eindeutig zuordnen. Fortsetzen ist aus Sicherheitsgründen deaktiviert.";
+                return;
+            }
+            if (Files.size(file) > 8L * 1024L * 1024L)
+                throw new IllegalArgumentException("Die gespeicherte Bau-Datei überschreitet die erlaubte Größe.");
             JsonObject root = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
             if (!root.has("version"))
                 throw new IllegalArgumentException("Checkpoint-Version fehlt.");
