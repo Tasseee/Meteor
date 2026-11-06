@@ -22,6 +22,23 @@ public abstract class BlockEntityEsp extends EspBase {
     protected abstract boolean accept(BlockEntity be);
     protected abstract String nameOf(BlockEntity be);
 
+    /** Read-only snapshot of this ESP module's current cached, range-filtered targets. */
+    public List<String> aiObservations(int limit) {
+        List<String> observations = new ArrayList<>();
+        if (!isEnabled() || mc.world == null || mc.player == null) return observations;
+        int count = Math.min(Math.max(0, limit), cache.size());
+        for (int i = 0; i < count; i++) {
+            BlockPos pos = cache.get(i);
+            BlockEntity blockEntity = mc.world.getBlockEntity(pos);
+            if (blockEntity == null || !accept(blockEntity)) continue;
+            observations.add(nameOf(blockEntity) + " @ " + pos.getX() + ","
+                    + pos.getY() + "," + pos.getZ() + " ("
+                    + Math.round(Math.sqrt(pos.getSquaredDistance(mc.player.getX(), mc.player.getY(), mc.player.getZ())))
+                    + "m)");
+        }
+        return observations;
+    }
+
     @Override protected void onDisable() { cache.clear(); boxes.clear(); }
 
     @Override
