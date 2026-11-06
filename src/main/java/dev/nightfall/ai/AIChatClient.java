@@ -241,9 +241,7 @@ public final class AIChatClient {
             addTools(selected, "stop_current_action", "stop_movement", "pause_build", "stop_build");
         }
 
-        if (hasAny(query, "fortsetzen", "fortsetze", "weiter machen", "weitermachen",
-                "weiterführen", "weiterfuehren", "wieder aufnehmen", "wiederaufnehmen",
-                "resume", "continue", "nach reconnect", "nach verbindungsabbruch")) {
+        if (isResumeRequest(query)) {
             addTools(selected, "resume_saved_task", "resume_saved_build", "resume_build",
                     "get_player_status", "stop_current_action");
         }
@@ -351,6 +349,16 @@ public final class AIChatClient {
         }
 
         return AIActionRegistry.toolDefinitions(selected);
+    }
+
+    static boolean isResumeRequest(String query) {
+        if (query == null || query.isBlank()) return false;
+        String normalized = query.toLowerCase(Locale.ROOT);
+        return hasAny(normalized, "fortsetzen", "fortsetze", "setz fort", "setze fort",
+                "weiter machen", "weitermachen", "mach weiter", "mach da weiter",
+                "weiterführen", "weiterfuehren", "wieder aufnehmen", "wiederaufnehmen",
+                "nimm wieder auf", "weiter geht's", "weiter gehts",
+                "resume", "continue", "nach reconnect", "nach verbindungsabbruch");
     }
 
     private static boolean hasAny(String text, String... values) {
