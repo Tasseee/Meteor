@@ -90,7 +90,7 @@ public final class AIBuilder {
     private static boolean excavationNavigationPending;
     private static int excavationApproachAttempts;
     private static boolean excavationWaitingNotice;
-    private static final int MAX_EXCAVATION_BLOCKS = 20_000;
+    private static final int MAX_EXCAVATION_BLOCKS = 32_768;
     private static BlockItem material;
     private static Blueprint blueprint;
     private static Identifier dimension;
@@ -119,6 +119,9 @@ public final class AIBuilder {
     private static boolean prepared;
     private static boolean running;
     private static boolean waitingForReach;
+    private static boolean placementNavigationPending;
+    private static int placementApproachAttempts;
+    private static boolean placementWaitingNotice;
     private static boolean pausedByUser;
     private static String materialName = "";
     private static String blueprintName = "";
@@ -332,7 +335,7 @@ public final class AIBuilder {
     /** Prepares the safe subset and the air volume that must be cleared for an imported schematic. */
     public static String prepareImportedStructure(String name, List<RelativeBlock> offsets,
                                                   List<RelativeBlock> clearOffsets) {
-        return prepareCustomStructure(name, null, null, offsets, clearOffsets, 10_000, 63, 63, true);
+        return prepareCustomStructure(name, null, null, offsets, clearOffsets, 32_768, 31, 31, true);
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial, List<RelativeBlock> offsets) {
@@ -439,8 +442,7 @@ public final class AIBuilder {
         int forwardSpan = playerForward.getAxis() == Direction.Axis.X ? maxX : maxZ;
         BlockPos schematicCenter = player.getBlockPos().offset(playerForward, 1 + (forwardSpan + 1) / 2);
         BlockPos origin = preserveSchematicOrientation
-                ? schematicCenter.offset(Direction.WEST, (maxX + 1) / 2)
-                    .offset(Direction.NORTH, (maxZ + 1) / 2)
+                ? player.getBlockPos().add(-((maxX + 1) / 2), 0, -((maxZ + 1) / 2))
                 : player.getBlockPos().offset(forward, 1).offset(right, -((maxX + 1) / 2));
         List<BlockPos> targets = new ArrayList<>(offsets.size());
         Set<BlockPos> targetSet = new HashSet<>();
@@ -755,6 +757,9 @@ public final class AIBuilder {
         pendingTicks = 0;
         placementRetries = 0;
         waitingForReach = false;
+        placementNavigationPending = false;
+        placementApproachAttempts = 0;
+        placementWaitingNotice = false;
         pausedByUser = false;
         running = true;
         restoredCheckpoint = false;
@@ -794,6 +799,13 @@ public final class AIBuilder {
         }
         if (delay > 0) { delay--; return; }
 
+        if (placementNavigationPending) {
+            if (AIPlayerController.isBusy()) {
+                status = "Gehe zum nächsten Bauabschnitt";
+                return;
+            }
+            placementNavigationPending = false;
+        }
         if (pausedByUser) return;
 
         if (queuedPlacementHit != null) {
@@ -880,6 +892,8 @@ public final class AIBuilder {
         BlockState expectedState = PLAN_STATES.getOrDefault(target, targetMaterial.getBlock().getDefaultState());
         if (present.equals(expectedState)) {
             index++;
+            placementApproachAttempts = 0;
+            placementWaitingNotice = false;
             saveCheckpointProgress(index, PLAN.size());
             progressNotice();
             return;
@@ -906,6 +920,29 @@ public final class AIBuilder {
             delay = 1;
             return;
         }
+        double placementReach = player.getBlockInteractionRange();
+        if (player.getEyePos().squaredDistanceTo(target.toCenterPos()) > placementReach * placementReach) {
+            waitingForReach = true;
+            if (placementApproachAttempts >= 3) {
+                if (!placementWaitingNotice) {
+                    placementWaitingNotice = true;
+                    notifyPlayer("Bau pausiert: Ich erreiche " + target.toShortString()
+                            + " nicht sicher. Geh näher an die Stelle; Nightfall setzt danach fort.");
+                }
+                return;
+            }
+            if (AIPlayerController.navigateNear(target, 2)) {
+                placementNavigationPending = true;
+                placementApproachAttempts++;
+                status = "Gehe zum Bauziel " + target.toShortString();
+                return;
+            }
+            placementApproachAttempts++;
+            status = "Warte auf erreichbaren Bauweg";
+            return;
+        }
+        placementApproachAttempts = 0;
+        placementWaitingNotice = false;
         PlacementCandidate candidate = findPlacementCandidate(mc, player, target, targetMaterial, expectedState);
         if (candidate == null) {
             stopInternal("Bau gestoppt: Für " + expectedState + " wurde mit normaler Minecraft-Platzierung keine sichere Ansetzfläche/Ausrichtung gefunden. "
@@ -1143,7 +1180,8 @@ public final class AIBuilder {
     }
 
     private static void saveCheckpointProgress(int completed, int total) {
-        if (completed >= total || completed % CHECKPOINT_PROGRESS_INTERVAL == 0)
+        int interval = Math.max(CHECKPOINT_PROGRESS_INTERVAL, total / 128);
+        if (completed >= total || completed % interval == 0)
             saveCheckpoint();
     }
 
@@ -1161,6 +1199,9 @@ public final class AIBuilder {
             root.addProperty("excavationIndex", excavationIndex);
             root.addProperty("materialName", materialName);
             root.addProperty("material", material == null ? "" : Registries.ITEM.getId(material).toString());
+            root.addProperty("maxBlocks", preparedMaxBlocks);
+            root.addProperty("maxHorizontal", preparedMaxHorizontal);
+            root.addProperty("maxY", preparedMaxY);
             JsonArray blocks = new JsonArray();
             for (BlockPos pos : PLAN) {
                 BlockItem item = PLAN_MATERIALS.getOrDefault(pos, material);
@@ -1225,7 +1266,7 @@ public final class AIBuilder {
             int checkpointVersion = root.get("version").getAsInt();
             if ((checkpointVersion != 2 && checkpointVersion != 3)
                     || !root.has("blocks") || !root.get("blocks").isJsonArray()
-                    || root.getAsJsonArray("blocks").isEmpty() || root.getAsJsonArray("blocks").size() > 10_000
+                    || root.getAsJsonArray("blocks").isEmpty() || root.getAsJsonArray("blocks").size() > 32_768
                     || !root.has("excavation") || !root.get("excavation").isJsonArray()
                     || root.getAsJsonArray("excavation").size() > MAX_EXCAVATION_BLOCKS)
                 throw new IllegalArgumentException("Ungültiges oder nicht unterstütztes Speicherformat.");
@@ -1306,7 +1347,13 @@ public final class AIBuilder {
             savedServerKey = storedServer;
             preparedPlayerPos = mc.player.getBlockPos().toImmutable();
             preparedFacing = mc.player.getHorizontalFacing();
-            preparedMaxBlocks = 10_000; preparedMaxHorizontal = 63; preparedMaxY = 63;
+            preparedMaxBlocks = root.has("maxBlocks") ? root.get("maxBlocks").getAsInt() : 10_000;
+            preparedMaxHorizontal = root.has("maxHorizontal") ? root.get("maxHorizontal").getAsInt() : 63;
+            preparedMaxY = root.has("maxY") ? root.get("maxY").getAsInt() : 63;
+            if (preparedMaxBlocks < 1 || preparedMaxBlocks > 32_768
+                    || preparedMaxHorizontal < 1 || preparedMaxHorizontal > 255
+                    || preparedMaxY < 1 || preparedMaxY > 255)
+                throw new IllegalArgumentException("Die gespeicherten Baugrenzen sind ungültig.");
             prepared = true; running = false; restoredCheckpoint = true;
             pendingTarget = null; pendingExcavationTarget = null; pendingMaterial = null; queuedPlacementHit = null;
             status = "Gespeicherter Bau wartet auf deine Bestätigung";
