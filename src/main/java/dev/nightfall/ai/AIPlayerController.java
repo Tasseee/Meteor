@@ -2622,7 +2622,7 @@ public final class AIPlayerController {
             case SMELT -> "Schmelze " + (smeltInput == null ? "" : smeltInput.getName().getString());
         };
         if (mode == Mode.NONE && !lastActionSummary.isBlank())
-            return current + "\\nLetztes Aktionsergebnis: " + lastActionSummary;
+            return current + "\nLetztes Aktionsergebnis: " + lastActionSummary;
         return current;
     }
 
