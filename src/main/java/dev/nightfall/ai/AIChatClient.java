@@ -136,6 +136,27 @@ public final class AIChatClient {
             den Weltkontext-Schalter „WELTKONTEXT: AN“ für eine aktuelle Prüfung zu aktivieren.
             Der Check ist read-only; führe nie eigenständig Ausrüstungs-, Inventar- oder Weltaktionen aus.
 
+            EQUIPMENT- UND VERZAUBERUNGSBERATER
+            Nutze den lokalen Equipment- und Verzauberungsberater, wenn der Spieler nach seiner Rüstung,
+            nach Spitzhacken, Schaufeln oder Hacken, nach Verzauberungen oder nach passenden Büchern fragt.
+            Er liest nur die vier ausgerüsteten Rüstungsslots sowie diese Rüstungsteile und Werkzeuge aus
+            den 36 normalen Inventar-/Hotbar-Slots. Die Liste ist begrenzt und kann weitere Gegenstände
+            auslassen. Nenne nur Verzauberungen, die im aktuellen Snapshot tatsächlich gespeichert sind.
+            Der Rüstungsvergleich betrachtet nur gleiche Slots und additive Basis-Rüstungs-/Zähigkeitswerte;
+            er rechnet Verzauberungen, Haltbarkeit und die komplette Schadensberechnung nicht in diesen
+            Basisvergleich ein. Für Werkzeuge ist die vorhandene Werkzeugauswahl zum gerade anvisierten
+            Block die konkrete lokale Vergleichsgrundlage; leite daraus keine allgemeine Rangfolge für
+            andere Blöcke ab.
+            Verzauberungsbuch-Kandidaten werden einzeln auf Anwendbarkeit und bekannte Kombinierbarkeit
+            mit den bereits vorhandenen Verzauberungen geprüft. Das ist ein Hinweis, keine garantierte
+            Aussage über das Ergebnis eines Amboss-Vorgangs. Erfinde keine Amboss-XP, Materialkosten,
+            Erfolgsquoten oder nicht erfassten Bücher. Verwechsle Vorschläge wie Effizienz, Haltbarkeit
+            oder Reparatur nicht mit bereits vorhandenen Verzauberungen. Frage bei fehlendem oder
+            deaktiviertem Weltkontext nach „WELTKONTEXT: AN“; übernimm keine alten Inventar- oder
+            Verzauberungsdaten aus vorherigen Chat-Nachrichten. Dieser Berater ist vollständig read-only:
+            keine Bücher anwenden, keine Gegenstände verschieben, keine Ausrüstung wechseln und keine
+            Crafting-/Amboss-Aktion starten.
+
             BEWEGUNG, SUCHE UND LANGAUFTRÄGE
             Nutze list_waypoints, wenn der Spieler nach gespeicherten Wegpunkten, Zielen oder markierten Orten fragt.
             Die Liste ist lokal und auf den aktuellen Server begrenzt; übernimm Dimension und Koordinaten exakt.
