@@ -2149,12 +2149,11 @@ public final class AIPlayerController {
         for (int slot = 0; slot < 36; slot++) {
             if (!mc.player.getInventory().getStack(slot).isEmpty()) filled++;
         }
-        return "Nightfall ordnet nach deiner Bestätigung alle Gegenstände in den 36 normalen Inventar- und Hotbar-Slots. "
-                + "Kompatible Stacks mit identischen Komponenten werden zuerst zusammengeführt; danach werden alle "
-                + "Gegenstandskategorien nach Typ und Item-ID sortiert. Geplant sind " + plan.size()
-                + " bestätigte Slot-Tausche. Rüstung, Offhand, Crafting-Felder und Maus-Cursor bleiben unangetastet. "
-                + "Beschädigte/verzauberte Varianten werden nur zusammengeführt, wenn Minecraft sie als exakt stapelbar bewertet. "
-                + "Die Aktion nutzt normale Minecraft-Inventar-Klicks und stoppt bei einem Containerwechsel oder fehlender Serverbestätigung.";
+        return "Nightfall sortiert nach deiner Bestätigung alle Gegenstände in den 36 normalen Inventar- und Hotbar-Slots "
+                + "nach Kategorie und Item-ID. Geplant sind " + plan.size()
+                + " bestätigte Slot-Tausche. Stackgrößen und Komponenten bleiben exakt erhalten; Rüstung, Offhand, "
+                + "Crafting-Felder und Maus-Cursor bleiben unangetastet. Die Aktion nutzt normale Minecraft-Inventar-Klicks "
+                + "und stoppt bei einem Containerwechsel oder fehlender Serverbestätigung.";
     }
 
     /** Start sorting only after the player accepted the preview. */
@@ -2172,42 +2171,16 @@ public final class AIPlayerController {
 
     private static List<InventorySwap> createInventorySortPlan(MinecraftClient mc) {
         List<ItemStack> working = new ArrayList<>(36);
-        List<ItemStack> contents = new ArrayList<>();
+        List<ItemStack> desired = new ArrayList<>();
         for (int slot = 0; slot < 36; slot++) {
             ItemStack stack = mc.player.getInventory().getStack(slot).copy();
             working.add(stack.copy());
-            if (!stack.isEmpty()) contents.add(stack);
+            if (!stack.isEmpty()) desired.add(stack);
         }
-
-        // Merge only stacks Minecraft itself considers compatible. Enchants, damage,
-        // names and other item components remain distinct; no item count is discarded.
-        List<ItemStack> packed = new ArrayList<>();
-        for (ItemStack original : contents) {
-            int remaining = original.getCount();
-            for (ItemStack destination : packed) {
-                if (!ItemStack.areItemsAndComponentsEqual(destination, original)
-                        || destination.getCount() >= destination.getMaxCount()) continue;
-                int moved = Math.min(remaining, destination.getMaxCount() - destination.getCount());
-                destination.increment(moved);
-                remaining -= moved;
-                if (remaining <= 0) break;
-            }
-            while (remaining > 0) {
-                ItemStack part = original.copy();
-                int placed = Math.min(remaining, part.getMaxCount());
-                part.setCount(placed);
-                packed.add(part);
-                remaining -= placed;
-            }
-        }
-
-        packed.sort(Comparator.comparingInt(AIPlayerController::inventorySortCategory)
+        desired.sort(Comparator.comparingInt(AIPlayerController::inventorySortCategory)
                 .thenComparing(stack -> Registries.ITEM.getId(stack.getItem()).toString())
                 .thenComparing(stack -> stack.getName().getString())
                 .thenComparing(Comparator.comparingInt(ItemStack::getCount).reversed()));
-
-        List<ItemStack> desired = new ArrayList<>(36);
-        for (ItemStack stack : packed) desired.add(stack.copy());
         while (desired.size() < 36) desired.add(ItemStack.EMPTY);
 
         List<InventorySwap> swaps = new ArrayList<>();
