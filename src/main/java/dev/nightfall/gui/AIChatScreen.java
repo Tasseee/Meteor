@@ -1280,12 +1280,14 @@ public final class AIChatScreen extends Screen {
         String localRiskSummary = localRisk.summary();
 
         String targetedBlock = "kein Block direkt anvisiert";
+        String targetedBlockMining = "keine Werkzeuganalyse verfügbar";
         if (mc.crosshairTarget instanceof BlockHitResult hit) {
             BlockPos targetedPos = hit.getBlockPos();
             targetedBlock = mc.world.getBlockState(targetedPos).getBlock().getName().getString()
                     + " bei X=" + targetedPos.getX()
                     + ", Y=" + targetedPos.getY()
                     + ", Z=" + targetedPos.getZ();
+            targetedBlockMining = AIPlayerController.describeMiningTool(targetedPos);
         }
 
         Map<String, Integer> inventoryCounts = new HashMap<>();
@@ -1310,6 +1312,7 @@ public final class AIChatScreen extends Screen {
                 + "Wetter: " + weather + "\n"
                 + "Block direkt unter den Füßen: " + blockBelow + "\n"
                 + "Anvisierter Block: " + targetedBlock + "\n"
+                + "Werkzeug- und Materialeinschätzung zum anvisierten Block: " + targetedBlockMining + "\n"
                 + "Lichtlevel an der Spielerposition: " + lightLevel + "/15\n"
                 + "Clientseitig erkannte Mobs im Umkreis von 16 Blöcken (höchstens 10): "
                 + nearbyMobsSummary + "\n"
