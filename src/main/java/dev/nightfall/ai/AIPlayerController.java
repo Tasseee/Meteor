@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -1874,6 +1875,80 @@ public final class AIPlayerController {
         mc.interactionManager.updateBlockBreakingProgress(miningPos, miningSide);
     }
 
+
+    /**
+     * Finds a small, bounded set of full-cube block materials that can be crafted
+     * from the current inventory using only entries in the synchronized recipe book.
+     * Planning is read-only and does not require an open crafting screen.
+     */
+    public static List<AIMaterialPlanner.CraftableCandidate> findCraftableBlockMaterials(int requiredTotal) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null)
+            throw new IllegalArgumentException("Du musst dich in einer Minecraft-Welt befinden, um Crafting-Alternativen zu prüfen.");
+        if (requiredTotal < 1 || requiredTotal > 256)
+            throw new IllegalArgumentException("Die benötigte Materialmenge muss zwischen 1 und 256 liegen.");
+
+        Set<Item> possibleMaterials = new LinkedHashSet<>();
+        BlockPos sample = mc.player.getBlockPos();
+        for (RecipeResultCollection collection : mc.player.getRecipeBook().getOrderedResults()) {
+            for (RecipeDisplayEntry entry : collection.getAllRecipes()) {
+                if (possibleMaterials.size() >= 32) break;
+                try {
+                    for (ItemStack output : entry.getStacks(EMPTY_RECIPE_CONTEXT)) {
+                        if (output == null || output.isEmpty() || !(output.getItem() instanceof BlockItem blockItem))
+                            continue;
+                        Item item = blockItem;
+                        Identifier itemId = Registries.ITEM.getId(item);
+                        if (!"minecraft".equals(itemId.getNamespace()) || countInventoryItem(mc, item) >= requiredTotal)
+                            continue;
+                        BlockState state = blockItem.getBlock().getDefaultState();
+                        if (blockItem.getBlock() instanceof net.minecraft.block.FallingBlock
+                                || !state.getFluidState().isEmpty()
+                                || state.getCollisionShape(mc.world, sample).isEmpty()
+                                || !state.isFullCube(mc.world, sample)) continue;
+                        possibleMaterials.add(item);
+                        if (possibleMaterials.size() >= 32) break;
+                    }
+                } catch (RuntimeException ignored) {
+                    // Ignore recipe displays that cannot be resolved on this client.
+                }
+            }
+            if (possibleMaterials.size() >= 32) break;
+        }
+
+        List<AIMaterialPlanner.CraftableCandidate> plans = new ArrayList<>();
+        for (Item materialItem : possibleMaterials) {
+            int owned = countInventoryItem(mc, materialItem);
+            int missing = requiredTotal - owned;
+            if (missing <= 0) continue;
+            try {
+                List<CraftingPlanStep> plan = createCraftingPlan(mc, materialItem, missing);
+                if (plan.isEmpty()) continue;
+                int batches = plan.stream().mapToInt(CraftingPlanStep::batches).sum();
+                boolean needsTable = plan.stream()
+                        .anyMatch(step -> step.gridWidth() > 2 || step.gridHeight() > 2);
+                String recipeSummary = plan.stream()
+                        .limit(4)
+                        .map(step -> step.resultStack().getName().getString()
+                                + " × " + step.batches() + " Charge(n) [" + step.recipe().id() + "]")
+                        .collect(java.util.stream.Collectors.joining("; "));
+                if (plan.size() > 4) recipeSummary += "; +" + (plan.size() - 4) + " weitere Schritte";
+                plans.add(new AIMaterialPlanner.CraftableCandidate(
+                        Registries.ITEM.getId(materialItem).toString(),
+                        materialItem.getName().getString(),
+                        owned,
+                        missing,
+                        plan.size(),
+                        batches,
+                        needsTable,
+                        recipeSummary));
+            } catch (RuntimeException unavailable) {
+                // An incomplete chain is not offered as a craftable alternative.
+            }
+            if (plans.size() >= 12) break;
+        }
+        return AIMaterialPlanner.rankCraftable(plans).stream().limit(5).toList();
+    }
 
     /**
      * Plans a bounded dependency chain using only recipes currently present in the
