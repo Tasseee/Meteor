@@ -149,47 +149,68 @@ public final class AIChatClient {
      * read-only/stop set remains available for ordinary questions and recovery.
      */
     private static JsonArray toolsFor(List<Message> history) {
-        String latestUserText = "";
-        for (int i = history.size() - 1; i >= 0; i--) {
+        // Keep the intent from the last few user turns so short follow-ups such as
+        // "and the next one?" can still use the tools selected for the original task.
+        StringBuilder recentUserText = new StringBuilder();
+        int includedTurns = 0;
+        for (int i = history.size() - 1; i >= 0 && includedTurns < 3; i--) {
             Message message = history.get(i);
-            if (message != null && "user".equals(message.role())) {
-                latestUserText = message.content() == null ? "" : message.content();
-                break;
-            }
+            if (message == null || !"user".equals(message.role()) || message.content() == null) continue;
+            if (recentUserText.length() > 0) recentUserText.insert(0, " ");
+            recentUserText.insert(0, message.content());
+            includedTurns++;
         }
-        String query = latestUserText.toLowerCase(Locale.ROOT);
+
+        String query = recentUserText.toString().toLowerCase(Locale.ROOT);
         Set<String> selected = new LinkedHashSet<>();
 
         if (hasAny(query, "status", "position", "koordinat", "gesundheit", "health", "hp",
-                "leben", "herz", "heart")) {
+                "leben", "herz", "heart", "where am i", "wo bin ich", "how much health",
+                "my health", "mein leben")) {
             addTools(selected, "get_player_status");
         }
         if (hasAny(query, "inventar", "inventory", "hotbar", "rüstung", "ruestung",
-                "armor", "ausrüstung", "ausruestung", "items")) {
+                "armor", "ausrüstung", "ausruestung", "items", "item count", "how many items")) {
             addTools(selected, "get_inventory");
         }
-        if (hasAny(query, "stopp", "stop", "halt", "abbrechen", "notfall")) {
+        if (hasAny(query, "stopp", "stop", "halt", "abbrechen", "notfall", "cancel action",
+                "stop everything")) {
             addTools(selected, "stop_current_action", "stop_movement", "pause_build", "stop_build");
         }
 
-        if (hasAny(query, "esp", "spieler", "player", "mob", "entity", "creeper", "zombie",
-                "item-drop", "gedroppt", "kiste", "truhe", "hopper", "fass", "storage",
-                "blockentity", "staffwatch", "vanish", "tab-list", "tabliste")) {
-            addTools(selected, "get_module_observations", "get_module_settings", "set_module_state");
+        if (hasAny(query, "esp", "spieler", "player", "players", "online player", "mob", "mobs",
+                "entity", "entities", "creeper", "zombie", "item-drop", "dropped item", "dropped items",
+                "ground item", "gedroppt", "kiste", "truhe", "chest", "hopper", "fass", "barrel",
+                "storage", "blockentity", "staffwatch", "vanish", "tab-list", "tabliste")) {
+            addTools(selected, "get_module_observations");
         }
-        if (hasAny(query, "basis", "base", "versteck", "geheim", "verdächtig", "verdachtig",
-                "sus", "chunk", "decoy", "fakebase", "fake base")) {
-            addTools(selected, "search_bases", "get_base_findings", "get_module_observations",
-                    "mark_fake_base", "list_fake_base_templates");
+
+        boolean baseTopic = hasAny(query, "basis", "base", "versteck", "geheim", "verdächtig",
+                "verdachtig", "sus", "chunk", "decoy", "fakebase", "fake base");
+        if (baseTopic) {
+            addTools(selected, "get_base_findings", "get_module_observations");
+            if (hasAny(query, "such", "find", "scann", "scan", "prüf", "pruef", "check", "locate")) {
+                addTools(selected, "search_bases");
+            }
+            if (hasAny(query, "markier", "mark ", "set as", "kennzeichn", "decoy", "fake base")) {
+                addTools(selected, "mark_fake_base");
+            }
+            if (hasAny(query, "vorlage", "template", "learn", "gelernt", "beispiel", "example")) {
+                addTools(selected, "list_fake_base_templates");
+            }
         }
+
         if (hasAny(query, "modul", "module", "setting", "einstellung", "option", "clickgui",
-                "menü", "menu", "reichweite", "geschwindigkeit", "farbe", "modus", "mode")) {
+                "menü", "menu", "reichweite", "geschwindigkeit", "farbe", "modus", "mode",
+                "enable ", "disable ", "turn on", "turn off", "aktivier", "deaktivier",
+                "einschalt", "ausschalt", "mach an", "mach aus", "schalte an", "schalte aus")) {
             addTools(selected, "get_module_settings", "set_module_state", "set_module_setting",
                     "open_nightfall_menu", "get_module_observations");
         }
+
         if (hasAny(query, "bau", "baue", "bauen", "bauplan", "haus", "hütte", "huette", "turm",
                 "farm", "schematic", "litematic", ".schem", "blueprint", "vorlage", "build",
-                "house", "shelter", "tower", "struktur bauen")) {
+                "house", "shelter", "tower", "structure build", "bau das", "build this")) {
             addTools(selected, "build_structure", "build_starter_shelter", "build_custom_structure",
                     "search_blueprints", "list_schematics", "inspect_schematic", "build_schematic",
                     "get_schematic_progress", "get_build_status", "resume_saved_build", "resume_build",
@@ -199,47 +220,46 @@ public final class AIChatClient {
         if (hasAny(query, "abbau", "abbaue", "abbauen", "mining", "mine ", "holz", "erz", "rohstoff",
                 "sammel", "gather", "collect", "grabe", "dig ", "schürf", "schuerf", "ore",
                 "diamond", "diamant", "ancient debris", "netherite", "schmelz", "smelt",
-                "block abbauen")) {
+                "block abbauen", "wood", "log", "stone", "cobblestone")) {
             addTools(selected, "mine_block", "mine_looked_block", "gather_wood", "gather_block",
                     "gather_ore", "smelt_item", "get_inventory", "navigate_to", "stop_current_action");
         }
         if (hasAny(query, "craft", "crafting", "herstell", "rezept", "recipe",
-                "make ", "create ", "mach mir", "stell mir")) {
+                "make ", "create ", "mach mir", "stell mir", "craft me")) {
             addTools(selected, "craft_item", "get_inventory");
         }
         if (hasAny(query, "essen", "iss ", "hunger", "hungry", "food", "eat ", "feed",
-                "fütter", "fuetter")) {
+                "fütter", "fuetter", "i need food")) {
             addTools(selected, "eat_food", "get_inventory", "get_player_status");
         }
         if (hasAny(query, "angreif", "attack", "kämpf", "kaempf", "kampf", "fight", "gegner",
-                "feind", "hostile", "beschütz", "beschuetz", "guard")) {
+                "feind", "hostile", "beschütz", "beschuetz", "protect me", "defend", "guard")) {
             addTools(selected, "attack_nearest_hostile", "guard_nearby_hostiles",
                     "stop_current_action", "stop_movement", "get_player_status");
         }
         if (hasAny(query, "geh ", "gehe ", "lauf", "walk", "move ", "go to ", "head to ",
                 "beweg", "navigate", "navigation", "koordinat", "wegpunkt", "waypoint", "route",
-                "teleport", "rtp", "stopp", "stop", "halt", "abbrechen")) {
+                "teleport", "rtp", "bring me to", "take me to")) {
             addTools(selected, "walk_forward", "navigate_to", "stop_movement",
                     "stop_current_action", "add_waypoint", "random_teleport",
                     "resume_saved_build", "pause_build", "resume_build");
         }
-        if (hasAny(query, "such", "suche", "finde", "finden", "find ", "find a ", "find me",
-                "look for", "search for", "locate", "biom", "struktur", "village", "dorf",
-                "stronghold", "bastion", "festung", "ancient city", "trial chamber",
-                "dschungel", "jungle", "wüste", "wueste", "desert", "taiga", "sumpf", "swamp")) {
+
+        // Structure/biome tools are selected only when the requested target is a
+        // supported structure or biome, not for every generic "find/search" phrase.
+        if (hasAny(query, "village", "dorf", "stronghold", "bastion", "festung", "fortress",
+                "ancient city", "trial chamber", "trial chambers", "mansion", "waldanwesen",
+                "dschungel", "jungle", "wüste", "wueste", "desert", "taiga", "sumpf", "swamp",
+                "badlands", "cherry grove", "kirschhain", "mushroom fields", "pilzfelder",
+                "mangrove", "savanne", "savanna", "ocean biome", "schneeebene", "snowy plains")) {
             addTools(selected, "search_structures", "locate_structure", "locate_biome",
-                    "search_bases", "get_base_findings", "navigate_to", "add_waypoint",
-                    "random_teleport");
+                    "navigate_to", "add_waypoint");
         }
-        if (hasAny(query, "befehl", "command", "serverbefehl", "/", "trigger")) {
+        if (hasAny(query, "befehl", "command", "serverbefehl", "trigger", "/")) {
             addTools(selected, "run_server_command", "get_player_status");
         }
         if (hasAny(query, "rtp", "random teleport", "zufällig teleport", "zufaellig teleport")) {
             addTools(selected, "random_teleport");
-        }
-        if (selected.size() == 10 && hasAny(query, "spieler", "player", "inventar", "inventory",
-                "position", "gesundheit", "health", "status", "hp")) {
-            addTools(selected, "get_player_status", "get_inventory", "get_module_observations");
         }
 
         JsonArray filtered = new JsonArray();
