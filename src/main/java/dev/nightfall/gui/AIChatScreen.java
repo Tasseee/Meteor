@@ -267,10 +267,12 @@ public final class AIChatScreen extends Screen {
         ctx.fill(panelX + panelW - 1, panelY + 2, panelX + panelW, panelY + panelH - 1, 0x5535E0D0);
         ctx.fill(panelX, panelY + panelH - 1, panelX + panelW, panelY + panelH, 0x5535E0D0);
 
-        ctx.drawText(mc.textRenderer, "NIGHTFALL", panelX + 16, panelY + 12, Theme.TEXT, true);
-        int titleX = panelX + 105;
-        ctx.drawText(mc.textRenderer, "AI COMPANION", titleX, panelY + 13, Theme.ACCENT, true);
-        ctx.drawText(mc.textRenderer, "PHASE 2 · ACTIONS", panelX + panelW - 125,
+        // Compact animated hologram mark and a calmer, more personal chat header.
+        drawHologram(ctx, panelX + 29, panelY + 24, waiting || AIRealtimeVoiceClient.isSpeaking());
+        ctx.drawText(mc.textRenderer, "NIGHTFALL", panelX + 54, panelY + 10, Theme.TEXT, true);
+        ctx.drawText(mc.textRenderer, "DEIN KI-COMPANION", panelX + 54, panelY + 23, Theme.ACCENT, false);
+        String modeLabel = AIRealtimeVoiceClient.isActive() ? "VOICE LINK" : "HOLO INTERFACE";
+        ctx.drawText(mc.textRenderer, modeLabel, panelX + panelW - mc.textRenderer.getWidth(modeLabel) - 16,
                 panelY + 14, Theme.TEXT_DIM, false);
 
         AIConfig.Settings settings = AIConfig.current();
@@ -414,6 +416,32 @@ public final class AIChatScreen extends Screen {
 
         ctx.drawText(mc.textRenderer, "ENTER: senden · F8: Call an/aus · F9: Mikro stumm/an · TTS: Stimme · ESC: schließen",
                 panelX + 16, panelY + panelH - 10, Theme.TEXT_DIM, false);
+    }
+
+    /** Small animated pixel-hologram used as Nightfall's visual identity. */
+    private void drawHologram(DrawContext ctx, int centerX, int centerY, boolean active) {
+        long tick = System.currentTimeMillis() / 180L;
+        int pulse = active ? (int) (tick % 3L) : 0;
+        int glow = active ? 0xFF8FFFF0 : Theme.ACCENT;
+        // Floating diamond core, built from crisp pixels to fit Minecraft's visual language.
+        int[] widths = {8, 14, 20, 24, 20, 14, 8};
+        for (int row = 0; row < widths.length; row++) {
+            int w = widths[row];
+            int y = centerY - 13 + row * 4;
+            ctx.fill(centerX - w / 2, y, centerX + w / 2, y + 3,
+                    row == 3 ? 0xFFB8FFF5 : glow);
+        }
+        // Layered scan rings and a moving scan line create a subtle hologram effect.
+        int ringWidth = 28 + pulse * 2;
+        int ringY = centerY + 17 + (active ? pulse - 1 : 0);
+        ctx.fill(centerX - ringWidth / 2, ringY, centerX + ringWidth / 2, ringY + 1, 0xAA35E0D0);
+        ctx.fill(centerX - 10, ringY + 3, centerX + 10, ringY + 4, 0x7735E0D0);
+        int scanX = centerX - 10 + (int) (tick % 21L);
+        ctx.fill(scanX, centerY - 10, scanX + 1, centerY + 10, 0x887BFFF0);
+        if (active) {
+            ctx.fill(centerX - 17, centerY - 2, centerX - 14, centerY + 2, 0xCCB8FFF5);
+            ctx.fill(centerX + 14, centerY - 2, centerX + 17, centerY + 2, 0xCCB8FFF5);
+        }
     }
 
     private List<String> wrap(String value, int maxWidth) {
