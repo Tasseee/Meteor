@@ -8,12 +8,17 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 /** Local settings for the optional OpenAI-compatible Nightfall AI endpoint. */
 public final class AIConfig {
     private static final Path FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("nightfall").resolve("ai.json");
     private static volatile Settings settings = Settings.defaults();
+
+    private static final List<String> SUPPORTED_SPEECH_VOICES = List.of(
+            "alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"
+    );
 
     private AIConfig() {}
 
@@ -89,6 +94,31 @@ public final class AIConfig {
                     failure.getClass().getSimpleName());
         }
         return settings;
+    }
+
+    /** Persist a voice supported by both the speech and realtime audio endpoints. */
+    public static synchronized Settings updateSpeechVoice(String voice) {
+        if (voice == null || !SUPPORTED_SPEECH_VOICES.contains(voice.toLowerCase(java.util.Locale.ROOT))) {
+            return settings;
+        }
+        load();
+        Settings current = settings;
+        String selected = voice.toLowerCase(java.util.Locale.ROOT);
+        Settings updated = new Settings(current.baseUrl(), current.model(), current.apiKey(),
+                current.shareWorldContext(), current.audioBaseUrl(), current.transcriptionModel(),
+                current.speechModel(), selected, current.voiceInputEnabled(), current.voiceOutputEnabled());
+        try {
+            writeSettings(updated);
+            settings = updated;
+        } catch (IOException failure) {
+            Nightfall.LOGGER.warn("Nightfall-Stimme konnte nicht gespeichert werden: {}",
+                    failure.getClass().getSimpleName());
+        }
+        return settings;
+    }
+
+    public static List<String> supportedSpeechVoices() {
+        return SUPPORTED_SPEECH_VOICES;
     }
 
     /** Persist the player's explicit world-context sharing choice. */
