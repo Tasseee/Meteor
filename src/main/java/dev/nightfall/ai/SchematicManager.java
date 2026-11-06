@@ -55,7 +55,7 @@ public final class SchematicManager {
     private static final int BUILD_PART_SIZE = 32;
     private static final Path BUILD_SESSION_PATH = net.fabricmc.loader.api.FabricLoader.getInstance()
             .getConfigDir().resolve("nightfall").resolve("schematic_build_session.json");
-    private static final Pattern SAFE_FILE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._ -]{0,100}\\.(?i:schem|litematic)");
+    private static final Pattern SAFE_FILE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._ ()-]{0,100}\\.(?i:schem|litematic)");
 
     public record Imported(String fileName, String format, String sourceName,
                            int width, int height, int length, int totalBlocks,
