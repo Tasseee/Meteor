@@ -30,23 +30,23 @@ public final class AIIntentParser {
     public static String findBiomeSearch(String prompt) {
         if (prompt == null || prompt.isBlank()) return null;
         String text = prompt.toLowerCase(Locale.ROOT);
-        boolean searchIntent = text.matches("(?s).*(\\b(such|suche|suchen|find|finde|finden|locate|lokalisier|wo ist|wo finde ich)\\b).*");
+        boolean searchIntent = text.matches("(?s).*(\\b(such|suche|suchen|find|finde|finden|locate|lokalisier|wo ist|wo finde ich|wo gibt es|wo gibt’s|zeig mir|zeige mir|bring mich zu)\\b).*");
         if (!searchIntent) return null;
 
-        if (containsAny(text, "bambusdschungel", "bamboo jungle")) return "minecraft:bamboo_jungle";
-        if (containsAny(text, "kirschhain", "cherry grove")) return "minecraft:cherry_grove";
-        if (containsAny(text, "mangrovensumpf", "mangrove swamp")) return "minecraft:mangrove_swamp";
-        if (containsAny(text, "pilzfelder", "pilzinsel", "mushroom fields")) return "minecraft:mushroom_fields";
+        if (containsAny(text, "bambusdschungel", "bamboo jungle", "bamboo-jungle")) return "minecraft:bamboo_jungle";
+        if (containsAny(text, "kirschhain", "kirschwald", "cherry grove")) return "minecraft:cherry_grove";
+        if (containsAny(text, "mangrovensumpf", "mangrovensumpf-biome", "mangrove swamp")) return "minecraft:mangrove_swamp";
+        if (containsAny(text, "pilzfelder", "pilzinsel", "pilzland", "mushroom fields", "mushroom field")) return "minecraft:mushroom_fields";
         if (containsAny(text, "badlands", "mesa")) return "minecraft:badlands";
         if (containsAny(text, "dschungel", "jungle")) return "minecraft:jungle";
         if (containsAny(text, "wüste", "wueste", "desert")) return "minecraft:desert";
-        if (containsAny(text, "dunkler wald", "dark forest")) return "minecraft:dark_forest";
+        if (containsAny(text, "dunkler wald", "dunkelwald", "dark forest")) return "minecraft:dark_forest";
         if (containsAny(text, "savanne", "savanna")) return "minecraft:savanna";
         if (containsAny(text, "taiga")) return "minecraft:taiga";
         if (containsAny(text, "sumpf", "swamp")) return "minecraft:swamp";
         if (containsAny(text, "ebene", "plains")) return "minecraft:plains";
         if (containsAny(text, "ocean", "ozean", "meer")) return "minecraft:ocean";
-        if (containsAny(text, "schneeebene", "snowy plains")) return "minecraft:snowy_plains";
+        if (containsAny(text, "schneeebene", "schneeeebene", "snowy plains")) return "minecraft:snowy_plains";
         return null;
     }
 
