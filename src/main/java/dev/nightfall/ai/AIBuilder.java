@@ -1634,23 +1634,35 @@ public final class AIBuilder {
 
     public static String describeStatus() {
         if (running) {
-            int total = PLAN.size();
-            int percent = total == 0 ? 0 : Math.min(100, index * 100 / total);
-            String phase = pendingTarget != null ? "warte auf Serverbestätigung"
+            int total = PLAN.size() + WATER_PLAN.size();
+            int completed = index + waterIndex;
+            int percent = total == 0 ? 100 : Math.min(100, completed * 100 / total);
+            String phase = pendingWaterTarget != null ? "warte auf Wasser-Serverbestätigung"
+                    : pendingTarget != null ? "warte auf Block-Serverbestätigung"
                     : pausedByUser ? "vom Spieler pausiert"
-                    : waitingForReach ? "pausiert: nächster Block außerhalb der Reichweite"
+                    : waitingForReach ? "pausiert: nächstes Bauziel außerhalb der Reichweite"
                     : "läuft";
             String buildPhase = excavationIndex < EXCAVATION_PLAN.size() || excavationMinePending
                     ? "Ausgraben " + excavationIndex + "/" + EXCAVATION_PLAN.size()
-                    : phase;
+                    : index < PLAN.size() ? "Feste Blöcke " + index + "/" + PLAN.size()
+                    : waterIndex < WATER_PLAN.size() || pendingWaterTarget != null
+                        ? "Wasserquellen " + waterIndex + "/" + WATER_PLAN.size()
+                        : phase;
             return "Builder aktiv: " + blueprintName + ". Aushub: " + excavationIndex + "/"
-                    + EXCAVATION_PLAN.size() + ". Bestätigte Blöcke: " + index + "/" + total
-                    + " (" + percent + "%). Phase: " + buildPhase + ". Materialien: " + materialName
+                    + EXCAVATION_PLAN.size() + ". Feste Blöcke: " + index + "/" + PLAN.size()
+                    + ". Wasserquellen: " + waterIndex + "/" + WATER_PLAN.size()
+                    + (pendingWaterTarget != null ? " (eine Platzierung wird bestätigt)" : "")
+                    + ". Gesamtfortschritt der Bau-/Wasserblöcke: " + completed + "/" + total
+                    + " (" + percent + "%). Phase: " + buildPhase + ". Materialien: "
+                    + (materialName.isBlank() ? "keine festen Baumaterialien" : materialName)
                     + ". Ein noch nicht bestätigter Schritt wird nicht zum Fortschritt gezählt.";
         }
         if (prepared) {
             return "Bauplan wartet auf Bestätigung: " + blueprintName + ", " + PLAN.size()
-                    + " Blöcke. Materialien: " + materialName + ". Noch wurde kein Block gesetzt.";
+                    + " feste Blöcke und " + WATER_PLAN.size() + " Wasserquellen. Aushub: "
+                    + excavationIndex + "/" + EXCAVATION_PLAN.size() + ". Materialien: "
+                    + (materialName.isBlank() ? "keine festen Baumaterialien" : materialName)
+                    + ". Noch wurde kein Schritt ausgeführt.";
         }
         return "Kein Bau läuft. Letzter Builder-Status: " + status;
     }
