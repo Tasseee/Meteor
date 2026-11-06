@@ -335,8 +335,8 @@ public final class SchematicManager {
                 partWater.add(new AIBuilder.RelativeBlock(block.x() - startX, block.y() - startY,
                         block.z() - startZ, null, block.state()));
         }
-        if (partBuild.isEmpty() && partWater.isEmpty())
-            throw new IllegalArgumentException("Dieser Abschnitt enthält keine automatisch platzierbaren Blöcke oder Wasserquellen.");
+        if (partBuild.isEmpty() && partWater.isEmpty() && partClear.isEmpty())
+            throw new IllegalArgumentException("Dieser Abschnitt enthält weder Bau-Blöcke, Wasserquellen noch Aushubzellen.");
         String label = (imported.sourceName().isBlank() ? stripExtension(imported.fileName()) : imported.sourceName())
                 + " · Abschnitt X" + partX + " Y" + partY + " Z" + partZ;
         BlockPos farmAnchor = resolveBuildAnchor(fileName, partX, partY, partZ);
