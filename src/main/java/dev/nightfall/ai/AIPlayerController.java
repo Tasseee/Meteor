@@ -182,6 +182,8 @@ public final class AIPlayerController {
     private static int gatherBlocksBrokenThisRequest;
     private static Set<BlockPos> gatherVisitedTargets = new HashSet<>();
     private static Set<BlockPos> gatherExploreVisited = new HashSet<>();
+    private static BlockPos gatherExploreOrigin;
+    private static int gatherExploreStepIndex;
     private static int gatherExploreLegs;
     private static int gatherRescanCount;
     private static boolean gatherAwaitingPickup;
@@ -916,59 +918,86 @@ public final class AIPlayerController {
         return true;
     }
 
-    /** Walk a short, A*-validated exploration leg so new chunks can load before the next resource scan. */
+    /**
+     * Systematic square-spiral exploration around the task's starting area.
+     * Only already-loaded, walkable positions are eligible; reaching the next
+     * tile loads nearby chunks so the following rescan can inspect more terrain.
+     */
     private static boolean startGatherExploration(MinecraftClient mc) {
         if (gatherMaterial == null || gatherRescanCount >= MAX_ANCIENT_DEBRIS_RESCANS
-                || gatherExploreLegs >= MAX_GATHER_EXPLORE_LEGS || mc.player == null || mc.world == null) return false;
+                || gatherExploreLegs >= MAX_GATHER_EXPLORE_LEGS
+                || mc.player == null || mc.world == null) return false;
+        if (gatherExploreOrigin == null)
+            gatherExploreOrigin = mc.player.getBlockPos().toImmutable();
 
-        BlockPos origin = mc.player.getBlockPos();
-        int[][] directions = {
-                {32, 0}, {23, 23}, {0, 32}, {-23, 23},
-                {-32, 0}, {-23, -23}, {0, -32}, {23, -23},
-                {24, 0}, {17, 17}, {0, 24}, {-17, 17},
-                {-24, 0}, {-17, -17}, {0, -24}, {17, -17},
-                {16, 0}, {11, 11}, {0, 16}, {-11, 11},
-                {-16, 0}, {-11, -11}, {0, -16}, {11, -11}
-        };
-        List<BlockPos> candidates = new ArrayList<>();
-        int minDeltaY = gatherTargetY != Integer.MIN_VALUE ? 0 : -3;
-        int maxDeltaY = gatherTargetY != Integer.MIN_VALUE ? 0 : 3;
-        int baseY = gatherTargetY != Integer.MIN_VALUE ? gatherTargetY : origin.getY();
-        for (int[] direction : directions) {
-            for (int deltaY = minDeltaY; deltaY <= maxDeltaY; deltaY++) {
-                BlockPos candidate = new BlockPos(origin.getX() + direction[0],
-                        baseY + deltaY, origin.getZ() + direction[1]);
-                if (gatherExploreVisited.contains(candidate) || !canStandAt(mc, candidate, mc.player)) continue;
-                candidates.add(candidate);
-            }
-        }
-        candidates.sort(Comparator
-                .comparingInt((BlockPos pos) -> -origin.getManhattanDistance(pos))
-                .thenComparingDouble(pos -> mc.player.squaredDistanceTo(pos.getX() + 0.5,
-                        pos.getY(), pos.getZ() + 0.5)));
+        int searchedCells = 0;
+        while (searchedCells < 8 && gatherExploreStepIndex < MAX_GATHER_EXPLORE_LEGS * 8) {
+            int[] offset = squareSpiralOffset(gatherExploreStepIndex++);
+            searchedCells++;
+            int centerX = gatherExploreOrigin.getX() + offset[0] * NAVIGATION_SEGMENT_LENGTH;
+            int centerZ = gatherExploreOrigin.getZ() + offset[1] * NAVIGATION_SEGMENT_LENGTH;
+            int baseY = gatherTargetY != Integer.MIN_VALUE ? gatherTargetY : gatherExploreOrigin.getY();
+            int minDeltaY = gatherTargetY != Integer.MIN_VALUE ? 0 : -2;
+            int maxDeltaY = gatherTargetY != Integer.MIN_VALUE ? 0 : 2;
+            List<BlockPos> candidates = new ArrayList<>();
 
-        int attempts = 0;
-        for (BlockPos candidate : candidates) {
-            List<BlockPos> planned = planNavigationSegment(mc, candidate);
-            if (planned.isEmpty()) {
-                if (++attempts >= 32) break;
-                continue;
+            for (int radius = 0; radius <= 3; radius++) {
+                for (int dx = -radius; dx <= radius; dx++) {
+                    for (int dz = -radius; dz <= radius; dz++) {
+                        if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
+                        for (int deltaY = minDeltaY; deltaY <= maxDeltaY; deltaY++) {
+                            BlockPos candidate = new BlockPos(centerX + dx, baseY + deltaY, centerZ + dz);
+                            if (gatherExploreVisited.contains(candidate)
+                                    || !canStandAt(mc, candidate, mc.player)) continue;
+                            candidates.add(candidate);
+                        }
+                    }
+                }
+                if (!candidates.isEmpty()) break;
             }
-            gatherExploreVisited.add(candidate.toImmutable());
-            gatherExploreLegs++;
-            path = List.copyOf(planned);
-            pathIndex = 0;
-            navigationGoal = candidate.toImmutable();
-            actionTicks = 0;
-            stuckTicks = 0;
-            lastWaypointDistance = Double.MAX_VALUE;
-            mode = Mode.NAVIGATE;
-            statusNotice(mc, "Im aktuellen Suchbereich sind keine neuen " + gatherMaterialName
-                    + "-Ziele mehr. Ich gehe über einen sicheren Weg zum nächsten geladenen Suchabschnitt ("
-                    + gatherExploreLegs + "/" + MAX_GATHER_EXPLORE_LEGS + ") und scanne dort erneut.");
-            return true;
+
+            candidates.sort(Comparator.comparingDouble(pos -> mc.player.squaredDistanceTo(
+                    pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5)));
+            int routeAttempts = 0;
+            for (BlockPos candidate : candidates) {
+                gatherExploreVisited.add(candidate.toImmutable());
+                List<BlockPos> planned = planNavigationSegment(mc, candidate);
+                if (planned.isEmpty()) {
+                    if (++routeAttempts >= 12) break;
+                    continue;
+                }
+                gatherExploreLegs++;
+                path = List.copyOf(planned);
+                pathIndex = 0;
+                navigationGoal = candidate.toImmutable();
+                actionTicks = 0;
+                stuckTicks = 0;
+                lastWaypointDistance = Double.MAX_VALUE;
+                mode = Mode.NAVIGATE;
+                statusNotice(mc, "Systematische Rohstoffsuche: sicherer Spiral-Suchabschnitt "
+                        + gatherExploreLegs + "/" + MAX_GATHER_EXPLORE_LEGS
+                        + ". Nach dem Laden der Umgebung scanne ich neue Chunks erneut.");
+                return true;
+            }
         }
         return false;
+    }
+
+    /** Clockwise square spiral: first tile east of the origin, then expanding rings. */
+    private static int[] squareSpiralOffset(int step) {
+        long number = (long) step + 2L; // Skip the origin tile.
+        int ring = (int) Math.ceil((Math.sqrt(number) - 1.0) / 2.0);
+        int side = ring * 2;
+        long firstInRing = (long) (2 * ring - 1) * (2 * ring - 1) + 1L;
+        int offset = (int) (number - firstInRing);
+
+        if (offset < side) return new int[]{ring, -ring + 1 + offset};
+        offset -= side;
+        if (offset < side) return new int[]{ring - 1 - offset, ring};
+        offset -= side;
+        if (offset < side) return new int[]{-ring, ring - 1 - offset};
+        offset -= side;
+        return new int[]{-ring + 1 + offset, -ring};
     }
 
     /** Compatibility helper retained for the Ancient Debris tunnel flow. */
@@ -1364,6 +1393,8 @@ public final class AIPlayerController {
         gatherBlocksBrokenThisRequest = 0;
         gatherVisitedTargets = new HashSet<>();
         gatherExploreVisited = new HashSet<>();
+        gatherExploreOrigin = null;
+        gatherExploreStepIndex = 0;
         gatherExploreLegs = 0;
         gatherRescanCount = 0;
         gatherAwaitingPickup = false;
