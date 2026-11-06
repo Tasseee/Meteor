@@ -2451,8 +2451,13 @@ public final class AIPlayerController {
             }
             int finalCount = countInventoryItem(mc, craftingFinalTarget);
             int produced = Math.max(0, finalCount - craftingFinalCountBefore);
-            stop("Crafting-Rezeptkette abgeschlossen: " + produced + " zusätzliche "
-                    + craftingFinalTarget.getName().getString() + " im Inventar.");
+            int requested = Math.max(0, craftingFinalGoalCount - craftingFinalCountBefore);
+            String resultLabel = finalCount >= craftingFinalGoalCount
+                    ? "Crafting vollständig abgeschlossen"
+                    : "Crafting teilweise abgeschlossen";
+            stop(resultLabel + ": " + produced + "/" + requested + " zusätzlich gewünschte "
+                    + craftingFinalTarget.getName().getString() + " hergestellt. "
+                    + "Bestätigter Inventarbestand: " + finalCount + ".");
             return;
         }
 
