@@ -112,7 +112,10 @@ public final class SchematicManager {
                     + "normaler BlockItem-Platzierlogik nach einer passenden Ansetzfläche und Blickrichtung. Ein Block zählt erst nach "
                     + "exakter Serverbestätigung als gebaut; nicht reproduzierbare Zustände brechen den Bau ab. Block-Entity-Blöcke "
                     + "wie Hopper und Truhen werden mit Standardzustand platziert, ihre Inventare und Sonderdaten aus der Schematic aber "
-                    + "nicht übertragen. Stille Wasserquellen können im Kreativmodus mit einem Wassereimer gesetzt werden; fließendes Wasser "
+                    + "nicht übertragen. Redstone-Staub wird über das normale Redstone-Item platziert; Redstone-Geräte erhalten ihre "
+                    + "gespeicherten statischen Eigenschaften und werden vor dem Staub gesetzt. Dynamische Leitungs-/Signalwerte "
+                    + "werden von Minecraft aus dem umgebenden Weltzustand berechnet und sind keine feste Placement-Garantie. "
+                    + "Stille Wasserquellen können im Kreativmodus mit einem Wassereimer gesetzt werden; fließendes Wasser "
                     + "muss durch Vanilla-Flusssimulation entstehen. Lava, fallende Blöcke und Entities werden nicht automatisch rekonstruiert; "
                     + "dynamische Redstone-/Nachbarschafts-Zustände können vom Weltkontext abhängen.");
             return out.toString();
