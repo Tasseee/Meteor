@@ -379,8 +379,8 @@ public final class AIBuilder {
             throw new IllegalArgumentException("Ungültiges Zentrum oder ungültige Abmessungen des Schematic-Abschnitts.");
         if (sourceFile != null && ((!sourceFile.toLowerCase(Locale.ROOT).endsWith(".schem")
                 && !sourceFile.toLowerCase(Locale.ROOT).endsWith(".litematic"))
-                || sourceFile.length() > 110 || partX < 0 || partX > 7 || partY < 0 || partY > 7
-                || partZ < 0 || partZ > 7))
+                || sourceFile.length() > 110 || partX < 0 || partX > 15 || partY < 0 || partY > 15
+                || partZ < 0 || partZ > 15))
             throw new IllegalArgumentException("Ungültige Schematic-Datei oder Abschnittskennung.");
 
         // Clear stale identity before the shared preparation path writes its first checkpoint.
