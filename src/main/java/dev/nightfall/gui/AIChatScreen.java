@@ -426,8 +426,12 @@ public final class AIChatScreen extends Screen {
         ttsH = 23;
         ttsX = micX - ttsW - 6;
         ttsY = sendY;
+        voiceW = 52;
+        voiceH = 23;
+        voiceX = ttsX - voiceW - 6;
+        voiceY = sendY;
         int inputX = panelX + 14;
-        int inputW = ttsX - inputX - 8;
+        int inputW = voiceX - inputX - 8;
         ctx.fill(inputX, sendY, inputX + inputW, sendY + sendH, 0xE5080B12);
         ctx.fill(inputX, sendY + sendH - 1, inputX + inputW, sendY + sendH, Theme.ACCENT_DIM);
         boolean showCursor = (System.currentTimeMillis() / 500) % 2 == 0;
@@ -464,6 +468,13 @@ public final class AIChatScreen extends Screen {
                 ttsX + (ttsW - mc.textRenderer.getWidth(ttsLabel)) / 2,
                 ttsY + 7, Theme.TEXT, true);
 
+        String voiceLabel = AIConfig.current().speechVoice().toUpperCase(Locale.ROOT);
+        ctx.fill(voiceX, voiceY, voiceX + voiceW, voiceY + voiceH, 0xFF293342);
+        ctx.fill(voiceX, voiceY, voiceX + voiceW, voiceY + 1, Theme.ACCENT);
+        ctx.drawText(mc.textRenderer, voiceLabel,
+                voiceX + (voiceW - mc.textRenderer.getWidth(voiceLabel)) / 2,
+                voiceY + 7, Theme.TEXT, true);
+
         int sendColor = waiting || input.isBlank() ? 0xFF3B3E4A : Theme.ACCENT;
         ctx.fill(sendX, sendY, sendX + sendW, sendY + sendH, sendColor);
         String sendLabel = waiting ? "..." : "SEND";
@@ -471,7 +482,7 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, sendLabel, sendLabelX, sendY + 7,
                 waiting || input.isBlank() ? Theme.TEXT_DIM : 0xFF081014, true);
 
-        ctx.drawText(mc.textRenderer, "ENTER: senden · F8: Call an/aus · F9: Mikro stumm/an · TTS: Stimme · ESC: schließen",
+        ctx.drawText(mc.textRenderer, "ENTER: senden · F8: Call an/aus · F9: Mikro stumm/an · TTS: Sprachausgabe · Stimmenfeld: wechseln · ESC: schließen",
                 panelX + 16, panelY + panelH - 10, Theme.TEXT_DIM, false);
     }
 
@@ -602,6 +613,12 @@ public final class AIChatScreen extends Screen {
                 && click.x() >= contextToggleX && click.x() <= contextToggleX + contextToggleW
                 && click.y() >= contextToggleY && click.y() <= contextToggleY + contextToggleH) {
             toggleWorldContextSharing();
+            return true;
+        }
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && click.x() >= voiceX && click.x() <= voiceX + voiceW
+                && click.y() >= voiceY && click.y() <= voiceY + voiceH) {
+            cycleSpeechVoice();
             return true;
         }
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
