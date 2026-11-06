@@ -1879,18 +1879,7 @@ public final class AIPlayerController {
     }
 
 
-    /**
-     * Finds a small, bounded set of full-cube block materials that can be crafted
-     * from the current inventory using only entries in the synchronized recipe book.
-     * Planning is read-only and does not require an open crafting screen.
-     */
-    public static List<AIMaterialPlanner.CraftableCandidate> findCraftableBlockMaterials(int requiredTotal) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.world == null)
-            throw new IllegalArgumentException("Du musst dich in einer Minecraft-Welt befinden, um Crafting-Alternativen zu prüfen.");
-        if (requiredTotal < 1 || requiredTotal > 256)
-            throw new IllegalArgumentException("Die benötigte Materialmenge muss zwischen 1 und 256 liegen.");
-
+    private static Set<Item> findCraftableBlockMaterialItems(MinecraftClient mc, int requiredTotal) {
         Set<Item> possibleMaterials = new LinkedHashSet<>();
         BlockPos sample = mc.player.getBlockPos();
         int inspectedRecipes = 0;
@@ -1922,6 +1911,22 @@ public final class AIPlayerController {
             if (possibleMaterials.size() >= MAX_CRAFT_ALTERNATIVE_ITEMS
                     || inspectedRecipes >= MAX_CRAFT_ALTERNATIVE_RECIPE_SCAN) break;
         }
+        return possibleMaterials;
+    }
+
+    /**
+     * Finds a small, bounded set of full-cube block materials that can be crafted
+     * from the current inventory using only entries in the synchronized recipe book.
+     * Planning is read-only and does not require an open crafting screen.
+     */
+    public static List<AIMaterialPlanner.CraftableCandidate> findCraftableBlockMaterials(int requiredTotal) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null)
+            throw new IllegalArgumentException("Du musst dich in einer Minecraft-Welt befinden, um Crafting-Alternativen zu prüfen.");
+        if (requiredTotal < 1 || requiredTotal > 256)
+            throw new IllegalArgumentException("Die benötigte Materialmenge muss zwischen 1 und 256 liegen.");
+
+        Set<Item> possibleMaterials = findCraftableBlockMaterialItems(mc, requiredTotal);
 
         List<AIMaterialPlanner.CraftableCandidate> plans = new ArrayList<>();
         for (Item materialItem : possibleMaterials) {
@@ -1958,6 +1963,75 @@ public final class AIPlayerController {
         return AIMaterialPlanner.rankCraftable(plans).stream()
                 .limit(MAX_CRAFT_ALTERNATIVE_RESULTS)
                 .toList();
+    }
+
+    /**
+     * Reports the missing leaf ingredients for block materials whose recipe chains
+     * cannot currently be completed. This is a bounded, read-only diagnostic.
+     */
+    public static List<AIMaterialPlanner.IncompleteCraftableCandidate> findIncompleteCraftableBlockMaterials(
+            int requiredTotal) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null)
+            throw new IllegalArgumentException("Du musst dich in einer Minecraft-Welt befinden, um fehlende Crafting-Zutaten zu prüfen.");
+        if (requiredTotal < 1 || requiredTotal > 256)
+            throw new IllegalArgumentException("Die benötigte Materialmenge muss zwischen 1 und 256 liegen.");
+
+        List<AIMaterialPlanner.IncompleteCraftableCandidate> incomplete = new ArrayList<>();
+        for (Item materialItem : findCraftableBlockMaterialItems(mc, requiredTotal)) {
+            int owned = countInventoryItem(mc, materialItem);
+            int missing = requiredTotal - owned;
+            if (missing <= 0) continue;
+            CraftingDiagnosticBudget budget = new CraftingDiagnosticBudget();
+            Map<Item, Integer> inventory = new HashMap<>();
+            for (int slot = 0; slot < 36; slot++) {
+                ItemStack stack = mc.player.getInventory().getStack(slot);
+                if (!stack.isEmpty()) inventory.merge(stack.getItem(), stack.getCount(), Integer::sum);
+            }
+            CraftingDiagnosis diagnosis = diagnoseCraftingItem(mc, materialItem, requiredTotal,
+                    inventory, new HashSet<>(), 0, budget);
+            if (diagnosis.limited() || budget.exhausted() || diagnosis.missing().isEmpty()
+                    || diagnosis.steps().isEmpty()) continue;
+
+            int missingIngredientUnits = diagnosis.missing().values().stream()
+                    .mapToInt(Integer::intValue).sum();
+            if (missingIngredientUnits < 1) continue;
+            String missingIngredients = formatCraftingMissingIngredients(diagnosis.missing());
+            String recipeSummary = diagnosis.steps().stream()
+                    .limit(4)
+                    .map(step -> step.resultStack().getName().getString()
+                            + " × " + step.batches() + " Charge(n) [Zutaten gesamt: "
+                            + describeCraftingInputs(step) + "] [" + step.recipe().id() + "]")
+                    .collect(java.util.stream.Collectors.joining("; "));
+            if (diagnosis.steps().size() > 4)
+                recipeSummary += "; +" + (diagnosis.steps().size() - 4) + " weitere Schritte";
+            boolean needsTable = diagnosis.steps().stream()
+                    .anyMatch(step -> step.gridWidth() > 2 || step.gridHeight() > 2);
+            int batches = diagnosis.steps().stream().mapToInt(CraftingPlanStep::batches).sum();
+            incomplete.add(new AIMaterialPlanner.IncompleteCraftableCandidate(
+                    Registries.ITEM.getId(materialItem).toString(),
+                    materialItem.getName().getString(),
+                    owned,
+                    missing,
+                    missingIngredientUnits,
+                    diagnosis.steps().size(),
+                    batches,
+                    needsTable,
+                    missingIngredients,
+                    recipeSummary));
+        }
+        return AIMaterialPlanner.rankIncomplete(incomplete).stream()
+                .limit(MAX_CRAFT_ALTERNATIVE_RESULTS)
+                .toList();
+    }
+
+    private static String formatCraftingMissingIngredients(Map<Item, Integer> missing) {
+        return missing.entrySet().stream()
+                .filter(entry -> entry.getValue() > 0)
+                .sorted(Comparator.comparing(entry -> Registries.ITEM.getId(entry.getKey()).toString()))
+                .map(entry -> entry.getValue() + "× " + entry.getKey().getName().getString()
+                        + " [" + Registries.ITEM.getId(entry.getKey()) + "]")
+                .collect(java.util.stream.Collectors.joining(", "));
     }
 
     /**
@@ -2100,6 +2174,34 @@ public final class AIPlayerController {
                                     List<ItemStack> inputsPerBatch) {}
     private record CraftingRecipeOption(RecipeDisplayEntry recipe, ItemStack resultStack,
                                         List<List<ItemStack>> ingredientChoices, int gridWidth, int gridHeight) {}
+    private record CraftingDiagnosis(Map<Item, Integer> available, Map<Item, Integer> missing,
+                                      List<CraftingPlanStep> steps, boolean limited, String tieBreak) {
+        int missingUnits() {
+            return missing.values().stream().mapToInt(Integer::intValue).sum();
+        }
+
+        int batches() {
+            return steps.stream().mapToInt(CraftingPlanStep::batches).sum();
+        }
+    }
+
+    private static final class CraftingDiagnosticBudget {
+        private int remaining = 128;
+        private boolean exhausted;
+
+        boolean consume() {
+            if (remaining <= 0) {
+                exhausted = true;
+                return false;
+            }
+            remaining--;
+            return true;
+        }
+
+        boolean exhausted() {
+            return exhausted;
+        }
+    }
 
     private static List<CraftingPlanStep> createCraftingPlan(MinecraftClient mc, Item target, int additionalCount) {
         Map<Item, Integer> simulated = new HashMap<>();
@@ -2180,6 +2282,133 @@ public final class AIPlayerController {
         }
         visiting.remove(target);
         return false;
+    }
+
+    private static CraftingDiagnosis diagnoseCraftingItem(MinecraftClient mc, Item target, int requiredTotal,
+                                                               Map<Item, Integer> available, Set<Item> visiting,
+                                                               int depth, CraftingDiagnosticBudget budget) {
+        Map<Item, Integer> remaining = new HashMap<>(available);
+        List<CraftingPlanStep> noSteps = List.of();
+        if (!budget.consume())
+            return new CraftingDiagnosis(remaining, Map.of(), noSteps, true, "");
+        if (requiredTotal < 1)
+            return new CraftingDiagnosis(remaining, Map.of(), noSteps, false, "");
+
+        int owned = remaining.getOrDefault(target, 0);
+        int used = Math.min(owned, requiredTotal);
+        if (used > 0) remaining.put(target, owned - used);
+        int deficit = requiredTotal - used;
+        if (deficit == 0)
+            return new CraftingDiagnosis(remaining, Map.of(), noSteps, false,
+                    Registries.ITEM.getId(target).toString());
+        if (depth > MAX_CRAFT_CHAIN_DEPTH || visiting.contains(target))
+            return new CraftingDiagnosis(remaining, Map.of(), noSteps, true,
+                    Registries.ITEM.getId(target).toString());
+
+        Set<Item> nextVisiting = new HashSet<>(visiting);
+        nextVisiting.add(target);
+        if (isRestrictedCraftItem(target))
+            return new CraftingDiagnosis(remaining, Map.of(target, deficit), noSteps, false,
+                    Registries.ITEM.getId(target).toString());
+
+        List<CraftingRecipeOption> options = findCraftingRecipeOptions(mc, target);
+        if (options.isEmpty())
+            return new CraftingDiagnosis(remaining, Map.of(target, deficit), noSteps, false,
+                    Registries.ITEM.getId(target).toString());
+
+        CraftingDiagnosis best = null;
+        boolean skippedOption = options.size() > 6;
+        int examinedOptions = 0;
+        for (CraftingRecipeOption option : options) {
+            if (examinedOptions++ >= 6) break;
+            int outputCount = Math.max(1, option.resultStack().getCount());
+            int batches = (deficit + outputCount - 1) / outputCount;
+            if (batches < 1 || batches > MAX_CRAFT_CHAIN_BATCHES) {
+                skippedOption = true;
+                continue;
+            }
+
+            Map<Item, Integer> trialAvailable = new HashMap<>(remaining);
+            Map<Item, Integer> trialMissing = new HashMap<>();
+            List<CraftingPlanStep> trialSteps = new ArrayList<>();
+            List<ItemStack> selectedInputsPerBatch = new ArrayList<>();
+            boolean optionLimited = false;
+            for (List<ItemStack> alternatives : option.ingredientChoices()) {
+                if (alternatives.isEmpty()) continue;
+                List<ItemStack> ordered = new ArrayList<>(alternatives);
+                ordered.sort(Comparator
+                        .comparingInt((ItemStack stack) -> remaining.getOrDefault(stack.getItem(), 0)).reversed()
+                        .thenComparing(stack -> Registries.ITEM.getId(stack.getItem()).toString()));
+                CraftingDiagnosis bestIngredient = null;
+                ItemStack selectedIngredient = null;
+                boolean uncertainAlternative = false;
+                for (ItemStack ingredient : ordered) {
+                    int ingredientCount = Math.max(1, ingredient.getCount()) * batches;
+                    CraftingDiagnosis candidate = diagnoseCraftingItem(mc, ingredient.getItem(), ingredientCount,
+                            trialAvailable, nextVisiting, depth + 1, budget);
+                    if (candidate.limited()) {
+                        uncertainAlternative = true;
+                        continue;
+                    }
+                    if (isBetterCraftingDiagnosis(candidate, bestIngredient)) {
+                        bestIngredient = candidate;
+                        selectedIngredient = ingredient;
+                    }
+                    if (candidate.complete()) break;
+                }
+                if (bestIngredient == null) {
+                    optionLimited = true;
+                    break;
+                }
+                if (uncertainAlternative && !bestIngredient.complete()) {
+                    optionLimited = true;
+                    break;
+                }
+                trialAvailable = new HashMap<>(bestIngredient.available());
+                mergeCraftingShortages(trialMissing, bestIngredient.missing());
+                trialSteps.addAll(bestIngredient.steps());
+                selectedInputsPerBatch.add(selectedIngredient.copy());
+            }
+            if (optionLimited) {
+                skippedOption = true;
+                continue;
+            }
+
+            trialSteps.add(new CraftingPlanStep(option.recipe(), target, option.resultStack().copy(),
+                    batches, option.gridWidth(), option.gridHeight(), List.copyOf(selectedInputsPerBatch)));
+            if (trialMissing.isEmpty())
+                trialAvailable.merge(target, outputCount * batches, Integer::sum);
+            CraftingDiagnosis candidate = new CraftingDiagnosis(trialAvailable, trialMissing,
+                    List.copyOf(trialSteps), false, option.recipe().id().toString());
+            if (isBetterCraftingDiagnosis(candidate, best)) best = candidate;
+            if (candidate.complete() && candidate.batches() == batches) break;
+        }
+
+        if (best == null || (skippedOption && !best.complete()))
+            return new CraftingDiagnosis(remaining, Map.of(), noSteps, true,
+                    Registries.ITEM.getId(target).toString());
+        return best;
+    }
+
+    private static void mergeCraftingShortages(Map<Item, Integer> target, Map<Item, Integer> source) {
+        for (Map.Entry<Item, Integer> entry : source.entrySet()) {
+            if (entry.getValue() > 0) target.merge(entry.getKey(), entry.getValue(), Integer::sum);
+        }
+    }
+
+    private static boolean isBetterCraftingDiagnosis(CraftingDiagnosis candidate, CraftingDiagnosis current) {
+        if (candidate == null) return false;
+        if (current == null) return true;
+        if (candidate.complete() != current.complete()) return candidate.complete();
+        int comparison = Integer.compare(candidate.missingUnits(), current.missingUnits());
+        if (comparison != 0) return comparison < 0;
+        comparison = Integer.compare(candidate.missing().size(), current.missing().size());
+        if (comparison != 0) return comparison < 0;
+        comparison = Integer.compare(candidate.batches(), current.batches());
+        if (comparison != 0) return comparison < 0;
+        comparison = Integer.compare(candidate.steps().size(), current.steps().size());
+        if (comparison != 0) return comparison < 0;
+        return candidate.tieBreak().compareTo(current.tieBreak()) < 0;
     }
 
     private static List<CraftingRecipeOption> findCraftingRecipeOptions(MinecraftClient mc, Item target) {
