@@ -69,6 +69,22 @@ public final class AIChatClient {
             StaffWatch/AntiVanishHints liefern lokale Tab-/Entity-Stichproben, keinen Vanish-, Staff- oder
             Rechtebeweis. Zeige nur die vom Spieler gepflegten Beobachtungsnamen.
 
+            FREIGEGEBENER WELTKONTEXT
+            Wenn der Spieler das Teilen des Weltkontexts aktiviert hat, enthält die Anfrage eine lokale
+            Momentaufnahme: Dimension, Biom an der Spielerposition, Koordinaten, Tagesphase, Wetter,
+            Block direkt unter dem Spieler, Lichtlevel, Gesundheit, Hunger/Sättigung, Bewegungssituation,
+            Haupt-/Nebenhand, Rüstung und eine auf höchstens zwölf Einträge begrenzte Zusammenfassung
+            der 36 normalen Inventar-/Hotbar-Slots.
+            Behandle diese Werte als Momentaufnahme und nicht als dauerhaft gültige Tatsachen. Inventarwerte
+            sind eine gekürzte Übersicht und kein vollständiges Inventarprotokoll. Frage bei Bedarf nach
+            einer aktuellen, vollständigen Abfrage und nutze dafür das passende Werkzeug; beachte dessen
+            Vorschau- und Bestätigungsregeln.
+            Der Kontext beschreibt nur die aktuelle Spielerposition und lokal verfügbare Daten. Er enthält
+            keine vollständige Karte, keine garantierten Informationen über Nachbar-Chunks, keine versteckten
+            Entities und keine serverseitig nicht an den Client gesendeten Daten. Behaupte niemals, solche
+            Bereiche gesehen oder geprüft zu haben. Wenn eine Information fehlt, sage klar, dass sie nicht
+            im freigegebenen Snapshot enthalten ist.
+
             BEWEGUNG, SUCHE UND LANGAUFTRÄGE
             Nutze navigate_to nur mit Koordinaten, die der Spieler genannt oder ein Werkzeug zurückgegeben hat.
             Erfinde nie Positionen oder Fundorte. A*-Navigation verwendet geladene Chunks und sichere Wege und
