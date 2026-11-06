@@ -260,6 +260,114 @@ public final class SchematicManager {
                 + accessPosition.toShortString() + ". Navigiere zur Zugangsposition, damit die Ziel-Chunks geladen sind; danach build_schematic mit denselben Indizes aufrufen.";
     }
 
+    /** Read the persistent completion manifest without creating or moving the farm anchor. */
+    public static String progressSummary(String requestedFile) {
+        Imported imported = inspect(requestedFile);
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null || mc.getNetworkHandler() == null)
+            throw new IllegalArgumentException("Für den Schematic-Fortschritt brauchst du eine verbundene Welt.");
+
+        int partsX = (imported.width() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
+        int partsY = (imported.height() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
+        int partsZ = (imported.length() + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE;
+        Set<String> completed = new java.util.HashSet<>();
+        boolean matchingSession = false;
+        String server = currentServerKey(mc);
+        String dimension = mc.world.getRegistryKey().getValue().toString();
+        try {
+            if (Files.isRegularFile(BUILD_SESSION_PATH)) {
+                JsonObject session = JsonParser.parseString(Files.readString(BUILD_SESSION_PATH)).getAsJsonObject();
+                matchingSession = session.has("version") && session.get("version").getAsInt() == 1
+                        && session.has("file") && session.get("file").getAsString().equals(imported.fileName())
+                        && session.has("server") && session.get("server").getAsString().equals(server)
+                        && session.has("dimension") && session.get("dimension").getAsString().equals(dimension);
+                if (matchingSession && session.has("completedSections")
+                        && session.get("completedSections").isJsonArray()) {
+                    for (var element : session.getAsJsonArray("completedSections")) {
+                        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString())
+                            completed.add(element.getAsString());
+                    }
+                }
+            }
+        } catch (Exception failure) {
+            throw new IllegalArgumentException("Die gespeicherte Abschnittsübersicht ist beschädigt und konnte nicht gelesen werden: "
+                    + failure.getClass().getSimpleName());
+        }
+
+        int total = partsX * partsY * partsZ;
+        int finished = 0;
+        String next = null;
+        // Same deterministic order used by the AI: lowest Y layer first, then X and Z.
+        for (int y = 0; y < partsY; y++) {
+            for (int x = 0; x < partsX; x++) {
+                for (int z = 0; z < partsZ; z++) {
+                    String key = x + "," + y + "," + z;
+                    if (matchingSession && completed.contains(key)) finished++;
+                    else if (next == null) next = "X" + x + " Y" + y + " Z" + z;
+                }
+            }
+        }
+
+        StringBuilder out = new StringBuilder("SCHEMATIC-ABSCHNITTSFORTSCHRITT: ")
+                .append(imported.fileName())
+                .append("\nFertig bestätigte Abschnitte: ").append(finished).append("/").append(total)
+                .append("\nRaster: ").append(partsX).append(" × ").append(partsY).append(" × ").append(partsZ)
+                .append(" (Reihenfolge: Y aufsteigend, dann X/Z).");
+        if (!matchingSession) {
+            out.append("\nFür diese Datei, diesen Server und diese Dimension gibt es noch keine passende Fortschrittsübersicht. ")
+                    .append("Beginne mit X0 Y0 Z0; dabei wird der Farm-Anker angelegt.");
+        } else if (next == null) {
+            out.append("\nAlle automatisch unterstützten Abschnitte sind als abgeschlossen gespeichert. ")
+                    .append("Manuelle Restblöcke und die tatsächliche Farmfunktion sind damit nicht bestätigt.");
+        } else {
+            out.append("\nNächster offener Abschnitt: ").append(next).append(".");
+        }
+        return out.toString();
+    }
+
+    /** Mark only a fully completed schematic section; never creates or changes the farm anchor. */
+    public static boolean markSectionComplete(String fileName, int partX, int partY, int partZ) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null || mc.getNetworkHandler() == null
+                || partX < 0 || partX > 7 || partY < 0 || partY > 7 || partZ < 0 || partZ > 7)
+            return false;
+        try {
+            if (!Files.isRegularFile(BUILD_SESSION_PATH)) return false;
+            JsonObject session = JsonParser.parseString(Files.readString(BUILD_SESSION_PATH)).getAsJsonObject();
+            boolean sameSession = session.has("version") && session.get("version").getAsInt() == 1
+                    && session.has("file") && session.get("file").getAsString().equals(fileName)
+                    && session.has("server") && session.get("server").getAsString().equals(currentServerKey(mc))
+                    && session.has("dimension")
+                    && session.get("dimension").getAsString().equals(mc.world.getRegistryKey().getValue().toString());
+            if (!sameSession) return false;
+
+            Set<String> completed = new java.util.TreeSet<>();
+            if (session.has("completedSections") && session.get("completedSections").isJsonArray()) {
+                for (var element : session.getAsJsonArray("completedSections")) {
+                    if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString())
+                        completed.add(element.getAsString());
+                }
+            }
+            completed.add(partX + "," + partY + "," + partZ);
+            com.google.gson.JsonArray array = new com.google.gson.JsonArray();
+            completed.forEach(array::add);
+            session.add("completedSections", array);
+            Path temporary = BUILD_SESSION_PATH.resolveSibling(BUILD_SESSION_PATH.getFileName() + ".tmp");
+            Files.writeString(temporary, session.toString());
+            try {
+                Files.move(temporary, BUILD_SESSION_PATH, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                        java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
+                Files.move(temporary, BUILD_SESSION_PATH, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            return true;
+        } catch (Exception failure) {
+            Nightfall.LOGGER.warn("Schematic-Fortschritt konnte nicht gespeichert werden: {}",
+                    failure.getClass().getSimpleName());
+            return false;
+        }
+    }
+
     private static BlockPos resolveBuildAnchor(String fileName, int partX, int partY, int partZ,
                                                 boolean resetAnchor) {
         MinecraftClient mc = MinecraftClient.getInstance();
@@ -295,6 +403,7 @@ public final class SchematicManager {
             session.addProperty("x", anchor.getX());
             session.addProperty("y", anchor.getY());
             session.addProperty("z", anchor.getZ());
+            session.add("completedSections", new com.google.gson.JsonArray());
             Path temporary = BUILD_SESSION_PATH.resolveSibling(BUILD_SESSION_PATH.getFileName() + ".tmp");
             Files.writeString(temporary, session.toString());
             try {
@@ -373,7 +482,7 @@ public final class SchematicManager {
                 startY + sectionHeight / 2,
                 startZ + sectionLength / 2);
         String preview = AIBuilder.prepareImportedStructure(label, partBuild, partClear, partWater,
-                sectionCenter, sectionWidth, sectionHeight, sectionLength);
+                sectionCenter, sectionWidth, sectionHeight, sectionLength, fileName, partX, partY, partZ);
         BlockPos accessPosition = new BlockPos(sectionCenter.getX(), farmAnchor.getY(), sectionCenter.getZ());
         return imported.summary() + "\n\nABSCHNITT X" + partX + "/" + (partsX - 1)
                 + " Y" + partY + "/" + (partsY - 1) + " Z" + partZ + "/" + (partsZ - 1)
