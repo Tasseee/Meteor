@@ -191,6 +191,12 @@ public final class AIActionRegistry {
                 "Prepare exactly one 32x32x32 section of a local schematic for building. For oversized structures, pass part_x, part_y and part_z (zero-based); inspect_schematic reports the valid grid. Start with part_x=0, part_y=0, part_z=0: Nightfall stores a server/dimension/file-bound farm anchor in config/nightfall/schematic_build_session.json. Set reset_anchor=true only when intentionally starting another copy at a new location; all remaining calls for that copy must keep it false. Later sections retain the exact overall schematic alignment and report both their build center and an access position at the farm anchor's Y-level; navigate to the access position before previewing so the destination chunks are loaded. Build every section in ascending part_y order (lowest layer first), then across X/Z, so upper components can attach to already-built lower layers. Nightfall then approaches reachable placement targets using bounded A* navigation and saves/resumes section progress across client restarts. It preserves supported BlockStates and stops when a state cannot be reproduced. Still water source cells can be placed after solid blocks only in Creative mode when a water bucket is in the player's inventory; flowing water is left to vanilla fluid simulation and must be checked in-game. Survival water, lava, falling blocks, entities and custom block-entity NBT/inventories remain manual. Redstone timing and farm output are never claimed as verified.\n"
                 + "Material-shortage workflow: the current section requires its exact materials in the player's inventory; Creative mode only requires one representative stack per material. In Survival, obtain the missing counts before building the section. Do not claim the entire schematic is complete after building one section.",
                 schematicSchema));
+        JsonObject schematicProgressSchema = objectSchema(
+                property("file", "string", "Exact local .schem or .litematic filename.").get("schema"), "file");
+        schematicProgressSchema.getAsJsonObject("properties").getAsJsonObject("file").addProperty("maxLength", 110);
+        tools.add(tool("get_schematic_progress",
+                "Read-only durable progress for a local schematic. Reports fully completed sections for the current server and dimension and the next unfinished section in bottom-up order. Does not create or move the farm anchor and does not start building.",
+                schematicProgressSchema));
         JsonObject walkTicks = property("ticks", "integer", "Dauer der kurzen Vorwärtsbewegung in Ticks (1 bis 100).").get("schema").getAsJsonObject();
         walkTicks.addProperty("minimum", 1);
         walkTicks.addProperty("maximum", 100);
@@ -432,6 +438,8 @@ public final class AIActionRegistry {
                             args.has("part_y") ? readBoundedInteger(args, "part_y", 0, 7) : 0,
                             args.has("part_z") ? readBoundedInteger(args, "part_z", 0, 7) : 0,
                             args.has("reset_anchor") && args.get("reset_anchor").getAsBoolean()));
+            case "get_schematic_progress" -> new Action(name, args,
+                    SchematicManager.progressSummary(requiredString(args, "file", 110)));
             case "walk_forward" -> {
                 int ticks = readBoundedInteger(args, "ticks", 1, 100);
                 yield new Action(name, args, "Nightfall hält die Vorwärtstaste für höchstens " + ticks
@@ -491,7 +499,7 @@ public final class AIActionRegistry {
     /** Called only from the Minecraft client thread after explicit player confirmation. */
     public static boolean requiresConfirmation(String actionName) {
         return !Set.of("search_blueprints", "list_schematics", "inspect_schematic", "get_module_settings", "open_nightfall_menu",
-                "get_build_status", "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
+                "get_build_status", "get_schematic_progress", "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
     }
 
     public static String execute(Action action) {
@@ -579,6 +587,7 @@ public final class AIActionRegistry {
             case "list_schematics" -> SchematicManager.listForAI() + "\n\n" + SchematicManager.communityCatalog();
             case "inspect_schematic" -> SchematicManager.inspectSummary(args.get("file").getAsString());
             case "build_schematic" -> AIBuilder.startPreparedStructure();
+            case "get_schematic_progress" -> SchematicManager.progressSummary(requiredString(args, "file", 110));
             case "walk_forward" -> AIPlayerController.walkForward(readBoundedInteger(args, "ticks", 1, 100));
             case "stop_movement" -> AIPlayerController.stop("Auf deinen Befehl gestoppt.");
             case "navigate_to" -> AIPlayerController.navigateTo(
