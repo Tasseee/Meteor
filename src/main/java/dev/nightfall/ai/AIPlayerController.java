@@ -2946,8 +2946,50 @@ public final class AIPlayerController {
                 && hit.getBlockPos().equals(pos) ? hit : null;
     }
 
-    private static int findBestMiningToolSlot(MinecraftClient mc, ClientPlayerEntity player,
-                                              BlockState targetState) {
+    /**
+     * Read-only description of the best available tool for a target block.
+     * It uses the same ranking as mining, but never swaps inventory slots.
+     */
+    public static String describeMiningTool(BlockPos pos) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        BlockState targetState = mc.world.getBlockState(pos);
+        int bestSlot = findBestMiningToolInventorySlot(mc.player, targetState);
+        ItemStack bestTool = mc.player.getInventory().getStack(bestSlot);
+        ItemStack heldTool = mc.player.getMainHandStack();
+        boolean bestSuitable = !bestTool.isEmpty() && bestTool.isSuitableFor(targetState);
+        boolean heldSuitable = !heldTool.isEmpty() && heldTool.isSuitableFor(targetState);
+        float speed = bestTool.isEmpty() ? 1.0f : bestTool.getMiningSpeedMultiplier(targetState);
+        float hardness = targetState.getHardness(mc.world, pos);
+
+        String heldDescription = heldTool.isEmpty()
+                ? "leer"
+                : heldTool.getName().getString() + (heldSuitable ? " (geeignet)" : " (nicht als geeignetes Erntewerkzeug erkannt)");
+        String bestDescription = bestTool.isEmpty()
+                ? "kein Werkzeug im Inventar"
+                : bestTool.getName().getString()
+                        + (bestSuitable ? " (geeignet)" : " (nicht als geeignetes Erntewerkzeug erkannt)")
+                        + ", Slotindex " + bestSlot + " (0-basiert; 0–8 = Hotbar)";
+        String harvestNote = bestSuitable
+                ? "Ein passendes Erntewerkzeug wurde gefunden."
+                : targetState.isToolRequired()
+                        ? "Kein passendes Erntewerkzeug wurde im normalen 36-Slot-Inventar erkannt."
+                        : "Der Blockstate meldet keine zwingende Werkzeugpflicht; ein geeignetes Werkzeug wurde nicht erkannt.";
+
+        return "Anvisierter Block: " + targetState.getBlock().getName().getString()
+                + " bei " + pos.toShortString()
+                + "; Härte laut lokalem Blockstate " + String.format(java.util.Locale.ROOT, "%.2f", hardness)
+                + "; Werkzeugpflicht laut Blockstate: " + (targetState.isToolRequired() ? "ja" : "nein")
+                + "; aktuell gehalten: " + heldDescription
+                + "; beste lokale Inventarwahl: " + bestDescription
+                + "; Mining-Speed-Multiplikator des Kandidaten: "
+                + String.format(java.util.Locale.ROOT, "%.2f", speed)
+                + ". " + harvestNote
+                + " Das ist eine clientseitige Momentaufnahme, keine garantierte Abbauzeit oder Server-Drop-Zusage. "
+                + "Verzauberungen, Effekte, Haltbarkeit, Serverregeln und Verzögerungen können das Ergebnis beeinflussen.";
+    }
+
+    private static int findBestMiningToolInventorySlot(ClientPlayerEntity player, BlockState targetState) {
         int selectedSlot = player.getInventory().getSelectedSlot();
         int bestSlot = selectedSlot;
         ItemStack held = player.getInventory().getStack(selectedSlot);
@@ -2965,6 +3007,12 @@ public final class AIPlayerController {
                 bestSpeed = speed;
             }
         }
+        return bestSlot;
+    }
+
+    private static int findBestMiningToolSlot(MinecraftClient mc, ClientPlayerEntity player,
+                                              BlockState targetState) {
+        int bestSlot = findBestMiningToolInventorySlot(player, targetState);
         if (bestSlot < 9) return bestSlot;
         if (player.currentScreenHandler != player.playerScreenHandler)
             throw new IllegalArgumentException("Schließe zuerst den geöffneten Container, damit Nightfall das passende Werkzeug wechseln kann.");
