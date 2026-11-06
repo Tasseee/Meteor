@@ -258,7 +258,12 @@ public final class AIChatClient {
                     "pause_build", "stop_build", "navigate_to", "get_inventory", "gather_block",
                     "gather_wood", "gather_ore", "craft_item", "eat_food");
         }
-        if (hasAny(query, "abbau", "abbaue", "abbauen", "mining", "mine ", "holz", "holzfarm", "erz", "rohstoff",
+        boolean minecraftKnowledgeQuestion = hasAny(query, "beste höhe", "beste hoehe", "welche höhe", "welche hoehe",
+                "auf welcher höhe", "auf welcher hoehe", "wie tief", "wie hoch", "wo findet man", "wo findet sich",
+                "best height", "which height", "what y", "what level", "where do i find")
+                && !hasAny(query, "mine ", "farme", "sammel", "sammle", "abbau", "abbaue",
+                        "abbauen", "minuten", "minute", "for ", "für ", "fuer ");
+        if (!minecraftKnowledgeQuestion && hasAny(query, "abbau", "abbaue", "abbauen", "mining", "mine ", "holz", "holzfarm", "erz", "rohstoff",
                 "sammel", "sammle", "sammelt", "farm ", "farme", "gather", "collect", "grabe", "dig ", "schürf", "schuerf", "ore",
                 "diamond", "diamant", "ancient", "ancent", "debris", "netherite", "schmelz", "smelt",
                 "minute", "minuten", "mins", " min", "sekunden", "dauer", "für ", "fuer ",
