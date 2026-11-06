@@ -53,7 +53,13 @@ The key is stored locally as plain text in the Minecraft config folder. Do not u
 - Press **Escape** to close the chat.
 - Use the mouse wheel to scroll through the current conversation.
 
-When `shareWorldContext` is enabled, each request includes the current dimension, block position, and main-hand item. Chat text and enabled context are sent to the configured provider.
+When `shareWorldContext` is enabled, each request can include a bounded client-side snapshot: dimension, biome, position, time/weather, local light level, health/hunger, movement state, armor and hand items with remaining durability, a targeted-block tool comparison, up to twelve inventory item summaries, nearby client-visible mobs and dropped items, plus local risk and survival-readiness assessments. The readiness check covers equipped armor coverage/durability, the main-hand item's durability, food and torch counts, shield presence, and limited Nether/End preparation hints. It is a suggestion based on currently available data, not a complete assessment of the world or a guarantee of safety. Chat text and enabled context are sent to the configured provider.
+
+## Lokale Survival-Bereitschaft
+
+Mit aktiviertem Weltkontext ergänzt Nightfall eine rein lesende Bereitschaftsprüfung. Sie bewertet die vier ausgerüsteten Rüstungsslots und deren Resthaltbarkeit, die Resthaltbarkeit des Gegenstands in der Haupthand, essbare Gegenstände und Fackeln in den 36 normalen Inventar-/Hotbar-Slots sowie einen Schild in Inventar oder Nebenhand. Für den Nether wird geprüft, ob ein goldenes Rüstungsteil getragen wird; für den End-Hinweis wird geprüft, ob Wassereimer oder Enderperlen im normalen Inventar erkannt wurden. Bei niedriger lokaler Lichtstufe ohne Fackeln kann Nightfall Licht als Vorbereitung empfehlen.
+
+Die Hinweise sind bewusst begrenzt: Ein fehlender Schild ist nur ein optionaler Verbesserungsvorschlag. Goldrüstung bedeutet nicht, dass Piglins in der Nähe sind. Wassereimer und Enderperlen sind keine zwingenden Voraussetzungen für den End-Besuch. Der Check untersucht keine nicht geladenen Bereiche, keine geplanten Routen und keine Verzauberungs-Kombinationen. Er verändert weder Inventar noch Welt. Ohne einen aktuell freigegebenen Weltkontext darf Nightfall keine Bereitschaftsprüfung behaupten und fordert stattdessen dazu auf, den Schalter **WELTKONTEXT: AN** zu aktivieren.
 
 ## Available tools
 
