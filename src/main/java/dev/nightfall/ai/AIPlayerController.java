@@ -1937,7 +1937,8 @@ public final class AIPlayerController {
                 String recipeSummary = plan.stream()
                         .limit(4)
                         .map(step -> step.resultStack().getName().getString()
-                                + " × " + step.batches() + " Charge(n) [" + step.recipe().id() + "]")
+                                + " × " + step.batches() + " Charge(n) [Zutaten gesamt: "
+                                + describeCraftingInputs(step) + "] [" + step.recipe().id() + "]")
                         .collect(java.util.stream.Collectors.joining("; "));
                 if (plan.size() > 4) recipeSummary += "; +" + (plan.size() - 4) + " weitere Schritte";
                 plans.add(new AIMaterialPlanner.CraftableCandidate(
@@ -1989,6 +1990,7 @@ public final class AIPlayerController {
                     .append(" × ").append(step.batches())
                     .append(" Rezeptcharge(n) · ")
                     .append(step.gridWidth()).append("×").append(step.gridHeight())
+                    .append(" · Zutaten gesamt: ").append(describeCraftingInputs(step))
                     .append(" · ").append(step.recipe().id());
         }
         return "Nightfall plant nach deiner Bestätigung eine Crafting-Rezeptkette für "
@@ -2094,7 +2096,8 @@ public final class AIPlayerController {
     }
 
     private record CraftingPlanStep(RecipeDisplayEntry recipe, Item resultItem, ItemStack resultStack,
-                                    int batches, int gridWidth, int gridHeight) {}
+                                    int batches, int gridWidth, int gridHeight,
+                                    List<ItemStack> inputsPerBatch) {}
     private record CraftingRecipeOption(RecipeDisplayEntry recipe, ItemStack resultStack,
                                         List<List<ItemStack>> ingredientChoices, int gridWidth, int gridHeight) {}
 
@@ -2131,6 +2134,7 @@ public final class AIPlayerController {
 
             Map<Item, Integer> trialAvailable = new HashMap<>(available);
             List<CraftingPlanStep> trialSteps = new ArrayList<>(steps);
+            List<ItemStack> selectedInputsPerBatch = new ArrayList<>();
             boolean ingredientsResolved = true;
             for (List<ItemStack> alternatives : option.ingredientChoices()) {
                 if (alternatives.isEmpty()) continue;
@@ -2151,6 +2155,7 @@ public final class AIPlayerController {
                     branchAvailable.put(ingredient.getItem(), present - ingredientCount);
                     trialAvailable = branchAvailable;
                     trialSteps = branchSteps;
+                    selectedInputsPerBatch.add(ingredient.copy());
                     slotResolved = true;
                     break;
                 }
@@ -2165,7 +2170,7 @@ public final class AIPlayerController {
 
             trialAvailable.merge(target, outputCount * batches, Integer::sum);
             trialSteps.add(new CraftingPlanStep(option.recipe(), target, option.resultStack().copy(),
-                    batches, option.gridWidth(), option.gridHeight()));
+                    batches, option.gridWidth(), option.gridHeight(), List.copyOf(selectedInputsPerBatch)));
             available.clear();
             available.putAll(trialAvailable);
             steps.clear();
@@ -2234,6 +2239,20 @@ public final class AIPlayerController {
         }
         options.sort(Comparator.comparing(option -> option.recipe().id().toString()));
         return options;
+    }
+
+    private static String describeCraftingInputs(CraftingPlanStep step) {
+        Map<Item, Integer> totalInputs = new HashMap<>();
+        for (ItemStack ingredient : step.inputsPerBatch()) {
+            if (ingredient == null || ingredient.isEmpty()) continue;
+            totalInputs.merge(ingredient.getItem(),
+                    Math.max(1, ingredient.getCount()) * step.batches(), Integer::sum);
+        }
+        if (totalInputs.isEmpty()) return "keine aufgelösten Zutaten";
+        return totalInputs.entrySet().stream()
+                .sorted(Comparator.comparing(entry -> Registries.ITEM.getId(entry.getKey()).toString()))
+                .map(entry -> entry.getValue() + "× " + entry.getKey().getName().getString())
+                .collect(java.util.stream.Collectors.joining(", "));
     }
 
     private static boolean startCraftingPlanStep(MinecraftClient mc) {
