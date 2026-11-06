@@ -2004,8 +2004,9 @@ public final class AIPlayerController {
             for (List<ItemStack> alternatives : option.ingredientChoices()) {
                 if (alternatives.isEmpty()) continue;
                 List<ItemStack> ordered = new ArrayList<>(alternatives);
+                Map<Item, Integer> availableSnapshot = trialAvailable;
                 ordered.sort(Comparator
-                        .comparingInt((ItemStack stack) -> trialAvailable.getOrDefault(stack.getItem(), 0)).reversed()
+                        .comparingInt((ItemStack stack) -> availableSnapshot.getOrDefault(stack.getItem(), 0)).reversed()
                         .thenComparing(stack -> Registries.ITEM.getId(stack.getItem()).toString()));
                 boolean slotResolved = false;
                 for (ItemStack ingredient : ordered) {
