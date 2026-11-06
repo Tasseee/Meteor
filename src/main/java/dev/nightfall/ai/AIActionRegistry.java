@@ -63,12 +63,28 @@ public final class AIActionRegistry {
         BIOMES.put("minecraft:snowy_plains", "Schneeebene");
     }
 
+    private static volatile JsonArray cachedToolDefinitions;
+
     private AIActionRegistry() {}
 
     public record Action(String name, JsonObject arguments, String preview) {}
 
     /** OpenAI-compatible function definitions. The model can suggest, never execute, these tools. */
     public static JsonArray toolDefinitions() {
+        JsonArray cached = cachedToolDefinitions;
+        if (cached == null) {
+            synchronized (AIActionRegistry.class) {
+                cached = cachedToolDefinitions;
+                if (cached == null) {
+                    cached = buildToolDefinitions();
+                    cachedToolDefinitions = cached;
+                }
+            }
+        }
+        return cached.deepCopy();
+    }
+
+    private static JsonArray buildToolDefinitions() {
         JsonArray tools = new JsonArray();
         tools.add(tool("search_structures",
                 "Explore the nearby Minecraft world on foot without server commands. Walks a bounded expanding square spiral using safe local A* navigation through loaded chunks and scans nearby loaded blocks for characteristic block-pattern hints for ancient cities, trial chambers, nether fortresses, bastions or strongholds. Stops and reports likely coordinates when a pattern threshold is reached. This is heuristic, not guaranteed identification; never uses /locate or teleport. Requires player confirmation; user can say stop.",
