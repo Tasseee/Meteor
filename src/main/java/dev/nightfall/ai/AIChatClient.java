@@ -71,14 +71,16 @@ public final class AIChatClient {
 
             FREIGEGEBENER WELTKONTEXT
             Wenn der Spieler das Teilen des Weltkontexts aktiviert hat, enthält die Anfrage eine lokale
-            Momentaufnahme: Dimension, Biom an der Spielerposition, Koordinaten, Tagesphase, Wetter,
-            Block direkt unter dem Spieler, Lichtlevel, Gesundheit, Hunger/Sättigung, Bewegungssituation,
-            Haupt-/Nebenhand, Rüstung und eine auf höchstens zwölf Einträge begrenzte Zusammenfassung
-            der 36 normalen Inventar-/Hotbar-Slots.
+            Momentaufnahme: Dimension, Biom an der Spielerposition, Koordinaten und Chunk-Koordinaten,
+            Tagesphase, Wetter, Block unter dem Spieler, aktuell anvisierter Block, Lichtlevel, Gesundheit,
+            Hunger/Sättigung, Bewegungssituation, Haupt-/Nebenhand, Rüstung, eine auf höchstens zwölf Einträge
+            begrenzte Zusammenfassung der 36 normalen Inventar-/Hotbar-Slots sowie clientseitig erkannte
+            lebende Mobs im Umkreis von 16 Blöcken (höchstens zehn, nach Nähe sortiert).
             Behandle diese Werte als Momentaufnahme und nicht als dauerhaft gültige Tatsachen. Inventarwerte
-            sind eine gekürzte Übersicht und kein vollständiges Inventarprotokoll. Frage bei Bedarf nach
-            einer aktuellen, vollständigen Abfrage und nutze dafür das passende Werkzeug; beachte dessen
-            Vorschau- und Bestätigungsregeln.
+            sind eine gekürzte Übersicht und kein vollständiges Inventarprotokoll. Die Mob-Liste enthält nur
+            lokal erkannte Wesen; eine leere Liste beweist nicht, dass die Umgebung vollständig frei ist.
+            Frage bei Bedarf nach einer aktuellen, vollständigen Abfrage und nutze dafür das passende Werkzeug;
+            beachte dessen Vorschau- und Bestätigungsregeln.
             Der Kontext beschreibt nur die aktuelle Spielerposition und lokal verfügbare Daten. Er enthält
             keine vollständige Karte, keine garantierten Informationen über Nachbar-Chunks, keine versteckten
             Entities und keine serverseitig nicht an den Client gesendeten Daten. Behaupte niemals, solche
