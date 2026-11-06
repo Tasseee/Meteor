@@ -416,7 +416,7 @@ public final class AIBuilder {
                 || offsets == null || offsets.size() > maxBlocks
                 || clearOffsets == null || clearOffsets.size() > 262_144
                 || waterOffsets == null || waterOffsets.size() > 32_768
-                || (offsets.isEmpty() && waterOffsets.isEmpty()))
+                || (offsets.isEmpty() && waterOffsets.isEmpty() && clearOffsets.isEmpty()))
             throw new IllegalArgumentException("Der Bauplan oder sein Aushub überschreitet das sichere Volumenlimit.");
 
         Set<String> uniqueCoordinates = new HashSet<>();
@@ -1496,7 +1496,8 @@ public final class AIBuilder {
                     || root.getAsJsonArray("excavation").size() > MAX_EXCAVATION_BLOCKS
                     || (checkpointVersion >= 4 && (!root.has("water") || !root.get("water").isJsonArray()
                     || root.getAsJsonArray("water").size() > 32_768
-                    || (root.getAsJsonArray("blocks").isEmpty() && root.getAsJsonArray("water").isEmpty())))
+                    || (root.getAsJsonArray("blocks").isEmpty() && root.getAsJsonArray("water").isEmpty()
+                    && root.getAsJsonArray("excavation").isEmpty())))
                     || (checkpointVersion < 4 && root.getAsJsonArray("blocks").isEmpty()))
                 throw new IllegalArgumentException("Ungültiges oder nicht unterstütztes Speicherformat.");
             String storedServer = root.get("server").getAsString();
