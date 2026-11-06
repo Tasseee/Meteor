@@ -161,7 +161,7 @@ public final class AIActionRegistry {
         tools.add(tool("get_inventory", "Read the player's inventory and summarize item names and counts. This data is sent to the configured AI provider; the player must confirm first.",
                 objectSchema()));
         tools.add(tool("sort_inventory",
-                "Sort every non-empty stack in the player's 36 normal inventory/hotbar slots by category and item ID. Preserves exact stack counts, durability, enchantments and item components; does not merge or delete items. Armor, offhand, crafting slots and cursor are never moved. Uses normal server-confirmed inventory swaps, one at a time; requires a preview and explicit confirmation.",
+                "Sort permitted ordinary items in the player's 36 normal inventory/hotbar slots by category and item ID. Preserves exact stack counts, durability, enchantments and item components; does not merge or delete items. Combat-oriented items remain in their exact slots. Armor, offhand, crafting slots and cursor are never moved. Uses normal server-confirmed inventory swaps, one at a time; requires a preview and explicit confirmation.",
                 objectSchema()));
         tools.add(tool("get_player_status", "Read the player's current dimension, coordinates and health. This data is sent to the configured AI provider; the player must confirm first.",
                 objectSchema()));
