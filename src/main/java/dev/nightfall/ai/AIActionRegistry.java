@@ -119,6 +119,9 @@ public final class AIActionRegistry {
                         "biome")));
         tools.add(tool("add_waypoint", "Save a waypoint at the player's current position. The player must confirm first.",
                 objectSchema(property("name", "string", "Short waypoint name, max 32 characters."), "name")));
+        tools.add(tool("list_waypoints",
+                "Read the locally saved waypoints for the current server, including dimension and coordinates. Read-only; does not navigate, add, edit or remove anything.",
+                objectSchema()));
         tools.add(tool("search_bases",
                 "Start or resume Nightfall's incremental BaseFinder scan. It inspects only chunks already loaded and sent to this client; it does not teleport, issue server commands, or reveal server-side hidden data. Requires player confirmation.",
                 objectSchema()));
@@ -483,6 +486,7 @@ public final class AIActionRegistry {
                 yield new Action(name, args, "Nightfall speichert nach deiner Bestätigung einen Wegpunkt namens „"
                         + waypointName + "“ an deiner aktuellen Position.");
             }
+            case "list_waypoints" -> new Action(name, args, waypointSummary());
             case "search_bases" -> new Action(name, args,
                     "Nightfall aktiviert den BaseFinder und beginnt mit dem inkrementellen Scan bereits geladener Chunks. Das Ergebnis ist eine lokale Heuristik, kein bestätigter Basisfund.");
             case "get_base_findings" -> new Action(name, args, baseFindingsSummary());
@@ -666,7 +670,7 @@ public final class AIActionRegistry {
     public static boolean requiresConfirmation(String actionName) {
         return !Set.of("search_blueprints", "list_schematics", "inspect_schematic", "get_module_settings", "open_nightfall_menu",
                 "get_build_status", "get_schematic_progress", "verify_schematic_section", "get_base_findings", "get_module_observations", "list_fake_base_templates",
-                "get_player_action_status", "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
+                "get_player_action_status", "list_waypoints", "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
     }
 
     private static String moduleObservationSummary(String requestedModule) {
@@ -806,6 +810,7 @@ public final class AIActionRegistry {
                 yield "Wegpunkt „" + waypoint.name + "“ gespeichert bei X=" + waypoint.x
                         + ", Y=" + waypoint.y + ", Z=" + waypoint.z + " in " + waypoint.dim + ".";
             }
+            case "list_waypoints" -> waypointSummary();
             case "search_bases" -> {
                 BaseFinder finder = ModuleManager.get(BaseFinder.class);
                 if (!finder.isEnabled()) finder.setEnabled(true);
@@ -941,6 +946,28 @@ public final class AIActionRegistry {
                 || "build_structure".equals(action.name())
                 || "build_custom_structure".equals(action.name())
                 || "build_schematic".equals(action.name()))) AIBuilder.cancelPrepared();
+    }
+
+    private static String waypointSummary() {
+        List<Waypoint> waypoints = WaypointManager.all();
+        if (waypoints.isEmpty()) return "Für diesen Server sind noch keine Nightfall-Wegpunkte gespeichert.";
+
+        StringBuilder out = new StringBuilder("Gespeicherte Nightfall-Wegpunkte für diesen Server (maximal 30 angezeigt):");
+        int shown = 0;
+        for (Waypoint waypoint : waypoints) {
+            if (waypoint == null) continue;
+            if (shown++ >= 30) break;
+            out.append("\\n- ").append(waypoint.name == null || waypoint.name.isBlank() ? "(ohne Namen)" : waypoint.name)
+                    .append(" [").append(waypoint.category == null ? "Default" : waypoint.category).append("]")
+                    .append(": ").append(waypoint.dim == null ? "Dimension unbekannt" : waypoint.dim)
+                    .append(" · X=").append(waypoint.x).append(", Y=").append(waypoint.y).append(", Z=").append(waypoint.z);
+            if (out.length() > 5_500) {
+                out.append("\\n(gekürzt)");
+                break;
+            }
+        }
+        if (waypoints.size() > 30) out.append("\\nWeitere Wegpunkte sind in der lokalen Wegpunktliste sichtbar.");
+        return out.toString();
     }
 
     private static String playerStatus(MinecraftClient mc) {
