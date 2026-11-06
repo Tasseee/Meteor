@@ -2380,6 +2380,11 @@ public final class AIPlayerController {
 
             trialSteps.add(new CraftingPlanStep(option.recipe(), target, option.resultStack().copy(),
                     batches, option.gridWidth(), option.gridHeight(), List.copyOf(selectedInputsPerBatch)));
+            if (trialSteps.size() > MAX_CRAFT_CHAIN_STEPS
+                    || trialSteps.stream().mapToInt(CraftingPlanStep::batches).sum() > MAX_CRAFT_CHAIN_BATCHES) {
+                skippedOption = true;
+                continue;
+            }
             if (trialMissing.isEmpty())
                 trialAvailable.merge(target, outputCount * batches, Integer::sum);
             CraftingDiagnosis candidate = new CraftingDiagnosis(trialAvailable, trialMissing,
