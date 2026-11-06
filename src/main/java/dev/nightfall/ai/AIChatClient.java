@@ -179,9 +179,11 @@ public final class AIChatClient {
         }
 
         if (hasAny(query, "esp", "spieler", "player", "players", "online player", "mob", "mobs",
-                "entity", "entities", "creeper", "zombie", "item-drop", "dropped item", "dropped items",
-                "ground item", "gedroppt", "kiste", "truhe", "chest", "hopper", "fass", "barrel",
-                "storage", "blockentity", "staffwatch", "vanish", "tab-list", "tabliste")) {
+                "entity", "entities", "creeper", "zombie", "cow", "sheep", "animal", "animals",
+                "item-drop", "dropped", "ground item", "items on ground", "items nearby", "gedroppt",
+                "kiste", "truhe", "chest", "container", "hopper", "fass", "barrel", "storage",
+                "blockentity", "staffwatch", "staff watch", "vanish", "tab-list", "tabliste",
+                "intelligence scanner", "scanner result")) {
             addTools(selected, "get_module_observations");
         }
 
@@ -201,8 +203,9 @@ public final class AIChatClient {
             }
         }
 
-        if (hasAny(query, "modul", "module", "setting", "einstellung", "option", "clickgui",
-                "menü", "menu", "reichweite", "geschwindigkeit", "farbe", "modus", "mode",
+        if (hasAny(query, "modul", "module", "setting", "settings", "einstellung", "option",
+                "clickgui", "menü", "menu", "reichweite", "range", "geschwindigkeit", "speed",
+                "farbe", "color", "colour", "modus", "mode", "keybind", "bind ", "toggle",
                 "enable ", "disable ", "turn on", "turn off", "aktivier", "deaktivier",
                 "einschalt", "ausschalt", "mach an", "mach aus", "schalte an", "schalte aus")) {
             addTools(selected, "get_module_settings", "set_module_state", "set_module_setting",
