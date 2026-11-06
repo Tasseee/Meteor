@@ -16,6 +16,9 @@ import dev.nightfall.config.Config;
 import dev.nightfall.gui.ClickGuiScreen;
 import dev.nightfall.scanner.Waypoint;
 import dev.nightfall.scanner.WaypointManager;
+import dev.nightfall.modules.BaseFinder;
+import dev.nightfall.modules.FakeBases;
+import dev.nightfall.scanner.ChunkResult;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
@@ -74,6 +77,22 @@ public final class AIActionRegistry {
                         "biome")));
         tools.add(tool("add_waypoint", "Save a waypoint at the player's current position. The player must confirm first.",
                 objectSchema(property("name", "string", "Short waypoint name, max 32 characters."), "name")));
+        tools.add(tool("search_bases",
+                "Start or resume Nightfall's incremental BaseFinder scan. It inspects only chunks already loaded and sent to this client; it does not teleport, issue server commands, or reveal server-side hidden data. Requires player confirmation.",
+                objectSchema()));
+        tools.add(tool("get_base_findings",
+                "Read the latest BaseFinder results: suspected chunks, score, observed evidence, scan completeness and whether server masking limited the data. Read-only; do not describe a SUS result as a confirmed player base.",
+                objectSchema()));
+        JsonObject fakeBaseSchema = objectSchema(property("name", "string", "Short local label for this fake/decoy base, max 32 characters."),
+                "name");
+        fakeBaseSchema.getAsJsonObject("properties").add("learn",
+                property("learn", "boolean", "If true, learn the current loaded chunk's block-entity layout as a reusable fake-base template.").get("schema"));
+        tools.add(tool("mark_fake_base",
+                "Mark the player's current chunk as a known fake/decoy base, saved locally for this server and dimension. Optionally learn its loaded block-entity layout as a template. Does not change world blocks. Requires confirmation.",
+                fakeBaseSchema));
+        tools.add(tool("list_fake_base_templates",
+                "List the names of locally learned fake-base templates. Read-only; templates are local and server/dimension scoped.",
+                objectSchema()));
         tools.add(tool("set_module_state", "Enable or disable an existing Nightfall client module. The player must confirm first.",
                 moduleStateSchema()));
         JsonObject moduleQuery = objectSchema();
@@ -357,6 +376,20 @@ public final class AIActionRegistry {
                 yield new Action(name, args, "Nightfall speichert nach deiner Bestätigung einen Wegpunkt namens „"
                         + waypointName + "“ an deiner aktuellen Position.");
             }
+            case "search_bases" -> new Action(name, args,
+                    "Nightfall aktiviert den BaseFinder und beginnt mit dem inkrementellen Scan bereits geladener Chunks. Das Ergebnis ist eine lokale Heuristik, kein bestätigter Basisfund.");
+            case "get_base_findings" -> new Action(name, args, baseFindingsSummary());
+            case "mark_fake_base" -> {
+                String label = requiredString(args, "name", 32).trim();
+                if (label.isBlank() || !label.matches("[\\p{L}0-9 _.-]{1,32}"))
+                    throw new IllegalArgumentException("Bitte einen kurzen gültigen Fake-Base-Namen angeben.");
+                boolean learn = args.has("learn") && requiredBoolean(args, "learn");
+                yield new Action(name, args, "Nightfall markiert deinen aktuellen Chunk lokal als FakeBase „" + label + "“."
+                        + (learn ? " Das Layout der geladenen BlockEntities wird zusätzlich als Vorlage gelernt." : "")
+                        + " Es werden keine Weltblöcke verändert.");
+            }
+            case "list_fake_base_templates" -> new Action(name, args,
+                    "Lokale Fake-Base-Vorlagen: " + (FakeBases.templateNames().isEmpty() ? "keine" : String.join(", ", FakeBases.templateNames())));
             case "set_module_state" -> {
                 String moduleName = requiredString(args, "module", 64);
                 boolean enabled = requiredBoolean(args, "enabled");
@@ -499,7 +532,52 @@ public final class AIActionRegistry {
     /** Called only from the Minecraft client thread after explicit player confirmation. */
     public static boolean requiresConfirmation(String actionName) {
         return !Set.of("search_blueprints", "list_schematics", "inspect_schematic", "get_module_settings", "open_nightfall_menu",
-                "get_build_status", "get_schematic_progress", "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
+                "get_build_status", "get_schematic_progress", "get_base_findings", "list_fake_base_templates",
+                "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
+    }
+
+    private static String baseFindingsSummary() {
+        BaseFinder finder;
+        try { finder = ModuleManager.get(BaseFinder.class); }
+        catch (RuntimeException unavailable) { return "BaseFinder ist nicht verfügbar."; }
+        List<ChunkResult> findings = new ArrayList<>();
+        for (ChunkResult result : finder.results()) {
+            if (result.status != ChunkResult.Status.CLEAN) findings.add(result);
+        }
+        findings.sort((a, b) -> {
+            int status = Integer.compare(statusRank(b.status), statusRank(a.status));
+            return status != 0 ? status : Double.compare(b.score, a.score);
+        });
+        StringBuilder out = new StringBuilder();
+        out.append("BaseFinder ").append(finder.isEnabled() ? "aktiv" : "inaktiv")
+                .append("; bekannte Chunks: ").append(finder.resultCount())
+                .append("; Scan-Warteschlange: ").append(finder.queueSize())
+                .append("; zuletzt gescannt: ").append(finder.lastScanned())
+                .append("; Fortschritt des letzten Durchlaufs: ")
+                .append(Math.round(finder.progress() * 100)).append("%.");
+        if (findings.isEmpty()) return out.append("\\nNoch keine SUS-, GONE- oder DECOY-Markierungen.").toString();
+        out.append("\\nMarkierte Chunks (max. 12):");
+        int count = 0;
+        for (ChunkResult r : findings) {
+            if (count++ >= 12) break;
+            out.append("\\n- ").append(r.status).append(" Chunk ").append(r.cx).append(",").append(r.cz)
+                    .append(" (ungefähres Zentrum X=").append(r.blockX()).append(", Z=").append(r.blockZ())
+                    .append("), Score ").append(String.format(Locale.ROOT, "%.1f", r.score))
+                    .append(", Datendeckung ").append(Math.round(r.dataCompleteness * 100)).append("%");
+            if (r.serverLimited) out.append(", serverseitig maskierte Daten");
+            if (!r.reasons.isEmpty()) out.append(": ").append(String.join("; ", r.reasons));
+        }
+        out.append("\\nWichtig: SUS ist nur ein Verdacht anhand clientseitig geladener Daten, kein Beweis für eine Spielerbasis.");
+        return out.toString();
+    }
+
+    private static int statusRank(ChunkResult.Status status) {
+        return switch (status) {
+            case SUS -> 3;
+            case DECOY -> 2;
+            case GONE -> 1;
+            case CLEAN -> 0;
+        };
     }
 
     public static String execute(Action action) {
@@ -537,6 +615,31 @@ public final class AIActionRegistry {
                         pos.getX(), pos.getY(), pos.getZ());
                 yield "Wegpunkt „" + waypoint.name + "“ gespeichert bei X=" + waypoint.x
                         + ", Y=" + waypoint.y + ", Z=" + waypoint.z + " in " + waypoint.dim + ".";
+            }
+            case "search_bases" -> {
+                BaseFinder finder = ModuleManager.get(BaseFinder.class);
+                if (!finder.isEnabled()) finder.setEnabled(true);
+                yield "BaseFinder ist " + (finder.isEnabled() ? "aktiv" : "nicht aktiv")
+                        + ". Der Scan verarbeitet schrittweise nur bereits geladene Chunks. Frage mit get_base_findings nach den aktuellen Ergebnissen.";
+            }
+            case "get_base_findings" -> baseFindingsSummary();
+            case "mark_fake_base" -> {
+                int cx = mc.player.getBlockX() >> 4, cz = mc.player.getBlockZ() >> 4;
+                String label = args.get("name").getAsString().trim();
+                Waypoint marker = WaypointManager.add(label, FakeBases.CATEGORY,
+                        cx * 16 + 8, mc.player.getBlockY(), cz * 16 + 8);
+                String learned = "";
+                if (args.has("learn") && args.get("learn").getAsBoolean()) {
+                    var chunk = mc.world.getChunkManager().getWorldChunk(cx, cz);
+                    learned = " " + FakeBases.learn(label, chunk);
+                }
+                yield "FakeBase/Decoy „" + marker.name + "“ lokal in Chunk " + cx + "," + cz
+                        + " markiert (Blockzentrum X=" + marker.x + ", Z=" + marker.z + ")." + learned;
+            }
+            case "list_fake_base_templates" -> {
+                List<String> names = FakeBases.templateNames();
+                yield names.isEmpty() ? "Es sind noch keine Fake-Base-Vorlagen gelernt."
+                        : "Gelernte lokale Fake-Base-Vorlagen: " + String.join(", ", names);
             }
             case "set_module_state" -> {
                 Module module = findModule(args.get("module").getAsString());
