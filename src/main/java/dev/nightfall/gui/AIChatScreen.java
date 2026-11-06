@@ -14,6 +14,15 @@ import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.AttributeModifiersComponent;
+import net.minecraft.component.type.EquippableComponent;
+import net.minecraft.component.type.ItemEnchantmentsComponent;
+import net.minecraft.enchantment.Enchantment;
+import net.minecraft.enchantment.EnchantmentHelper;
+import net.minecraft.entity.attribute.EntityAttribute;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
+import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Click;
@@ -46,6 +55,14 @@ public final class AIChatScreen extends Screen {
             Pattern.compile("(?s).*\\[\\s*(-?\\d+)\\s*,\\s*(~|-?\\d+)\\s*,\\s*(-?\\d+)\\s*\\].*");
 
     private record ChatLine(String role, String content) {}
+
+    private record EquipmentSnapshot(
+            ItemStack stack,
+            String category,
+            String location,
+            boolean equipped,
+            EquipmentSlot armorSlot) {}
+
 
     private final List<ChatLine> history = new ArrayList<>();
     private final Map<String, List<String>> wrapCache = new HashMap<>();
@@ -1342,6 +1359,7 @@ public final class AIChatScreen extends Screen {
                         hasEnderPearls,
                         lightLevel))
                 .summary();
+        String equipmentAdvisorSummary = equipmentAdvisorSummary(player);
         String inventorySummary = inventoryCounts.entrySet().stream()
                 .sorted((left, right) -> Integer.compare(right.getValue(), left.getValue()))
                 .limit(12)
@@ -1366,6 +1384,7 @@ public final class AIChatScreen extends Screen {
                 + nearbyDropsSummary + "\n"
                 + localRiskSummary + "\n"
                 + readinessSummary + "\n"
+                + equipmentAdvisorSummary + "\n"
                 + "Gesundheit: " + health + "\n"
                 + "Hunger: " + hunger + ", Sättigung: " + saturation + "\n"
                 + "Lokale Situation: " + movement + "\n"
@@ -1376,6 +1395,196 @@ public final class AIChatScreen extends Screen {
                 + inventorySummary + "\n"
                 + "Grenze: Das sind nur aktuell clientseitig verfügbare Werte, keine Karte der Umgebung. "
                 + "Ungeladene Chunks, versteckte Entities und serverseitig nicht gesendete Daten sind nicht enthalten.";
+    }
+
+    /**
+     * Build a bounded local snapshot of equipped armor, carried armor alternatives,
+     * utility mining tools and enchanted books. This method never mutates an ItemStack.
+     */
+    private static String equipmentAdvisorSummary(net.minecraft.client.network.ClientPlayerEntity player) {
+        List<EquipmentSnapshot> equipment = new ArrayList<>();
+        addEquippedArmorSnapshot(equipment, player, EquipmentSlot.HEAD);
+        addEquippedArmorSnapshot(equipment, player, EquipmentSlot.CHEST);
+        addEquippedArmorSnapshot(equipment, player, EquipmentSlot.LEGS);
+        addEquippedArmorSnapshot(equipment, player, EquipmentSlot.FEET);
+
+        List<ItemStack> enchantedBooks = new ArrayList<>();
+        for (int slot = 0; slot < 36; slot++) {
+            ItemStack stack = player.getInventory().getStack(slot);
+            if (stack.isEmpty()) continue;
+
+            String itemId = Registries.ITEM.getId(stack.getItem()).toString();
+            if ("minecraft:enchanted_book".equals(itemId)) {
+                if (enchantedBooks.size() < 24) enchantedBooks.add(stack);
+                continue;
+            }
+
+            EquipmentSlot armorSlot = armorSlot(stack);
+            if (armorSlot != null) {
+                equipment.add(new EquipmentSnapshot(stack, armorCategory(armorSlot),
+                        inventorySlotLabel(slot), false, armorSlot));
+                continue;
+            }
+
+            String toolCategory = utilityToolCategory(itemId);
+            if (toolCategory != null) {
+                equipment.add(new EquipmentSnapshot(stack, toolCategory,
+                        inventorySlotLabel(slot), false, null));
+            }
+            if (equipment.size() >= 48) break;
+        }
+
+        List<AILocalEquipmentAdvisor.GearInfo> gear = new ArrayList<>();
+        for (EquipmentSnapshot snapshot : equipment) {
+            ItemStack stack = snapshot.stack();
+            int armorPoints = 0;
+            float armorToughness = 0.0F;
+            if (snapshot.armorSlot() != null) {
+                armorPoints = armorAttributeValue(stack, snapshot.armorSlot(), EntityAttributes.ARMOR);
+                armorToughness = (float) armorAttributeValue(
+                        stack, snapshot.armorSlot(), EntityAttributes.ARMOR_TOUGHNESS);
+            }
+            gear.add(new AILocalEquipmentAdvisor.GearInfo(
+                    Registries.ITEM.getId(stack.getItem()).toString(),
+                    stack.getName().getString(),
+                    snapshot.category(),
+                    snapshot.location(),
+                    snapshot.equipped(),
+                    remainingDurabilityPercent(stack),
+                    armorPoints,
+                    armorToughness,
+                    snapshotEnchantments(stack)));
+            if (gear.size() >= 48) break;
+        }
+
+        List<AILocalEquipmentAdvisor.BookOpportunity> bookOpportunities =
+                compatibleEnchantmentBookOpportunities(equipment, enchantedBooks);
+        return AILocalEquipmentAdvisor.summarize(gear, bookOpportunities);
+    }
+
+    private static void addEquippedArmorSnapshot(
+            List<EquipmentSnapshot> equipment,
+            net.minecraft.client.network.ClientPlayerEntity player,
+            EquipmentSlot slot) {
+        ItemStack stack = player.getEquippedStack(slot);
+        if (stack == null || stack.isEmpty()) return;
+        String category = armorCategory(slot);
+        if (category == null) return;
+        equipment.add(new EquipmentSnapshot(stack, category,
+                "getragen (" + categoryLabelForSlot(slot) + ")", true, slot));
+    }
+
+    private static EquipmentSlot armorSlot(ItemStack stack) {
+        EquippableComponent equippable = stack.get(DataComponentTypes.EQUIPPABLE);
+        if (equippable == null) return null;
+        EquipmentSlot slot = equippable.slot();
+        return armorCategory(slot) == null ? null : slot;
+    }
+
+    private static String armorCategory(EquipmentSlot slot) {
+        return switch (slot) {
+            case HEAD -> "armor:head";
+            case CHEST -> "armor:chest";
+            case LEGS -> "armor:legs";
+            case FEET -> "armor:feet";
+            default -> null;
+        };
+    }
+
+    private static String categoryLabelForSlot(EquipmentSlot slot) {
+        return switch (slot) {
+            case HEAD -> "Helm";
+            case CHEST -> "Brust-Rüstung";
+            case LEGS -> "Bein-Rüstung";
+            case FEET -> "Stiefel";
+            default -> "Rüstung";
+        };
+    }
+
+    private static String utilityToolCategory(String itemId) {
+        String path = itemId.substring(itemId.indexOf(':') + 1);
+        if (path.endsWith("_pickaxe")) return "pickaxe";
+        if (path.endsWith("_shovel")) return "shovel";
+        if (path.endsWith("_hoe")) return "hoe";
+        return null;
+    }
+
+    private static String inventorySlotLabel(int slot) {
+        return slot < 9 ? "Hotbar-Slot " + (slot + 1) : "Inventar-Slot " + (slot - 8);
+    }
+
+    private static int armorAttributeValue(
+            ItemStack stack,
+            EquipmentSlot equipmentSlot,
+            RegistryEntry<EntityAttribute> attribute) {
+        AttributeModifiersComponent modifiers = stack.get(DataComponentTypes.ATTRIBUTE_MODIFIERS);
+        if (modifiers == null) return 0;
+
+        double value = 0.0;
+        for (AttributeModifiersComponent.Entry entry : modifiers.modifiers()) {
+            if (!entry.attribute().equals(attribute) || !entry.slot().matches(equipmentSlot)) continue;
+            EntityAttributeModifier modifier = entry.modifier();
+            if (modifier.operation() == EntityAttributeModifier.Operation.ADD_VALUE) {
+                value += modifier.value();
+            }
+        }
+        if (!Double.isFinite(value)) return 0;
+        return (int) Math.round(Math.max(0.0, value));
+    }
+
+    private static List<AILocalEquipmentAdvisor.EnchantmentInfo> snapshotEnchantments(ItemStack stack) {
+        ItemEnchantmentsComponent enchantments = EnchantmentHelper.getEnchantments(stack);
+        List<AILocalEquipmentAdvisor.EnchantmentInfo> result = new ArrayList<>();
+        for (RegistryEntry<Enchantment> entry : enchantments.getEnchantments()) {
+            int level = enchantments.getLevel(entry);
+            if (level <= 0) continue;
+            String id = Registries.ENCHANTMENT.getId(entry.value()).toString();
+            String name = Enchantment.getName(entry, level).getString();
+            result.add(new AILocalEquipmentAdvisor.EnchantmentInfo(id, name, level));
+            if (result.size() >= 16) break;
+        }
+        result.sort(java.util.Comparator.comparing(AILocalEquipmentAdvisor.EnchantmentInfo::id));
+        return List.copyOf(result);
+    }
+
+    private static List<AILocalEquipmentAdvisor.BookOpportunity> compatibleEnchantmentBookOpportunities(
+            List<EquipmentSnapshot> equipment,
+            List<ItemStack> enchantedBooks) {
+        List<AILocalEquipmentAdvisor.BookOpportunity> opportunities = new ArrayList<>();
+        for (EquipmentSnapshot target : equipment) {
+            ItemEnchantmentsComponent existing = EnchantmentHelper.getEnchantments(target.stack());
+            for (ItemStack book : enchantedBooks) {
+                ItemEnchantmentsComponent stored = EnchantmentHelper.getEnchantments(book);
+                for (RegistryEntry<Enchantment> candidate : stored.getEnchantments()) {
+                    int bookLevel = stored.getLevel(candidate);
+                    if (bookLevel <= 0 || !candidate.value().isAcceptableItem(target.stack())) continue;
+
+                    int currentLevel = existing.getLevel(candidate);
+                    int maximumLevel = candidate.value().getMaxLevel();
+                    if (bookLevel < currentLevel
+                            || (bookLevel == currentLevel && bookLevel >= maximumLevel)) continue;
+
+                    boolean compatible = true;
+                    for (RegistryEntry<Enchantment> current : existing.getEnchantments()) {
+                        if (current.equals(candidate)) continue;
+                        if (!Enchantment.canBeCombined(current, candidate)) {
+                            compatible = false;
+                            break;
+                        }
+                    }
+                    if (!compatible) continue;
+
+                    String enchantmentName = Enchantment.getName(candidate, bookLevel).getString();
+                    opportunities.add(new AILocalEquipmentAdvisor.BookOpportunity(
+                            book.getName().getString(),
+                            target.stack().getName().getString(),
+                            enchantmentName,
+                            bookLevel));
+                    if (opportunities.size() >= 10) return List.copyOf(opportunities);
+                }
+            }
+        }
+        return List.copyOf(opportunities);
     }
 
     private static String describeStack(ItemStack stack) {
