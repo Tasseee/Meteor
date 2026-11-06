@@ -3027,6 +3027,38 @@ public final class AIPlayerController {
         };
     }
 
+    /** Read-only preview for deleting the saved task intent for this server and dimension. */
+    public static String previewClearSavedTask() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        AITaskCheckpoint.Task task = AITaskCheckpoint.loadForCurrentWorld(mc);
+        if (task == null)
+            return "Kein gespeicherter Aufgaben-Checkpoint für diese Welt und Dimension vorhanden. Checkpoints anderer Welten bleiben unberührt.";
+        return "Nach deiner Bestätigung löscht Nightfall nur den lokalen Aufgaben-Checkpoint für diese Welt und Dimension ("
+                + describeSavedTask(task) + "). Eine aktuell laufende Aktion und gespeicherte Baufortschritte bleiben unverändert.";
+    }
+
+    /** Deletes only a matching task-intent checkpoint; it never stops an active action. */
+    public static String clearSavedTask() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        AITaskCheckpoint.Task task = AITaskCheckpoint.loadForCurrentWorld(mc);
+        if (task == null)
+            return "Kein passender gespeicherter Aufgaben-Checkpoint zum Löschen vorhanden. Checkpoints anderer Welten bleiben erhalten.";
+        AITaskCheckpoint.clear();
+        return "Der gespeicherte Aufgaben-Checkpoint für diese Welt und Dimension wurde lokal gelöscht. Eine laufende Aktion und gespeicherte Baufortschritte wurden nicht verändert.";
+    }
+
+    private static String describeSavedTask(AITaskCheckpoint.Task task) {
+        return switch (task.kind()) {
+            case "navigate" -> "Navigation zu X=" + task.x() + ", Y=" + task.y() + ", Z=" + task.z();
+            case "gather_wood", "gather_block", "gather_ore" -> task.kind() + " für "
+                    + task.item() + " bis zum Inventarziel " + task.count()
+                    + (task.durationSeconds() > 0 ? " mit " + task.durationSeconds() + " Sekunden Restlaufzeit" : "");
+            default -> "Auftragstyp " + task.kind();
+        };
+    }
+
     /** Revalidates and starts a fresh scan/path only after the chat action is confirmed. */
     public static String resumeSavedTask() {
         MinecraftClient mc = MinecraftClient.getInstance();
