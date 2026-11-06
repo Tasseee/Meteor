@@ -155,6 +155,10 @@ public final class AIPlayerController {
     private static RecipeDisplayEntry craftingRecipe;
     private static List<InventorySwap> inventorySortPlan = List.of();
     private static int inventorySortIndex;
+    private static InventorySwap pendingInventorySwap;
+    private static ItemStack pendingFirstStack = ItemStack.EMPTY;
+    private static ItemStack pendingSecondStack = ItemStack.EMPTY;
+    private static int inventorySortWaitTicks;
     private static Item gatherMaterial;
     private static boolean gatherRequiresSuitableTool;
     private static String gatherMaterialName = "";
@@ -2083,9 +2087,30 @@ public final class AIPlayerController {
             return;
         }
 
+        if (pendingInventorySwap != null) {
+            inventorySortWaitTicks++;
+            if (inventorySortWaitTicks < 2) return;
+            ItemStack actualFirst = mc.player.getInventory().getStack(pendingInventorySwap.firstSlot());
+            ItemStack actualSecond = mc.player.getInventory().getStack(pendingInventorySwap.secondSlot());
+            if (!ItemStack.areEqual(actualFirst, pendingFirstStack)
+                    || !ItemStack.areEqual(actualSecond, pendingSecondStack)) {
+                if (inventorySortWaitTicks > 20)
+                    stop("Inventarsortierung gestoppt: Der Server hat einen Slot-Tausch nicht bestätigt.");
+                return;
+            }
+            pendingInventorySwap = null;
+            pendingFirstStack = ItemStack.EMPTY;
+            pendingSecondStack = ItemStack.EMPTY;
+            inventorySortWaitTicks = 0;
+            inventorySortIndex++;
+            return;
+        }
+
         InventorySwap swap = inventorySortPlan.get(inventorySortIndex);
         int first = inventorySlotToPlayerHandlerSlot(swap.firstSlot());
         int second = inventorySlotToPlayerHandlerSlot(swap.secondSlot());
+        ItemStack firstBefore = mc.player.getInventory().getStack(swap.firstSlot()).copy();
+        ItemStack secondBefore = mc.player.getInventory().getStack(swap.secondSlot()).copy();
         try {
             // Three normal pickup clicks swap two unlike stacks, or move a stack into an empty slot.
             mc.interactionManager.clickSlot(handler.syncId, first, 0, SlotActionType.PICKUP, mc.player);
@@ -2096,7 +2121,10 @@ public final class AIPlayerController {
                 stop("Inventarsortierung gestoppt: Der Maus-Cursor konnte nicht sicher zurückgelegt werden.");
                 return;
             }
-            inventorySortIndex++;
+            pendingInventorySwap = swap;
+            pendingFirstStack = secondBefore;
+            pendingSecondStack = firstBefore;
+            inventorySortWaitTicks = 0;
         } catch (RuntimeException failure) {
             // The first slot is empty after the first pickup, so return any held stack there.
             try {
@@ -2112,6 +2140,10 @@ public final class AIPlayerController {
     private static void resetInventorySortState() {
         inventorySortPlan = List.of();
         inventorySortIndex = 0;
+        pendingInventorySwap = null;
+        pendingFirstStack = ItemStack.EMPTY;
+        pendingSecondStack = ItemStack.EMPTY;
+        inventorySortWaitTicks = 0;
     }
 
     private static int countInventoryItem(MinecraftClient mc, Item item) {
