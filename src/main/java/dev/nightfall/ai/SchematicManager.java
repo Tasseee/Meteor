@@ -577,7 +577,7 @@ public final class SchematicManager {
                 }
                 continue;
             }
-            BlockItem item = safeBuildItem(state, mc, x, y, z);
+            Item item = safeBuildItem(state, mc, x, y, z);
             if (item == null) {
                 unsupported++;
                 addExample(examples, state);
@@ -711,7 +711,7 @@ public final class SchematicManager {
                     }
                     continue;
                 }
-                BlockItem item = safeBuildItem(state, mc, x, y, z);
+                Item item = safeBuildItem(state, mc, x, y, z);
                 if (item == null) {
                     unsupported++;
                     addExample(examples, state);
