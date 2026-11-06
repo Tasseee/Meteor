@@ -740,7 +740,7 @@ public final class AIBuilder {
                                                Direction right, Direction forward, int baseY,
                                                BlockItem blockMaterial) {
         List<RelativeBlock> offsets = new ArrayList<>(positions.size());
-        Map<RelativeBlock, BlockItem> materials = new LinkedHashMap<>();
+        Map<RelativeBlock, Item> materials = new LinkedHashMap<>();
         int maxX = 0, maxY = 0, maxZ = 0;
         for (BlockPos position : positions) {
             int deltaX = position.getX() - origin.getX();
