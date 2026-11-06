@@ -205,6 +205,7 @@ public final class AIPlayerController {
     private static boolean smeltOutputPending;
     private static int smeltOutputCountBeforeClick;
     private static int smeltOutputWaitTicks;
+    private static String lastActionSummary = "";
 
     private AIPlayerController() {}
 
@@ -2548,6 +2549,9 @@ public final class AIPlayerController {
     public static String stop(String reason) {
         MinecraftClient mc = MinecraftClient.getInstance();
         Mode previous = mode;
+        if (previous != Mode.NONE && reason != null && !reason.isBlank()) {
+            lastActionSummary = reason.length() > 240 ? reason.substring(0, 237) + "..." : reason;
+        }
         releaseKeys(mc);
         if ((previous == Mode.MINE || previous == Mode.GATHER_MINE || previous == Mode.GATHER_TUNNEL_MINE)
                 && mc.interactionManager != null) {
@@ -2599,7 +2603,7 @@ public final class AIPlayerController {
     public static boolean isNavigating() { return mode == Mode.NAVIGATE; }
     public static boolean isBusy() { return mode != Mode.NONE; }
     public static String status() {
-        return switch (mode) {
+        String current = switch (mode) {
             case NONE -> "Keine KI-Aktion aktiv";
             case WALK -> "Geradeausbewegung";
             case NAVIGATE -> "Navigation · " + Math.min(pathIndex + 1, path.size()) + "/" + path.size();
@@ -2617,6 +2621,9 @@ public final class AIPlayerController {
             case GATHER_TUNNEL_MINE -> "Grabe Tunnelblock · " + (miningPos == null ? "" : miningPos.toShortString());
             case SMELT -> "Schmelze " + (smeltInput == null ? "" : smeltInput.getName().getString());
         };
+        if (mode == Mode.NONE && !lastActionSummary.isBlank())
+            return current + "\\nLetztes Aktionsergebnis: " + lastActionSummary;
+        return current;
     }
 
     private static void validateNavigationRange(MinecraftClient mc, BlockPos target) {
