@@ -54,7 +54,7 @@ import java.util.Set;
  * the server remains authoritative for every result.
  */
 public final class AIPlayerController {
-    private enum Mode { NONE, WALK, NAVIGATE, SEARCH_STRUCTURES, MINE, EAT, CRAFT, GATHER, GATHER_MINE, GATHER_TUNNEL, GATHER_TUNNEL_MINE, SMELT }
+    private enum Mode { NONE, WALK, NAVIGATE, SEARCH_STRUCTURES, MINE, EAT, CRAFT, SORT, GATHER, GATHER_MINE, GATHER_TUNNEL, GATHER_TUNNEL_MINE, SMELT }
 
     private static final int MAX_PATH_RADIUS = 48;
     private static final int NAVIGATION_SEGMENT_LENGTH = 32;
@@ -153,6 +153,8 @@ public final class AIPlayerController {
     private static int craftingBatchesTaken;
     private static boolean craftingNeedsRefill;
     private static RecipeDisplayEntry craftingRecipe;
+    private static List<InventorySwap> inventorySortPlan = List.of();
+    private static int inventorySortIndex;
     private static Item gatherMaterial;
     private static boolean gatherRequiresSuitableTool;
     private static String gatherMaterialName = "";
@@ -1669,6 +1671,7 @@ public final class AIPlayerController {
             case MINE -> tickMining(mc);
             case EAT -> tickEating(mc);
             case CRAFT -> tickCrafting(mc);
+            case SORT -> tickInventorySort(mc);
             case GATHER -> tickGather(mc);
             case GATHER_MINE -> tickGatherMining(mc);
             case GATHER_TUNNEL -> tickGatherTunnel(mc);
@@ -1953,6 +1956,142 @@ public final class AIPlayerController {
                 || stack.getName().getString().equalsIgnoreCase(requested);
     }
 
+    /**
+     * Build a stable sort plan for the player's 36 normal inventory/hotbar slots.
+     * Armor, offhand, crafting grid and cursor are deliberately never touched.
+     */
+    public static String previewInventorySort() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        requireWorld(mc);
+        if (mode != Mode.NONE)
+            throw new IllegalArgumentException("Beende zuerst die laufende Nightfall-Aktion.");
+        if (mc.player.currentScreenHandler != mc.player.playerScreenHandler)
+            throw new IllegalArgumentException("Schließe zuerst den geöffneten Container.");
+        if (!mc.player.playerScreenHandler.getCursorStack().isEmpty())
+            throw new IllegalArgumentException("Dein Maus-Cursor hält noch einen Gegenstand. Lege ihn zuerst ins Inventar.");
+
+        List<InventorySwap> plan = createInventorySortPlan(mc);
+        if (plan.isEmpty()) return "Dein normales Inventar ist bereits sortiert.";
+        int filled = 0;
+        for (int slot = 0; slot < 36; slot++) {
+            if (!mc.player.getInventory().getStack(slot).isEmpty()) filled++;
+        }
+        return "Nightfall sortiert nach deiner Bestätigung alle 36 normalen Inventar- und Hotbar-Slots "
+                + "(aktuell " + filled + " belegte Slots) in die Gruppen Baumaterial/Blöcke, Erze/Rohstoffe, "
+                + "Nahrung, Werkzeuge und Sonstiges. Geplant sind " + plan.size() + " sichere Slot-Tausche. "
+                + "Rüstung, Offhand, Crafting-Felder und Cursor bleiben unangetastet. "
+                + "Die Sortierung nutzt normale Minecraft-Inventar-Klicks und stoppt bei einem Containerwechsel.";
+    }
+
+    /** Start sorting only after the player accepted the preview. */
+    public static String sortInventory() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        previewInventorySort();
+        List<InventorySwap> plan = createInventorySortPlan(mc);
+        if (plan.isEmpty()) return "Dein normales Inventar ist bereits sortiert.";
+        inventorySortPlan = List.copyOf(plan);
+        inventorySortIndex = 0;
+        mode = Mode.SORT;
+        notifyPlayer(mc, "Sortiere dein Inventar · " + plan.size() + " Slot-Tausche. Du kannst jederzeit „Stopp“ sagen.");
+        return "Inventarsortierung gestartet. Nightfall ordnet die 36 normalen Inventar-/Hotbar-Slots Schritt für Schritt.";
+    }
+
+    private static List<InventorySwap> createInventorySortPlan(MinecraftClient mc) {
+        List<ItemStack> working = new ArrayList<>(36);
+        for (int slot = 0; slot < 36; slot++)
+            working.add(mc.player.getInventory().getStack(slot).copy());
+
+        List<ItemStack> desired = new ArrayList<>();
+        for (ItemStack stack : working) if (!stack.isEmpty()) desired.add(stack.copy());
+        desired.sort(Comparator.comparingInt(AIPlayerController::inventorySortCategory)
+                .thenComparing(stack -> Registries.ITEM.getId(stack.getItem()).toString()));
+        while (desired.size() < 36) desired.add(ItemStack.EMPTY);
+
+        List<InventorySwap> swaps = new ArrayList<>();
+        for (int target = 0; target < 36; target++) {
+            ItemStack wanted = desired.get(target);
+            if (ItemStack.areEqual(working.get(target), wanted)) continue;
+            int source = -1;
+            for (int candidate = target + 1; candidate < 36; candidate++) {
+                if (ItemStack.areEqual(working.get(candidate), wanted)) {
+                    source = candidate;
+                    break;
+                }
+            }
+            if (source < 0)
+                throw new IllegalStateException("Das Inventar hat sich während der Sortiervorschau geändert. Bitte erneut versuchen.");
+            swaps.add(new InventorySwap(target, source));
+            ItemStack temporary = working.get(target);
+            working.set(target, working.get(source));
+            working.set(source, temporary);
+        }
+        return swaps;
+    }
+
+    private static int inventorySortCategory(ItemStack stack) {
+        if (stack.isEmpty()) return 5;
+        if (stack.getItem() instanceof BlockItem) return 0;
+        String path = Registries.ITEM.getId(stack.getItem()).getPath();
+        if (path.contains("ore") || path.startsWith("raw_") || path.contains("ingot")
+                || path.contains("nugget") || path.contains("diamond") || path.contains("emerald")
+                || path.contains("lapis") || path.contains("redstone") || path.contains("coal")
+                || path.contains("quartz") || path.contains("ancient_debris")
+                || path.contains("amethyst")) return 1;
+        if (stack.contains(DataComponentTypes.FOOD) || stack.contains(DataComponentTypes.CONSUMABLE)) return 2;
+        if (stack.getMaxDamage() > 0) return 3;
+        return 4;
+    }
+
+    private static int inventorySlotToPlayerHandlerSlot(int inventorySlot) {
+        return inventorySlot < 9 ? inventorySlot + 36 : inventorySlot;
+    }
+
+    private static void tickInventorySort(MinecraftClient mc) {
+        PlayerScreenHandler handler = mc.player.playerScreenHandler;
+        if (mc.player.currentScreenHandler != handler || !handler.getCursorStack().isEmpty()) {
+            stop("Inventarsortierung gestoppt: Containerwechsel oder belegter Maus-Cursor erkannt.");
+            return;
+        }
+        if (inventorySortIndex >= inventorySortPlan.size()) {
+            int completed = inventorySortPlan.size();
+            inventorySortPlan = List.of();
+            inventorySortIndex = 0;
+            mode = Mode.NONE;
+            notifyPlayer(mc, "Inventar sortiert · " + completed + " Slot-Tausche abgeschlossen.");
+            return;
+        }
+
+        InventorySwap swap = inventorySortPlan.get(inventorySortIndex);
+        int first = inventorySlotToPlayerHandlerSlot(swap.firstSlot());
+        int second = inventorySlotToPlayerHandlerSlot(swap.secondSlot());
+        try {
+            // Three normal pickup clicks swap two unlike stacks, or move a stack into an empty slot.
+            mc.interactionManager.clickSlot(handler.syncId, first, 0, SlotActionType.PICKUP, mc.player);
+            mc.interactionManager.clickSlot(handler.syncId, second, 0, SlotActionType.PICKUP, mc.player);
+            if (!handler.getCursorStack().isEmpty())
+                mc.interactionManager.clickSlot(handler.syncId, first, 0, SlotActionType.PICKUP, mc.player);
+            if (!handler.getCursorStack().isEmpty()) {
+                stop("Inventarsortierung gestoppt: Der Maus-Cursor konnte nicht sicher zurückgelegt werden.");
+                return;
+            }
+            inventorySortIndex++;
+        } catch (RuntimeException failure) {
+            // The first slot is empty after the first pickup, so return any held stack there.
+            try {
+                if (!handler.getCursorStack().isEmpty())
+                    mc.interactionManager.clickSlot(handler.syncId, first, 0, SlotActionType.PICKUP, mc.player);
+            } catch (RuntimeException ignored) {
+                // Keep the cursor contents visible rather than dropping them.
+            }
+            stop("Inventarsortierung gestoppt: Minecraft hat einen Slot-Tausch abgelehnt.");
+        }
+    }
+
+    private static void resetInventorySortState() {
+        inventorySortPlan = List.of();
+        inventorySortIndex = 0;
+    }
+
     private static int countInventoryItem(MinecraftClient mc, Item item) {
         int count = 0;
         for (int slot = 0; slot < 36; slot++) {
@@ -2153,6 +2292,7 @@ public final class AIPlayerController {
         foodSlot = -1;
         foodName = "";
         resetCraftingState();
+        resetInventorySortState();
         resetGatherState();
         resetSmeltingState();
         if (previous != Mode.NONE && mc.player != null && reason != null)
@@ -2177,6 +2317,7 @@ public final class AIPlayerController {
             case MINE -> "Blockabbau · " + (miningPos == null ? "" : miningPos.toShortString());
             case EAT -> "Nahrungsaufnahme · " + foodName;
             case CRAFT -> "Crafting · " + craftingName;
+            case SORT -> "Inventar sortieren · " + inventorySortIndex + "/" + inventorySortPlan.size();
             case GATHER -> "Sammle " + gatherMaterialName + " · " + gatherIndex + "/" + gatherTargets.size()
                     + (gatherDeadlineNanos > 0L ? " · Zeitlimit " + gatherMaxDurationSeconds + "s" : "")
                     + (gatherTargetY != Integer.MIN_VALUE ? " · Y=" + gatherTargetY : "");
@@ -2505,4 +2646,5 @@ public final class AIPlayerController {
 
     private record SearchNode(BlockPos position, double cost, double estimatedTotal) {}
     private record HeightNavigationPlan(BlockPos goal, List<BlockPos> path) {}
+    private record InventorySwap(int firstSlot, int secondSlot) {}
 }
