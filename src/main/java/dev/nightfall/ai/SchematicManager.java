@@ -304,9 +304,9 @@ public final class SchematicManager {
         BlockPos farmAnchor = resolveBuildAnchor(fileName, partX, partY, partZ);
         int sectionWidth = endX - startX, sectionHeight = endY - startY, sectionLength = endZ - startZ;
         BlockPos sectionCenter = farmAnchor.add(
-                startX + (sectionWidth - BUILD_PART_SIZE) / 2,
-                startY + (sectionHeight - BUILD_PART_SIZE) / 2,
-                startZ + (sectionLength - BUILD_PART_SIZE) / 2);
+                startX + sectionWidth / 2 - BUILD_PART_SIZE / 2,
+                startY + sectionHeight / 2 - BUILD_PART_SIZE / 2,
+                startZ + sectionLength / 2 - BUILD_PART_SIZE / 2);
         String preview = AIBuilder.prepareImportedStructure(label, partBuild, partClear,
                 sectionCenter, sectionWidth, sectionHeight, sectionLength);
         return imported.summary() + "\n\nABSCHNITT X" + partX + "/" + (partsX - 1)
