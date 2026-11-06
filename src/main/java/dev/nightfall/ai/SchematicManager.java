@@ -231,9 +231,9 @@ public final class SchematicManager {
         int sectionHeight = Math.min(BUILD_PART_SIZE, imported.height() - partY * BUILD_PART_SIZE);
         int sectionLength = Math.min(BUILD_PART_SIZE, imported.length() - partZ * BUILD_PART_SIZE);
         BlockPos center = anchor.add(
-                partX * BUILD_PART_SIZE + sectionWidth / 2 - BUILD_PART_SIZE / 2,
-                partY * BUILD_PART_SIZE + sectionHeight / 2 - BUILD_PART_SIZE / 2,
-                partZ * BUILD_PART_SIZE + sectionLength / 2 - BUILD_PART_SIZE / 2);
+                partX * BUILD_PART_SIZE + sectionWidth / 2,
+                partY * BUILD_PART_SIZE + sectionHeight / 2,
+                partZ * BUILD_PART_SIZE + sectionLength / 2);
         return imported.summary() + "\n\nAUSGEWÄHLTER ABSCHNITT X" + partX + " Y" + partY + " Z" + partZ
                 + ": Zentrum " + center.toShortString() + ". Navigiere zuerst dorthin, damit die Ziel-Chunks geladen sind; danach build_schematic mit denselben Indizes aufrufen.";
     }
@@ -336,9 +336,9 @@ public final class SchematicManager {
         BlockPos farmAnchor = resolveBuildAnchor(fileName, partX, partY, partZ);
         int sectionWidth = endX - startX, sectionHeight = endY - startY, sectionLength = endZ - startZ;
         BlockPos sectionCenter = farmAnchor.add(
-                startX + sectionWidth / 2 - BUILD_PART_SIZE / 2,
-                startY + sectionHeight / 2 - BUILD_PART_SIZE / 2,
-                startZ + sectionLength / 2 - BUILD_PART_SIZE / 2);
+                startX + sectionWidth / 2,
+                startY + sectionHeight / 2,
+                startZ + sectionLength / 2);
         String preview = AIBuilder.prepareImportedStructure(label, partBuild, partClear, partWater,
                 sectionCenter, sectionWidth, sectionHeight, sectionLength);
         return imported.summary() + "\n\nABSCHNITT X" + partX + "/" + (partsX - 1)
