@@ -1988,7 +1988,9 @@ public final class AIPlayerController {
     }
 
     private static boolean isRestrictedCraftItem(Item item) {
-        String path = Registries.ITEM.getId(item).getPath();
+        Identifier id = Registries.ITEM.getId(item);
+        if (!"minecraft".equals(id.getNamespace())) return true;
+        String path = id.getPath();
         return path.endsWith("_sword") || path.endsWith("_axe") || path.equals("bow")
                 || path.equals("crossbow") || path.equals("trident") || path.equals("mace")
                 || path.equals("shield") || path.equals("arrow") || path.equals("spectral_arrow")
