@@ -306,6 +306,9 @@ public final class AIActionRegistry {
         tools.add(tool("resume_saved_task",
                 "Preview and, after explicit player confirmation, resume a saved gathering or navigation intent from the same server and dimension. Nightfall revalidates the request and creates a fresh scan or path; it never reuses old block targets or waypoints. Only gathering and ordinary navigation are supported.",
                 objectSchema()));
+        tools.add(tool("clear_saved_task",
+                "Preview and, only after explicit player confirmation, delete the local saved gathering/navigation task checkpoint for the current server and dimension. Does not stop a running action or delete saved build progress; valid checkpoints for other servers/dimensions remain untouched.",
+                objectSchema()));
         tools.add(tool("mine_block",
                 "Mine one visible block at x/y/z using the most suitable tool from the player's full inventory and normal vanilla block-breaking interactions. Nightfall temporarily swaps it into the hotbar and restores the displaced stack when possible. Will not break block entities/containers or unbreakable blocks; requires reach and clear line of sight. Waits for a world update. Requires player confirmation.",
                 positionSchema()));
@@ -606,6 +609,7 @@ public final class AIActionRegistry {
                 yield new Action(name, args, AIPlayerController.previewNavigation(x, y, z));
             }
             case "resume_saved_task" -> new Action(name, args, AIPlayerController.previewSavedTask());
+            case "clear_saved_task" -> new Action(name, args, AIPlayerController.previewClearSavedTask());
             case "mine_block" -> {
                 int x = readBoundedInteger(args, "x", -30_000_000, 30_000_000);
                 int y = readBoundedInteger(args, "y", -2_048, 2_048);
@@ -771,6 +775,7 @@ public final class AIActionRegistry {
 
         return switch (action.name()) {
             case "resume_saved_task" -> AIPlayerController.resumeSavedTask();
+            case "clear_saved_task" -> AIPlayerController.clearSavedTask();
             case "search_structures" -> AIPlayerController.startStructureSearch(
                     args.has("structure") ? args.get("structure").getAsString() : "any");
             case "locate_structure" -> {
