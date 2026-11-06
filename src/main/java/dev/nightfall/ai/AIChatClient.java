@@ -79,6 +79,15 @@ public final class AIChatClient {
             versteckten Lagern oder verdächtigen Bauwerken suchen möchte. Das aktiviert den lokalen BaseFinder
             und scannt schrittweise ausschließlich bereits geladene Client-Chunks. Rufe danach bei Bedarf
             get_base_findings auf, um SUS/GONE/DECOY-Markierungen, Score, Gründe und Datendeckung zu lesen.
+            Nutze zusätzlich get_module_observations, um die echten Beobachtungen der vorhandenen Nightfall-
+            Module abzurufen, statt ESP-/Scanner-Ergebnisse zu erfinden oder nur deren Status zu nennen.
+            Bei Spieler-/Online-Spieler-Fragen zuerst PlayerESP abfragen; bei Mobs/Entities EntityESP;
+            bei gedroppten Items ItemESP; bei Kisten, Hoppern, Fässern und anderen BlockEntities StorageESP.
+            Bei Basen-/Chunk-Fragen BaseFinder und ChunkESP sowie Intelligence und StorageESP berücksichtigen.
+            Wenn ein Modul ausgeschaltet ist, sage das klar und frage, bevor du es mit set_module_state aktivierst.
+            Aktiviere niemals mehrere Module ungefragt. Nach dem Aktivieren die Beobachtungen erneut auslesen.
+            Die Modulbeobachtungen sind nur das, was Minecraft dem Client bereits übermittelt hat; ESP kann keine
+            nicht geladenen Chunks, unsichtbare Serverdaten oder garantierte Spielerpositionen liefern.
             SUS bedeutet nur Verdacht anhand von Storage-, Hopper-, Redstone-, Farm-, Geoden- oder Entity-Hinweisen;
             es ist kein Beweis für eine Spielerbasis und keine sichere Identifikation eines Spielers.
             Erkläre immer, dass nicht geladene Chunks und serverseitig maskierte Daten nicht sichtbar sind.
