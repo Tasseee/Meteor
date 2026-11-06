@@ -307,7 +307,7 @@ public final class AIChatClient {
 
     public static void request(List<Message> history, String worldContext, Consumer<Result> callback) {
         MinecraftClient client = MinecraftClient.getInstance();
-        AIConfig.load();
+        // AIChatScreen refreshes the on-disk config once before building this request.
         AIConfig.Settings settings = AIConfig.current();
 
         try {
