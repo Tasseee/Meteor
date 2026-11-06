@@ -19,7 +19,9 @@ import net.minecraft.util.math.BlockPos;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -38,6 +40,8 @@ public final class AIChatScreen extends Screen {
     private record ChatLine(String role, String content) {}
 
     private final List<ChatLine> history = new ArrayList<>();
+    private final Map<String, List<String>> wrapCache = new HashMap<>();
+    private int wrapCacheWidth = -1;
     private String input = "";
     private String status = "Bereit · KI-Anbieter konfigurieren";
     private boolean waiting;
@@ -282,11 +286,16 @@ public final class AIChatScreen extends Screen {
         int left = panelX + 14;
         int right = panelX + panelW - 14;
         int textWidth = Math.max(60, panelW - 58);
+        if (wrapCacheWidth != textWidth || wrapCache.size() > 160) {
+            wrapCache.clear();
+            wrapCacheWidth = textWidth;
+        }
 
         int totalHeight = 0;
         List<List<String>> wrapped = new ArrayList<>(history.size());
         for (ChatLine line : history) {
-            List<String> lines = wrap(line.content(), textWidth);
+            List<String> lines = wrapCache.computeIfAbsent(line.content(),
+                    value -> List.copyOf(wrap(value, textWidth)));
             wrapped.add(lines);
             totalHeight += 20 + lines.size() * 10;
         }
