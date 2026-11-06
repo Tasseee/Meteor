@@ -9,6 +9,9 @@ import dev.nightfall.ai.AIBuilder;
 import dev.nightfall.ai.AIPlayerController;
 import dev.nightfall.util.Theme;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.mob.HostileEntity;
+import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.input.CharInput;
@@ -1197,6 +1200,33 @@ public final class AIChatScreen extends Screen {
         }
         String armorSummary = armor.isEmpty() ? "keine" : String.join(", ", armor);
 
+        List<MobEntity> nearbyMobs = mc.world.getEntitiesByClass(
+                MobEntity.class,
+                player.getBoundingBox().expand(16.0),
+                MobEntity::isAlive);
+        nearbyMobs.sort((left, right) -> Double.compare(
+                left.squaredDistanceTo(player), right.squaredDistanceTo(player)));
+        List<String> nearbyMobDescriptions = new ArrayList<>();
+        for (int index = 0; index < Math.min(10, nearbyMobs.size()); index++) {
+            MobEntity mob = nearbyMobs.get(index);
+            double distance = Math.sqrt(mob.squaredDistanceTo(player));
+            String threat = mob instanceof HostileEntity ? "feindlich" : "passiv/neutral";
+            nearbyMobDescriptions.add(mob.getType().getName().getString()
+                    + " (" + threat + ", " + String.format(Locale.ROOT, "%.1f", distance) + " Blöcke)");
+        }
+        String nearbyMobsSummary = nearbyMobDescriptions.isEmpty()
+                ? "keine lebenden Mobs clientseitig im Umkreis von 16 Blöcken erkannt"
+                : String.join(", ", nearbyMobDescriptions);
+
+        String targetedBlock = "kein Block direkt anvisiert";
+        if (mc.crosshairTarget instanceof BlockHitResult hit) {
+            BlockPos targetedPos = hit.getBlockPos();
+            targetedBlock = mc.world.getBlockState(targetedPos).getBlock().getName().getString()
+                    + " bei X=" + targetedPos.getX()
+                    + ", Y=" + targetedPos.getY()
+                    + ", Z=" + targetedPos.getZ();
+        }
+
         Map<String, Integer> inventoryCounts = new HashMap<>();
         for (int slot = 0; slot < 36; slot++) {
             ItemStack stack = player.getInventory().getStack(slot);
@@ -1214,10 +1244,14 @@ public final class AIChatScreen extends Screen {
                 + "Dimension: " + dimension + "\n"
                 + "Biome am Spieler: " + biome + "\n"
                 + "Spielerposition: X=" + pos.getX() + ", Y=" + pos.getY() + ", Z=" + pos.getZ() + "\n"
+                + "Chunk: X=" + (pos.getX() >> 4) + ", Z=" + (pos.getZ() >> 4) + "\n"
                 + "Tageszeit: " + dayPhase + " (Tick " + dayTime + " von 24000)\n"
                 + "Wetter: " + weather + "\n"
                 + "Block direkt unter den Füßen: " + blockBelow + "\n"
+                + "Anvisierter Block: " + targetedBlock + "\n"
                 + "Lichtlevel an der Spielerposition: " + lightLevel + "/15\n"
+                + "Clientseitig erkannte Mobs im Umkreis von 16 Blöcken (höchstens 10): "
+                + nearbyMobsSummary + "\n"
                 + "Gesundheit: " + health + "\n"
                 + "Hunger: " + hunger + ", Sättigung: " + saturation + "\n"
                 + "Lokale Situation: " + movement + "\n"
