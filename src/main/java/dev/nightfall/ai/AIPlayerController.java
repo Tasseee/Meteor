@@ -2341,8 +2341,9 @@ public final class AIPlayerController {
             for (List<ItemStack> alternatives : option.ingredientChoices()) {
                 if (alternatives.isEmpty()) continue;
                 List<ItemStack> ordered = new ArrayList<>(alternatives);
+                Map<Item, Integer> ingredientAvailability = new HashMap<>(trialAvailable);
                 ordered.sort(Comparator
-                        .comparingInt((ItemStack stack) -> trialAvailable.getOrDefault(stack.getItem(), 0)).reversed()
+                        .comparingInt((ItemStack stack) -> ingredientAvailability.getOrDefault(stack.getItem(), 0)).reversed()
                         .thenComparing(stack -> Registries.ITEM.getId(stack.getItem()).toString()));
                 CraftingDiagnosis bestIngredient = null;
                 ItemStack selectedIngredient = null;
