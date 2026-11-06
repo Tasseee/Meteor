@@ -118,7 +118,10 @@ public final class AIChatClient {
             Zugangs-/Fußpunkt; navigiere dorthin, bevor du einen Abschnitt vorbereitest. Baue von unten nach
             oben in aufsteigender part_y-Reihenfolge und nutze get_schematic_progress, um fertige Abschnitte
             nicht zu wiederholen. Jeder Abschnitt benötigt seine eigene Vorschau/Bestätigung. Melde den
-            Gesamtbau erst als abgeschlossen, wenn alle Abschnitte bestätigt sind.
+            Gesamtbau erst als abgeschlossen, wenn alle Abschnitte bestätigt sind. Danach kannst du
+            verify_schematic_section pro gebautem Abschnitt als reine Lesekontrolle nutzen. Trenne dabei
+            fehlende/unterschiedliche Blöcke, dynamische Blockstate-Unterschiede und nicht geladene Chunks.
+            Diese Prüfung beweist keine Farmfunktion oder Redstone-Zuverlässigkeit.
             Block-Entity-Inhalte/Inventare, Entities, Villager, Lava und fließende Flüssigkeiten werden nicht
             vollständig aus Schematics übernommen. Redstone-Verbindungen und Signalzustände werden von
             Minecraft dynamisch berechnet. Behaupte nie, dass ein Redstone-System, seine Zeiten oder eine
@@ -265,7 +268,8 @@ public final class AIChatClient {
                 "bau das", "build this")) {
             addTools(selected, "build_structure", "build_starter_shelter", "build_custom_structure",
                     "search_blueprints", "list_schematics", "inspect_schematic", "build_schematic",
-                    "get_schematic_progress", "repair_schematic", "get_build_status", "resume_saved_build", "resume_build",
+                    "get_schematic_progress", "repair_schematic", "verify_schematic_section",
+                    "get_build_status", "resume_saved_build", "resume_build",
                     "pause_build", "stop_build", "navigate_to", "get_inventory", "gather_block",
                     "gather_wood", "gather_ore", "craft_item", "eat_food");
         }
