@@ -324,3 +324,15 @@ Die KI kann jetzt den vorhandenen BaseFinder direkt bedienen:
 - `list_fake_base_templates` zeigt die lokal gespeicherten Vorlagennamen.
 
 Fake-Base-Markierungen und Vorlagen werden lokal im bestehenden Waypoint-/FakeBase-System gespeichert. Sie verändern keine Weltblöcke. Erkennungsvorlagen können nur ähnliche geladene Block-Entity-Anordnungen erkennen; sie sind kein zuverlässiger Beweis und können Fehlalarme oder übersehene Treffer verursachen. Server, die Daten maskieren oder nicht an den Client senden, bleiben außerhalb der Erkennung.
+
+
+## Nutzung vorhandener Nightfall-Module durch die KI
+
+`get_module_observations` liest aktuelle Beobachtungen aus bereits aktivierten Modulen aus:
+- `PlayerESP`: nahe Spieler, soweit sie dem Client bekannt sind, mit Position und Entfernung
+- `EntityESP` / `ItemESP`: passende Entities bzw. gedroppte Items aus dem jeweiligen Modulfilter
+- `StorageESP` und andere `BlockEntityEsp`-Module: aktuelle gecachte BlockEntity-Treffer mit Position
+- `BaseFinder` / `ChunkESP`: SUS-/GONE-/DECOY-Einstufungen und Gründe
+- `Intelligence`: Deep-Scan-Fortschritt, offene Aufträge und unterirdische Entity-Hinweise
+
+Die KI soll je nach Frage das passende Modul abfragen und Ergebnisse nicht erfinden. Ist ein Modul deaktiviert, muss sie das offen sagen und vor dem Aktivieren um Bestätigung bitten. Modulbeobachtungen verwenden nur bereits clientseitig bekannte Entities und geladene Chunks. Sie umgehen keine Serverrechte und können keine verborgenen oder nicht übertragenen Daten sichtbar machen.
