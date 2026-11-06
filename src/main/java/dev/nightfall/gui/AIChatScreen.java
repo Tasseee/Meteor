@@ -462,7 +462,7 @@ public final class AIChatScreen extends Screen {
     @Override
     public boolean charTyped(CharInput charInput) {
         String typed = charInput.asString();
-        if (charInput.isValidChar() && input.length() + typed.length() <= 360) {
+        if (charInput.isValidChar() && input.length() + typed.length() <= MAX_USER_MESSAGE_CHARS) {
             input += typed;
             return true;
         }
