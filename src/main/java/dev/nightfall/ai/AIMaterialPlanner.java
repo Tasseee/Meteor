@@ -39,7 +39,34 @@ final class AIMaterialPlanner {
         }
     }
 
+    record CraftableCandidate(String itemId, String displayName, int owned, int missing,
+                              int recipeSteps, int recipeBatches, boolean needsCraftingTable,
+                              String recipeSummary) {
+        CraftableCandidate {
+            if (itemId == null || itemId.isBlank())
+                throw new IllegalArgumentException("Material-ID darf nicht leer sein.");
+            if (displayName == null || displayName.isBlank())
+                throw new IllegalArgumentException("Materialname darf nicht leer sein.");
+            if (owned < 0 || missing < 1 || recipeSteps < 1 || recipeBatches < 1)
+                throw new IllegalArgumentException("Ungültige Werte für eine Crafting-Alternative.");
+            if (recipeSummary == null || recipeSummary.isBlank())
+                throw new IllegalArgumentException("Rezeptübersicht darf nicht leer sein.");
+        }
+    }
+
     private AIMaterialPlanner() {}
+
+    static List<CraftableCandidate> rankCraftable(List<CraftableCandidate> candidates) {
+        if (candidates == null || candidates.isEmpty()) return List.of();
+        return candidates.stream()
+                .filter(Objects::nonNull)
+                .sorted(Comparator
+                        .comparingInt(CraftableCandidate::recipeBatches)
+                        .thenComparingInt(CraftableCandidate::recipeSteps)
+                        .thenComparingInt(CraftableCandidate::missing)
+                        .thenComparing(CraftableCandidate::itemId))
+                .toList();
+    }
 
     static List<Option> rank(List<Candidate> candidates, int required) {
         if (required < 1)
