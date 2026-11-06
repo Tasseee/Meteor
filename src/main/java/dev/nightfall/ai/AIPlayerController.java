@@ -2342,7 +2342,7 @@ public final class AIPlayerController {
                 if (alternatives.isEmpty()) continue;
                 List<ItemStack> ordered = new ArrayList<>(alternatives);
                 ordered.sort(Comparator
-                        .comparingInt((ItemStack stack) -> remaining.getOrDefault(stack.getItem(), 0)).reversed()
+                        .comparingInt((ItemStack stack) -> trialAvailable.getOrDefault(stack.getItem(), 0)).reversed()
                         .thenComparing(stack -> Registries.ITEM.getId(stack.getItem()).toString()));
                 CraftingDiagnosis bestIngredient = null;
                 ItemStack selectedIngredient = null;
