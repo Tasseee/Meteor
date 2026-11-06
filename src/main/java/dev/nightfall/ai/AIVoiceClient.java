@@ -213,7 +213,8 @@ public final class AIVoiceClient {
 
     /** Speaks a final assistant answer only when voice output was explicitly enabled. */
     public static synchronized void speak(String text) {
-        AIConfig.load();
+        // Normal chat has already refreshed ai.json before its request; avoid disk I/O
+        // on the UI callback that starts optional TTS playback.
         AIConfig.Settings settings = AIConfig.current();
         if (!settings.voiceOutputEnabled() || settings.apiKey().isBlank()
                 || text == null || text.isBlank()) return;
