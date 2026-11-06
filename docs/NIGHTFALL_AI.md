@@ -206,11 +206,12 @@ Download the original file using the source site's normal download button and pl
 Supported local formats:
 
 - Sponge Schematic v2 (`.schem`)
-- Litematica v5–v7 (`.litematic`; positive-sized regions only)
+- Litematica v5–v7 (`.litematic`; signed/mirrored region axes are normalized)
 
-The importer limits files to 32 MB, dimensions to 64 blocks per axis, volume to 262,144 cells
-and the automatically placed subset to 10,000 blocks. It rejects invalid/truncated palettes,
-unknown block states, oversized input and mirrored/negative Litematica regions.
+The importer limits files to 32 MB, dimensions to 256 blocks per axis, and volume to 2,000,000
+cells. Large structures are split into 32×32×32 build sections (up to 32,768 supported block
+positions per section). Invalid/truncated palettes, unknown block states and oversized input
+are rejected.
 
 AI actions:
 
@@ -223,8 +224,8 @@ AI actions:
 **Aushub und Aufbau:** Bei lokalen Schematics liest Nightfall alle Luftzellen innerhalb des
 Vorlagen-Volumens. Vor dem Setzen räumt es dort vorhandenes Gelände ab und entfernt Hindernisse an
 Baupositionen. Dafür nutzt es den normalen clientseitigen Abbau, wartet auf das Server-Weltupdate und
-versucht, sich über geladene, begehbare Wege an nahe Aushubziele zu bewegen. Der Aushub ist auf
-20.000 Blöcke begrenzt. Block-Entities/Container, Flüssigkeiten und unzerstörbare Blöcke werden nicht
+versucht, sich über geladene, begehbare Wege sowohl an Aushubziele als auch an weiter entfernte
+Platzierungsziele zu bewegen. Der Aushub ist auf 32.768 Blöcke je Abschnitt begrenzt. Block-Entities/Container, Flüssigkeiten und unzerstörbare Blöcke werden nicht
 angerührt. Wenn Nightfall keine sichere Route oder Sichtlinie findet, pausiert es und fordert dich
 auf, näher heranzugehen.
 
@@ -248,11 +249,21 @@ Der Aushub selbst macht eine Farm nicht funktionsfähig, wenn ihre Mechanik nich
 **Wiederaufnahme nach Neustart oder Verbindungsabbruch:** Der Builder speichert einen lokalen Checkpoint unter
 `config/nightfall/builder_resume.json`. Darin stehen Server- und Dimensionskennung, Baupositionen,
 Materialien, vollständige BlockStates sowie die bestätigten Bau- und Aushubstände. Die Datei wird,
-soweit vom Dateisystem unterstützt, atomar ersetzt. Fortschrittssicherungen erfolgen alle 25
-bestätigten Schritte, am Phasenende und beim Disconnect. Wird der Client zwischen zwei Sicherungen
+soweit vom Dateisystem unterstützt, atomar ersetzt. Fortschrittssicherungen erfolgen mindestens alle 25 und bei großen Plänen zusätzlich in
+abschnittsabhängigen Intervallen, am Phasenende und beim Disconnect. Wird der Client zwischen zwei Sicherungen
 beendet, gleicht Nightfall den gespeicherten Stand mit der tatsächlichen Welt ab und erkennt bereits
 gesetzte beziehungsweise entfernte Blöcke, bevor er weiterarbeitet. Server und Dimension müssen
 übereinstimmen; `resume_saved_build` verlangt weiterhin eine ausdrückliche Spielerbestätigung.
 Manuelles Stoppen/Abbrechen und ein normal abgeschlossener Bau löschen den Checkpoint.
 Prüfe die Vorschau und teste Community-Schematics in einer Weltkopie. Keine heruntergeladene
 Creator-Datei wird durch Nightfall mitgeliefert.
+
+
+**Große Farm-Schematics:** Der Import verarbeitet auch negative Litematica-Regionsgrößen und
+normalisiert deren Koordinaten. `build_schematic` akzeptiert die optionalen Parameter
+`part_x`, `part_y` und `part_z` (jeweils nullbasiert); jeder Abschnitt umfasst maximal
+32×32×32 Zellen. Die KI muss bei großen Vorlagen alle benötigten Abschnitte einzeln planen.
+Jeder Abschnitt wird um die aktuelle Spielerposition herum verankert: Bewege dich vor der
+Vorschau zum passenden Abschnittszentrum. Die Abschnitte sind keine Garantie für einen
+funktionierenden Farmaufbau. Flüssigkeiten (auch Wasserquellen), dynamische Redstone-Zustände
+und Block-Entity-Sonderdaten bleiben Einschränkungen; Wasser muss derzeit manuell ergänzt werden.
