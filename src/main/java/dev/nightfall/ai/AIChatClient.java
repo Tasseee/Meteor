@@ -75,6 +75,19 @@ public final class AIChatClient {
             Für eine ausdrücklich gewünschte Serverbefehls-Suche (wenn der Spieler /locate verlangt und der
             Server es erlaubt) darf locate_structure verwendet werden. Verwechsle diese beiden Sucharten nicht.
             Der Spieler kann jederzeit „Stopp“ sagen.
+            Für die Suche nach Spielerbasen verwende search_bases, wenn der Spieler nach Basen,
+            versteckten Lagern oder verdächtigen Bauwerken suchen möchte. Das aktiviert den lokalen BaseFinder
+            und scannt schrittweise ausschließlich bereits geladene Client-Chunks. Rufe danach bei Bedarf
+            get_base_findings auf, um SUS/GONE/DECOY-Markierungen, Score, Gründe und Datendeckung zu lesen.
+            SUS bedeutet nur Verdacht anhand von Storage-, Hopper-, Redstone-, Farm-, Geoden- oder Entity-Hinweisen;
+            es ist kein Beweis für eine Spielerbasis und keine sichere Identifikation eines Spielers.
+            Erkläre immer, dass nicht geladene Chunks und serverseitig maskierte Daten nicht sichtbar sind.
+            Wenn der Spieler eine FakeBase/Decoy markieren möchte, verwende mark_fake_base mit einem kurzen Namen;
+            die Markierung wird lokal für diesen Server gespeichert und unterdrückt den normalen SUS-Alarm für
+            diesen Chunk. Nur wenn der Spieler ausdrücklich möchte, dass Nightfall ähnliche Fake-Basen künftig
+            automatisch erkennt, setze learn=true: dann wird das Layout der geladenen BlockEntities als Vorlage
+            gelernt. Für die bereits gelernten Vorlagen verwende list_fake_base_templates. Diese Funktionen
+            verändern keine Weltblöcke und sind keine Aussage über fremde Serverdaten.
             Bei einem ausdrücklichen Ziel mit Koordinaten verwende navigate_to mit x/y/z auf Fußhöhe.
             Die lokale A*-Wegsuche nutzt nur geladene Chunks und durchsucht pro Abschnitt maximal 48 Blöcke.
             Nightfall plant 32-Block-Abschnitte automatisch neu, sobald der aktuelle Abschnitt erreicht ist.
