@@ -278,11 +278,19 @@ public final class AIChatClient {
             }
         }
         String query = latestUserText.toLowerCase(Locale.ROOT);
-        Set<String> selected = new LinkedHashSet<>(List.of(
-                "get_player_status", "get_inventory", "get_module_observations",
-                "get_module_settings", "get_build_status", "get_schematic_progress",
-                "stop_current_action", "stop_movement", "pause_build", "stop_build"
-        ));
+        Set<String> selected = new LinkedHashSet<>();
+
+        if (hasAny(query, "status", "position", "koordinat", "gesundheit", "health", "hp",
+                "leben", "herz", "heart")) {
+            addTools(selected, "get_player_status");
+        }
+        if (hasAny(query, "inventar", "inventory", "hotbar", "rüstung", "ruestung",
+                "armor", "ausrüstung", "ausruestung", "items")) {
+            addTools(selected, "get_inventory");
+        }
+        if (hasAny(query, "stopp", "stop", "halt", "abbrechen", "notfall")) {
+            addTools(selected, "stop_current_action", "stop_movement", "pause_build", "stop_build");
+        }
 
         if (hasAny(query, "esp", "spieler", "player", "mob", "entity", "creeper", "zombie",
                 "item-drop", "gedroppt", "kiste", "truhe", "hopper", "fass", "storage",
@@ -308,16 +316,19 @@ public final class AIChatClient {
                     "pause_build", "stop_build", "navigate_to", "get_inventory", "gather_block",
                     "gather_wood", "gather_ore", "craft_item", "eat_food");
         }
-        if (hasAny(query, "abbau", "abbaue", "abbauen", "mining", "holz", "erz", "rohstoff",
-                "sammel", "grabe", "schürf", "schuerf", "ore", "diamond", "diamant",
-                "ancient debris", "netherite", "schmelz", "smelt", "block abbauen")) {
+        if (hasAny(query, "abbau", "abbaue", "abbauen", "mining", "mine ", "holz", "erz", "rohstoff",
+                "sammel", "gather", "collect", "grabe", "dig ", "schürf", "schuerf", "ore",
+                "diamond", "diamant", "ancient debris", "netherite", "schmelz", "smelt",
+                "block abbauen")) {
             addTools(selected, "mine_block", "mine_looked_block", "gather_wood", "gather_block",
                     "gather_ore", "smelt_item", "get_inventory", "navigate_to", "stop_current_action");
         }
-        if (hasAny(query, "craft", "crafting", "herstell", "rezept", "recipe")) {
+        if (hasAny(query, "craft", "crafting", "herstell", "rezept", "recipe",
+                "make ", "create ", "mach mir", "stell mir")) {
             addTools(selected, "craft_item", "get_inventory");
         }
-        if (hasAny(query, "essen", "iss ", "hunger", "food", "fütter", "fuetter")) {
+        if (hasAny(query, "essen", "iss ", "hunger", "hungry", "food", "eat ", "feed",
+                "fütter", "fuetter")) {
             addTools(selected, "eat_food", "get_inventory", "get_player_status");
         }
         if (hasAny(query, "angreif", "attack", "kämpf", "kaempf", "kampf", "fight", "gegner",
@@ -325,17 +336,17 @@ public final class AIChatClient {
             addTools(selected, "attack_nearest_hostile", "guard_nearby_hostiles",
                     "stop_current_action", "stop_movement", "get_player_status");
         }
-        if (hasAny(query, "geh ", "gehe ", "lauf", "walk", "beweg", "navigate", "navigation",
-                "koordinat", "wegpunkt", "waypoint", "route", "teleport", "rtp", "stopp",
-                "stop", "halt", "abbrechen")) {
+        if (hasAny(query, "geh ", "gehe ", "lauf", "walk", "move ", "go to ", "head to ",
+                "beweg", "navigate", "navigation", "koordinat", "wegpunkt", "waypoint", "route",
+                "teleport", "rtp", "stopp", "stop", "halt", "abbrechen")) {
             addTools(selected, "walk_forward", "navigate_to", "stop_movement",
                     "stop_current_action", "add_waypoint", "random_teleport",
                     "resume_saved_build", "pause_build", "resume_build");
         }
-        if (hasAny(query, "such", "suche", "finde", "finden", "find ", "locate", "biom",
-                "struktur", "village", "dorf", "stronghold", "bastion", "festung",
-                "ancient city", "trial chamber", "dschungel", "jungle", "wüste", "wueste",
-                "desert", "taiga", "sumpf", "swamp")) {
+        if (hasAny(query, "such", "suche", "finde", "finden", "find ", "find a ", "find me",
+                "look for", "search for", "locate", "biom", "struktur", "village", "dorf",
+                "stronghold", "bastion", "festung", "ancient city", "trial chamber",
+                "dschungel", "jungle", "wüste", "wueste", "desert", "taiga", "sumpf", "swamp")) {
             addTools(selected, "search_structures", "locate_structure", "locate_biome",
                     "search_bases", "get_base_findings", "navigate_to", "add_waypoint",
                     "random_teleport");
@@ -413,9 +424,6 @@ public final class AIChatClient {
             JsonObject payload = new JsonObject();
             payload.addProperty("model", settings.model());
             payload.addProperty("stream", false);
-            payload.addProperty("tool_choice", "auto");
-            payload.addProperty("parallel_tool_calls", false);
-
             JsonArray messages = new JsonArray();
             JsonObject system = new JsonObject();
             system.addProperty("role", "system");
@@ -446,7 +454,12 @@ public final class AIChatClient {
                 messages.add(item);
             }
             payload.add("messages", messages);
-            payload.add("tools", toolsFor(recentHistory));
+            JsonArray availableTools = toolsFor(recentHistory);
+            if (!availableTools.isEmpty()) {
+                payload.add("tools", availableTools);
+                payload.addProperty("tool_choice", "auto");
+                payload.addProperty("parallel_tool_calls", false);
+            }
 
             HttpRequest.Builder builder = HttpRequest.newBuilder(endpoint)
                     .timeout(Duration.ofSeconds(45))
