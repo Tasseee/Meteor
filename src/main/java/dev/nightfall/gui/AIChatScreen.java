@@ -683,6 +683,17 @@ public final class AIChatScreen extends Screen {
                 try {
                     if ("run_server_command".equals(call.name()) && waitingCommandResponse)
                         throw new IllegalArgumentException("Ein Serverbefehl wartet noch auf eine Rückmeldung. Warte auf die Serverantwort oder den 30-Sekunden-Timeout, bevor du den nächsten Befehl sendest.");
+                    String toolSignature = call.name() + "|" + call.arguments();
+                    if (failedToolAttempts.getOrDefault(toolSignature, 0) >= 2) {
+                        String blockedResult = "Dieser identische Werkzeugschritt ist in diesem Auftrag bereits zweimal fehlgeschlagen und wird nicht erneut ausgeführt. "
+                                + "Erkläre die Blockade oder wähle einen anderen sicheren Weg.";
+                        apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), blockedResult));
+                        history.set(responseIndex, new ChatLine("assistant", blockedResult));
+                        actionRoundTrips++;
+                        scroll = Float.MAX_VALUE;
+                        requestAI();
+                        return;
+                    }
                     AIActionRegistry.Action prepared = AIActionRegistry.prepare(call.name(), call.arguments());
                     if (!AIActionRegistry.requiresConfirmation(call.name())) {
                         String toolResult = AIActionRegistry.execute(prepared);
