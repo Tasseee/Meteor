@@ -182,7 +182,7 @@ public final class AIActionRegistry {
         schematicSchema.getAsJsonObject("properties").add("part_y", partY);
         schematicSchema.getAsJsonObject("properties").add("part_z", partZ);
         tools.add(tool("inspect_schematic",
-                "Inspect a local Sponge v2 .schem or Litematica v5-v7 .litematic file, including mirrored/negative region axes and large designs up to 256 blocks per axis and 2 million volume. Reports the 32x32x32 build-section grid, materials, automatic subset and manual-only blocks. Read-only.",
+                "Inspect a local Sponge v2 .schem or Litematica v5-v7 .litematic file, including mirrored/negative region axes and large designs up to 256 blocks per axis and 2 million volume. Reports the 32x32x32 build-section grid, materials, automatic subset, manual-only blocks and the exact world center of the requested section. For nonzero part_x/y/z, start with section 0/0/0 first so a stable farm anchor is saved.",
                 schematicSchema));
         tools.add(tool("build_schematic",
                 "Prepare exactly one 32x32x32 section of a local schematic for building. For oversized structures, pass part_x, part_y and part_z (zero-based); inspect_schematic reports the valid grid. Start with part_x=0, part_y=0, part_z=0: Nightfall stores a server/dimension/file-bound farm anchor in config/nightfall/schematic_build_session.json. Later sections retain the exact overall schematic alignment and report their world center; move there before previewing so the destination chunks are loaded. Nightfall then approaches reachable placement targets using bounded A* navigation and saves/resumes section progress across client restarts. It preserves supported BlockStates and stops when a state cannot be reproduced. Fluids (including water), falling blocks, entities and custom block-entity NBT/inventories are not reconstructed; those remain manual. A full farm may therefore need additional manual fluid/mechanism work before it functions.\n"
@@ -418,7 +418,10 @@ public final class AIActionRegistry {
             case "list_schematics" -> new Action(name, args, SchematicManager.listForAI()
                     + "\n\n" + SchematicManager.communityCatalog());
             case "inspect_schematic" -> new Action(name, args,
-                    SchematicManager.inspectSummary(requiredString(args, "file", 110)));
+                    SchematicManager.inspectSummary(requiredString(args, "file", 110),
+                            args.has("part_x") ? readBoundedInteger(args, "part_x", 0, 7) : 0,
+                            args.has("part_y") ? readBoundedInteger(args, "part_y", 0, 7) : 0,
+                            args.has("part_z") ? readBoundedInteger(args, "part_z", 0, 7) : 0));
             case "build_schematic" -> new Action(name, args,
                     SchematicManager.prepareBuild(requiredString(args, "file", 110),
                             args.has("part_x") ? readBoundedInteger(args, "part_x", 0, 7) : 0,
