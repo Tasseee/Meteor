@@ -19,6 +19,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -42,6 +43,7 @@ public final class AIVoiceClient {
     private static volatile long speechGeneration;
     private static volatile TargetDataLine recordingLine;
     private static volatile SourceDataLine playbackLine;
+    private static volatile CompletableFuture<HttpResponse<byte[]>> speechRequest;
 
     private AIVoiceClient() {}
 
@@ -210,42 +212,62 @@ public final class AIVoiceClient {
     }
 
     /** Speaks a final assistant answer only when voice output was explicitly enabled. */
-    public static void speak(String text) {
+    public static synchronized void speak(String text) {
         AIConfig.load();
         AIConfig.Settings settings = AIConfig.current();
-        if (!settings.voiceOutputEnabled() || settings.apiKey().isBlank() || text == null || text.isBlank()) return;
+        if (!settings.voiceOutputEnabled() || settings.apiKey().isBlank()
+                || text == null || text.isBlank()) return;
         String spoken = text.trim();
         if (spoken.length() > 1200) spoken = spoken.substring(0, 1200);
 
-        final String input = spoken;
-        final long generation = ++speechGeneration;
-        Thread worker = new Thread(() -> {
-            try {
-                JsonObject payload = new JsonObject();
-                payload.addProperty("model", settings.speechModel());
-                payload.addProperty("voice", settings.speechVoice());
-                payload.addProperty("input", input);
-                payload.addProperty("response_format", "wav");
-                HttpRequest request = HttpRequest.newBuilder(endpoint(settings, "/audio/speech"))
-                        .timeout(Duration.ofSeconds(75))
-                        .header("Content-Type", "application/json")
-                        .header("Authorization", "Bearer " + settings.apiKey())
-                        .POST(HttpRequest.BodyPublishers.ofString(payload.toString()))
-                        .build();
-                HttpResponse<byte[]> response = HTTP.send(request, HttpResponse.BodyHandlers.ofByteArray());
-                if (response.statusCode() < 200 || response.statusCode() >= 300
-                        || generation != speechGeneration) return;
-                playWav(response.body(), generation);
-            } catch (Exception ignored) {
-                // Voice output is optional; a TTS failure must never break the chat or game loop.
-            }
-        }, "Nightfall-Voice-Output");
-        worker.setDaemon(true);
-        worker.start();
+        // Cancel any older synthesis request and stop old playback immediately.
+        stopSpeaking();
+        final long generation = speechGeneration;
+        try {
+            JsonObject payload = new JsonObject();
+            payload.addProperty("model", settings.speechModel());
+            payload.addProperty("voice", settings.speechVoice());
+            payload.addProperty("input", spoken);
+            payload.addProperty("response_format", "wav");
+            HttpRequest request = HttpRequest.newBuilder(endpoint(settings, "/audio/speech"))
+                    .timeout(Duration.ofSeconds(75))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + settings.apiKey())
+                    .POST(HttpRequest.BodyPublishers.ofString(payload.toString()))
+                    .build();
+
+            CompletableFuture<HttpResponse<byte[]>> future =
+                    HTTP.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray());
+            speechRequest = future;
+            future.whenComplete((response, failure) -> {
+                synchronized (AIVoiceClient.class) {
+                    if (speechRequest == future) speechRequest = null;
+                }
+                if (failure != null || response == null || generation != speechGeneration
+                        || response.statusCode() < 200 || response.statusCode() >= 300
+                        || response.body() == null || response.body().length == 0
+                        || response.body().length > 8 * 1024 * 1024) return;
+
+                Thread playback = new Thread(() -> {
+                    try {
+                        playWav(response.body(), generation);
+                    } catch (Exception ignored) {
+                        // Voice output is optional; a TTS failure must never break chat or the game loop.
+                    }
+                }, "Nightfall-Voice-Playback");
+                playback.setDaemon(true);
+                playback.start();
+            });
+        } catch (RuntimeException ignored) {
+            // Invalid optional voice settings must not affect normal text chat.
+        }
     }
 
-    public static void stopSpeaking() {
+    public static synchronized void stopSpeaking() {
         speechGeneration++;
+        CompletableFuture<HttpResponse<byte[]>> request = speechRequest;
+        speechRequest = null;
+        if (request != null) request.cancel(true);
         SourceDataLine line = playbackLine;
         playbackLine = null;
         if (line != null) {
