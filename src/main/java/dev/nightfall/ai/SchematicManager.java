@@ -19,6 +19,7 @@ import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.state.property.Property;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 
@@ -236,6 +237,169 @@ public final class SchematicManager {
             throw new IllegalArgumentException("Schematic konnte nicht sicher gelesen werden: "
                     + failure.getClass().getSimpleName() + ". Prüfe Format, Kompression und Minecraft-Version.");
         }
+    }
+
+    /**
+     * Preview a non-destructive repair export. The source file remains read-only.
+     * Unsupported blocks/content are deliberately removed from the derived copy.
+     */
+    public static String previewRepair(String requestedFile) {
+        Imported imported = inspect(requestedFile);
+        long unsupported = Math.max(0, imported.totalBlocks() - imported.buildableBlocks()
+                - imported.waterPlan().size());
+        String outputName = nextRepairFileName(imported.fileName());
+        return "SCHEMATIC-BEREINIGUNG (VORSCHAU):\n"
+                + "Original: " + imported.fileName() + " (wird nicht verändert)\n"
+                + "Neue Datei: " + outputName + "\n"
+                + "Abmessungen bleiben: " + imported.width() + " × " + imported.height() + " × " + imported.length() + "\n"
+                + "Übernommen: " + imported.buildableBlocks() + " unterstützte Blockzustände und "
+                + imported.waterPlan().size() + " stille Wasserquellen.\n"
+                + "Ausgelassen: " + unsupported + " nicht unterstützte/ungeeignete Blöcke, "
+                + (imported.containsBlockEntities() ? "benutzerdefinierte Block-Entity-Daten/Inventare" : "keine Block-Entity-Daten")
+                + " und " + (imported.containsEntities() ? "alle enthaltenen Entities." : "keine Entities.")
+                + "\nDie Kopie ist eine bereinigte Bauvorlage, keine Reparatur der Farmmechanik. "
+                + "Redstone-Timing, Villager-Verhalten, Flüssigkeitsfluss, Truheninhalte und Farm-Ertrag "
+                + "müssen separat in Minecraft geprüft werden.";
+    }
+
+    /** Create a new Sponge v2 copy containing only states that Nightfall can import safely. */
+    public static String repairToSupportedSchematic(String requestedFile) {
+        Imported imported = inspect(requestedFile);
+        String outputName = nextRepairFileName(imported.fileName());
+        long volume = (long) imported.width() * imported.height() * imported.length();
+        if (volume <= 0 || volume > MAX_VOLUME)
+            throw new IllegalArgumentException("Das Schematic-Volumen ist für einen sicheren Reparaturexport ungültig.");
+
+        try {
+            Files.createDirectories(DIRECTORY);
+            Map<String, Integer> paletteIds = new LinkedHashMap<>();
+            List<String> paletteNames = new ArrayList<>();
+            int[] blocks = new int[(int) volume];
+            paletteIds.put("minecraft:air", 0);
+            paletteNames.add("minecraft:air");
+
+            for (AIBuilder.RelativeBlock block : imported.buildPlan()) {
+                if (block.state() == null) continue;
+                int paletteIndex = repairPaletteIndex(block.state(), paletteIds, paletteNames);
+                blocks[repairLinearIndex(block.x(), block.y(), block.z(),
+                        imported.width(), imported.length(), imported.height())] = paletteIndex;
+            }
+            for (AIBuilder.RelativeBlock water : imported.waterPlan()) {
+                if (water.state() == null) continue;
+                int paletteIndex = repairPaletteIndex(water.state(), paletteIds, paletteNames);
+                blocks[repairLinearIndex(water.x(), water.y(), water.z(),
+                        imported.width(), imported.length(), imported.height())] = paletteIndex;
+            }
+
+            NbtCompound root = new NbtCompound();
+            root.putInt("Version", 2);
+            root.putShort("Width", (short) imported.width());
+            root.putShort("Height", (short) imported.height());
+            root.putShort("Length", (short) imported.length());
+            NbtCompound palette = new NbtCompound();
+            for (Map.Entry<String, Integer> entry : paletteIds.entrySet())
+                palette.putInt(entry.getKey(), entry.getValue());
+            root.put("Palette", palette);
+            root.putInt("PaletteMax", paletteIds.size());
+
+            java.io.ByteArrayOutputStream blockData = new java.io.ByteArrayOutputStream();
+            for (int paletteIndex : blocks) writeVarInt(blockData, paletteIndex);
+            root.putByteArray("BlockData", blockData.toByteArray());
+            NbtCompound metadata = new NbtCompound();
+            metadata.putString("Name", "Nightfall repaired copy of " + imported.fileName());
+            root.put("Metadata", metadata);
+
+            Path output = DIRECTORY.resolve(outputName).normalize();
+            if (!output.getParent().equals(DIRECTORY.normalize()) || Files.exists(output))
+                throw new IllegalArgumentException("Der bereinigte Dateiname ist nicht mehr frei. Bitte Vorschau erneut aufrufen.");
+            Path temporary = DIRECTORY.resolve(outputName + ".tmp").normalize();
+            try {
+                NbtIo.writeCompressed(root, temporary);
+                long outputSize = Files.size(temporary);
+                if (outputSize <= 0 || outputSize > MAX_FILE_BYTES)
+                    throw new IllegalArgumentException("Die bereinigte Kopie überschreitet das sichere Dateigrößenlimit.");
+                try {
+                    Files.move(temporary, output, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+                } catch (java.nio.file.AtomicMoveNotSupportedException unsupportedAtomicMove) {
+                    Files.move(temporary, output);
+                }
+            } finally {
+                Files.deleteIfExists(temporary);
+            }
+
+            cachedPath = null;
+            cachedImport = new SoftReference<>(null);
+            long removed = Math.max(0, imported.totalBlocks() - imported.buildableBlocks()
+                    - imported.waterPlan().size());
+            return "Bereinigte Schematic-Kopie erstellt: " + outputName
+                    + "\nOriginal unverändert: " + imported.fileName()
+                    + "\nAbmessungen: " + imported.width() + " × " + imported.height() + " × " + imported.length()
+                    + "\nÜbernommen: " + imported.buildableBlocks() + " Blockzustände und "
+                    + imported.waterPlan().size() + " stille Wasserquellen."
+                    + "\nAusgelassen: " + removed + " nicht unterstützte Blöcke, Entities und benutzerdefinierte Block-Entity-Daten."
+                    + "\nBitte jetzt list_schematics und inspect_schematic für die neue Datei ausführen. "
+                    + "Die Farmfunktion wurde nicht geändert oder getestet.";
+        } catch (IllegalArgumentException failure) {
+            throw failure;
+        } catch (Exception failure) {
+            Nightfall.LOGGER.warn("Schematic-Reparaturkopie konnte nicht gespeichert werden: {}",
+                    failure.getClass().getSimpleName());
+            throw new IllegalArgumentException("Die bereinigte Schematic-Kopie konnte nicht sicher erstellt werden: "
+                    + failure.getClass().getSimpleName() + ".");
+        }
+    }
+
+    private static String nextRepairFileName(String sourceFile) {
+        String base = stripExtension(sourceFile);
+        for (int suffix = 1; suffix <= 99; suffix++) {
+            String candidate = base + "_nightfall_repaired_" + suffix + ".schem";
+            if (SAFE_FILE.matcher(candidate).matches() && !Files.exists(DIRECTORY.resolve(candidate)))
+                return candidate;
+        }
+        throw new IllegalArgumentException("Es existieren bereits zu viele Reparaturkopien mit diesem Dateinamen.");
+    }
+
+    private static int repairLinearIndex(int x, int y, int z, int width, int length, int height) {
+        if (x < 0 || x >= width || y < 0 || y >= height || z < 0 || z >= length)
+            throw new IllegalArgumentException("Ein importierter Block liegt außerhalb der ursprünglichen Schematic-Abmessungen.");
+        return (y * length + z) * width + x;
+    }
+
+    private static int repairPaletteIndex(BlockState state, Map<String, Integer> ids, List<String> names) {
+        StringBuilder stateName = new StringBuilder(Registries.BLOCK.getId(state.getBlock()).toString());
+        if (!state.getEntries().isEmpty()) {
+            List<Map.Entry<Property<?>, Comparable<?>>> properties = new ArrayList<>(state.getEntries().entrySet());
+            properties.sort(Comparator.comparing(entry -> entry.getKey().getName()));
+            stateName.append('[');
+            for (int i = 0; i < properties.size(); i++) {
+                Map.Entry<Property<?>, Comparable<?>> entry = properties.get(i);
+                if (i > 0) stateName.append(',');
+                stateName.append(entry.getKey().getName()).append('=')
+                        .append(propertyValueName(entry.getKey(), entry.getValue()));
+            }
+            stateName.append(']');
+        }
+        String key = stateName.toString();
+        Integer existing = ids.get(key);
+        if (existing != null) return existing;
+        int next = names.size();
+        ids.put(key, next);
+        names.add(key);
+        return next;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static String propertyValueName(Property property, Comparable value) {
+        return property.name(value);
+    }
+
+    private static void writeVarInt(java.io.ByteArrayOutputStream output, int value) {
+        int remaining = value;
+        while ((remaining & ~0x7F) != 0) {
+            output.write((remaining & 0x7F) | 0x80);
+            remaining >>>= 7;
+        }
+        output.write(remaining);
     }
 
     public static String inspectSummary(String fileName) {
