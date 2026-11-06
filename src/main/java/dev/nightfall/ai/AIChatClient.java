@@ -78,8 +78,11 @@ public final class AIChatClient {
             wenn sowohl Menge als auch Zeit gewünscht sind. Für eine ausdrücklich genannte Sammelhöhe nutze
             bei gather_ore target_y. Das ist die gewünschte Fußhöhe, keine Garantie, dass ein sicherer Weg
             dorthin existiert. Die Sammelroutine scannt nur geladene Chunks, wiederholt lokale Scans,
-            verfolgt bereits versuchte Ziele und stoppt bei vollem Inventar, Zeitlimit, unsicheren Wegen
-            oder fehlenden Treffern. Maximal 20 Minuten und 2048 Zielblöcke pro Einzelauftrag.
+            verfolgt bereits versuchte Ziele und nutzt nach erschöpften lokalen Treffern eine begrenzte
+            quadratische Spiralroute um den Startbereich, damit weitere Nachbarchunks geladen werden.
+            Sie stoppt bei vollem Inventar, Zeitlimit, unsicheren Wegen oder fehlenden Treffern.
+            Maximal 20 Minuten, 2048 Zielblöcke und 64 sichere Spiralabschnitte pro Einzelauftrag.
+            Behaupte nie, dass die gesamte Welt oder ungeladene Chunks abgesucht wurden.
             Keine Explosivstoffe, kein Graben nach unten, in Flüssigkeiten oder durch unbekanntes Gelände
             und keine erfundenen Drops.
             Kampfwerkzeuge dürfen ausschließlich nahe vanilla-feindliche Mobs angreifen, niemals Spieler,
