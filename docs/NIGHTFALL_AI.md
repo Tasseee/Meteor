@@ -218,6 +218,7 @@ AI actions:
 - `list_schematics`: lists local files and the curated community source index. Read-only.
 - `inspect_schematic`: parses one local file and reports dimensions, regions, material counts, exact block-state automation coverage, unsupported block examples, block entities and entities. Read-only; inspect the complete summary before planning a build.
 - `repair_schematic`: creates a new local Sponge v2 `.schem` file containing only the block states and still-water sources that Nightfall can import automatically. The original is never modified or overwritten. Unsupported positions become air; entities, custom block-entity NBT and inventories are omitted. The generated file must be inspected again before building. This is a supported-subset export, not a repair of farm logic or a guarantee that a farm works.
+- `verify_schematic_section`: read-only comparison of one already anchored section against the loaded client world. Reports checked/unloaded positions, block-type mismatches, blockstate differences, missing default block entities, missing still-water sources and occupied clear cells. It does not inspect custom inventories or entities, simulate fluids/redstone, or prove farm output.
 - `build_schematic`: prepares one 32³ section of the automatically supported subset and displays a normal Nightfall placement preview. It requires player confirmation before the first placement; each section requires its own preview and confirmation.
 
 **Aushub und Aufbau:** Bei lokalen Schematics liest Nightfall alle Luftzellen innerhalb des
