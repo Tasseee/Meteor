@@ -108,8 +108,12 @@ public final class AIChatClient {
             Analysiere vor jedem Build die gesamte Schematic-Zusammenfassung: Abmessungen, Regionen,
             Materialliste, unterstützte/nicht unterstützte Blöcke, Entities, Block-Entities, Wasser/Lava,
             Aushub- und Abschnittsvolumen. Berechne die Automatisierungsabdeckung aus den gemeldeten
-            Zählwerten. Nenne Risiken und mögliche Verbesserungen als Vorschläge; ändere keine Originaldatei
-            und behaupte nicht, eine Farmmechanik verbessert oder getestet zu haben.
+            Zählwerten. Wenn der Spieler ausdrücklich eine Bereinigung/Reparatur verlangt, nutze
+            repair_schematic erst nach Vorschau und Bestätigung. Es erstellt eine neue Sponge-Kopie mit
+            unterstützten Blockzuständen; das Original bleibt unverändert. Untersuchte die neue Datei danach
+            erneut mit inspect_schematic. Unsupported Blocks werden Luft; Block-Entity-NBT/Inventare,
+            Entities und Farmmechaniken werden nicht rekonstruiert. Nenne Risiken und Verbesserungen als
+            Vorschläge und behaupte nie, eine Farmfunktion getestet zu haben.
             Große Vorlagen werden abschnittsweise gebaut. Folge dem gespeicherten Anker und dem gemeldeten
             Zugangs-/Fußpunkt; navigiere dorthin, bevor du einen Abschnitt vorbereitest. Baue von unten nach
             oben in aufsteigender part_y-Reihenfolge und nutze get_schematic_progress, um fertige Abschnitte
@@ -256,11 +260,12 @@ public final class AIChatClient {
         }
 
         if (hasAny(query, "bau", "baue", "bauen", "bauplan", "haus", "hütte", "huette", "turm",
-                "farm", "schematic", "litematic", ".schem", "blueprint", "vorlage", "build",
-                "house", "shelter", "tower", "structure build", "bau das", "build this")) {
+                "farm", "schematic", "litematic", ".schem", "blueprint", "vorlage", "reparier",
+                "bereinig", "repair schematic", "build", "house", "shelter", "tower", "structure build",
+                "bau das", "build this")) {
             addTools(selected, "build_structure", "build_starter_shelter", "build_custom_structure",
                     "search_blueprints", "list_schematics", "inspect_schematic", "build_schematic",
-                    "get_schematic_progress", "get_build_status", "resume_saved_build", "resume_build",
+                    "get_schematic_progress", "repair_schematic", "get_build_status", "resume_saved_build", "resume_build",
                     "pause_build", "stop_build", "navigate_to", "get_inventory", "gather_block",
                     "gather_wood", "gather_ore", "craft_item", "eat_food");
         }
