@@ -153,6 +153,94 @@ public final class AIBuilder {
 
     private AIBuilder() {}
 
+    /**
+     * Read-only inventory analysis for one of Nightfall's fixed building templates.
+     * It does not prepare a build, write a checkpoint, change slots, or modify the world.
+     */
+    public static String analyzeStructureMaterials(String structure, String preferredMaterialId) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null)
+            throw new IllegalArgumentException("Du musst dich in einer Minecraft-Welt befinden, um Baumaterialien zu prüfen.");
+
+        Blueprint selectedBlueprint = Blueprint.parse(structure);
+        if (selectedBlueprint == Blueprint.CUSTOM)
+            throw new IllegalArgumentException("Für eigene Baupläne nutze zuerst die Schematic-/Bauvorschau; diese Abfrage unterstützt die drei festen Vorlagen.");
+
+        Map<BlockItem, Integer> inventoryMaterials = collectInventoryMaterials(mc);
+        boolean creative = playerIsCreative(mc);
+        int required = creative ? 1 : selectedBlueprint.blocks;
+        List<AIMaterialPlanner.Candidate> candidates = new ArrayList<>();
+
+        if (preferredMaterialId != null && !preferredMaterialId.isBlank()) {
+            BlockItem requested = resolveMaterial(inventoryMaterials, preferredMaterialId);
+            BlockState requestedState = requested.getBlock().getDefaultState();
+            BlockPos sample = mc.player.getBlockPos();
+            if (requested.getBlock() instanceof FallingBlock
+                    || requestedState.getCollisionShape(mc.world, sample).isEmpty()
+                    || !requestedState.isFullCube(mc.world, sample)) {
+                throw new IllegalArgumentException("Das gewünschte Material ist kein unterstützter, fester Full-Block für diese Bauvorlage.");
+            }
+            candidates.add(new AIMaterialPlanner.Candidate(
+                    Registries.ITEM.getId(requested).toString(),
+                    requested.getName().getString(),
+                    inventoryMaterials.getOrDefault(requested, 0)));
+        } else {
+            for (Map.Entry<BlockItem, Integer> entry : inventoryMaterials.entrySet()) {
+                BlockItem item = entry.getKey();
+                candidates.add(new AIMaterialPlanner.Candidate(
+                        Registries.ITEM.getId(item).toString(),
+                        item.getName().getString(),
+                        entry.getValue()));
+            }
+        }
+
+        List<AIMaterialPlanner.Option> ranked = AIMaterialPlanner.rank(candidates, required);
+        if (ranked.isEmpty()) {
+            return "Materialplanung für " + selectedBlueprint.label + ": Im normalen Inventar wurden keine "
+                    + "geeigneten, nicht fallenden Full-Block-Materialien erkannt. "
+                    + (creative ? "Lege einen passenden Full-Block als Muster ins Inventar."
+                    : "Lege passende feste Blockmaterialien in dein Inventar.")
+                    + " Diese Abfrage verändert weder Inventar noch Welt.";
+        }
+
+        StringBuilder summary = new StringBuilder();
+        summary.append("Materialplanung für ").append(selectedBlueprint.label)
+                .append(" (").append(selectedBlueprint.blocks).append(" Bau-Blöcke): ")
+                .append(creative
+                        ? "Kreativmodus – ein Musterblock genügt, die Platzierung nutzt danach den Kreativmodus. "
+                        : "Survival – alle Bau-Blöcke müssen als dasselbe Material vorhanden sein. ")
+                .append("Es werden nur die 36 normalen Inventar-/Hotbar-Slots gezählt.");
+
+        int displayed = Math.min(6, ranked.size());
+        for (int index = 0; index < displayed; index++) {
+            AIMaterialPlanner.Option option = ranked.get(index);
+            AIMaterialPlanner.Candidate candidate = option.candidate();
+            summary.append("\n").append(index + 1).append(". ")
+                    .append(candidate.displayName()).append(" [").append(candidate.itemId()).append("]: vorhanden ")
+                    .append(candidate.available()).append(", benötigt ").append(option.required())
+                    .append(", fehlen ").append(option.missing());
+            if (option.sufficient()) {
+                summary.append(", Überschuss ").append(option.surplus()).append(" – reicht aus.");
+            } else {
+                summary.append(" – reicht derzeit nicht.");
+            }
+        }
+        if (ranked.size() > displayed)
+            summary.append("\nWeitere geeignete Materialarten im Inventar: ")
+                    .append(ranked.size() - displayed).append(".");
+
+        AIMaterialPlanner.Option recommended = ranked.get(0);
+        summary.append("\n")
+                .append(recommended.sufficient()
+                        ? "Beste passende Wahl: " + recommended.candidate().displayName() + "."
+                        : "Aktuell kleinste Fehlmenge: " + recommended.candidate().displayName()
+                                + "; es fehlen noch " + recommended.missing() + " Blöcke.");
+        summary.append(" Das ist nur eine Bestandsrechnung: Bauplatz, Untergrund, Hindernisse und Platzierungsrisiken "
+                + "werden erst in der eigentlichen Bauvorschau geprüft. Es wurde kein Bauplan vorbereitet "
+                + "und kein Checkpoint gespeichert.");
+        return summary.toString();
+    }
+
     public static String prepareStarterShelter() { return prepareStructure("starter_shelter"); }
 
     public static String prepareStructure(String structure) {
