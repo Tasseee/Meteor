@@ -164,7 +164,17 @@ public final class AIChatClient {
             erneut mit inspect_schematic. Unsupported Blocks werden Luft; Block-Entity-NBT/Inventare,
             Entities und Farmmechaniken werden nicht rekonstruiert. Nenne Risiken und Verbesserungen als
             Vorschläge und behaupte nie, eine Farmfunktion getestet zu haben.
-            Große Vorlagen werden abschnittsweise gebaut. Folge dem gespeicherten Anker und dem gemeldeten
+            Für die drei festen Nightfall-Vorlagen (starter_shelter, large_house, watchtower) nutze
+             plan_build_materials, wenn der Spieler Materialbedarf, vorhandene Mengen oder Bau-Bereitschaft
+             wissen möchte. Die Abfrage zählt nur geeignete feste Full-Block-Items in den 36 normalen
+             Inventar-/Hotbar-Slots, zeigt Fehlmengen und Alternativen und ist lokal read-only. Da Inventardaten
+             an den konfigurierten KI-Anbieter übermittelt werden, bleibt die Vorschau bestätigungspflichtig.
+             Die Abfrage prüft weder Bauplatz noch Untergrund und bereitet keinen Bau vor. Vor dem tatsächlichen
+             Vorlagenbau nutze sie zur Bestandsprüfung; build_structure zeigt danach eine eigene Bauvorschau und
+             benötigt weiterhin eine getrennte ausdrückliche Bestätigung. Bei Sammelaufträgen nennt die
+             Sammelvorschau Bestand, Zielmenge, Fehlmenge, freien Inventarplatz und lokal gefundene Ziele;
+             behaupte keine Ressourcen außerhalb der geladenen Bereiche.
+             Große Vorlagen werden abschnittsweise gebaut. Folge dem gespeicherten Anker und dem gemeldeten
             Zugangs-/Fußpunkt; navigiere dorthin, bevor du einen Abschnitt vorbereitest. Baue von unten nach
             oben in aufsteigender part_y-Reihenfolge und nutze get_schematic_progress, um fertige Abschnitte
             nicht zu wiederholen. Jeder Abschnitt benötigt seine eigene Vorschau/Bestätigung. Melde den
@@ -332,7 +342,7 @@ public final class AIChatClient {
                 "farm", "schematic", "litematic", ".schem", "blueprint", "vorlage", "reparier",
                 "bereinig", "repair schematic", "build", "house", "shelter", "tower", "structure build",
                 "bau das", "build this")) {
-            addTools(selected, "build_structure", "build_starter_shelter", "build_custom_structure",
+            addTools(selected, "plan_build_materials", "build_structure", "build_starter_shelter", "build_custom_structure",
                     "search_blueprints", "list_schematics", "inspect_schematic", "build_schematic",
                     "get_schematic_progress", "repair_schematic", "verify_schematic_section",
                     "get_build_status", "resume_saved_build", "resume_build",
