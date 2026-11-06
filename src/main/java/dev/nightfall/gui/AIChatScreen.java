@@ -21,6 +21,7 @@ import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import net.minecraft.item.ItemStack;
+import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
 import org.lwjgl.glfw.GLFW;
 
@@ -1196,13 +1197,28 @@ public final class AIChatScreen extends Screen {
         if (player.isSneaking()) conditions.add("schleicht");
         String movement = conditions.isEmpty() ? "keine besondere Bewegung erkannt" : String.join(", ", conditions);
 
-        List<String> armor = new ArrayList<>();
-        for (ItemStack stack : List.of(
+        List<ItemStack> armorStacks = List.of(
                 player.getEquippedStack(EquipmentSlot.HEAD),
                 player.getEquippedStack(EquipmentSlot.CHEST),
                 player.getEquippedStack(EquipmentSlot.LEGS),
-                player.getEquippedStack(EquipmentSlot.FEET))) {
-            if (!stack.isEmpty()) armor.add(describeStack(stack));
+                player.getEquippedStack(EquipmentSlot.FEET));
+        List<String> armor = new ArrayList<>();
+        int equippedArmorPieces = 0;
+        int armorPiecesAtOrBelowTwentyPercent = 0;
+        int lowestArmorDurabilityPercent = -1;
+        boolean hasGoldArmorPiece = false;
+        for (ItemStack stack : armorStacks) {
+            if (stack.isEmpty()) continue;
+            equippedArmorPieces++;
+            armor.add(describeStack(stack));
+            int durabilityPercent = remainingDurabilityPercent(stack);
+            if (durabilityPercent >= 0) {
+                if (durabilityPercent <= 20) armorPiecesAtOrBelowTwentyPercent++;
+                if (lowestArmorDurabilityPercent < 0 || durabilityPercent < lowestArmorDurabilityPercent)
+                    lowestArmorDurabilityPercent = durabilityPercent;
+            }
+            String armorItemId = Registries.ITEM.getId(stack.getItem()).toString();
+            if (armorItemId.startsWith("minecraft:golden_")) hasGoldArmorPiece = true;
         }
         String armorSummary = armor.isEmpty() ? "keine" : String.join(", ", armor);
 
@@ -1291,11 +1307,40 @@ public final class AIChatScreen extends Screen {
         }
 
         Map<String, Integer> inventoryCounts = new HashMap<>();
+        int foodUnits = 0;
+        int torchUnits = 0;
+        boolean hasShield = "minecraft:shield".equals(
+                Registries.ITEM.getId(player.getOffHandStack().getItem()).toString());
+        boolean hasWaterBucket = false;
+        boolean hasEnderPearls = false;
         for (int slot = 0; slot < 36; slot++) {
             ItemStack stack = player.getInventory().getStack(slot);
             if (stack.isEmpty()) continue;
             inventoryCounts.merge(stack.getName().getString(), stack.getCount(), Integer::sum);
+            if (stack.isFood()) foodUnits += stack.getCount();
+            String itemId = Registries.ITEM.getId(stack.getItem()).toString();
+            if ("minecraft:torch".equals(itemId) || "minecraft:soul_torch".equals(itemId))
+                torchUnits += stack.getCount();
+            if ("minecraft:shield".equals(itemId)) hasShield = true;
+            if ("minecraft:water_bucket".equals(itemId)) hasWaterBucket = true;
+            if ("minecraft:ender_pearl".equals(itemId)) hasEnderPearls = true;
         }
+        int mainHandDurabilityPercent = remainingDurabilityPercent(player.getMainHandStack());
+        String readinessSummary = AILocalSurvivalReadiness.assess(
+                new AILocalSurvivalReadiness.Snapshot(
+                        dimension,
+                        equippedArmorPieces,
+                        armorPiecesAtOrBelowTwentyPercent,
+                        lowestArmorDurabilityPercent,
+                        mainHandDurabilityPercent,
+                        foodUnits,
+                        torchUnits,
+                        hasShield,
+                        hasGoldArmorPiece,
+                        hasWaterBucket,
+                        hasEnderPearls,
+                        lightLevel))
+                .summary();
         String inventorySummary = inventoryCounts.entrySet().stream()
                 .sorted((left, right) -> Integer.compare(right.getValue(), left.getValue()))
                 .limit(12)
@@ -1319,6 +1364,7 @@ public final class AIChatScreen extends Screen {
                 + "Fallengelassene Gegenstände im Umkreis von 12 Blöcken (höchstens 10 Itemtypen): "
                 + nearbyDropsSummary + "\n"
                 + localRiskSummary + "\n"
+                + readinessSummary + "\n"
                 + "Gesundheit: " + health + "\n"
                 + "Hunger: " + hunger + ", Sättigung: " + saturation + "\n"
                 + "Lokale Situation: " + movement + "\n"
@@ -1333,6 +1379,18 @@ public final class AIChatScreen extends Screen {
 
     private static String describeStack(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return "leer";
-        return stack.getName().getString() + " x" + stack.getCount();
+        int durabilityPercent = remainingDurabilityPercent(stack);
+        String durability = durabilityPercent < 0
+                ? ""
+                : " (Resthaltbarkeit " + durabilityPercent + "%)";
+        return stack.getName().getString() + " x" + stack.getCount() + durability;
+    }
+
+    private static int remainingDurabilityPercent(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return -1;
+        int maxDamage = stack.getMaxDamage();
+        if (maxDamage <= 0) return -1;
+        int remaining = Math.max(0, maxDamage - stack.getDamage());
+        return (int) Math.round(remaining * 100.0 / maxDamage);
     }
 }
