@@ -63,24 +63,41 @@ final class AITaskCheckpoint {
         if (mc == null || mc.world == null) return null;
         Path path = checkpointPath();
         try {
-            if (!Files.isRegularFile(path) || Files.size(path) > MAX_FILE_BYTES) return null;
+            if (!Files.isRegularFile(path)) return null;
+            if (Files.size(path) > MAX_FILE_BYTES) {
+                clear();
+                return null;
+            }
+
             JsonObject root = JsonParser.parseString(Files.readString(path)).getAsJsonObject();
-            if (root.get("version").getAsInt() != VERSION) return null;
-            if (!serverKey(mc).equals(root.get("server").getAsString())
+            if (!root.has("version") || root.get("version").getAsInt() != VERSION) return null;
+
+            // Keep a valid checkpoint for another server or dimension; it may be needed
+            // when the player returns there later.
+            if (!root.has("server") || !root.has("dimension")
+                    || !serverKey(mc).equals(root.get("server").getAsString())
                     || !mc.world.getRegistryKey().getValue().toString().equals(root.get("dimension").getAsString()))
                 return null;
+
             long savedAt = root.get("savedAt").getAsLong();
             long age = System.currentTimeMillis() - savedAt;
             if (age < 0L || age > MAX_AGE_MILLIS) {
                 clear();
                 return null;
             }
+
             Task task = new Task(root.get("kind").getAsString(), root.get("item").getAsString(),
                     root.get("count").getAsInt(), root.get("durationSeconds").getAsInt(),
                     root.get("targetY").getAsInt(), root.get("x").getAsInt(),
                     root.get("y").getAsInt(), root.get("z").getAsInt());
-            return valid(task) ? task : null;
+            if (!valid(task)) {
+                clear();
+                return null;
+            }
+            return task;
         } catch (Exception ignored) {
+            // A malformed checkpoint must not be retried on every reconnect.
+            clear();
             return null;
         }
     }
