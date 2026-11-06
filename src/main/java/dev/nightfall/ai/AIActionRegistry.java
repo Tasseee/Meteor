@@ -160,6 +160,9 @@ public final class AIActionRegistry {
         tools.add(tool("open_nightfall_menu", "Open Nightfall's own ClickGUI menu on the client. Does not change any setting.", objectSchema()));
         tools.add(tool("get_inventory", "Read the player's inventory and summarize item names and counts. This data is sent to the configured AI provider; the player must confirm first.",
                 objectSchema()));
+        tools.add(tool("sort_inventory",
+                "Sort only stackable building blocks/materials, ore resources and food inside the 36 normal inventory/hotbar slots. Durable equipment, combat items, ammunition, armor, offhand, crafting slots and miscellaneous items stay in their exact slots. Uses normal player inventory clicks; requires a preview and explicit confirmation.",
+                objectSchema()));
         tools.add(tool("get_player_status", "Read the player's current dimension, coordinates and health. This data is sent to the configured AI provider; the player must confirm first.",
                 objectSchema()));
         tools.add(tool("random_teleport", "Request the server's random teleport using its common /rtp command. The player must confirm first; the server must support it.",
@@ -284,7 +287,7 @@ public final class AIActionRegistry {
                 "Exact vanilla wood block item ID, e.g. minecraft:oak_log or minecraft:crimson_stem.").get("schema").getAsJsonObject();
         gatherWoodItem.addProperty("maxLength", 64);
         JsonObject gatherWoodCount = property("count", "integer",
-                "Target total amount of this item in the player's inventory (1–256).").get("schema").getAsJsonObject();
+                "Target total amount of this item in the player's inventory (1–1024).").get("schema").getAsJsonObject();
         gatherWoodCount.addProperty("minimum", 1);
         gatherWoodCount.addProperty("maximum", 1_024);
         JsonObject gatherWoodDuration = property("duration_seconds", "integer",
@@ -306,7 +309,7 @@ public final class AIActionRegistry {
                 "Exact supported vanilla block item ID, e.g. minecraft:cobblestone, minecraft:dirt or minecraft:netherrack.").get("schema").getAsJsonObject();
         gatherBlockItem.addProperty("maxLength", 64);
         JsonObject gatherBlockCount = property("count", "integer",
-                "Target total amount of this item in the player's inventory (1–64).").get("schema").getAsJsonObject();
+                "Target total amount of this item in the player's inventory (1–1024).").get("schema").getAsJsonObject();
         gatherBlockCount.addProperty("minimum", 1);
         gatherBlockCount.addProperty("maximum", 256);
         JsonObject gatherBlockDuration = property("duration_seconds", "integer",
@@ -328,7 +331,7 @@ public final class AIActionRegistry {
                 "Exact ore drop item ID, e.g. minecraft:raw_iron, minecraft:coal, minecraft:diamond or minecraft:ancient_debris.").get("schema").getAsJsonObject();
         gatherOreItem.addProperty("maxLength", 64);
         JsonObject gatherOreCount = property("count", "integer",
-                "Target total amount of this drop item in the player's inventory (1–64).").get("schema").getAsJsonObject();
+                "Target total amount of this drop item in the player's inventory (1–256).").get("schema").getAsJsonObject();
         gatherOreCount.addProperty("minimum", 1);
         gatherOreCount.addProperty("maximum", 256);
         JsonObject gatherOreDuration = property("duration_seconds", "integer",
@@ -487,6 +490,7 @@ public final class AIActionRegistry {
             case "open_nightfall_menu" -> new Action(name, args, "Öffnet das Nightfall-Menü auf deinem Bildschirm. Es werden keine Einstellungen geändert.");
             case "get_inventory" -> new Action(name, args,
                     "Nightfall liest dein Inventar und sendet Itemnamen und Mengen an den konfigurierten KI-Anbieter.");
+            case "sort_inventory" -> new Action(name, args, AIPlayerController.previewInventorySort());
             case "get_player_status" -> new Action(name, args,
                     "Nightfall liest Dimension, Position und Lebenspunkte und sendet diese Daten an den konfigurierten KI-Anbieter.");
             case "random_teleport" -> new Action(name, args,
@@ -540,9 +544,9 @@ public final class AIActionRegistry {
                             args.has("reset_anchor") && args.get("reset_anchor").getAsBoolean()));
             case "build_schematic" -> new Action(name, args,
                     SchematicManager.prepareBuild(requiredString(args, "file", 110),
-                            args.has("part_x") ? readBoundedInteger(args, "part_x", 0, 7) : 0,
-                            args.has("part_y") ? readBoundedInteger(args, "part_y", 0, 7) : 0,
-                            args.has("part_z") ? readBoundedInteger(args, "part_z", 0, 7) : 0,
+                            args.has("part_x") ? readBoundedInteger(args, "part_x", 0, 15) : 0,
+                            args.has("part_y") ? readBoundedInteger(args, "part_y", 0, 15) : 0,
+                            args.has("part_z") ? readBoundedInteger(args, "part_z", 0, 15) : 0,
                             args.has("reset_anchor") && args.get("reset_anchor").getAsBoolean()));
             case "get_schematic_progress" -> new Action(name, args,
                     SchematicManager.progressSummary(requiredString(args, "file", 110)));
@@ -798,6 +802,7 @@ public final class AIActionRegistry {
                 yield "Nightfall-Menü geöffnet. Du kannst es auch mit deiner GUI-Taste öffnen.";
             }
             case "get_inventory" -> inventorySummary(mc);
+            case "sort_inventory" -> AIPlayerController.sortInventory();
             case "get_player_status" -> playerStatus(mc);
             case "random_teleport" -> {
                 if (mc.player.networkHandler == null) yield "Aktion fehlgeschlagen: Keine Serververbindung.";
