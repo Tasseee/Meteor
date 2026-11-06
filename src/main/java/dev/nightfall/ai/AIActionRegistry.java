@@ -584,6 +584,15 @@ public final class AIActionRegistry {
                 out.append("\nTreffer im aktuellen ESP-Cache: ").append(observations.size()).append(" (max. 10 angezeigt).");
                 for (String observation : observations) out.append("\n- ").append(observation);
                 if (observations.isEmpty()) out.append("\nKeine passenden BlockEntities im aktuellen ESP-Cache.");
+            } else if (module instanceof StaffWatch watch) {
+                List<String> observations = watch.aiObservations(10);
+                out.append("\\nBeobachtete Namen (max. 10):");
+                for (String observation : observations) out.append("\\n- ").append(observation);
+            } else if (module instanceof AntiVanishHints) {
+                StaffWatch watch = ModuleManager.get(StaffWatch.class);
+                out.append("\\nGeteilte Tab-/Entity-Verlaufssamples aus StaffWatch (max. 10):");
+                for (String observation : watch.aiObservations(10)) out.append("\\n- ").append(observation);
+                out.append("\\nAntiVanishHints kann keinen serverseitigen Vanish-Status erkennen.");
             } else if (module instanceof ChunkEsp) {
                 out.append("\nVisualisiert die SUS/GONE-Ergebnisse des BaseFinder; Details werden dort ausgegeben.");
             }
