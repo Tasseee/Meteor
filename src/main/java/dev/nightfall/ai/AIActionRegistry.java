@@ -408,6 +408,9 @@ public final class AIActionRegistry {
         tools.add(tool("guard_nearby_hostiles",
                 "Temporarily take control of the player's movement to defend them from nearby vanilla HostileEntity mobs within 10 blocks. Uses local safe pathfinding and normal melee attacks, reacquires nearby hostile mobs, and never attacks players, passive mobs or neutral mobs. Stops after 90 seconds or 24 attacks; the player can stop immediately with stop_current_action. This controls the player's avatar, so manual movement is limited during the guard. Requires player confirmation.",
                 objectSchema()));
+        tools.add(tool("get_player_action_status",
+                "Read the current status of Nightfall's player movement and interaction controller (navigation, mining, gathering, crafting, sorting, smelting or eating). Read-only; no confirmation required. Reports only the current client-side task state. An idle result does not prove that the last task succeeded; use task-specific inventory/world verification where available. Builder status is reported separately by get_build_status.",
+                objectSchema()));
         tools.add(tool("stop_current_action",
                 "Immediately stop Nightfall movement, navigation, mining, wood/resource gathering, crafting, smelting, eating and combat, and release all keys controlled by Nightfall. Safe emergency stop.",
                 objectSchema()));
@@ -615,6 +618,9 @@ public final class AIActionRegistry {
                     args.has("item") ? requiredString(args, "item", 64).trim() : null));
             case "attack_nearest_hostile" -> new Action(name, args, AICombatController.preview());
             case "guard_nearby_hostiles" -> new Action(name, args, AICombatController.previewGuard());
+            case "get_player_action_status" -> new Action(name, args,
+                    "Liest den aktuellen Status der Spieleraktionen: " + AIPlayerController.status()
+                            + ". Das ist eine Momentaufnahme des Clientzustands. Wenn keine Aktion aktiv ist, bedeutet das allein nicht, dass der letzte Auftrag erfolgreich war; prüfe dafür das jeweilige Ergebnis, z. B. Inventar oder Weltzustand.");
             case "stop_current_action" -> new Action(name, args,
                     "Nightfall stoppt sofort Navigation, Bewegung, Blockabbau, Holz- und Rohstoffsammlung, Crafting, Schmelzen, Essen und Kampf und gibt alle eigenen Tasten frei.");
             case "resume_saved_build" -> new Action(name, args, AIBuilder.hasRestoredCheckpoint()
@@ -637,7 +643,7 @@ public final class AIActionRegistry {
     public static boolean requiresConfirmation(String actionName) {
         return !Set.of("search_blueprints", "list_schematics", "inspect_schematic", "get_module_settings", "open_nightfall_menu",
                 "get_build_status", "get_schematic_progress", "verify_schematic_section", "get_base_findings", "get_module_observations", "list_fake_base_templates",
-                "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
+                "get_player_action_status", "pause_build", "stop_build", "stop_movement", "stop_current_action").contains(actionName);
     }
 
     private static String moduleObservationSummary(String requestedModule) {
@@ -884,6 +890,10 @@ public final class AIActionRegistry {
             case "eat_food" -> AIPlayerController.eatFood(args.has("item") ? args.get("item").getAsString() : null);
             case "attack_nearest_hostile" -> AICombatController.start();
             case "guard_nearby_hostiles" -> AICombatController.startGuard();
+            case "get_player_action_status" -> {
+                yield "Status der Spieleraktionen: " + AIPlayerController.status()
+                        + ". Clientseitige Momentaufnahme; kein Nachweis für den Erfolg eines bereits beendeten Auftrags.";
+            }
             case "stop_current_action" -> {
                 AICombatController.stop(null);
                 AIBuilder.stop();
