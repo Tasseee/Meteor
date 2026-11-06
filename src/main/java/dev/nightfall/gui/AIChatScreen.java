@@ -54,12 +54,29 @@ public final class AIChatScreen extends Screen {
     private final int[] suggestionX = new int[3];
     private final int[] suggestionW = new int[3];
     private int suggestionY;
-    private static final String[] SUGGESTION_LABELS = {"Kleines Haus", "Holz sammeln", "Inventar sort."};
-    private static final String[] SUGGESTION_PROMPTS = {
-            "Baue mir ein kleines Starterhaus, wenn die vorhandenen Baupläne und Materialien dafür passen. Zeig mir zuerst die Vorschau und frag vor dem Bauen nach meiner Bestätigung.",
-            "Sammle Holz bis ich genug für mein Ziel habe. Prüfe zuerst meinen Bestand und frag nach der gewünschten Menge.",
-            "Analysiere mein Inventar und schlage eine sichere Sortierung vor."
-    };
+    private record SuggestionSet(String[] labels, String[] prompts) {}
+    private static final SuggestionSet OVERWORLD_SUGGESTIONS = new SuggestionSet(
+            new String[]{"Kleines Haus", "Holz sammeln", "Inventar sort."},
+            new String[]{
+                    "Baue mir ein kleines Starterhaus, wenn die vorhandenen Baupläne und Materialien dafür passen. Zeig mir zuerst die Vorschau und frag vor dem Bauen nach meiner Bestätigung.",
+                    "Sammle Holz bis ich genug für mein Ziel habe. Prüfe zuerst meinen Bestand und frag nach der gewünschten Menge.",
+                    "Analysiere mein Inventar und schlage eine sichere Sortierung vor."
+            });
+    private static final SuggestionSet NETHER_SUGGESTIONS = new SuggestionSet(
+            new String[]{"Nether-Route", "Debris suchen", "Inventar sort."},
+            new String[]{
+                    "Prüfe meine aktuelle Position im Nether und schlage eine sichere, erreichbare Route vor. Starte keine Bewegung ohne Vorschau und meine Bestätigung.",
+                    "Prüfe zuerst, ob ich im Nether bin und eine geeignete Spitzhacke habe. Schätze ein, ob eine Ancient-Debris-Suche hier sinnvoll und sicher möglich ist, und frag nach Ziel und Bestätigung, bevor du etwas startest.",
+                    "Analysiere mein Inventar und schlage eine sichere Sortierung vor."
+            });
+    private static final SuggestionSet END_SUGGESTIONS = new SuggestionSet(
+            new String[]{"End erkunden", "Spielerstatus", "Inventar sort."},
+            new String[]{
+                    "Prüfe, welche Erkundungs- und Navigationsfunktionen in meiner aktuellen Situation verfügbar sind. Nenne Risiken und frage vor einer Bewegung nach Bestätigung.",
+                    "Zeige mir Dimension, Koordinaten und aktuellen Status, soweit diese Daten lokal verfügbar sind.",
+                    "Analysiere mein Inventar und schlage eine sichere Sortierung vor."
+            });
+    private SuggestionSet renderedSuggestions = OVERWORLD_SUGGESTIONS;
     private AIActionRegistry.Action pendingAction;
     private AIChatClient.ToolCall pendingToolCall;
     private boolean pendingRealtimeToolCall;
@@ -84,6 +101,14 @@ public final class AIChatScreen extends Screen {
         active = this;
         history.add(new ChatLine("assistant",
                 "Hey! Ich bin Nightfall AI. Ich kann dir beim Spielen helfen und auch Nightfall-Module und Menü-Einstellungen für dich ändern. Änderungen frage ich vorher bei dir an."));
+    }
+
+    private static SuggestionSet suggestionsForCurrentDimension(MinecraftClient mc) {
+        if (mc == null || mc.world == null) return OVERWORLD_SUGGESTIONS;
+        String dimension = mc.world.getRegistryKey().getValue().getPath();
+        if ("the_nether".equals(dimension)) return NETHER_SUGGESTIONS;
+        if ("the_end".equals(dimension)) return END_SUGGESTIONS;
+        return OVERWORLD_SUGGESTIONS;
     }
 
     @Override
@@ -302,7 +327,8 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, status, panelX + 16, panelY + 47,
                 (waiting || waitingLocate) ? Theme.ACCENT : Theme.TEXT_DIM, false);
 
-        // Clickable example prompts help new players discover Nightfall's abilities.
+        // Suggestions adapt to the currently loaded dimension; they never execute on click.
+        renderedSuggestions = suggestionsForCurrentDimension(mc);
         ctx.drawText(mc.textRenderer, "PROBIER MAL:", panelX + 16, panelY + 63, Theme.TEXT_DIM, true);
         suggestionY = panelY + 77;
         int suggestionGap = 5;
@@ -315,7 +341,7 @@ public final class AIChatScreen extends Screen {
                     0xFF293342);
             ctx.fill(suggestionX[i], suggestionY, suggestionX[i] + suggestionW[i], suggestionY + 1,
                     0x8835E0D0);
-            String label = SUGGESTION_LABELS[i];
+            String label = renderedSuggestions.labels()[i];
             while (mc.textRenderer.getWidth(label) > suggestionW[i] - 8 && label.length() > 4)
                 label = label.substring(0, label.length() - 2) + "…";
             ctx.drawText(mc.textRenderer, label,
@@ -565,7 +591,7 @@ public final class AIChatScreen extends Screen {
                 && click.y() >= suggestionY && click.y() <= suggestionY + 18) {
             for (int i = 0; i < suggestionX.length; i++) {
                 if (click.x() >= suggestionX[i] && click.x() <= suggestionX[i] + suggestionW[i]) {
-                    input = SUGGESTION_PROMPTS[i];
+                    input = renderedSuggestions.prompts()[i];
                     status = "Vorschlag eingefügt · Du kannst ihn noch anpassen";
                     return true;
                 }
