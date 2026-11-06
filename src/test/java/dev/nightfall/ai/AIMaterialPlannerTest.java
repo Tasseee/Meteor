@@ -90,6 +90,49 @@ class AIMaterialPlannerTest {
     }
 
     @Test
+    void incompleteAlternativesRankByMissingIngredientUnits() {
+        List<AIMaterialPlanner.IncompleteCraftableCandidate> ranked =
+                AIMaterialPlanner.rankIncomplete(List.of(
+                        new AIMaterialPlanner.IncompleteCraftableCandidate(
+                                "minecraft:stone_bricks", "Steinziegel", 0, 54, 24,
+                                3, 18, true, "24× Stein", "Kette A"),
+                        new AIMaterialPlanner.IncompleteCraftableCandidate(
+                                "minecraft:oak_planks", "Eichenbretter", 0, 54, 8,
+                                2, 12, false, "8× Eichenstamm", "Kette B")
+                ));
+
+        assertEquals("minecraft:oak_planks", ranked.get(0).itemId());
+        assertEquals(8, ranked.get(0).missingIngredientUnits());
+    }
+
+    @Test
+    void incompleteAlternativesUseStableItemIdTieBreaking() {
+        List<AIMaterialPlanner.IncompleteCraftableCandidate> ranked =
+                AIMaterialPlanner.rankIncomplete(List.of(
+                        new AIMaterialPlanner.IncompleteCraftableCandidate(
+                                "minecraft:stone", "Stein", 0, 54, 12, 2, 8,
+                                false, "12× Bruchstein", "Kette"),
+                        new AIMaterialPlanner.IncompleteCraftableCandidate(
+                                "minecraft:andesite", "Andesit", 0, 54, 12, 2, 8,
+                                false, "12× Bruchstein", "Kette")
+                ));
+
+        assertEquals("minecraft:andesite", ranked.get(0).itemId());
+    }
+
+    @Test
+    void incompleteAlternativesRejectMissingOrInvalidDiagnostics() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new AIMaterialPlanner.IncompleteCraftableCandidate(
+                        "minecraft:stone", "Stein", 0, 54, 0, 2, 8,
+                        false, "12× Bruchstein", "Kette"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new AIMaterialPlanner.IncompleteCraftableCandidate(
+                        "minecraft:stone", "Stein", 0, 54, 12, 2, 8,
+                        false, " ", "Kette"));
+    }
+
+    @Test
     void craftableAlternativesRejectInvalidCounts() {
         assertThrows(IllegalArgumentException.class,
                 () -> new AIMaterialPlanner.CraftableCandidate("minecraft:stone", "Stein",
