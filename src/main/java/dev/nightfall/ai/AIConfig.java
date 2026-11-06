@@ -22,7 +22,7 @@ public final class AIConfig {
                            String speechVoice, boolean voiceInputEnabled, boolean voiceOutputEnabled) {
         static Settings defaults() {
             return new Settings("https://api.openai.com/v1/chat/completions",
-                    "gpt-4o-mini", "", true,
+                    "gpt-4o-mini", "", false,
                     "https://api.openai.com/v1", "gpt-4o-mini-transcribe", "gpt-4o-mini-tts", "alloy", false, false);
         }
     }
