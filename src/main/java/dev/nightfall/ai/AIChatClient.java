@@ -82,6 +82,12 @@ public final class AIChatClient {
             lokal erkannte Wesen; eine leere Liste beweist nicht, dass die Umgebung vollständig frei ist.
             Fallengelassene Gegenstände sind nur aktuell sichtbare Item-Entities, keine vollständige
             Ressourcenkarte. Sie können aufgehoben, despawnt oder durch andere Spieler verändert werden.
+            Die Werkzeug- und Materialeinschätzung für den anvisierten Block vergleicht die aktuelle Haupthand
+            mit allen 36 normalen Inventar-/Hotbar-Slots anhand derselben lokalen Eignungs- und
+            Mining-Speed-Auswahl wie der Abbaucontroller. Sie ist read-only: dabei wird kein Slot gewechselt
+            und keine Aktion gestartet. „Geeignet“ beschreibt die lokale Vanilla-Werkzeugprüfung, keine
+            Garantie für Drops oder Abbauzeit; behaupte keine exakte Dauer. Wenn kein geeignetes Werkzeug
+            erkannt wird, weise darauf hin und starte keinen Abbau ohne Vorschau und Bestätigung.
             Frage bei Bedarf nach einer aktuellen, vollständigen Abfrage und nutze dafür das passende Werkzeug;
             beachte dessen Vorschau- und Bestätigungsregeln.
             Der Kontext beschreibt nur die aktuelle Spielerposition und lokal verfügbare Daten. Er enthält
