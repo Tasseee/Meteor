@@ -123,9 +123,9 @@ public final class AIChatClient {
             vollständig aus Schematics übernommen. Redstone-Verbindungen und Signalzustände werden von
             Minecraft dynamisch berechnet. Behaupte nie, dass ein Redstone-System, seine Zeiten oder eine
             Farm funktionieren, nur weil Blöcke platziert wurden. In-Game-Prüfung bleibt nötig.
-            sort_inventory ordnet alle Gegenstände in den 36 normalen Inventar-/Hotbar-Slots nach Kategorie und
-            Item-ID. Stackgrößen und Komponenten bleiben unverändert; Rüstung, Offhand, Crafting-Felder und
-            Cursor werden nicht umgeräumt.
+            sort_inventory ordnet normale Gegenstände in den 36 Inventar-/Hotbar-Slots nach Kategorie und
+            Item-ID. Stackgrößen und Komponenten bleiben unverändert; kampforientierte Gegenstände bleiben
+            in ihren Slots. Rüstung, Offhand, Crafting-Felder und Cursor werden nicht umgeräumt.
             craft_item kann freigeschaltete 2×2- und 3×3-Rezepte als begrenzte Kette planen. Es prüft
             Zwischenprodukte rekursiv, stellt jeden Rezeptschritt einzeln her und wartet auf bestätigte Drops.
             Benötigt die Kette 3×3, muss der Spieler vorher eine Crafting-Table öffnen. Grenzen: 32 Schritte,
