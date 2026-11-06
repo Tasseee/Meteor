@@ -123,8 +123,12 @@ public final class AIChatClient {
             und denselben Indizes. Für jeden weiteren Abschnitt wiederhole inspect_schematic -> Zugangsposition
             lesen -> navigate_to -> build_schematic. Baue alle Abschnitte in aufsteigender part_y-Reihenfolge
             (unterste Ebene zuerst), danach X/Z,
-            damit obere Teile an bereits bestätigte untere Blöcke anschließen können. Wiederhole das abschnittsweise
-            und überspringe keine Abschnitte. Jeder Abschnitt braucht seine eigene Vorschau und ausdrückliche Spielerbestätigung.
+            damit obere Teile an bereits bestätigte untere Blöcke anschließen können. Rufe vor der Auswahl und nach Abschluss
+            jedes Teils get_schematic_progress auf. Verwende den dort gespeicherten nächsten offenen Abschnitt und überspringe
+            bereits vollständig abgeschlossene Abschnitte. Die Reihenfolge bleibt part_y aufsteigend, danach X/Z. Jeder offene
+            Abschnitt braucht seine eigene Vorschau und ausdrückliche Spielerbestätigung. Ein Abschnitt wird erst dauerhaft als
+            fertig markiert, wenn Aushub, feste Blöcke und alle vorgesehenen Wasserquellen serverseitig bestätigt sind. Ein
+            abgebrochener oder pausierter Teil zählt nicht als abgeschlossen.
             Nightfall hält die Gesamtposition über den gespeicherten Anker stabil, setzt jeden Teilplan
             einzeln und sichert dessen Baufortschritt lokal. Nightfall übernimmt gespeicherte BlockStates
             und versucht Ausrichtung/Platzierung mit Minecrafts normaler BlockItem-Logik exakt wiederherzustellen. Block-Entity-Blöcke wie Hopper und Truhen dürfen mit frischen Standarddaten platziert werden; ihre Inventarinhalte und Sonderdaten werden nicht kopiert.
