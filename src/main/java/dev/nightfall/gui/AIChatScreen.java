@@ -55,6 +55,7 @@ public final class AIChatScreen extends Screen {
     private boolean pendingRealtimeToolCall;
     private final List<AIChatClient.Message> apiHistory = new ArrayList<>();
     private int actionRoundTrips;
+    private final Map<String, Integer> failedToolAttempts = new HashMap<>();
     private int confirmX, confirmY, confirmW, confirmH;
     private int cancelX, cancelY, cancelW;
     private boolean waitingLocate;
@@ -627,6 +628,7 @@ public final class AIChatScreen extends Screen {
                 "Hinweis: Deine Nachricht wurde auf " + MAX_USER_MESSAGE_CHARS + " Zeichen begrenzt, damit die Anfrage schnell bleibt."));
         apiHistory.add(new AIChatClient.Message("user", prompt));
         actionRoundTrips = 0;
+        failedToolAttempts.clear();
         scroll = Float.MAX_VALUE;
         if (AIRealtimeVoiceClient.isActive()) {
             AIRealtimeVoiceClient.sendText(prompt);
@@ -704,8 +706,15 @@ public final class AIChatScreen extends Screen {
                     if (detail == null || detail.isBlank()) detail = actionFailure.getClass().getSimpleName();
                     detail = detail.replaceAll("[\\r\\n\\t]+", " ").trim();
                     if (detail.length() > 320) detail = detail.substring(0, 320) + "…";
-                    String failureResult = "Nightfall konnte das Werkzeug nicht ausführen: " + detail
-                            + ". Prüfe den Zustand und wähle nur dann einen sicheren Alternativschritt.";
+                    String signature = call.name() + "|" + call.arguments();
+                    int failures = failedToolAttempts.merge(signature, 1, Integer::sum);
+                    String failureResult = "Nightfall konnte das Werkzeug nicht ausführen: " + detail + ".";
+                    if (failures >= 2) {
+                        failureResult += " Derselbe Schritt ist bereits mehrfach fehlgeschlagen. Nicht erneut aufrufen. "
+                                + "Erkläre die Blockade oder wähle einen wesentlich anderen sicheren Schritt.";
+                    } else {
+                        failureResult += " Prüfe den Zustand und wähle nur dann einen sicheren Alternativschritt.";
+                    }
                     apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), failureResult));
                     history.set(responseIndex, new ChatLine("assistant", failureResult));
                     actionRoundTrips++;
