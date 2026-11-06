@@ -70,7 +70,10 @@ final class AITaskCheckpoint {
             }
 
             JsonObject root = JsonParser.parseString(Files.readString(path)).getAsJsonObject();
-            if (!root.has("version") || root.get("version").getAsInt() != VERSION) return null;
+            if (!root.has("version") || root.get("version").getAsInt() != VERSION) {
+                clear();
+                return null;
+            }
 
             // Keep a valid checkpoint for another server or dimension; it may be needed
             // when the player returns there later.
