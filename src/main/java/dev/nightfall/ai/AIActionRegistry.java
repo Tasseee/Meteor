@@ -561,38 +561,38 @@ public final class AIActionRegistry {
                     || module instanceof BlockEntityEsp;
             if (!relevant || (filter != null && !module.getName().equalsIgnoreCase(filter))) continue;
             matched++;
-            out.append("\\n\\n").append(module.getName()).append(" [")
+            out.append("\n\n").append(module.getName()).append(" [")
                     .append(module.isEnabled() ? "AN" : "AUS").append("]");
             if (!module.isEnabled()) {
                 out.append(" — nicht aktiv; keine aktuellen Modulbeobachtungen.");
                 continue;
             }
             if (module instanceof BaseFinder) {
-                out.append("\\n").append(baseFindingsSummary());
+                out.append("\n").append(baseFindingsSummary());
             } else if (module instanceof IntelligenceScanner scanner) {
-                out.append("\\nDeep-Scan-Chunks: ").append(scanner.scannedChunks())
+                out.append("\nDeep-Scan-Chunks: ").append(scanner.scannedChunks())
                         .append("; offene Scan-Aufträge: ").append(scanner.pendingChunks())
                         .append("; unterirdische Entity-Hinweise: ").append(scanner.undergroundEntityCount())
                         .append(". Detaillierte SUS-Einstufungen stehen beim BaseFinder.");
             } else if (module instanceof EntityScanEsp entityEsp) {
                 List<String> observations = entityEsp.aiObservations(10);
-                out.append("\\nTreffer: ").append(observations.size()).append(" (max. 10 angezeigt).");
-                for (String observation : observations) out.append("\\n- ").append(observation);
-                if (observations.isEmpty()) out.append("\\nKeine passenden Entities im aktuellen Modulbereich.");
+                out.append("\nTreffer: ").append(observations.size()).append(" (max. 10 angezeigt).");
+                for (String observation : observations) out.append("\n- ").append(observation);
+                if (observations.isEmpty()) out.append("\nKeine passenden Entities im aktuellen Modulbereich.");
             } else if (module instanceof BlockEntityEsp blockEsp) {
                 List<String> observations = blockEsp.aiObservations(10);
-                out.append("\\nTreffer im aktuellen ESP-Cache: ").append(observations.size()).append(" (max. 10 angezeigt).");
-                for (String observation : observations) out.append("\\n- ").append(observation);
-                if (observations.isEmpty()) out.append("\\nKeine passenden BlockEntities im aktuellen ESP-Cache.");
+                out.append("\nTreffer im aktuellen ESP-Cache: ").append(observations.size()).append(" (max. 10 angezeigt).");
+                for (String observation : observations) out.append("\n- ").append(observation);
+                if (observations.isEmpty()) out.append("\nKeine passenden BlockEntities im aktuellen ESP-Cache.");
             } else if (module instanceof ChunkEsp) {
-                out.append("\\nVisualisiert die SUS/GONE-Ergebnisse des BaseFinder; Details werden dort ausgegeben.");
+                out.append("\nVisualisiert die SUS/GONE-Ergebnisse des BaseFinder; Details werden dort ausgegeben.");
             }
-            if (out.length() > 10000) return out.append("\\n(gekürzt)").toString();
+            if (out.length() > 10000) return out.append("\n(gekürzt)").toString();
         }
         if (matched == 0) return filter == null
                 ? "Keine passenden Nightfall-Module gefunden."
                 : "Kein unterstütztes Nightfall-Modul mit dem Namen „" + filter + "“ gefunden.";
-        out.append("\\n\\nHinweis: ESP- und Scanner-Treffer sind lokale Beobachtungen aus bereits geladenen Chunks/Entities. Fehlende Treffer beweisen nicht, dass dort nichts existiert.");
+        out.append("\n\nHinweis: ESP- und Scanner-Treffer sind lokale Beobachtungen aus bereits geladenen Chunks/Entities. Fehlende Treffer beweisen nicht, dass dort nichts existiert.");
         return out.toString();
     }
 
