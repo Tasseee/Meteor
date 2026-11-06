@@ -13,6 +13,7 @@ import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.component.DataComponentTypes;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Click;
@@ -1317,7 +1318,7 @@ public final class AIChatScreen extends Screen {
             ItemStack stack = player.getInventory().getStack(slot);
             if (stack.isEmpty()) continue;
             inventoryCounts.merge(stack.getName().getString(), stack.getCount(), Integer::sum);
-            if (stack.isFood()) foodUnits += stack.getCount();
+            if (stack.contains(DataComponentTypes.FOOD)) foodUnits += stack.getCount();
             String itemId = Registries.ITEM.getId(stack.getItem()).toString();
             if ("minecraft:torch".equals(itemId) || "minecraft:soul_torch".equals(itemId))
                 torchUnits += stack.getCount();
