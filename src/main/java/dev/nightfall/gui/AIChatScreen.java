@@ -1234,52 +1234,19 @@ public final class AIChatScreen extends Screen {
                 .filter(mob -> mob.squaredDistanceTo(player) <= 64.0)
                 .count();
 
-        List<String> immediateHazards = new ArrayList<>();
-        List<String> cautionSignals = new ArrayList<>();
-        if (player.isInLava()) immediateHazards.add("Spieler befindet sich in Lava");
-        if (player.isOnFire()) immediateHazards.add("Spieler brennt");
-        if (nearestHostileDistance <= 4.0) {
-            immediateHazards.add("feindlicher Mob in unmittelbarer Nähe ("
-                    + String.format(Locale.ROOT, "%.1f", nearestHostileDistance) + " Blöcke)");
-        } else if (nearestHostileDistance <= 8.0) {
-            cautionSignals.add("feindlicher Mob in der Nähe ("
-                    + String.format(Locale.ROOT, "%.1f", nearestHostileDistance) + " Blöcke)");
-        }
-        if (player.getHealth() <= 6.0F) {
-            cautionSignals.add("Gesundheit niedrig (" + health + ")");
-        }
-        if (player.getHungerManager().getFoodLevel() <= 6) {
-            cautionSignals.add("Hunger niedrig (" + hunger + ")");
-        }
-        if (player.isSubmergedInWater()) {
-            cautionSignals.add("Spieler ist unter Wasser; verbleibende Luft wird hier nicht bewertet");
-        }
         boolean nightTime = dayTime >= 13_000L || dayTime < 1_000L;
-        if (nightTime && lightLevel <= 7) {
-            cautionSignals.add("Nacht bei niedriger Lichtstufe (" + lightLevel + "/15)");
-        }
-
-        String localRiskLevel;
-        if (!immediateHazards.isEmpty()) {
-            localRiskLevel = "HOCH";
-        } else if (!cautionSignals.isEmpty()) {
-            localRiskLevel = "ERHÖHT";
-        } else {
-            localRiskLevel = "KEINE AKUTE GEFAHR IN DEN ERFASSTEN DATEN ERKANNT";
-        }
-        String localRiskSummary = "Lokale Gefahreneinschätzung: " + localRiskLevel + ". ";
-        if (!immediateHazards.isEmpty()) {
-            localRiskSummary += "Akute Hinweise: " + String.join("; ", immediateHazards) + ". ";
-        }
-        if (!cautionSignals.isEmpty()) {
-            localRiskSummary += "Vorsichtshinweise: " + String.join("; ", cautionSignals) + ". ";
-        }
-        if (immediateHazards.isEmpty() && cautionSignals.isEmpty()) {
-            localRiskSummary += "Keine der erfassten Prüfungen meldet aktuell eine akute Gefahr. "
-                    + "Das ist keine Sicherheitsgarantie; nicht sichtbare oder nicht geladene Bereiche wurden nicht geprüft.";
-        }
-        localRiskSummary += " Erkannte feindliche Mobs im Umkreis von 8 Blöcken: "
-                + hostileMobsWithinEightBlocks + ".";
+        AILocalRiskAssessment.Result localRisk = AILocalRiskAssessment.assess(
+                player.isInLava(),
+                player.isOnFire(),
+                nearestHostileDistance,
+                player.getHealth(),
+                player.getMaxHealth(),
+                player.getHungerManager().getFoodLevel(),
+                player.isSubmergedInWater(),
+                nightTime,
+                lightLevel,
+                hostileMobsWithinEightBlocks);
+        String localRiskSummary = localRisk.summary();
 
         String targetedBlock = "kein Block direkt anvisiert";
         if (mc.crosshairTarget instanceof BlockHitResult hit) {
