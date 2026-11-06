@@ -52,6 +52,39 @@ class AIMaterialPlannerTest {
     }
 
     @Test
+    void craftableAlternativesPreferFewerRecipeBatchesThenSteps() {
+        List<AIMaterialPlanner.CraftableCandidate> ranked = AIMaterialPlanner.rankCraftable(List.of(
+                new AIMaterialPlanner.CraftableCandidate("minecraft:stone_bricks", "Steinziegel",
+                        0, 54, 3, 18, true, "Kette A"),
+                new AIMaterialPlanner.CraftableCandidate("minecraft:oak_planks", "Eichenbretter",
+                        12, 42, 2, 11, false, "Kette B"),
+                new AIMaterialPlanner.CraftableCandidate("minecraft:birch_planks", "Birkenbretter",
+                        0, 54, 1, 11, false, "Kette C")
+        ));
+
+        assertEquals("minecraft:birch_planks", ranked.get(0).itemId());
+        assertEquals("minecraft:oak_planks", ranked.get(1).itemId());
+        assertEquals("minecraft:stone_bricks", ranked.get(2).itemId());
+    }
+
+    @Test
+    void craftableAlternativesUseStableItemIdTieBreaking() {
+        List<AIMaterialPlanner.CraftableCandidate> ranked = AIMaterialPlanner.rankCraftable(List.of(
+                new AIMaterialPlanner.CraftableCandidate("minecraft:stone", "Stein", 0, 54, 2, 8, false, "Kette"),
+                new AIMaterialPlanner.CraftableCandidate("minecraft:andesite", "Andesit", 0, 54, 2, 8, true, "Kette")
+        ));
+
+        assertEquals("minecraft:andesite", ranked.get(0).itemId());
+    }
+
+    @Test
+    void craftableAlternativesRejectInvalidCounts() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new AIMaterialPlanner.CraftableCandidate("minecraft:stone", "Stein",
+                        0, 0, 1, 1, false, "Kette"));
+    }
+
+    @Test
     void emptyCandidateListProducesEmptyPlan() {
         assertTrue(AIMaterialPlanner.rank(List.of(), 54).isEmpty());
     }
