@@ -2964,11 +2964,13 @@ public final class AIPlayerController {
 
         String heldDescription = heldTool.isEmpty()
                 ? "leer"
-                : heldTool.getName().getString() + (heldSuitable ? " (geeignet)" : " (nicht als geeignetes Erntewerkzeug erkannt)");
+                : heldTool.getName().getString() + (heldSuitable ? " (geeignet)" : " (nicht als geeignetes Erntewerkzeug erkannt)")
+                        + ", " + describeToolDurability(heldTool);
         String bestDescription = bestTool.isEmpty()
                 ? "kein Werkzeug im Inventar"
                 : bestTool.getName().getString()
                         + (bestSuitable ? " (geeignet)" : " (nicht als geeignetes Erntewerkzeug erkannt)")
+                        + ", " + describeToolDurability(bestTool)
                         + ", Slotindex " + bestSlot + " (0-basiert; 0–8 = Hotbar)";
         String harvestNote = bestSuitable
                 ? "Ein passendes Erntewerkzeug wurde gefunden."
@@ -2987,6 +2989,16 @@ public final class AIPlayerController {
                 + ". " + harvestNote
                 + " Das ist eine clientseitige Momentaufnahme, keine garantierte Abbauzeit oder Server-Drop-Zusage. "
                 + "Verzauberungen, Effekte, Haltbarkeit, Serverregeln und Verzögerungen können das Ergebnis beeinflussen.";
+    }
+
+    private static String describeToolDurability(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return "keine Haltbarkeit verfügbar";
+        int maxDamage = stack.getMaxDamage();
+        if (maxDamage <= 0) return "keine Haltbarkeitsanzeige";
+        int remaining = Math.max(0, maxDamage - stack.getDamage());
+        double percentage = remaining * 100.0 / maxDamage;
+        return remaining + " Haltbarkeitspunkte übrig ("
+                + String.format(java.util.Locale.ROOT, "%.1f", percentage) + "%)";
     }
 
     private static int findBestMiningToolInventorySlot(ClientPlayerEntity player, BlockState targetState) {
@@ -3012,6 +3024,7 @@ public final class AIPlayerController {
 
     private static int findBestMiningToolSlot(MinecraftClient mc, ClientPlayerEntity player,
                                               BlockState targetState) {
+        int selectedSlot = player.getInventory().getSelectedSlot();
         int bestSlot = findBestMiningToolInventorySlot(player, targetState);
         if (bestSlot < 9) return bestSlot;
         if (player.currentScreenHandler != player.playerScreenHandler)
