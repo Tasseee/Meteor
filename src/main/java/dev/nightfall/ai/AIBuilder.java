@@ -144,6 +144,10 @@ public final class AIBuilder {
     private static boolean checkpointLoadAttempted;
     private static String checkpointScanKey = "";
     private static String savedServerKey = "";
+    private static String schematicSourceFile = "";
+    private static int schematicPartX = -1;
+    private static int schematicPartY = -1;
+    private static int schematicPartZ = -1;
 
     private AIBuilder() {}
 
@@ -360,11 +364,36 @@ public final class AIBuilder {
                                                   List<RelativeBlock> clearOffsets, List<RelativeBlock> waterOffsets,
                                                   BlockPos sectionCenter, int sectionWidth,
                                                   int sectionHeight, int sectionLength) {
+        return prepareImportedStructure(name, offsets, clearOffsets, waterOffsets, sectionCenter,
+                sectionWidth, sectionHeight, sectionLength, null, -1, -1, -1);
+    }
+
+    public static String prepareImportedStructure(String name, List<RelativeBlock> offsets,
+                                                  List<RelativeBlock> clearOffsets, List<RelativeBlock> waterOffsets,
+                                                  BlockPos sectionCenter, int sectionWidth, int sectionHeight,
+                                                  int sectionLength, String sourceFile, int partX, int partY, int partZ) {
         if (sectionCenter == null || sectionWidth < 1 || sectionWidth > 32
                 || sectionHeight < 1 || sectionHeight > 32 || sectionLength < 1 || sectionLength > 32)
             throw new IllegalArgumentException("Ungültiges Zentrum oder ungültige Abmessungen des Schematic-Abschnitts.");
-        return prepareCustomStructure(name, null, null, offsets, clearOffsets,
+        if (sourceFile != null && ((!sourceFile.toLowerCase(Locale.ROOT).endsWith(".schem")
+                && !sourceFile.toLowerCase(Locale.ROOT).endsWith(".litematic"))
+                || sourceFile.length() > 110 || partX < 0 || partX > 7 || partY < 0 || partY > 7
+                || partZ < 0 || partZ > 7))
+            throw new IllegalArgumentException("Ungültige Schematic-Datei oder Abschnittskennung.");
+
+        // Clear stale identity before the shared preparation path writes its first checkpoint.
+        schematicSourceFile = "";
+        schematicPartX = schematicPartY = schematicPartZ = -1;
+        String preview = prepareCustomStructure(name, null, null, offsets, clearOffsets,
                 32_768, 31, 31, true, sectionCenter, sectionWidth, sectionHeight, sectionLength, waterOffsets);
+        if (sourceFile != null) {
+            schematicSourceFile = sourceFile;
+            schematicPartX = partX;
+            schematicPartY = partY;
+            schematicPartZ = partZ;
+            saveCheckpoint();
+        }
+        return preview;
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial, List<RelativeBlock> offsets) {
@@ -1409,7 +1438,7 @@ public final class AIBuilder {
         try {
             JsonObject root = new JsonObject();
             savedServerKey = currentServerKey(mc);
-            root.addProperty("version", 4);
+            root.addProperty("version", 5);
             root.addProperty("server", savedServerKey);
             root.addProperty("dimension", mc.world.getRegistryKey().getValue().toString());
             root.addProperty("name", blueprintName);
@@ -1421,6 +1450,12 @@ public final class AIBuilder {
             root.addProperty("maxBlocks", preparedMaxBlocks);
             root.addProperty("maxHorizontal", preparedMaxHorizontal);
             root.addProperty("maxY", preparedMaxY);
+            if (!schematicSourceFile.isBlank() && schematicPartX >= 0 && schematicPartY >= 0 && schematicPartZ >= 0) {
+                root.addProperty("schematicFile", schematicSourceFile);
+                root.addProperty("schematicPartX", schematicPartX);
+                root.addProperty("schematicPartY", schematicPartY);
+                root.addProperty("schematicPartZ", schematicPartZ);
+            }
             JsonArray blocks = new JsonArray();
             for (BlockPos pos : PLAN) {
                 BlockItem item = PLAN_MATERIALS.getOrDefault(pos, material);
@@ -1492,7 +1527,7 @@ public final class AIBuilder {
             if (!root.has("version"))
                 throw new IllegalArgumentException("Checkpoint-Version fehlt.");
             int checkpointVersion = root.get("version").getAsInt();
-            if ((checkpointVersion != 2 && checkpointVersion != 3 && checkpointVersion != 4)
+            if ((checkpointVersion != 2 && checkpointVersion != 3 && checkpointVersion != 4 && checkpointVersion != 5)
                     || !root.has("blocks") || !root.get("blocks").isJsonArray()
                     || root.getAsJsonArray("blocks").size() > 32_768
                     || !root.has("excavation") || !root.get("excavation").isJsonArray()
@@ -1591,6 +1626,25 @@ public final class AIBuilder {
             blueprintName = root.get("name").getAsString();
             if (blueprintName.isBlank() || blueprintName.length() > 48)
                 throw new IllegalArgumentException("Der gespeicherte Bauplanname ist ungültig.");
+            schematicSourceFile = "";
+            schematicPartX = schematicPartY = schematicPartZ = -1;
+            boolean hasSchematicIdentity = root.has("schematicFile") || root.has("schematicPartX")
+                    || root.has("schematicPartY") || root.has("schematicPartZ");
+            if (hasSchematicIdentity) {
+                if (checkpointVersion < 5 || !root.has("schematicFile") || !root.has("schematicPartX")
+                        || !root.has("schematicPartY") || !root.has("schematicPartZ"))
+                    throw new IllegalArgumentException("Die gespeicherte Schematic-Abschnittskennung ist unvollständig.");
+                schematicSourceFile = root.get("schematicFile").getAsString();
+                schematicPartX = root.get("schematicPartX").getAsInt();
+                schematicPartY = root.get("schematicPartY").getAsInt();
+                schematicPartZ = root.get("schematicPartZ").getAsInt();
+                String lowerFile = schematicSourceFile.toLowerCase(Locale.ROOT);
+                if (schematicSourceFile.length() > 110
+                        || (!lowerFile.endsWith(".schem") && !lowerFile.endsWith(".litematic"))
+                        || schematicPartX < 0 || schematicPartX > 7 || schematicPartY < 0 || schematicPartY > 7
+                        || schematicPartZ < 0 || schematicPartZ > 7)
+                    throw new IllegalArgumentException("Die gespeicherte Schematic-Abschnittskennung ist ungültig.");
+            }
             materialName = root.has("materialName") ? root.get("materialName").getAsString() : "Gespeicherte Materialien";
             Identifier primaryId = root.has("material") ? Identifier.tryParse(root.get("material").getAsString()) : null;
             BlockItem primary = primaryId != null && Registries.ITEM.get(primaryId) instanceof BlockItem item
@@ -1675,6 +1729,8 @@ public final class AIBuilder {
         if (running) return;
         if (!keepCheckpointDuringCancel) deleteCheckpoint();
         restoredCheckpoint = false;
+        schematicSourceFile = "";
+        schematicPartX = schematicPartY = schematicPartZ = -1;
         prepared = false;
         PLAN.clear();
         PLAN_MATERIALS.clear();
@@ -1753,6 +1809,11 @@ public final class AIBuilder {
 
     private static void stopInternal(String message, boolean notify) {
         MinecraftClient mc = MinecraftClient.getInstance();
+        if (message.startsWith("Bauabschnitt abgeschlossen:") && !schematicSourceFile.isBlank()
+                && schematicPartX >= 0 && schematicPartY >= 0 && schematicPartZ >= 0) {
+            if (!SchematicManager.markSectionComplete(schematicSourceFile, schematicPartX, schematicPartY, schematicPartZ))
+                message += " WARNUNG: Die dauerhafte Abschnittsübersicht konnte nicht aktualisiert werden; prüfe get_schematic_progress.";
+        }
         if (originalSlot >= 0 && mc.player != null) mc.player.getInventory().setSelectedSlot(originalSlot);
         if (mc.player != null) {
             mc.player.setYaw(originalYaw);
@@ -1803,6 +1864,8 @@ public final class AIBuilder {
         excavationWaitingNotice = false;
         pendingExcavationTarget = null;
         restoredCheckpoint = false;
+        schematicSourceFile = "";
+        schematicPartX = schematicPartY = schematicPartZ = -1;
         index = 0;
         preparedPlayerPos = null;
         preparedFacing = null;
