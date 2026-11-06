@@ -1103,9 +1103,9 @@ public final class AIBuilder {
                 delay = 1;
                 return;
             }
+            preserveCheckpointOnStop = true;
             stopInternal("Wasserplatzierung gestoppt: Der Server hat Wasser bei "
                     + pendingWaterTarget.toShortString() + " nicht bestätigt. Der Checkpoint bleibt für eine manuelle Prüfung erhalten.", true);
-            preserveCheckpointOnStop = true;
             return;
         }
 
@@ -1117,10 +1117,10 @@ public final class AIBuilder {
             saveCheckpointProgress(waterIndex, WATER_PLAN.size());
             return;
         }
-        if (!present.isReplaceable() || !mc.world.getFluidState(target).isEmpty()) {
+        if (!present.isReplaceable() || !present.getFluidState().isEmpty()) {
+            preserveCheckpointOnStop = true;
             stopInternal("Wasserplatzierung gestoppt: Das Ziel " + target.toShortString()
                     + " ist nicht mehr frei.", true);
-            preserveCheckpointOnStop = true;
             return;
         }
 
@@ -1131,8 +1131,8 @@ public final class AIBuilder {
             return;
         }
         if (slot < 0) {
-            stopInternal("Wasserplatzierung pausiert: Ein Wassereimer fehlt im Inventar. Der übrige Farmabschnitt bleibt gespeichert.", true);
             preserveCheckpointOnStop = true;
+            stopInternal("Wasserplatzierung pausiert: Ein Wassereimer fehlt im Inventar. Der übrige Farmabschnitt bleibt gespeichert.", true);
             return;
         }
         if (player.getInventory().getSelectedSlot() != slot) {
@@ -1161,9 +1161,9 @@ public final class AIBuilder {
                 status = "Gehe zur Wasserstelle " + target.toShortString();
                 return;
             }
+            preserveCheckpointOnStop = true;
             stopInternal("Wasserplatzierung pausiert: Keine erreichbare Ansetzfläche bei "
                     + target.toShortString() + ". Geh näher heran oder setze diese Wasserstelle manuell.", true);
-            preserveCheckpointOnStop = true;
             return;
         }
         placementApproachAttempts = 0;
