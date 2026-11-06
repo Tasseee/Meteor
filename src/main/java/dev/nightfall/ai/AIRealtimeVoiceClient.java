@@ -59,7 +59,8 @@ public final class AIRealtimeVoiceClient {
     private static volatile Thread playbackThread;
     private static volatile long generation;
     private static final AtomicBoolean CAPTURE_STARTED = new AtomicBoolean();
-    private static volatile LinkedBlockingQueue<byte[]> playbackQueue = new LinkedBlockingQueue<>();
+    private static final int MAX_PLAYBACK_CHUNKS = 30; // Keep at most about 3 seconds queued.
+    private static volatile LinkedBlockingQueue<byte[]> playbackQueue = new LinkedBlockingQueue<>(MAX_PLAYBACK_CHUNKS);
     private static CompletableFuture<WebSocket> sendChain = CompletableFuture.completedFuture(null);
     private static final StringBuilder incomingText = new StringBuilder();
 
@@ -103,9 +104,12 @@ public final class AIRealtimeVoiceClient {
         speaking = false;
         speechEnabled = settings.voiceOutputEnabled();
         CAPTURE_STARTED.set(false);
-        playbackQueue = new LinkedBlockingQueue<>();
+        playbackQueue = new LinkedBlockingQueue<>(MAX_PLAYBACK_CHUNKS);
         incomingText.setLength(0);
         long callGeneration = ++generation;
+        synchronized (AIRealtimeVoiceClient.class) {
+            sendChain = CompletableFuture.completedFuture(null);
+        }
         notifyStatus(callbacks, "Verbinde Nightfall-Sprachanruf …");
 
         try {
@@ -155,6 +159,9 @@ public final class AIRealtimeVoiceClient {
             catch (RuntimeException ignored) {}
         }
         CAPTURE_STARTED.set(false);
+        synchronized (AIRealtimeVoiceClient.class) {
+            sendChain = CompletableFuture.completedFuture(null);
+        }
         Listener oldListener = listener;
         listener = null;
         notifyStatus(oldListener, "Nightfall-Sprachanruf beendet · Mikrofon geschlossen.");
@@ -328,12 +335,38 @@ public final class AIRealtimeVoiceClient {
 
     private static void sendJson(JsonObject value) {
         WebSocket ws = socket;
+        long sendGeneration = generation;
         if (ws == null || !active) return;
+        String serialized = value.toString();
         synchronized (AIRealtimeVoiceClient.class) {
-            sendChain = sendChain.handle((previous, failure) -> socket)
-                    .thenCompose(current -> current == null
-                            ? CompletableFuture.failedFuture(new IllegalStateException("Realtime socket closed"))
-                            : current.sendText(value.toString(), true));
+            sendChain = sendChain.handle((previous, failure) -> null)
+                    .thenCompose(ignored -> {
+                        if (!active || sendGeneration != generation || socket != ws)
+                            return CompletableFuture.completedFuture(ws);
+                        return ws.sendText(serialized, true);
+                    });
+        }
+    }
+
+    /** Drop a microphone frame rather than building an unbounded network backlog. */
+    private static void sendAudioChunk(JsonObject value, long callGeneration) {
+        WebSocket ws = socket;
+        if (ws == null || !active || callGeneration != generation) return;
+        String serialized = value.toString();
+        synchronized (AIRealtimeVoiceClient.class) {
+            if (!active || callGeneration != generation || socket != ws || !sendChain.isDone()) return;
+            sendChain = ws.sendText(serialized, true);
+        }
+    }
+
+    /** Keep playback close to real time by dropping the oldest audio when the queue is full. */
+    private static void enqueuePlayback(byte[] chunk) {
+        LinkedBlockingQueue<byte[]> queue = playbackQueue;
+        if (queue.offer(chunk)) return;
+        queue.poll();
+        if (!queue.offer(chunk)) {
+            queue.clear();
+            queue.offer(chunk);
         }
     }
 
@@ -368,7 +401,7 @@ public final class AIRealtimeVoiceClient {
                 JsonObject event = new JsonObject();
                 event.addProperty("type", "input_audio_buffer.append");
                 event.addProperty("audio", Base64.getEncoder().encodeToString(chunk));
-                sendJson(event);
+                sendAudioChunk(event, callGeneration);
             }
         } catch (Exception failure) {
             if (active && callGeneration == generation)
@@ -444,11 +477,11 @@ public final class AIRealtimeVoiceClient {
                     if (speechEnabled && event.has("delta")) {
                         microphoneSending = false;
                         speaking = true;
-                        playbackQueue.offer(Base64.getDecoder().decode(event.get("delta").getAsString()));
+                        enqueuePlayback(Base64.getDecoder().decode(event.get("delta").getAsString()));
                     }
                 }
                 case "response.output_audio.done" -> {
-                    if (speechEnabled) playbackQueue.offer(PLAYBACK_END);
+                    if (speechEnabled) enqueuePlayback(PLAYBACK_END);
                     else {
                         speaking = false;
                         microphoneSending = ready && !microphoneMuted;
