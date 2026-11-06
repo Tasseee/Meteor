@@ -258,7 +258,7 @@ public final class SchematicManager {
             throw new IllegalArgumentException("Ein neuer Farm-Startpunkt kann nur bei Abschnitt X0 Y0 Z0 gesetzt werden.");
         try {
             Files.createDirectories(BUILD_SESSION_PATH.getParent());
-            if (Files.isRegularFile(BUILD_SESSION_PATH)) {
+            if (Files.isRegularFile(BUILD_SESSION_PATH) && !resetAnchor) {
                 JsonObject session = JsonParser.parseString(Files.readString(BUILD_SESSION_PATH)).getAsJsonObject();
                 boolean sameSession = session.has("version") && session.get("version").getAsInt() == 1
                         && session.has("file") && session.get("file").getAsString().equals(fileName)
