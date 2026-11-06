@@ -2302,10 +2302,15 @@ public final class AIPlayerController {
         }
         if (inventorySortIndex >= inventorySortPlan.size()) {
             int completed = inventorySortPlan.size();
-            inventorySortPlan = List.of();
-            inventorySortIndex = 0;
-            mode = Mode.NONE;
-            notifyPlayer(mc, "Inventar sortiert · " + completed + " Slot-Tausche abgeschlossen.");
+            List<InventorySwap> remainingChanges = createInventorySortPlan(mc);
+            if (!remainingChanges.isEmpty()) {
+                stop("Inventarsortierung nicht vollständig verifiziert: " + completed
+                        + " Slot-Tausche wurden serverseitig bestätigt, aber die Abschlussprüfung findet noch "
+                        + remainingChanges.size() + " notwendige Sortierschritte. Es wurde nichts weiter verändert.");
+                return;
+            }
+            stop("Inventarsortierung verifiziert: Alle " + completed
+                    + " Slot-Tausche wurden bestätigt und das normale Inventar entspricht jetzt der Sortierreihenfolge.");
             return;
         }
 
