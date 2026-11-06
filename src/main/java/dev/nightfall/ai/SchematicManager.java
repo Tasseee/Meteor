@@ -97,7 +97,7 @@ public final class SchematicManager {
             out.append("\nBauabschnitte: ").append((width + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE)
                     .append(" × ").append((height + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE)
                     .append(" × ").append((length + BUILD_PART_SIZE - 1) / BUILD_PART_SIZE)
-                    .append(" (je maximal 32 × 32 × 32 Blöcke). Flüssigkeiten bleiben vorerst manuell.\n")
+                    .append(" (je maximal 32 × 32 × 32 Blöcke). Stille Wasserquellen können im Kreativmodus mit Wassereimer gesetzt werden; Survival-Wasser und Lava bleiben manuell.\n")
                     .append("\nSICHERHEIT: Nightfall räumt vor dem Setzen die als Luft markierten Zellen im Schematic-Volumen frei "
                     + "und entfernt ersetzte Blöcke an Bauzielen. Es übernimmt die gespeicherten BlockStates und sucht mit Minecrafts "
                     + "normaler BlockItem-Platzierlogik nach einer passenden Ansetzfläche und Blickrichtung. Ein Block zählt erst nach "
