@@ -335,7 +335,19 @@ public final class AIBuilder {
     /** Prepares the safe subset and the air volume that must be cleared for an imported schematic. */
     public static String prepareImportedStructure(String name, List<RelativeBlock> offsets,
                                                   List<RelativeBlock> clearOffsets) {
-        return prepareCustomStructure(name, null, null, offsets, clearOffsets, 32_768, 31, 31, true);
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null) throw new IllegalArgumentException("Du musst in einer Welt sein, um die Schematic vorzubereiten.");
+        return prepareImportedStructure(name, offsets, clearOffsets, mc.player.getBlockPos(), 32, 32, 32);
+    }
+
+    public static String prepareImportedStructure(String name, List<RelativeBlock> offsets,
+                                                  List<RelativeBlock> clearOffsets, BlockPos sectionCenter,
+                                                  int sectionWidth, int sectionHeight, int sectionLength) {
+        if (sectionCenter == null || sectionWidth < 1 || sectionWidth > 32
+                || sectionHeight < 1 || sectionHeight > 32 || sectionLength < 1 || sectionLength > 32)
+            throw new IllegalArgumentException("Ungültiges Zentrum oder ungültige Abmessungen des Schematic-Abschnitts.");
+        return prepareCustomStructure(name, null, null, offsets, clearOffsets,
+                32_768, 31, 31, true, sectionCenter, sectionWidth, sectionHeight, sectionLength);
     }
 
     private static String prepareCustomStructure(String name, BlockItem preferredMaterial, List<RelativeBlock> offsets) {
@@ -355,6 +367,16 @@ public final class AIBuilder {
                                                  List<RelativeBlock> clearOffsets,
                                                  int maxBlocks, int maxHorizontal, int maxVerticalLimit,
                                                  boolean preserveSchematicOrientation) {
+        return prepareCustomStructure(name, preferredMaterial, preferredMaterialId, offsets, clearOffsets,
+                maxBlocks, maxHorizontal, maxVerticalLimit, preserveSchematicOrientation, null, 0, 0, 0);
+    }
+
+    private static String prepareCustomStructure(String name, BlockItem preferredMaterial,
+                                                 String preferredMaterialId, List<RelativeBlock> offsets,
+                                                 List<RelativeBlock> clearOffsets,
+                                                 int maxBlocks, int maxHorizontal, int maxVerticalLimit,
+                                                 boolean preserveSchematicOrientation, BlockPos fixedSchematicCenter,
+                                                 int sectionWidth, int sectionHeight, int sectionLength) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (running) throw new IllegalArgumentException("Nightfall baut bereits. Stoppe den aktuellen Bau zuerst.");
         if (mc.player == null || mc.world == null || mc.interactionManager == null || mc.getNetworkHandler() == null)
@@ -442,7 +464,9 @@ public final class AIBuilder {
         int forwardSpan = playerForward.getAxis() == Direction.Axis.X ? maxX : maxZ;
         BlockPos schematicCenter = player.getBlockPos().offset(playerForward, 1 + (forwardSpan + 1) / 2);
         BlockPos origin = preserveSchematicOrientation
-                ? player.getBlockPos().add(-((maxX + 1) / 2), 0, -((maxZ + 1) / 2))
+                ? (fixedSchematicCenter == null
+                    ? player.getBlockPos().add(-((maxX + 1) / 2), 0, -((maxZ + 1) / 2))
+                    : fixedSchematicCenter.add(-(sectionWidth / 2), -(sectionHeight / 2), -(sectionLength / 2)))
                 : player.getBlockPos().offset(forward, 1).offset(right, -((maxX + 1) / 2));
         List<BlockPos> targets = new ArrayList<>(offsets.size());
         Set<BlockPos> targetSet = new HashSet<>();
