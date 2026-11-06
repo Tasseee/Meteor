@@ -70,6 +70,7 @@ public final class AIPlayerController {
     private static final int MAX_SMELT_TICKS = 20 * 60 * 4;
     private static final int MAX_SMELT_OPEN_TICKS = 40;
     private static final int MAX_GATHER_TARGETS = 4_096;
+    private static final int MAX_GATHER_EXPLORE_LEGS = 64;
     private static final int GATHER_HORIZONTAL_RADIUS = 32;
     private static final int GATHER_VERTICAL_BELOW = 4;
     private static final int GATHER_VERTICAL_ABOVE = 16;
@@ -163,6 +164,8 @@ public final class AIPlayerController {
     private static int gatherIndex;
     private static int gatherBlocksBrokenThisRequest;
     private static Set<BlockPos> gatherVisitedTargets = new HashSet<>();
+    private static Set<BlockPos> gatherExploreVisited = new HashSet<>();
+    private static int gatherExploreLegs;
     private static int gatherRescanCount;
     private static boolean gatherAwaitingPickup;
     private static int gatherPickupTicks;
@@ -645,11 +648,11 @@ public final class AIPlayerController {
             statusNotice(mc, "Sammelauftrag gestartet · gehe sicher zu Y=" + targetY
                     + " und beginne dort mit der Suche. Du kannst jederzeit „Stopp“ sagen.");
         } else {
-            if (!refreshGatherTargets(mc)) {
+            if (!refreshGatherTargets(mc) && !startGatherExploration(mc)) {
                 stop(null);
-                throw new IllegalArgumentException("Im geladenen Bereich sind keine passenden, sicher erreichbaren Rohstoffblöcke mehr verfügbar.");
+                throw new IllegalArgumentException("Im geladenen Bereich wurden keine Ressourcen gefunden und es gibt keinen sicheren, geladenen Weg zu einem weiteren Suchabschnitt.");
             }
-            mode = Mode.GATHER;
+            if (mode != Mode.NAVIGATE) mode = Mode.GATHER;
             statusNotice(mc, "Sammle " + gatherMaterialName + " · Ziel " + targetCount
                     + " im Inventar. Nachscans bleiben auf geladene Chunks und sichere Wege begrenzt.");
         }
@@ -860,8 +863,9 @@ public final class AIPlayerController {
         }
 
         if (refreshGatherTargets(mc)) return;
+        if (startGatherExploration(mc)) return;
         stop("Materialsammlung beendet: " + currentCount + "/" + gatherGoalCount + " "
-                + gatherMaterialName + " im Inventar. Im aktuell geladenen Bereich sind keine weiteren passenden, sicheren Ziele erreichbar.");
+                + gatherMaterialName + " im Inventar. Es gibt im geladenen Bereich keine weiteren sicheren Ziele oder Suchwege.");
     }
 
 
@@ -891,7 +895,62 @@ public final class AIPlayerController {
         return true;
     }
 
-    /** Compatibility helper retained for the bounded Ancient Debris tunnel flow. */
+    /** Walk a short, A*-validated exploration leg so new chunks can load before the next resource scan. */
+    private static boolean startGatherExploration(MinecraftClient mc) {
+        if (gatherMaterial == null || gatherRescanCount >= MAX_ANCIENT_DEBRIS_RESCANS
+                || gatherExploreLegs >= MAX_GATHER_EXPLORE_LEGS || mc.player == null || mc.world == null) return false;
+
+        BlockPos origin = mc.player.getBlockPos();
+        int[][] directions = {
+                {32, 0}, {23, 23}, {0, 32}, {-23, 23},
+                {-32, 0}, {-23, -23}, {0, -32}, {23, -23},
+                {24, 0}, {17, 17}, {0, 24}, {-17, 17},
+                {-24, 0}, {-17, -17}, {0, -24}, {17, -17},
+                {16, 0}, {11, 11}, {0, 16}, {-11, 11},
+                {-16, 0}, {-11, -11}, {0, -16}, {11, -11}
+        };
+        List<BlockPos> candidates = new ArrayList<>();
+        int minDeltaY = gatherTargetY != Integer.MIN_VALUE ? 0 : -3;
+        int maxDeltaY = gatherTargetY != Integer.MIN_VALUE ? 0 : 3;
+        int baseY = gatherTargetY != Integer.MIN_VALUE ? gatherTargetY : origin.getY();
+        for (int[] direction : directions) {
+            for (int deltaY = minDeltaY; deltaY <= maxDeltaY; deltaY++) {
+                BlockPos candidate = new BlockPos(origin.getX() + direction[0],
+                        baseY + deltaY, origin.getZ() + direction[1]);
+                if (gatherExploreVisited.contains(candidate) || !canStandAt(mc, candidate, mc.player)) continue;
+                candidates.add(candidate);
+            }
+        }
+        candidates.sort(Comparator
+                .comparingInt((BlockPos pos) -> -origin.getManhattanDistance(pos))
+                .thenComparingDouble(pos -> mc.player.squaredDistanceTo(pos.getX() + 0.5,
+                        pos.getY(), pos.getZ() + 0.5)));
+
+        int attempts = 0;
+        for (BlockPos candidate : candidates) {
+            List<BlockPos> planned = planNavigationSegment(mc, candidate);
+            if (planned.isEmpty()) {
+                if (++attempts >= 32) break;
+                continue;
+            }
+            gatherExploreVisited.add(candidate.toImmutable());
+            gatherExploreLegs++;
+            path = List.copyOf(planned);
+            pathIndex = 0;
+            navigationGoal = candidate.toImmutable();
+            actionTicks = 0;
+            stuckTicks = 0;
+            lastWaypointDistance = Double.MAX_VALUE;
+            mode = Mode.NAVIGATE;
+            statusNotice(mc, "Im aktuellen Suchbereich sind keine neuen " + gatherMaterialName
+                    + "-Ziele mehr. Ich gehe über einen sicheren Weg zum nächsten geladenen Suchabschnitt ("
+                    + gatherExploreLegs + "/" + MAX_GATHER_EXPLORE_LEGS + ") und scanne dort erneut.");
+            return true;
+        }
+        return false;
+    }
+
+    /** Compatibility helper retained for the Ancient Debris tunnel flow. */
     private static boolean refreshAncientDebrisTargets(MinecraftClient mc) {
         return isInNether(mc) && isAncientDebrisItem(gatherMaterial) && refreshGatherTargets(mc);
     }
@@ -1283,6 +1342,8 @@ public final class AIPlayerController {
         gatherIndex = 0;
         gatherBlocksBrokenThisRequest = 0;
         gatherVisitedTargets = new HashSet<>();
+        gatherExploreVisited = new HashSet<>();
+        gatherExploreLegs = 0;
         gatherRescanCount = 0;
         gatherAwaitingPickup = false;
         gatherPickupTicks = 0;
@@ -1722,7 +1783,8 @@ public final class AIPlayerController {
             return;
         }
         if ((gatherTargets.isEmpty() || gatherIndex >= gatherTargets.size()) && !refreshGatherTargets(mc)) {
-            stop("Sammeln gestoppt: Am erreichten Standort wurden keine passenden, sicher erreichbaren Ziele in geladenen Chunks gefunden.");
+            if (startGatherExploration(mc)) return;
+            stop("Sammeln gestoppt: Es gibt im geladenen Bereich keine weiteren sicheren Ziele oder Suchwege.");
             return;
         }
         mode = Mode.GATHER;
