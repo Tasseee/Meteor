@@ -274,9 +274,7 @@ public final class AIChatScreen extends Screen {
                 panelY + 14, Theme.TEXT_DIM, false);
 
         AIConfig.Settings settings = AIConfig.current();
-        String contextState = settings.shareWorldContext()
-                ? "Weltkontext an: Position, Dimension, Hand"
-                : "Weltkontext aus";
+        String contextState = "Kontext:";
         ctx.drawText(mc.textRenderer, contextState, panelX + 16, panelY + 34,
                 settings.shareWorldContext() ? Theme.ACCENT : Theme.TEXT_DIM, false);
         contextToggleW = 112;
