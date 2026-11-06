@@ -173,6 +173,18 @@ public final class AIActionRegistry {
         tools.add(tool("run_server_command",
                 "Send one ordinary Minecraft/server command exactly as requested by the player. Nightfall previews the exact command and asks for confirmation. Server permissions remain authoritative; dangerous administration and world-edit roots are blocked.",
                 objectSchema(command, "command")));
+        JsonObject materialPlanSchema = objectSchema(
+                property("structure", "string", "Fixed Nightfall blueprint identifier to analyze.",
+                        enumArray(Set.of("starter_shelter", "large_house", "watchtower"))),
+                "structure");
+        JsonObject materialPlanMaterial = property("material", "string",
+                "Optional exact Minecraft block item ID or localized name to check. It may be omitted to rank available full-block materials.").get("schema").getAsJsonObject();
+        materialPlanMaterial.addProperty("maxLength", 64);
+        materialPlanSchema.getAsJsonObject("properties").add("material", materialPlanMaterial);
+        tools.add(tool("plan_build_materials",
+                "Read-only material availability plan for starter_shelter (54 blocks), large_house (130 blocks), or watchtower (74 blocks). Counts suitable full-cube block items across the player's 36 normal inventory/hotbar slots and ranks the best fit before shortages. Optional material selects one exact material. Reads inventory data that will be shared with the configured AI provider, so Nightfall previews the exact analysis and requires player confirmation. Does not prepare a build, save a checkpoint, swap slots, or change the world.",
+                materialPlanSchema));
+
         JsonObject buildStructureSchema = objectSchema(
                 property("structure", "string", "Exact blueprint identifier.", enumArray(Set.of("starter_shelter", "large_house", "watchtower"))),
                 "structure");
@@ -540,6 +552,9 @@ public final class AIActionRegistry {
                 yield new Action(name, args, "Nightfall sendet nach deiner Bestätigung exakt diesen Befehl an den aktuellen Server:\n/"
                         + command + "\nDer Server entscheidet über Berechtigungen und Ausführung. Nightfall umgeht keine Rechte.");
             }
+            case "plan_build_materials" -> new Action(name, args, AIBuilder.analyzeStructureMaterials(
+                    requiredString(args, "structure", 32),
+                    args.has("material") ? requiredString(args, "material", 64) : null));
             case "build_structure" -> new Action(name, args, AIBuilder.prepareStructure(
                     requiredString(args, "structure", 32),
                     args.has("material") ? requiredString(args, "material", 64) : null));
@@ -835,6 +850,9 @@ public final class AIActionRegistry {
                 yield "Nightfall-Menü geöffnet. Du kannst es auch mit deiner GUI-Taste öffnen.";
             }
             case "get_inventory" -> inventorySummary(mc);
+            case "plan_build_materials" -> AIBuilder.analyzeStructureMaterials(
+                    requiredString(args, "structure", 32),
+                    args.has("material") ? requiredString(args, "material", 64) : null);
             case "sort_inventory" -> AIPlayerController.sortInventory();
             case "get_player_status" -> playerStatus(mc);
             case "random_teleport" -> {
