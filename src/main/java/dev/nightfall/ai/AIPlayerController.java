@@ -625,7 +625,8 @@ public final class AIPlayerController {
                 ? " Im aktuellen Scan gibt es noch keine passenden Ziele; Nightfall versucht zuerst einen sicheren Erkundungsweg und scannt nach neu geladenen Chunks erneut."
                 : "";
         return "Nightfall sammelt nach deiner Bestätigung bis zu " + available + " zusätzliche "
-                + item.getName().getString() + " (Ziel: " + targetCount + " im Inventar). "
+                + item.getName().getString() + " (Bestand: " + current + ", Ziel: " + targetCount
+                + ", noch benötigt: " + missing + "). "
                 + (needsHeightMove ? "Nach dem sicheren Höhenwechsel wird neu gescannt." :
                     "Gefunden: " + candidates.size() + " passende " + kind + " im bereits geladenen Umkreis; "
                     + toolEligible + " davon haben ein verfügbares passendes Werkzeug. ")
