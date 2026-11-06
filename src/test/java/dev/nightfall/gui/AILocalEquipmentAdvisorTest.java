@@ -41,7 +41,7 @@ class AILocalEquipmentAdvisorTest {
         assertTrue(summary.contains("Haltbarkeit 82%"));
         assertTrue(summary.contains("Effizienz IV"));
         assertTrue(summary.contains("Haltbarkeit III"));
-        assertTrue(summary.contains("keine kompatiblen, höheren Verzauberungsbuch-Kandidaten"));
+        assertTrue(summary.contains("Keine kompatiblen, höheren Verzauberungsbuch-Kandidaten"));
     }
 
     @Test
