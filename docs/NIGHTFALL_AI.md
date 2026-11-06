@@ -225,8 +225,11 @@ AI actions:
 Vorlagen-Volumens. Vor dem Setzen räumt es dort vorhandenes Gelände ab und entfernt Hindernisse an
 Baupositionen. Dafür nutzt es den normalen clientseitigen Abbau, wartet auf das Server-Weltupdate und
 versucht, sich über geladene, begehbare Wege sowohl an Aushubziele als auch an weiter entfernte
-Platzierungsziele zu bewegen. Der Aushub ist auf 32.768 Blöcke je Abschnitt begrenzt. Block-Entities/Container, Flüssigkeiten und unzerstörbare Blöcke werden nicht
-angerührt. Wenn Nightfall keine sichere Route oder Sichtlinie findet, pausiert es und fordert dich
+Platzierungsziele zu bewegen. Der Aushub ist auf 32.768 Blöcke je Abschnitt begrenzt. Block-Entities/Container, nicht unterstützte Flüssigkeiten und unzerstörbare Blöcke werden nicht
+angerührt. Stille Wasserquellen der Schematic können nach den festen Blöcken mit einem Wassereimer
+im Kreativmodus gesetzt werden, sofern ein Wassereimer im Inventar liegt. Fließendes Wasser wird
+nicht direkt gesetzt, sondern muss durch die Vanilla-Flusssimulation entstehen; das ist im Spiel
+zu prüfen. Im Survival-Modus bleiben Wasser und Lava manuell. Wenn Nightfall keine sichere Route oder Sichtlinie findet, pausiert es und fordert dich
 auf, näher heranzugehen.
 
 **Blockausrichtung:** Die Import-Pipeline übernimmt jetzt die gespeicherten BlockStates statt nur
@@ -241,8 +244,10 @@ statt eine falsch ausgerichtete Farm als fertig zu melden. Materialien können a
 
 **Wichtige verbleibende Grenzen:** Block-Entity-Blöcke wie Hopper und Truhen können mit frischen
 Standarddaten platziert werden. Inventarinhalte und benutzerdefiniertes Block-Entity-NBT werden
-aber nicht aus der Vorlage übernommen. Entities, Flüssigkeitsquellen, fallende Blöcke und komplexe,
-dynamische Redstone-/Nachbarschaftszustände werden noch nicht vollständig rekonstruiert. Insbesondere kann eine Schematic, deren Block-States von Nachbarblöcken
+aber nicht aus der Vorlage übernommen. Entities, Lavaquellen, fallende Blöcke und komplexe, dynamische Redstone-/Nachbarschaftszustände
+werden noch nicht vollständig rekonstruiert. Stille Wasserquellen werden nur im Kreativmodus
+versuchsweise mit einem Wassereimer gesetzt; das Ergebnis und die Flusssimulation müssen im Spiel
+geprüft werden. Insbesondere kann eine Schematic, deren Block-States von Nachbarblöcken
 oder Redstone-Signalen abhängen, trotz korrekter Grundausrichtung noch Abweichungen enthalten.
 Der Aushub selbst macht eine Farm nicht funktionsfähig, wenn ihre Mechanik nicht unterstützt wird.
 
@@ -267,5 +272,7 @@ Der erste Abschnitt (0/0/0) speichert einen lokalen, an Server/Dimension/Datei g
 in `config/nightfall/schematic_build_session.json`. Alle weiteren Abschnittszentren werden aus diesem
 Anker berechnet; `inspect_schematic` zeigt die exakten Weltkoordinaten. Navigiere mit `navigate_to`
 zum angezeigten Zentrum, bevor du den Abschnitt vorbereitest, damit seine Ziel-Chunks geladen sind. Die Abschnitte sind keine Garantie für einen
-funktionierenden Farmaufbau. Flüssigkeiten (auch Wasserquellen), dynamische Redstone-Zustände
-und Block-Entity-Sonderdaten bleiben Einschränkungen; Wasser muss derzeit manuell ergänzt werden.
+funktionierenden Farmaufbau. Stille Wasserquellen können im Kreativmodus nach dem Festblock-Aufbau
+mit einem Wassereimer gesetzt werden; im Survival-Modus bleiben sie manuell. Fließendes Wasser wird
+nicht rekonstruiert, sondern muss durch die Vanilla-Flusssimulation entstehen. Dynamische
+Redstone-Zustände und Block-Entity-Sonderdaten bleiben Einschränkungen.
