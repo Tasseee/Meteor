@@ -275,14 +275,7 @@ public final class AIChatClient {
             addTools(selected, "random_teleport");
         }
 
-        JsonArray filtered = new JsonArray();
-        for (JsonElement element : AIActionRegistry.toolDefinitions()) {
-            if (!element.isJsonObject()) continue;
-            JsonObject function = element.getAsJsonObject().getAsJsonObject("function");
-            if (function == null || !function.has("name")) continue;
-            if (selected.contains(function.get("name").getAsString())) filtered.add(element);
-        }
-        return filtered;
+        return AIActionRegistry.toolDefinitions(selected);
     }
 
     private static boolean hasAny(String text, String... values) {
