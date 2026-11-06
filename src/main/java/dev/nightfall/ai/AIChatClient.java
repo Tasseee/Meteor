@@ -115,6 +115,10 @@ public final class AIChatClient {
             Entfernungen, Luftwerte oder Sicherheit über nicht geladene Bereiche.
 
             BEWEGUNG, SUCHE UND LANGAUFTRÄGE
+            Nutze list_waypoints, wenn der Spieler nach gespeicherten Wegpunkten, Zielen oder markierten Orten fragt.
+            Die Liste ist lokal und auf den aktuellen Server begrenzt; übernimm Dimension und Koordinaten exakt.
+            Ein gelisteter Wegpunkt startet niemals automatisch eine Navigation. Nutze navigate_to erst nach
+            einem klaren Navigationswunsch und mit den exakten Koordinaten aus der Liste.
             Nutze navigate_to nur mit Koordinaten, die der Spieler genannt oder ein Werkzeug zurückgegeben hat.
             Erfinde nie Positionen oder Fundorte. A*-Navigation verwendet geladene Chunks und sichere Wege und
             kann an Hindernissen, fehlenden Chunks oder fehlendem Fortschritt stoppen. Die automatische
@@ -398,7 +402,7 @@ public final class AIChatClient {
                 "beweg", "navigate", "navigation", "koordinat", "wegpunkt", "waypoint", "route",
                 "teleport", "rtp", "bring me to", "take me to")) {
             addTools(selected, "walk_forward", "navigate_to", "stop_movement",
-                    "stop_current_action", "add_waypoint", "random_teleport",
+                    "stop_current_action", "add_waypoint", "list_waypoints", "random_teleport",
                     "resume_saved_build", "pause_build", "resume_build");
         }
 
