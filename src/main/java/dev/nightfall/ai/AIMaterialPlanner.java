@@ -64,6 +64,7 @@ final class AIMaterialPlanner {
                         .comparingInt(CraftableCandidate::recipeBatches)
                         .thenComparingInt(CraftableCandidate::recipeSteps)
                         .thenComparingInt(CraftableCandidate::missing)
+                        .thenComparing(CraftableCandidate::needsCraftingTable)
                         .thenComparing(CraftableCandidate::itemId))
                 .toList();
     }
