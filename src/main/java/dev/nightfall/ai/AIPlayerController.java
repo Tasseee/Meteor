@@ -1980,6 +1980,8 @@ public final class AIPlayerController {
         }
         if (item == null || item == Items.AIR)
             throw new IllegalArgumentException("Ich kenne kein Item mit der ID oder dem Namen „" + requested + "“.");
+        if (!"minecraft".equals(Registries.ITEM.getId(item).getNamespace()))
+            throw new IllegalArgumentException("Die KI-Crafting-Automation unterstützt derzeit nur Vanilla-Minecraft-Rezepte.");
         if (isRestrictedCraftItem(item))
             throw new IllegalArgumentException("Diese Gegenstandskategorie ist für die KI-Crafting-Automation nicht freigegeben.");
         return item;
@@ -1991,8 +1993,9 @@ public final class AIPlayerController {
                 || path.equals("crossbow") || path.equals("trident") || path.equals("mace")
                 || path.equals("shield") || path.equals("arrow") || path.equals("spectral_arrow")
                 || path.equals("tipped_arrow") || path.equals("firework_rocket")
-                || path.equals("firework_star") || path.equals("tnt") || path.equals("end_crystal")
-                || path.equals("fire_charge");
+                || path.equals("firework_star") || path.equals("wind_charge")
+                || path.equals("breeze_rod") || path.equals("heavy_core") || path.contains("potion")
+                || path.equals("tnt") || path.equals("end_crystal") || path.equals("fire_charge");
     }
 
     private record CraftingPlanStep(RecipeDisplayEntry recipe, Item resultItem, ItemStack resultStack,
@@ -2258,7 +2261,8 @@ public final class AIPlayerController {
                 || path.equals("mace") || path.equals("shield")
                 || path.equals("arrow") || path.equals("spectral_arrow") || path.equals("tipped_arrow")
                 || path.equals("firework_rocket") || path.equals("firework_star")
-                || path.equals("tnt") || path.equals("end_crystal")
+                || path.equals("wind_charge") || path.equals("breeze_rod") || path.equals("heavy_core")
+                || path.contains("potion") || path.equals("tnt") || path.equals("end_crystal")
                 || path.equals("fire_charge");
     }
 
