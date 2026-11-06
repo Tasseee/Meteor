@@ -131,6 +131,7 @@ public final class AIPlayerController {
     private static double lastWaypointDistance = Double.MAX_VALUE;
     private static List<BlockPos> path = List.of();
     private static BlockPos navigationGoal;
+    private static boolean navigationIsUserGoal;
     private static String structureSearchFilter = "any";
     private static int structureSearchDirection;
     private static int structureSearchLegLength;
@@ -377,6 +378,7 @@ public final class AIPlayerController {
                 "Kein sicherer erster Wegabschnitt gefunden. Die Umgebung muss geladen sein und eine begehbare Route enthalten.");
         stop(null);
         navigationGoal = target.toImmutable();
+        navigationIsUserGoal = true;
         path = List.copyOf(planned);
         pathIndex = 0;
         actionTicks = 0;
@@ -413,6 +415,7 @@ public final class AIPlayerController {
                 stop(null);
                 path = List.copyOf(planned);
                 navigationGoal = candidate.toImmutable();
+                navigationIsUserGoal = false;
                 pathIndex = 0;
                 actionTicks = 0;
                 stuckTicks = 0;
@@ -2606,6 +2609,7 @@ public final class AIPlayerController {
         pathIndex = 0;
         path = List.of();
         navigationGoal = null;
+        navigationIsUserGoal = false;
         structureSearchFilter = "any";
         structureSearchDirection = 0;
         structureSearchLegLength = 0;
@@ -2646,11 +2650,11 @@ public final class AIPlayerController {
                 task = new AITaskCheckpoint.Task(kind, itemId, gatherGoalCount,
                         remainingSeconds, gatherTargetY, 0, 0, 0);
             }
-        } else if (mode == Mode.NAVIGATE && navigationGoal != null) {
+        } else if (mode == Mode.NAVIGATE && navigationIsUserGoal && navigationGoal != null) {
             task = new AITaskCheckpoint.Task("navigate", "", 1, 0,
                     Integer.MIN_VALUE, navigationGoal.getX(), navigationGoal.getY(), navigationGoal.getZ());
         }
-        if (task != null) AITaskCheckpoint.save(mc, task);
+        if (task == null || !AITaskCheckpoint.save(mc, task)) AITaskCheckpoint.clear();
     }
 
     /** Read-only preview of a same-server, same-dimension task intent saved at disconnect. */
