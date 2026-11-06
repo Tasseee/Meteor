@@ -590,9 +590,10 @@ public final class SchematicManager {
             }
         }
 
-        int mismatches = blockMismatches + missingWater + occupiedClearCells;
+        int mismatches = blockMismatches + stateDifferences + missingBlockEntities
+                + missingWater + occupiedClearCells;
         String assessment = unloaded > 0 ? "TEILWEISE NICHT ÜBERPRÜFBAR"
-                : mismatches > 0 || missingBlockEntities > 0 ? "STRUKTURELLE ABWEICHUNGEN"
+                : mismatches > 0 ? "STRUKTURELLE ABWEICHUNGEN"
                 : "UNTERSUCHTE PLATZIERUNGEN STRUKTURELL PASSEND";
         StringBuilder out = new StringBuilder("SCHEMATIC-STRUKTURPRÜFUNG: ")
                 .append(imported.fileName()).append(" · Abschnitt X").append(partX)
