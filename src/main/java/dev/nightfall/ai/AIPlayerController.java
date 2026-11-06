@@ -17,9 +17,11 @@ import net.minecraft.item.Items;
 import net.minecraft.recipe.RecipeDisplayEntry;
 import net.minecraft.recipe.RecipeFinder;
 import net.minecraft.recipe.display.RecipeDisplay;
+import net.minecraft.recipe.display.SlotDisplay;
 import net.minecraft.recipe.display.ShapedCraftingRecipeDisplay;
 import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
+import net.minecraft.screen.AbstractCraftingScreenHandler;
 import net.minecraft.screen.AbstractFurnaceScreenHandler;
 import net.minecraft.screen.PlayerScreenHandler;
 import net.minecraft.screen.slot.Slot;
@@ -63,7 +65,10 @@ public final class AIPlayerController {
     private static final int MAX_MINING_TICKS = 20 * 30;
     private static final int MAX_EATING_TICKS = 80;
     private static final double MIN_PROGRESS = 0.025;
-    private static final int MAX_CRAFTING_TICKS = 20 * 30;
+    private static final int MAX_CRAFTING_TICKS = 20 * 60 * 5;
+    private static final int MAX_CRAFT_CHAIN_DEPTH = 8;
+    private static final int MAX_CRAFT_CHAIN_STEPS = 32;
+    private static final int MAX_CRAFT_CHAIN_BATCHES = 256;
     private static final int MAX_CRAFTING_IDLE_TICKS = 20;
     private static final int MAX_GATHER_BLOCKS = 2_048;
     private static final int MAX_SMELT_ITEMS = 16;
@@ -153,6 +158,12 @@ public final class AIPlayerController {
     private static int craftingBatchesTaken;
     private static boolean craftingNeedsRefill;
     private static RecipeDisplayEntry craftingRecipe;
+    private static AbstractCraftingScreenHandler craftingHandler;
+    private static List<CraftingPlanStep> craftingPlan = List.of();
+    private static int craftingPlanIndex;
+    private static Item craftingFinalTarget;
+    private static int craftingFinalCountBefore;
+    private static int craftingFinalGoalCount;
     private static List<InventorySwap> inventorySortPlan = List.of();
     private static int inventorySortIndex;
     private static InventorySwap pendingInventorySwap;
@@ -1824,63 +1835,76 @@ public final class AIPlayerController {
 
 
     /**
-     * Returns a preview for one normal recipe-book crafting operation using only the
-     * player's own 2x2 inventory crafting grid. The recipe and ingredient check are
-     * supplied by the connected server's recipe book.
+     * Plans a bounded dependency chain using only recipes currently present in the
+     * server-synchronized recipe book. A 3x3 crafting table must already be open when
+     * any step needs it; Nightfall never places or opens a table on its own.
      */
     public static String previewCraftItem(String requestedItem, int additionalCount) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        requireWorld(mc);
+        if (mc.player == null || mc.world == null || mc.interactionManager == null
+                || mc.getNetworkHandler() == null)
+            throw new IllegalArgumentException("Du musst dich in einer verbundenen Minecraft-Welt befinden.");
         if (additionalCount < 1 || additionalCount > 256)
             throw new IllegalArgumentException("Die zusätzliche Craftingmenge muss zwischen 1 und 256 liegen.");
         String requested = validateCraftItemName(requestedItem);
-        PlayerScreenHandler handler = requireEmptyPlayerCraftingGrid(mc);
-        CraftingChoice choice = findCraftingChoice(mc, requested);
-        int current = countInventoryItem(mc, choice.result().getItem());
-        int batchSize = Math.max(1, choice.result().getCount());
-        int estimatedBatches = (additionalCount + batchSize - 1) / batchSize;
-        return "Nightfall stellt nach deiner Bestätigung mindestens " + additionalCount + " zusätzliche "
-                + choice.result().getName().getString() + " her (derzeit im Inventar: " + current
-                + ", Ziel: mindestens " + (current + additionalCount) + "). "
-                + "Voraussichtlich mindestens " + estimatedBatches + " Rezept-Ausführungen à "
-                + batchSize + " Stück; die letzte Ausgabe kann die Zielmenge um höchstens eine Rezeptcharge überschreiten. "
-                + "Rezept: " + choice.recipe().id()
-                + ". Es wird ausschließlich ein freigeschaltetes Vanilla-Rezept aus deinem Rezeptbuch verwendet; "
-                + "Zutaten müssen im Inventar liegen. Verwendet wird das normale 2×2-Craftingfeld (Handler "
-                + handler.syncId + ").";
+        AbstractCraftingScreenHandler handler = requireEmptyCraftingGrid(mc);
+        Item target = resolveCraftItem(requested);
+        List<CraftingPlanStep> plan = createCraftingPlan(mc, target, additionalCount);
+        boolean needsTable = plan.stream().anyMatch(step -> step.gridWidth() > 2 || step.gridHeight() > 2);
+        if (needsTable && (handler.getWidth() < 3 || handler.getHeight() < 3))
+            throw new IllegalArgumentException("Diese Rezeptkette enthält mindestens ein 3×3-Rezept. Öffne zuerst eine Crafting-Table und frage danach erneut; das 2×2-Inventarfeld reicht dafür nicht.");
+        int current = countInventoryItem(mc, target);
+        int batches = plan.stream().mapToInt(CraftingPlanStep::batches).sum();
+        StringBuilder details = new StringBuilder();
+        for (int i = 0; i < plan.size(); i++) {
+            CraftingPlanStep step = plan.get(i);
+            if (i > 0) details.append("\n");
+            details.append(i + 1).append(". ")
+                    .append(step.resultStack().getName().getString())
+                    .append(" × ").append(step.batches())
+                    .append(" Rezeptcharge(n) · ")
+                    .append(step.gridWidth()).append("×").append(step.gridHeight())
+                    .append(" · ").append(step.recipe().id());
+        }
+        return "Nightfall plant nach deiner Bestätigung eine Crafting-Rezeptkette für "
+                + (current + additionalCount) + " " + plan.get(plan.size() - 1).resultStack().getName().getString()
+                + " (aktuell " + current + ", zusätzlich mindestens " + additionalCount + "). "
+                + "Geplante Schritte: " + plan.size() + "; insgesamt " + batches + " Rezeptchargen.\n"
+                + details + "\nVerwendet werden ausschließlich Rezepte aus deinem freigeschalteten Server-Rezeptbuch. "
+                + "Zwischenprodukte werden einzeln hergestellt und serverbestätigt, bevor der nächste Schritt beginnt. "
+                + (needsTable ? "Eine geöffnete 3×3-Crafting-Table wird benötigt. " : "Die 2×2-Inventarfläche reicht für diese Kette. ")
+                + "Maximal " + MAX_CRAFT_CHAIN_STEPS + " Rezeptschritte, Tiefe " + MAX_CRAFT_CHAIN_DEPTH
+                + " und " + MAX_CRAFT_CHAIN_BATCHES + " Chargen. Jede Ausgabe muss in dein Inventar passen. "
+                + "Handler " + handler.syncId + ".";
     }
 
-    /** Crafts one controlled recipe output per client tick until the requested additional count is reached. */
+    /** Start the fully previewed recipe dependency chain after explicit player confirmation. */
     public static String craftItem(String requestedItem, int additionalCount) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        requireWorld(mc);
         previewCraftItem(requestedItem, additionalCount);
         String requested = validateCraftItemName(requestedItem);
-        PlayerScreenHandler handler = requireEmptyPlayerCraftingGrid(mc);
-        CraftingChoice choice = findCraftingChoice(mc, requested);
-        Item target = choice.result().getItem();
-        int before = countInventoryItem(mc, target);
-
+        AbstractCraftingScreenHandler handler = requireEmptyCraftingGrid(mc);
+        Item target = resolveCraftItem(requested);
+        List<CraftingPlanStep> plan = createCraftingPlan(mc, target, additionalCount);
         stop(null);
-        craftingTarget = target;
-        craftingRecipe = choice.recipe();
-        craftingName = choice.result().getName().getString();
-        craftingCountBefore = before;
-        craftingGoalCount = before + additionalCount;
+        craftingHandler = handler;
+        craftingPlan = List.copyOf(plan);
+        craftingPlanIndex = 0;
+        craftingFinalTarget = target;
+        craftingFinalCountBefore = countInventoryItem(mc, target);
+        craftingFinalGoalCount = craftingFinalCountBefore + additionalCount;
         craftingTicks = 0;
         craftingIdleTicks = 0;
         craftingBatchesTaken = 0;
         craftingNeedsRefill = false;
-        try {
-            mc.interactionManager.clickRecipe(handler.syncId, choice.recipe().id(), false);
-            mode = Mode.CRAFT;
-        } catch (RuntimeException failure) {
+        if (!startCraftingPlanStep(mc)) {
             resetCraftingState();
-            throw new IllegalArgumentException("Minecraft konnte das Rezept nicht in das 2×2-Craftingfeld legen. Prüfe Rezeptbuch und Inventar.");
+            throw new IllegalArgumentException("Minecraft konnte den ersten Schritt der Rezeptkette nicht in die geöffnete Craftingfläche legen.");
         }
-        notifyPlayer(mc, "Crafting gestartet: " + craftingName + " · +" + additionalCount
-                + " (mindestens). Warte auf Serverbestätigungen.");
-        return "Crafting gestartet. Nightfall nimmt jede Rezept-Ausgabe einzeln auf, füllt das Rezept bei Bedarf erneut und stoppt bei Zielmenge, fehlenden Zutaten oder vollem Inventar.";
+        mode = Mode.CRAFT;
+        notifyPlayer(mc, "Crafting-Rezeptkette gestartet · " + craftingPlan.size()
+                + " Schritte. Zwischenprodukte werden einzeln geprüft; „Stopp“ bricht ab.");
+        return "Crafting-Rezeptkette gestartet. Nightfall stellt Zwischenprodukte nacheinander her, bestätigt jede Ausgabe und fährt erst dann mit dem nächsten Rezept fort.";
     }
 
     private static String validateCraftItemName(String requestedItem) {
@@ -1889,71 +1913,212 @@ public final class AIPlayerController {
         return requestedItem.trim();
     }
 
-    private static PlayerScreenHandler requireEmptyPlayerCraftingGrid(MinecraftClient mc) {
-        if (mc.player.currentScreenHandler != mc.player.playerScreenHandler)
-            throw new IllegalArgumentException("Schließe zuerst den geöffneten Container. Nightfall craftet vorerst nur im normalen Spielerinventar.");
-        PlayerScreenHandler handler = mc.player.playerScreenHandler;
+    private static AbstractCraftingScreenHandler requireEmptyCraftingGrid(MinecraftClient mc) {
+        if (mc.player == null || mc.world == null || mc.interactionManager == null
+                || mc.getNetworkHandler() == null)
+            throw new IllegalArgumentException("Du musst dich in einer verbundenen Minecraft-Welt befinden.");
+        if (!(mc.player.currentScreenHandler instanceof AbstractCraftingScreenHandler handler))
+            throw new IllegalArgumentException("Öffne zuerst dein Spielerinventar oder eine Crafting-Table. Andere Container werden nicht zum Crafting verwendet.");
+        if (handler.getWidth() < 2 || handler.getHeight() < 2)
+            throw new IllegalArgumentException("Die geöffnete Craftingfläche ist zu klein.");
         if (!handler.getCursorStack().isEmpty())
             throw new IllegalArgumentException("Dein Maus-Cursor hält noch einen Gegenstand. Lege ihn zuerst in dein Inventar.");
         if (!handler.getOutputSlot().getStack().isEmpty())
             throw new IllegalArgumentException("Im Crafting-Ausgabefeld liegt bereits ein Ergebnis. Räume es zuerst weg.");
         for (Slot slot : handler.getInputSlots()) {
             if (!slot.getStack().isEmpty())
-                throw new IllegalArgumentException("Das 2×2-Craftingfeld ist nicht leer. Räume vorhandene Zutaten zuerst weg.");
+                throw new IllegalArgumentException("Das Craftingfeld ist nicht leer. Räume vorhandene Zutaten zuerst weg.");
         }
         return handler;
     }
 
-    private static CraftingChoice findCraftingChoice(MinecraftClient mc, String requestedItem) {
-        RecipeFinder finder = new RecipeFinder();
-        mc.player.getInventory().populateRecipeFinder(finder);
-        boolean matchingRecipeFound = false;
-        boolean matchingRecipeNeedsTable = false;
-
-        for (RecipeResultCollection collection : mc.player.getRecipeBook().getOrderedResults()) {
-            for (RecipeDisplayEntry entry : collection.getAllRecipes()) {
-                List<ItemStack> outputs;
-                try {
-                    outputs = entry.getStacks(EMPTY_RECIPE_CONTEXT);
-                } catch (RuntimeException invalidDisplayContext) {
-                    continue;
+    private static Item resolveCraftItem(String requestedItem) {
+        String requested = validateCraftItemName(requestedItem);
+        if (Registries.ITEM.get(requested.contains(":")
+                ? Identifier.tryParse(requested) : Identifier.tryParse("minecraft:" + requested)) == Items.AIR)
+            throw new IllegalArgumentException("Dieses Item existiert nicht.");
+        Identifier id = requested.contains(":") ? Identifier.tryParse(requested) : Identifier.tryParse("minecraft:" + requested);
+        Item item = id == null ? null : Registries.ITEM.get(id);
+        if (item == null || item == Items.AIR) {
+            for (Item candidate : Registries.ITEM) {
+                if (candidate.getName().getString().equalsIgnoreCase(requested)) {
+                    if (item != null) throw new IllegalArgumentException("Der Itemname ist nicht eindeutig. Nutze eine vollständige Item-ID.");
+                    item = candidate;
                 }
-                ItemStack matchingOutput = ItemStack.EMPTY;
-                for (ItemStack output : outputs) {
-                    if (output != null && !output.isEmpty() && matchesCraftItem(output, requestedItem)) {
-                        matchingOutput = output;
-                        break;
-                    }
-                }
-                if (matchingOutput.isEmpty()) continue;
-                matchingRecipeFound = true;
-
-                if (!isInventoryCraftingRecipe(entry.display())) {
-                    matchingRecipeNeedsTable = true;
-                    continue;
-                }
-                if (!entry.isCraftable(finder)) continue;
-                return new CraftingChoice(entry, matchingOutput.copy());
             }
         }
-
-        if (matchingRecipeNeedsTable)
-            throw new IllegalArgumentException("Das Rezept für " + requestedItem
-                    + " benötigt einen anderen oder größeren Craftingplatz. Nightfall unterstützt hier zunächst nur 2×2-Rezepte.");
-        if (matchingRecipeFound)
-            throw new IllegalArgumentException("Das Rezept für " + requestedItem
-                    + " ist freigeschaltet, aber die benötigten Zutaten fehlen in deinem Inventar.");
-        throw new IllegalArgumentException("Ich finde für " + requestedItem
-                + " kein passendes freigeschaltetes 2×2-Rezept in deinem Rezeptbuch.");
+        if (item == null || item == Items.AIR)
+            throw new IllegalArgumentException("Ich kenne kein Item mit der ID oder dem Namen „" + requested + "“.");
+        return item;
     }
 
-    private static boolean isInventoryCraftingRecipe(RecipeDisplay display) {
-        if (display instanceof ShapedCraftingRecipeDisplay shaped)
-            return shaped.width() >= 1 && shaped.height() >= 1
-                    && shaped.width() <= 2 && shaped.height() <= 2;
-        if (display instanceof ShapelessCraftingRecipeDisplay shapeless)
-            return !shapeless.ingredients().isEmpty() && shapeless.ingredients().size() <= 4;
+    private record CraftingPlanStep(RecipeDisplayEntry recipe, Item resultItem, ItemStack resultStack,
+                                    int batches, int gridWidth, int gridHeight) {}
+    private record CraftingRecipeOption(RecipeDisplayEntry recipe, ItemStack resultStack,
+                                        List<List<ItemStack>> ingredientChoices, int gridWidth, int gridHeight) {}
+
+    private static List<CraftingPlanStep> createCraftingPlan(MinecraftClient mc, Item target, int additionalCount) {
+        Map<Item, Integer> simulated = new HashMap<>();
+        for (int slot = 0; slot < 36; slot++) {
+            ItemStack stack = mc.player.getInventory().getStack(slot);
+            if (!stack.isEmpty()) simulated.merge(stack.getItem(), stack.getCount(), Integer::sum);
+        }
+        List<CraftingPlanStep> steps = new ArrayList<>();
+        if (!planCraftingItem(mc, target, simulated.getOrDefault(target, 0) + additionalCount,
+                simulated, steps, new HashSet<>(), 0))
+            throw new IllegalArgumentException("Für „" + target.getName().getString()
+                    + "“ finde ich mit deinen freigeschalteten Rezepten und Zutaten keine vollständige Crafting-Kette. "
+                    + "Prüfe Rezeptbuch, fehlende Rohstoffe und ob alle Zwischenrezepte freigeschaltet sind.");
+        if (steps.isEmpty())
+            throw new IllegalArgumentException("Du hast das gewünschte Item bereits in ausreichender Menge.");
+        return List.copyOf(steps);
+    }
+
+    private static boolean planCraftingItem(MinecraftClient mc, Item target, int requiredTotal,
+                                            Map<Item, Integer> available, List<CraftingPlanStep> steps,
+                                            Set<Item> visiting, int depth) {
+        if (available.getOrDefault(target, 0) >= requiredTotal) return true;
+        if (depth > MAX_CRAFT_CHAIN_DEPTH || steps.size() >= MAX_CRAFT_CHAIN_STEPS
+                || !visiting.add(target)) return false;
+
+        int deficit = requiredTotal - available.getOrDefault(target, 0);
+        for (CraftingRecipeOption option : findCraftingRecipeOptions(mc, target)) {
+            int outputCount = Math.max(1, option.resultStack().getCount());
+            int batches = (deficit + outputCount - 1) / outputCount;
+            if (batches < 1 || batches > MAX_CRAFT_CHAIN_BATCHES) continue;
+
+            Map<Item, Integer> trialAvailable = new HashMap<>(available);
+            List<CraftingPlanStep> trialSteps = new ArrayList<>(steps);
+            boolean ingredientsResolved = true;
+            for (List<ItemStack> alternatives : option.ingredientChoices()) {
+                if (alternatives.isEmpty()) continue;
+                List<ItemStack> ordered = new ArrayList<>(alternatives);
+                ordered.sort(Comparator
+                        .comparingInt((ItemStack stack) -> trialAvailable.getOrDefault(stack.getItem(), 0)).reversed()
+                        .thenComparing(stack -> Registries.ITEM.getId(stack.getItem()).toString()));
+                boolean slotResolved = false;
+                for (ItemStack ingredient : ordered) {
+                    int ingredientCount = Math.max(1, ingredient.getCount()) * batches;
+                    Map<Item, Integer> branchAvailable = new HashMap<>(trialAvailable);
+                    List<CraftingPlanStep> branchSteps = new ArrayList<>(trialSteps);
+                    if (!planCraftingItem(mc, ingredient.getItem(), branchAvailable.getOrDefault(ingredient.getItem(), 0)
+                            + ingredientCount, branchAvailable, branchSteps, visiting, depth + 1)) continue;
+                    int present = branchAvailable.getOrDefault(ingredient.getItem(), 0);
+                    if (present < ingredientCount) continue;
+                    branchAvailable.put(ingredient.getItem(), present - ingredientCount);
+                    trialAvailable = branchAvailable;
+                    trialSteps = branchSteps;
+                    slotResolved = true;
+                    break;
+                }
+                if (!slotResolved) {
+                    ingredientsResolved = false;
+                    break;
+                }
+            }
+            if (!ingredientsResolved || trialSteps.size() >= MAX_CRAFT_CHAIN_STEPS
+                    || trialSteps.stream().mapToInt(CraftingPlanStep::batches).sum() + batches > MAX_CRAFT_CHAIN_BATCHES)
+                continue;
+
+            trialAvailable.merge(target, outputCount * batches, Integer::sum);
+            trialSteps.add(new CraftingPlanStep(option.recipe(), target, option.resultStack().copy(),
+                    batches, option.gridWidth(), option.gridHeight()));
+            available.clear();
+            available.putAll(trialAvailable);
+            steps.clear();
+            steps.addAll(trialSteps);
+            visiting.remove(target);
+            return true;
+        }
+        visiting.remove(target);
         return false;
+    }
+
+    private static List<CraftingRecipeOption> findCraftingRecipeOptions(MinecraftClient mc, Item target) {
+        List<CraftingRecipeOption> options = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (RecipeResultCollection collection : mc.player.getRecipeBook().getOrderedResults()) {
+            for (RecipeDisplayEntry entry : collection.getAllRecipes()) {
+                if (!seen.add(entry.id().toString())) continue;
+                ItemStack output = ItemStack.EMPTY;
+                try {
+                    for (ItemStack candidate : entry.getStacks(EMPTY_RECIPE_CONTEXT)) {
+                        if (candidate != null && !candidate.isEmpty() && candidate.isOf(target)) {
+                            output = candidate.copy();
+                            break;
+                        }
+                    }
+                } catch (RuntimeException ignored) {
+                    continue;
+                }
+                if (output.isEmpty()) continue;
+
+                List<SlotDisplay> displays;
+                int width, height;
+                if (entry.display() instanceof ShapedCraftingRecipeDisplay shaped) {
+                    width = shaped.width();
+                    height = shaped.height();
+                    if (width < 1 || height < 1 || width > 3 || height > 3) continue;
+                    displays = shaped.ingredients();
+                } else if (entry.display() instanceof ShapelessCraftingRecipeDisplay shapeless) {
+                    if (shapeless.ingredients().isEmpty() || shapeless.ingredients().size() > 9) continue;
+                    displays = shapeless.ingredients();
+                    width = shapeless.ingredients().size() > 4 ? 3 : 2;
+                    height = shapeless.ingredients().size() > 4 ? 3 : 2;
+                } else {
+                    continue;
+                }
+
+                List<List<ItemStack>> ingredientChoices = new ArrayList<>();
+                boolean valid = true;
+                for (SlotDisplay display : displays) {
+                    List<ItemStack> candidates;
+                    try {
+                        candidates = display.getStacks(EMPTY_RECIPE_CONTEXT).stream()
+                                .filter(stack -> stack != null && !stack.isEmpty())
+                                .map(ItemStack::copy).toList();
+                    } catch (RuntimeException unresolvedDisplay) {
+                        valid = false;
+                        break;
+                    }
+                    if (candidates.isEmpty()) continue; // Empty shaped grid cell.
+                    ingredientChoices.add(candidates);
+                }
+                if (valid && !ingredientChoices.isEmpty()) {
+                    options.add(new CraftingRecipeOption(entry, output, List.copyOf(ingredientChoices), width, height));
+                }
+            }
+        }
+        options.sort(Comparator.comparing(option -> option.recipe().id().toString()));
+        return options;
+    }
+
+    private static boolean startCraftingPlanStep(MinecraftClient mc) {
+        if (craftingHandler == null || mc.player.currentScreenHandler != craftingHandler
+                || craftingPlanIndex < 0 || craftingPlanIndex >= craftingPlan.size()) return false;
+        CraftingPlanStep step = craftingPlan.get(craftingPlanIndex);
+        craftingTarget = step.resultItem();
+        craftingRecipe = step.recipe();
+        craftingName = step.resultStack().getName().getString();
+        craftingCountBefore = countInventoryItem(mc, craftingTarget);
+        craftingGoalCount = craftingCountBefore + step.resultStack().getCount() * step.batches();
+        craftingIdleTicks = 0;
+        craftingBatchesTaken = 0;
+        craftingNeedsRefill = false;
+        try {
+            mc.interactionManager.clickRecipe(craftingHandler.syncId, craftingRecipe.id(), false);
+            return true;
+        } catch (RuntimeException failure) {
+            return false;
+        }
+    }
+
+    private static boolean matchesCraftItem(ItemStack stack, String requestedItem) {
+        String requested = requestedItem.trim();
+        var id = Registries.ITEM.getId(stack.getItem());
+        return id.toString().equalsIgnoreCase(requested)
+                || id.getPath().equalsIgnoreCase(requested)
+                || stack.getName().getString().equalsIgnoreCase(requested);
     }
 
     private static boolean matchesCraftItem(ItemStack stack, String requestedItem) {
