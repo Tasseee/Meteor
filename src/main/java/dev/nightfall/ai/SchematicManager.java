@@ -244,37 +244,41 @@ public final class SchematicManager {
             throw new IllegalArgumentException("Für den Schematic-Bau brauchst du eine verbundene Welt.");
         String server = currentServerKey(mc);
         String dimension = mc.world.getRegistryKey().getValue().toString();
+        boolean firstSection = partX == 0 && partY == 0 && partZ == 0;
         try {
             Files.createDirectories(BUILD_SESSION_PATH.getParent());
-            if (partX == 0 && partY == 0 && partZ == 0) {
-                BlockPos anchor = mc.player.getBlockPos().toImmutable();
-                JsonObject session = new JsonObject();
-                session.addProperty("version", 1);
-                session.addProperty("file", fileName);
-                session.addProperty("server", server);
-                session.addProperty("dimension", dimension);
-                session.addProperty("x", anchor.getX());
-                session.addProperty("y", anchor.getY());
-                session.addProperty("z", anchor.getZ());
-                Path temporary = BUILD_SESSION_PATH.resolveSibling(BUILD_SESSION_PATH.getFileName() + ".tmp");
-                Files.writeString(temporary, session.toString());
-                try {
-                    Files.move(temporary, BUILD_SESSION_PATH, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                            java.nio.file.StandardCopyOption.ATOMIC_MOVE);
-                } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
-                    Files.move(temporary, BUILD_SESSION_PATH, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                }
-                return anchor;
-            }
-            if (!Files.isRegularFile(BUILD_SESSION_PATH))
+            if (Files.isRegularFile(BUILD_SESSION_PATH)) {
+                JsonObject session = JsonParser.parseString(Files.readString(BUILD_SESSION_PATH)).getAsJsonObject();
+                boolean sameSession = session.has("version") && session.get("version").getAsInt() == 1
+                        && session.has("file") && session.get("file").getAsString().equals(fileName)
+                        && session.has("server") && session.get("server").getAsString().equals(server)
+                        && session.has("dimension") && session.get("dimension").getAsString().equals(dimension);
+                if (sameSession)
+                    return new BlockPos(session.get("x").getAsInt(), session.get("y").getAsInt(), session.get("z").getAsInt());
+                if (!firstSection)
+                    throw new IllegalArgumentException("Der gespeicherte Farm-Anker gehört zu einer anderen Datei, einem anderen Server oder einer anderen Dimension. Beginne Abschnitt X0 Y0 Z0 neu.");
+            } else if (!firstSection) {
                 throw new IllegalArgumentException("Es gibt noch keinen Farm-Anker. Beginne mit Abschnitt X0 Y0 Z0.");
-            JsonObject session = JsonParser.parseString(Files.readString(BUILD_SESSION_PATH)).getAsJsonObject();
-            if (session.get("version").getAsInt() != 1
-                    || !session.get("file").getAsString().equals(fileName)
-                    || !session.get("server").getAsString().equals(server)
-                    || !session.get("dimension").getAsString().equals(dimension))
-                throw new IllegalArgumentException("Der gespeicherte Farm-Anker gehört zu einer anderen Datei, einem anderen Server oder einer anderen Dimension. Beginne Abschnitt X0 Y0 Z0 neu.");
-            return new BlockPos(session.get("x").getAsInt(), session.get("y").getAsInt(), session.get("z").getAsInt());
+            }
+
+            BlockPos anchor = mc.player.getBlockPos().toImmutable();
+            JsonObject session = new JsonObject();
+            session.addProperty("version", 1);
+            session.addProperty("file", fileName);
+            session.addProperty("server", server);
+            session.addProperty("dimension", dimension);
+            session.addProperty("x", anchor.getX());
+            session.addProperty("y", anchor.getY());
+            session.addProperty("z", anchor.getZ());
+            Path temporary = BUILD_SESSION_PATH.resolveSibling(BUILD_SESSION_PATH.getFileName() + ".tmp");
+            Files.writeString(temporary, session.toString());
+            try {
+                Files.move(temporary, BUILD_SESSION_PATH, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                        java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
+                Files.move(temporary, BUILD_SESSION_PATH, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            return anchor;
         } catch (IllegalArgumentException failure) {
             throw failure;
         } catch (Exception failure) {
