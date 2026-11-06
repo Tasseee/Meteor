@@ -1078,8 +1078,8 @@ public final class AIBuilder {
 
     private static void tickWaterPlacement(MinecraftClient mc, ClientPlayerEntity player) {
         if (!playerIsCreative(mc)) {
-            WATER_PLAN.clear();
-            waterIndex = 0;
+            preserveCheckpointOnStop = true;
+            stopInternal("Wasserphase pausiert: Für das automatische Setzen der Wasserquellen musst du im Kreativmodus sein. Der gespeicherte Abschnitt kann später fortgesetzt werden.", true);
             return;
         }
         if (pendingWaterTarget != null) {
@@ -1095,6 +1095,7 @@ public final class AIBuilder {
                 return;
             }
             if (!current.isReplaceable() && current.getFluidState().isEmpty()) {
+                preserveCheckpointOnStop = true;
                 stopInternal("Wasserplatzierung gestoppt: Das Ziel " + pendingWaterTarget.toShortString()
                         + " wurde durch " + current + " blockiert.", true);
                 return;
