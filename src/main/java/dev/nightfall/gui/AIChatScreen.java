@@ -1382,6 +1382,19 @@ public final class AIChatScreen extends Screen {
                 .collect(Collectors.joining(", "));
         if (inventorySummary.isBlank()) inventorySummary = "leer";
 
+        StringBuilder presetMaterialPlanning = new StringBuilder();
+        for (String structure : List.of("starter_shelter", "large_house", "watchtower")) {
+            try {
+                presetMaterialPlanning.append(AIBuilder.analyzeStructureMaterials(structure, null)).append("\\n");
+            } catch (RuntimeException unavailable) {
+                String detail = unavailable.getMessage() == null
+                        ? "Materialanalyse momentan nicht verfügbar."
+                        : unavailable.getMessage().replaceAll("[\\\\r\\\\n\\\\t]+", " ").trim();
+                presetMaterialPlanning.append("Materialplanung ").append(structure)
+                        .append(": nicht verfügbar (").append(detail).append(").\\n");
+            }
+        }
+
         return "Lokaler Minecraft-Weltkontext (Momentaufnahme):\n"
                 + "Dimension: " + dimension + "\n"
                 + "Biome am Spieler: " + biome + "\n"
@@ -1406,8 +1419,10 @@ public final class AIChatScreen extends Screen {
                 + "Haupthand: " + describeStack(player.getMainHandStack()) + "\n"
                 + "Nebenhand: " + describeStack(player.getOffHandStack()) + "\n"
                 + "Rüstung: " + armorSummary + "\n"
-                + "Inventar (36 Haupt-/Hotbar-Slots, nach Itemnamen zusammengefasst; höchstens 12 Einträge): "
+                + "Inventar (36 Haupt-/Hotbar-Slots, nach exakten Minecraft-Item-IDs zusammengefasst): "
                 + inventorySummary + "\n"
+                + "Read-only-Materialplanung der drei Nightfall-Bauvorlagen:\n"
+                + presetMaterialPlanning
                 + "Grenze: Das sind nur aktuell clientseitig verfügbare Werte, keine Karte der Umgebung. "
                 + "Ungeladene Chunks, versteckte Entities und serverseitig nicht gesendete Daten sind nicht enthalten.";
     }
