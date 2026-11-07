@@ -13,6 +13,7 @@ Controller-Aktionen werden im Client-Tick überwacht: eindeutige Erfolgsmeldunge
 Wichtige Befehle:
 
 - `/nf agent status` – Auftragswarteschlange, Vorschau und Prüfergebnis ansehen.
+- `/nf agent actions` – zeigt die lokal freigegebenen Aktionen mit ihren Parametertypen; die Details eines konkreten Auftrags stehen weiterhin in der Vorschau.
 - `/nf agent memory` – den lokal gespeicherten Verlauf der letzten 64 abgeschlossenen/abgebrochenen Agenten-Aufträge ansehen; `/nf agent memory clear` löscht diesen Verlauf.
 - `/nf agent prepare` – den nächsten bereiten Schritt erneut vorbereiten; bei einem Schmelzschritt zeigt Nightfall an, wenn das Ofenfenster geschlossen und ein leerer Ofen/Hochofen anvisiert werden muss.
 - `/nf agent action <name> <json>` – vorhandene lokale Aktionen aus dem Nightfall-Aktionsregister mit einfachen oder begrenzten strukturierten JSON-Parametern einreihen. Auch Modul-, Wegpunkt-, Scanner-, Status- und Serverbefehlsaktionen werden lokal validiert. Arrays/Objekte sind auf 32 KiB pro Auftragsschritt begrenzt; `build_custom_structure` prüft zusätzlich höchstens 512 Blöcke und deren Verbindung, Koordinaten und Materialien.
