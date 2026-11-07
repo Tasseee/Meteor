@@ -101,16 +101,26 @@ class OfflineAgentPlanParserTest {
                     {"steps":[{"id":"gather","action":"gather_wood"}]}
                     """);
             Path linkedFile = realDirectory.resolve("linked.json");
-            Files.createSymbolicLink(linkedFile, outsideFile);
+            createSymlinkOrAbort(linkedFile, outsideFile);
             assertThrows(IllegalArgumentException.class, () ->
                     OfflineAgentPlanParser.loadFileFromDirectory(realDirectory, "linked.json", "linked"));
 
             Path linkedDirectory = root.resolve("linked-directory");
-            Files.createSymbolicLink(linkedDirectory, realDirectory);
+            createSymlinkOrAbort(linkedDirectory, realDirectory);
             assertThrows(IllegalArgumentException.class, () ->
                     OfflineAgentPlanParser.loadFileFromDirectory(linkedDirectory, "outside.json", "linked-dir"));
         } finally {
             deleteTree(root);
+        }
+    }
+
+    private static void createSymlinkOrAbort(Path link, Path target) throws IOException {
+        try {
+            Files.createSymbolicLink(link, target);
+        } catch (IOException | UnsupportedOperationException | SecurityException unavailable) {
+            org.junit.jupiter.api.Assumptions.assumeTrue(false,
+                    "Symbolische Links werden auf diesem Betriebssystem/Benutzerkonto nicht unterstützt: "
+                            + unavailable.getClass().getSimpleName());
         }
     }
 
