@@ -2,6 +2,7 @@ package dev.nightfall.ai;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import net.minecraft.client.MinecraftClient;
 
 import java.util.Map;
 import java.util.Objects;
@@ -46,6 +47,9 @@ public final class OfflineAgentActionBridge {
      * the current world. The returned preview must be confirmed separately.
      */
     public synchronized Optional<PreparedStep> prepareNext() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) throw new IllegalStateException("Agentenaktionen müssen auf dem Minecraft-Client-Thread vorbereitet werden.");
+        if (client.player == null || client.world == null) return Optional.empty();
         if (pending != null || verifyingGoalId != null) return Optional.empty();
         Optional<OfflineAgentCore.StepRef> next = core.nextReadyStep();
         if (next.isEmpty()) return Optional.empty();
@@ -73,6 +77,8 @@ public final class OfflineAgentActionBridge {
 
     /** Executes only the exact step whose preview was most recently returned. */
     public synchronized String confirm(PreparedStep confirmation) {
+        if (!MinecraftClient.getInstance().isOnThread())
+            throw new IllegalStateException("Agentenaktionen müssen auf dem Minecraft-Client-Thread ausgeführt werden.");
         if (pending == null || pending != confirmation) {
             throw new IllegalStateException("Es liegt keine passende Aktionsvorschau zur Bestätigung vor.");
         }
@@ -137,6 +143,8 @@ public final class OfflineAgentActionBridge {
      * and marks the corresponding goal cancelled.
      */
     public synchronized void cancelVerifyingAction() {
+        if (!MinecraftClient.getInstance().isOnThread())
+            throw new IllegalStateException("Agentenaktionen müssen auf dem Minecraft-Client-Thread gestoppt werden.");
         if (verifyingGoalId == null) return;
         if (AIPlayerController.isBusy()) AIPlayerController.stop("Offline-Agentenaktion abgebrochen.");
         core.cancel(verifyingGoalId);
