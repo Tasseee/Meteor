@@ -70,6 +70,26 @@ public final class OfflineAgentCore {
         }
     }
 
+    public record StepCheckpoint(Step step, StepStatus status, int attempts, String detail) {
+        public StepCheckpoint {
+            Objects.requireNonNull(step, "step");
+            Objects.requireNonNull(status, "status");
+            if (attempts < 0 || attempts > step.maxAttempts())
+                throw new IllegalArgumentException("Invalid checkpoint attempt count.");
+            detail = boundedDetail(detail);
+        }
+    }
+
+    public record GoalCheckpoint(Goal goal, GoalStatus status, List<StepCheckpoint> steps) {
+        public GoalCheckpoint {
+            Objects.requireNonNull(goal, "goal");
+            Objects.requireNonNull(status, "status");
+            steps = List.copyOf(Objects.requireNonNull(steps, "steps"));
+            if (status != GoalStatus.ACTIVE || steps.size() != goal.steps().size())
+                throw new IllegalArgumentException("Only complete active goal checkpoints may be restored.");
+        }
+    }
+
     public record StepRef(String goalId, Step step, int attempts) {}
     public record StepView(String id, String action, StepStatus status, int attempts, String detail) {}
     public record GoalView(String id, String description, int priority, GoalStatus status, List<StepView> steps) {
@@ -97,6 +117,7 @@ public final class OfflineAgentCore {
     }
 
     private final LinkedHashMap<String, GoalState> goals = new LinkedHashMap<>();
+    private long revision;
 
     /** Adds a validated goal. Existing goal IDs are never overwritten. */
     public synchronized void submit(Goal goal) {
@@ -112,6 +133,81 @@ public final class OfflineAgentCore {
             goals.remove(oldestFinished);
         }
         goals.put(goal.id(), new GoalState(goal));
+        revision++;
+    }
+
+    /** Monotonic in-memory revision used to avoid writing unchanged checkpoints. */
+    public synchronized long revision() {
+        return revision;
+    }
+
+    /** Export only active goals; completed history belongs in OfflineAgentMemory. */
+    public synchronized List<GoalCheckpoint> exportActiveCheckpoints() {
+        List<GoalCheckpoint> result = new ArrayList<>();
+        for (GoalState goal : goals.values()) {
+            if (goal.status != GoalStatus.ACTIVE) continue;
+            List<StepCheckpoint> steps = new ArrayList<>();
+            for (StepState state : goal.steps.values()) {
+                steps.add(new StepCheckpoint(state.step, state.status, state.attempts, state.detail));
+            }
+            result.add(new GoalCheckpoint(goal.goal, goal.status, steps));
+        }
+        return List.copyOf(result);
+    }
+
+    /**
+     * Restore active goals after a client restart. A step that was RUNNING,
+     * VERIFYING or awaiting cancellation is restored as VERIFYING, never PENDING:
+     * its world/inventory effects must be checked by the player before dependents
+     * can run or a retry can start.
+     */
+    public synchronized int restoreActiveCheckpoints(List<GoalCheckpoint> checkpoints) {
+        Objects.requireNonNull(checkpoints, "checkpoints");
+        if (!goals.isEmpty()) throw new IllegalStateException("Agent state must be empty before restoring checkpoints.");
+        if (checkpoints.size() > MAX_ACTIVE_GOALS) throw new IllegalArgumentException("Too many active goal checkpoints.");
+        int inFlight = 0;
+        Set<String> restoredIds = new LinkedHashSet<>();
+        List<GoalState> restored = new ArrayList<>();
+        for (GoalCheckpoint checkpoint : checkpoints) {
+            Objects.requireNonNull(checkpoint, "checkpoint");
+            Goal goal = checkpoint.goal();
+            if (checkpoint.status() != GoalStatus.ACTIVE || !restoredIds.add(goal.id()))
+                throw new IllegalArgumentException("Invalid or duplicate active goal checkpoint.");
+            GoalState state = new GoalState(goal);
+            if (checkpoint.steps().size() != state.steps.size())
+                throw new IllegalArgumentException("Checkpoint step count does not match its goal.");
+            for (StepCheckpoint stepCheckpoint : checkpoint.steps()) {
+                StepState stepState = state.steps.get(stepCheckpoint.step().id());
+                if (stepState == null || !stepState.step.equals(stepCheckpoint.step()))
+                    throw new IllegalArgumentException("Checkpoint step definition does not match its goal.");
+                if (stepCheckpoint.attempts() > stepState.step.maxAttempts())
+                    throw new IllegalArgumentException("Checkpoint attempt count exceeds its limit.");
+                stepState.attempts = stepCheckpoint.attempts();
+                stepState.status = stepCheckpoint.status();
+                stepState.detail = boundedDetail(stepCheckpoint.detail());
+                if (stepState.status == StepStatus.RUNNING
+                        || stepState.status == StepStatus.VERIFYING
+                        || stepState.status == StepStatus.CANCEL_REQUESTED) {
+                    inFlight++;
+                    stepState.status = StepStatus.VERIFYING;
+                    stepState.detail = "Der vorherige Clientlauf wurde unterbrochen. Prüfe Welt und Inventar vor der Fortsetzung.";
+                }
+            }
+            refreshGoal(state);
+            restored.add(state);
+        }
+        if (inFlight > 1) throw new IllegalArgumentException("Checkpoint contains more than one interrupted in-flight action.");
+        for (GoalState state : restored) goals.put(state.goal.id(), state);
+        revision++;
+        return inFlight;
+    }
+
+    /** Clears in-memory goals after their world-scoped queue has been saved. */
+    public synchronized void clearAll() {
+        if (!goals.isEmpty()) {
+            goals.clear();
+            revision++;
+        }
     }
 
     /**
@@ -150,6 +246,7 @@ public final class OfflineAgentCore {
         state.attempts++;
         state.status = StepStatus.RUNNING;
         state.detail = "";
+        revision++;
     }
 
     /** Reports an action result. UNCERTAIN deliberately does not count as success. */
@@ -166,6 +263,7 @@ public final class OfflineAgentCore {
                     ? StepStatus.PENDING : StepStatus.FAILED;
         }
         refreshGoal(findGoal(goalId));
+        revision++;
     }
 
     /** Resolves a VERIFYING step using a fresh observation from the game integration. */
@@ -177,6 +275,7 @@ public final class OfflineAgentCore {
         else state.status = state.attempts < state.step.maxAttempts()
                 ? StepStatus.PENDING : StepStatus.FAILED;
         refreshGoal(findGoal(goalId));
+        revision++;
     }
 
     /**
@@ -191,6 +290,7 @@ public final class OfflineAgentCore {
             else if (!isTerminal(state.status)) state.status = StepStatus.CANCELLED;
         }
         refreshGoal(goal);
+        revision++;
     }
 
     public synchronized void acknowledgeStopped(String goalId, String stepId) {
@@ -201,6 +301,7 @@ public final class OfflineAgentCore {
         state.status = StepStatus.CANCELLED;
         state.detail = "Aktion wurde gestoppt.";
         refreshGoal(findGoal(goalId));
+        revision++;
     }
 
     public synchronized List<GoalView> snapshot() {
