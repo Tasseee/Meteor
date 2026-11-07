@@ -19,6 +19,7 @@ Wichtige Befehle:
 - `/nf agent gather wood minecraft:oak_log 16`, `/nf agent gather block minecraft:cobblestone 32`, `/nf agent gather ore minecraft:raw_iron 8` – lokale Sammelaufträge.
 - `/nf agent craft minecraft:oak_planks 32`, `/nf agent smelt minecraft:raw_iron 8`, `/nf agent eat`, `/nf agent sort` – Crafting, Schmelzen, Essen und Inventarsortierung.
 - `/nf agent wood 32` – mehrstufig: prüft zuerst den Eichenstamm-Bestand, sammelt nur bis zur nötigen Rezeptmenge auf und craftet anschließend 32 zusätzliche Bretter.
+- `/nf agent shelter` – mehrstufiger Starter-Bau: prüft Eichenbretter und Stämme, sammelt/craftet nur die Fehlmenge und bereitet danach ein 4×4-Starter-Schutzhaus vor.
 - `/nf agent iron 64` – mehrstufig: prüft vorhandenes Roheisen und Brennstoff, sammelt Fehlmengen (bei Bedarf auch Kohle) und schmilzt danach in bestätigten Ofen-Chargen von höchstens 16 Stück.
 - `/nf agent build starter`, `/nf agent build large_house`, `/nf agent build watchtower` – vorhandene Bauvorlagen vorbereiten und bauen.
 - `/nf agent build resume` – einen vom vorhandenen Builder gespeicherten und server-/dimensionsgebundenen Bau-Checkpoint fortsetzen.
