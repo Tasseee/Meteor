@@ -624,9 +624,12 @@ public final class OfflineAgentActionBridge {
                 if (!definition.isJsonObject()) continue;
                 JsonObject function = definition.getAsJsonObject().getAsJsonObject("function");
                 if (function == null || !function.has("name") || !function.has("parameters")) continue;
-                JsonObject parameterSchema = function.getAsJsonObject("parameters");
-                JsonObject properties = parameterSchema.getAsJsonObject("properties");
-                if (properties == null) continue;
+                JsonElement parameterElement = function.get("parameters");
+                if (parameterElement == null || !parameterElement.isJsonObject()) continue;
+                JsonObject parameterSchema = parameterElement.getAsJsonObject();
+                JsonElement propertiesElement = parameterSchema.get("properties");
+                if (propertiesElement == null || !propertiesElement.isJsonObject()) continue;
+                JsonObject properties = propertiesElement.getAsJsonObject();
                 Map<String, String> fields = new LinkedHashMap<>();
                 boolean scalarOnly = true;
                 for (Map.Entry<String, JsonElement> property : properties.entrySet()) {
