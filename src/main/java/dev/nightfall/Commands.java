@@ -262,6 +262,10 @@ public final class Commands {
     private static LiteralArgumentBuilder<FabricClientCommandSource> agentCommand() {
         LiteralArgumentBuilder<FabricClientCommandSource> root = literal("agent");
         root.then(literal("status").executes(c -> offlineAgentStatus(c)));
+        root.then(literal("help").executes(c -> say(c,
+                "Offline-Agent: /nf agent gather <wood|block|ore> <item> <count> · craft <item> [count] · smelt <item> <count> · wood <bretter> · iron <erz> · build <starter|resume|vorlage> · schematic <datei> · navigate <x> <y> <z> · mine <x> <y> <z> · attack · guard · sort · search [struktur]. "
+                        + "Weitere lokale Funktionen: /nf agent action <name> <json>. Jeder Auftrag zeigt vor Ausführung eine Vorschau. "
+                        + "confirm bestätigt, reject lehnt ab, verify success|failed prüft das Ergebnis, cancel bricht ab.")));
         LiteralArgumentBuilder<FabricClientCommandSource> action = literal("action");
         var actionName = argument("name", StringArgumentType.word());
         actionName.executes(c -> submitRegistryAction(c, str(c, "name"), "{}"));
