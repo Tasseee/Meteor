@@ -33,6 +33,8 @@ public final class OfflineAgentActionBridge {
     private String verifyingGoalId;
     private String verifyingStepId;
     private String lastError = "";
+    private String setupPromptKey = "";
+    private String setupPrompt = "";
     private VerificationKind verificationKind = VerificationKind.NONE;
     private long playerSequenceAtStart;
     private long builderSequenceAtStart;
@@ -66,6 +68,18 @@ public final class OfflineAgentActionBridge {
         if (next.isEmpty()) return Optional.empty();
 
         OfflineAgentCore.StepRef ref = next.get();
+        if ("smelt_item".equals(ref.step().action()) && !AIPlayerController.isReadyToPreviewSmelting()) {
+            String promptKey = ref.goalId() + "/" + ref.step().id();
+            setupPromptKey = promptKey;
+            setupPrompt = "Schließe zuerst das Ofenfenster (falls offen) und richte dein Fadenkreuz auf einen leeren normalen Ofen oder Hochofen. Sobald das passt, erstellt Nightfall automatisch die Schmelzvorschau.";
+            if (!promptKey.equals(setupPromptKey)) {
+                client.player.sendMessage(Text.literal("[Nightfall] Offline-Agent wartet auf dich: " + setupPrompt), false);
+                setupPromptKey = promptKey;
+            }
+            return Optional.empty();
+        }
+        setupPromptKey = "";
+        setupPrompt = "";
         try {
             if (!actionSchemas().containsKey(ref.step().action())) {
                 throw new IllegalArgumentException("Aktion ist nicht in der lokalen Offline-Allowlist oder benötigt komplexe Parameter.");
@@ -287,6 +301,8 @@ public final class OfflineAgentActionBridge {
         verifyingGoalId = null;
         verifyingStepId = null;
         verificationKind = VerificationKind.NONE;
+        setupPromptKey = "";
+        setupPrompt = "";
     }
 
     /**
@@ -312,6 +328,8 @@ public final class OfflineAgentActionBridge {
         verifyingGoalId = null;
         verifyingStepId = null;
         verificationKind = VerificationKind.NONE;
+        setupPromptKey = "";
+        setupPrompt = "";
     }
 
     /** Cancels every active offline goal and safely stops the active action. */
@@ -331,6 +349,14 @@ public final class OfflineAgentActionBridge {
 
     public synchronized boolean awaitingVerification() {
         return verifyingGoalId != null;
+    }
+
+    public synchronized boolean waitingForSetup() {
+        return !setupPrompt.isBlank();
+    }
+
+    public synchronized String preparationPrompt() {
+        return setupPrompt;
     }
 
     public synchronized String lastError() {
