@@ -338,6 +338,7 @@ public final class OfflineAgentActionBridge {
         if (verifyingGoalId == null) throw new IllegalStateException("Keine Aktion wartet auf Überprüfung.");
         if (verificationKind != VerificationKind.EXTERNAL && verificationKind != VerificationKind.RECOVERED)
             throw new IllegalStateException("Diese lokale Controller-Aktion wird automatisch anhand ihres Abschlussstatus geprüft. Bitte warte auf die Nightfall-Abschlussmeldung.");
+        String goalId = verifyingGoalId;
         core.verify(verifyingGoalId, verifyingStepId, confirmedSuccess, observation);
         verifyingGoalId = null;
         verifyingStepId = null;
