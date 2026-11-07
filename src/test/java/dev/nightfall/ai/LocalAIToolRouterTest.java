@@ -42,6 +42,7 @@ class LocalAIToolRouterTest {
         assertTrue(prompt.contains("connected face-to-face"));
         assertTrue(prompt.contains("\"maximum\":31"));
         assertTrue(prompt.contains("höchstens 512 Blöcken"));
+        assertTrue(prompt.contains("read-only-Materialplanung"));
     }
 
     @Test
@@ -60,14 +61,16 @@ class LocalAIToolRouterTest {
         String catalog = LocalAIPlanner.capabilityCatalog();
         var supported = OfflineAgentActionBridge.supportedActions();
 
-        assertFalse(supported.isEmpty(), "No action schemas were accepted by the offline bridge");
-        for (var definition : AIActionRegistry.toolDefinitions()) {
+        var definitions = AIActionRegistry.toolDefinitions();
+        assertEquals(definitions.size(), supported.size(),
+                "Every registered action must have a compatible offline parameter schema");
+        for (var definition : definitions) {
             var function = definition.getAsJsonObject().getAsJsonObject("function");
             String name = function.get("name").getAsString();
             assertTrue(catalog.contains("- " + name + " ["), "Missing capability: " + name);
-            assertEquals(supported.containsKey(name),
-                    catalog.contains("- " + name + " [an Offline-Agent-Brücke angebunden]"),
-                    "Incorrect compatibility label for " + name);
+            assertTrue(supported.containsKey(name), "Action not accepted by offline bridge: " + name);
+            assertTrue(catalog.contains("- " + name + " [an Offline-Agent-Brücke angebunden]"),
+                    "Action is incorrectly labeled unsupported: " + name);
         }
     }
 
