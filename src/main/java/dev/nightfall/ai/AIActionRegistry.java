@@ -120,7 +120,7 @@ public final class AIActionRegistry {
         tools.add(tool("add_waypoint", "Save a waypoint at the player's current position. The player must confirm first.",
                 objectSchema(property("name", "string", "Short waypoint name, max 32 characters."), "name")));
         tools.add(tool("list_waypoints",
-                "Read the locally saved waypoints for the current server, including names, dimensions and coordinates. This location data is sent to the configured AI provider, so the player must confirm first. Read-only; does not navigate, add, edit or remove anything.",
+                "Read the locally saved waypoints for the current server, including names, dimensions and coordinates. Data stays on the Minecraft client in offline mode. Read-only; does not navigate, add, edit or remove anything.",
                 objectSchema()));
         tools.add(tool("search_bases",
                 "Start or resume Nightfall's incremental BaseFinder scan. It inspects only chunks already loaded and sent to this client; it does not teleport, issue server commands, or reveal server-side hidden data. Requires player confirmation.",
@@ -161,12 +161,12 @@ public final class AIActionRegistry {
         setSettingSchema.add("required", setSettingRequired);
         tools.add(tool("set_module_setting", "Change one existing Nightfall ClickGUI setting by exact module and setting name. Supports boolean toggles, bounded numbers, allowed mode choices, text settings and colors (#RRGGBB). The client validates the setting type and range, shows a preview and requires player confirmation. Unsupported list settings cannot be edited by AI.", setSettingSchema));
         tools.add(tool("open_nightfall_menu", "Open Nightfall's own ClickGUI menu on the client. Does not change any setting.", objectSchema()));
-        tools.add(tool("get_inventory", "Read the player's inventory and summarize item names and counts. This data is sent to the configured AI provider; the player must confirm first.",
+        tools.add(tool("get_inventory", "Read the player's inventory and summarize item names and counts locally. Data stays on the Minecraft client in offline mode.",
                 objectSchema()));
         tools.add(tool("sort_inventory",
                 "Sort permitted ordinary items in the player's 36 normal inventory/hotbar slots by category and item ID. Preserves exact stack counts, durability, enchantments and item components; does not merge or delete items. Combat-oriented items remain in their exact slots. Armor, offhand, crafting slots and cursor are never moved. Uses normal server-confirmed inventory swaps, one at a time; requires a preview and explicit confirmation.",
                 objectSchema()));
-        tools.add(tool("get_player_status", "Read the player's current dimension, coordinates and health. This data is sent to the configured AI provider; the player must confirm first.",
+        tools.add(tool("get_player_status", "Read the player's current dimension, coordinates and health locally. Data stays on the Minecraft client in offline mode.",
                 objectSchema()));
         tools.add(tool("random_teleport", "Request the server's random teleport using its common /rtp command. The player must confirm first; the server must support it.",
                 objectSchema()));
@@ -185,7 +185,7 @@ public final class AIActionRegistry {
         materialPlanMaterial.addProperty("maxLength", 64);
         materialPlanSchema.getAsJsonObject("properties").add("material", materialPlanMaterial);
         tools.add(tool("plan_build_materials",
-                "Read-only material availability plan for starter_shelter (54 blocks), large_house (130 blocks), or watchtower (74 blocks). Counts suitable full-cube block items across the player's 36 normal inventory/hotbar slots and ranks the best fit before shortages. Optional material selects one exact material. Reads inventory data that will be shared with the configured AI provider, so Nightfall previews the exact analysis and requires player confirmation. Does not prepare a build, save a checkpoint, swap slots, or change the world.",
+                "Read-only material availability plan for starter_shelter (54 blocks), large_house (130 blocks), or watchtower (74 blocks). Counts suitable full-cube block items across the player's 36 normal inventory/hotbar slots and ranks the best fit before shortages. Optional material selects one exact material. Reads inventory data locally on the Minecraft client; no provider receives it in offline mode. Does not prepare a build, save a checkpoint, swap slots, or change the world.",
                 materialPlanSchema));
 
         JsonObject buildStructureSchema = objectSchema(
@@ -487,7 +487,7 @@ public final class AIActionRegistry {
                         + waypointName + "“ an deiner aktuellen Position.");
             }
             case "list_waypoints" -> new Action(name, args,
-                    "Nightfall liest die lokalen Wegpunkte dieses Servers und übermittelt Namen, Dimensionen und Koordinaten an den konfigurierten KI-Anbieter. Es wird nichts geändert und keine Navigation gestartet.\n\n" + waypointSummary());
+                    "Nightfall liest die lokalen Wegpunkte dieses Servers. Namen, Dimensionen und Koordinaten bleiben im Offline-Modus auf dem Minecraft-Client. Es wird nichts geändert und keine Navigation gestartet.\n\n" + waypointSummary());
             case "search_bases" -> new Action(name, args,
                     "Nightfall aktiviert den BaseFinder und beginnt mit dem inkrementellen Scan bereits geladener Chunks. Das Ergebnis ist eine lokale Heuristik, kein bestätigter Basisfund.");
             case "get_base_findings" -> new Action(name, args, baseFindingsSummary());
@@ -530,10 +530,10 @@ public final class AIActionRegistry {
             }
             case "open_nightfall_menu" -> new Action(name, args, "Öffnet das Nightfall-Menü auf deinem Bildschirm. Es werden keine Einstellungen geändert.");
             case "get_inventory" -> new Action(name, args,
-                    "Nightfall liest dein Inventar und sendet Itemnamen und Mengen an den konfigurierten KI-Anbieter.");
+                    "Nightfall liest dein Inventar lokal. Itemnamen und Mengen verlassen im Offline-Modus den Minecraft-Client nicht.");
             case "sort_inventory" -> new Action(name, args, AIPlayerController.previewInventorySort());
             case "get_player_status" -> new Action(name, args,
-                    "Nightfall liest Dimension, Position und Lebenspunkte und sendet diese Daten an den konfigurierten KI-Anbieter.");
+                    "Nightfall liest Dimension, Position und Lebenspunkte lokal. Diese Daten verlassen im Offline-Modus den Minecraft-Client nicht.");
             case "random_teleport" -> new Action(name, args,
                     "Nightfall sendet nach deiner Bestätigung den Serverbefehl /rtp. Der Server muss diesen Befehl anbieten; Nightfall kann den Teleport nicht erzwingen.");
             case "run_server_command" -> {
