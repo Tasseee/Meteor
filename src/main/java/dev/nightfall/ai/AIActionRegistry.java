@@ -69,7 +69,7 @@ public final class AIActionRegistry {
 
     public record Action(String name, JsonObject arguments, String preview) {}
 
-    /** OpenAI-compatible function definitions. The model can suggest, never execute, these tools. */
+    /** Local action schemas shared by the offline command bridge; actions are validated and never executed from a model response. */
     private static JsonArray cachedToolDefinitions() {
         JsonArray cached = cachedToolDefinitions;
         if (cached == null) {
