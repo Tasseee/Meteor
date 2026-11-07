@@ -117,7 +117,8 @@ public final class OfflineAgentActionBridge {
                 AIPlayerController.stop("Offline-Agentenaktion nach einem Ausführungsfehler gestoppt.");
             if (AICombatController.isActive())
                 AICombatController.stop("Offline-Agentenaktion nach einem Ausführungsfehler gestoppt.");
-            AIBuilder.stop();
+            if (AIBuilder.isRunning()) AIBuilder.stop();
+            AIActionRegistry.cancel(action);
             String detail = safeMessage(failure);
             core.report(goalId, stepId, OfflineAgentCore.ActionResult.PERMANENT_FAILURE, detail);
             lastError = detail;
@@ -171,11 +172,35 @@ public final class OfflineAgentActionBridge {
         if (verifyingGoalId == null) return;
         if (AIPlayerController.isBusy()) AIPlayerController.stop("Offline-Agentenaktion abgebrochen.");
         if (AICombatController.isActive()) AICombatController.stop("Offline-Agentenaktion abgebrochen.");
-        AIBuilder.stop();
+        if (AIBuilder.isRunning()) AIBuilder.stop();
         String goalId = verifyingGoalId;
         String stepId = verifyingStepId;
         core.cancel(goalId);
         core.acknowledgeStopped(goalId, stepId);
+        verifyingGoalId = null;
+        verifyingStepId = null;
+    }
+
+    /**
+     * Drop in-memory agent work when leaving a server. The game controllers save
+     * their own supported checkpoints before this is called.
+     */
+    public synchronized void onDisconnect() {
+        if (pending != null) {
+            core.cancel(pending.goalId());
+            pending = null;
+            pendingAction = null;
+        }
+        for (OfflineAgentCore.GoalView goal : core.snapshot()) {
+            if (goal.status() == OfflineAgentCore.GoalStatus.ACTIVE) core.cancel(goal.id());
+        }
+        for (OfflineAgentCore.GoalView goal : core.snapshot()) {
+            for (OfflineAgentCore.StepView step : goal.steps()) {
+                if (step.status() == OfflineAgentCore.StepStatus.CANCEL_REQUESTED) {
+                    core.acknowledgeStopped(goal.id(), step.id());
+                }
+            }
+        }
         verifyingGoalId = null;
         verifyingStepId = null;
     }
