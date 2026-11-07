@@ -623,7 +623,12 @@ public final class OfflineAgentActionBridge {
             for (JsonElement definition : definitions) {
                 if (!definition.isJsonObject()) continue;
                 JsonObject function = definition.getAsJsonObject().getAsJsonObject("function");
-                if (function == null || !function.has("name") || !function.has("parameters")) continue;
+                if (function == null) continue;
+                JsonElement nameElement = function.get("name");
+                if (nameElement == null || !nameElement.isJsonPrimitive()
+                        || !nameElement.getAsJsonPrimitive().isString()) continue;
+                String actionName = nameElement.getAsString();
+                if (!function.has("parameters")) continue;
                 JsonElement parameterElement = function.get("parameters");
                 if (parameterElement == null || !parameterElement.isJsonObject()) continue;
                 JsonObject parameterSchema = parameterElement.getAsJsonObject();
@@ -633,18 +638,25 @@ public final class OfflineAgentActionBridge {
                 Map<String, String> fields = new LinkedHashMap<>();
                 boolean scalarOnly = true;
                 for (Map.Entry<String, JsonElement> property : properties.entrySet()) {
-                    if (!property.getValue().isJsonObject() || !property.getValue().getAsJsonObject().has("type")) {
+                    JsonElement propertyElement = property.getValue();
+                    if (propertyElement == null || !propertyElement.isJsonObject()) {
                         scalarOnly = false;
                         break;
                     }
-                    String type = property.getValue().getAsJsonObject().get("type").getAsString();
+                    JsonElement typeElement = propertyElement.getAsJsonObject().get("type");
+                    if (typeElement == null || !typeElement.isJsonPrimitive()
+                            || !typeElement.getAsJsonPrimitive().isString()) {
+                        scalarOnly = false;
+                        break;
+                    }
+                    String type = typeElement.getAsString();
                     if (!Set.of("string", "integer", "number", "boolean", "array", "object").contains(type)) {
                         scalarOnly = false;
                         break;
                     }
                     fields.put(property.getKey(), type);
                 }
-                if (scalarOnly) actions.put(function.get("name").getAsString(), Map.copyOf(fields));
+                if (scalarOnly) actions.put(actionName, Map.copyOf(fields));
             }
             cached = Map.copyOf(actions);
             ACTION_SCHEMAS = cached;
