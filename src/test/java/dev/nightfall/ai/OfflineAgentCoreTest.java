@@ -340,6 +340,26 @@ class OfflineAgentCoreTest {
     }
 
     @Test
+    void replanningFailedGoalIsBlockedWhileAnotherGoalHasAnInFlightAction() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        core.submit(new OfflineAgentCore.Goal("failed", "Baue ein Haus", 2,
+                List.of(step("old", "build_structure", List.of(), 1))));
+        core.markStarted("failed", "old");
+        core.report("failed", "old", OfflineAgentCore.ActionResult.PERMANENT_FAILURE, "Fehlgeschlagen");
+
+        core.submit(new OfflineAgentCore.Goal("other", "Sammle Holz", 1,
+                List.of(step("gather", "gather_wood", List.of(), 2))));
+        core.markStarted("other", "gather");
+        assertThrows(IllegalStateException.class, () -> core.replanRemaining("failed",
+                List.of(step("new-gather", "gather_wood", List.of(), 1))));
+
+        core.report("other", "gather", OfflineAgentCore.ActionResult.SUCCESS, "Abgeschlossen");
+        core.replanRemaining("failed", List.of(step("new-gather", "gather_wood", List.of(), 1)));
+        assertEquals(OfflineAgentCore.GoalStatus.ACTIVE,
+                core.snapshot().stream().filter(goal -> goal.id().equals("failed")).findFirst().orElseThrow().status());
+    }
+
+    @Test
     void invalidReplacementPlanDoesNotMutateExistingGoal() {
         OfflineAgentCore core = new OfflineAgentCore();
         core.submit(new OfflineAgentCore.Goal("invalid-replan", "Sammle Holz", 0,
