@@ -9,9 +9,9 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.LinkOption;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -85,7 +85,7 @@ public final class OfflineAgentPlanParser {
         Path file = directory.resolve(fileName).normalize();
         if (!directory.equals(file.getParent()))
             throw new IllegalArgumentException("Der Plan muss direkt im lokalen agent_plans-Ordner liegen.");
-        if (!Files.isRegularFile(file))
+        if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS))
             throw new IllegalArgumentException("Plan-Datei nicht gefunden: config/nightfall/agent_plans/" + fileName);
         long size = Files.size(file);
         if (size <= 0 || size > MAX_PLAN_FILE_BYTES)
