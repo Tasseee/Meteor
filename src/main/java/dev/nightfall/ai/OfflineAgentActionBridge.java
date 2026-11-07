@@ -38,6 +38,11 @@ public final class OfflineAgentActionBridge {
         this.core = Objects.requireNonNull(core, "core");
     }
 
+    /** True when an existing local action has a scalar-only offline parameter schema. */
+    public static boolean supportsAction(String actionName) {
+        return actionName != null && actionSchemas().containsKey(actionName);
+    }
+
     /**
      * Prepares the next ready step using the existing local action validator.
      * Must be called on the Minecraft client thread because previews may inspect
