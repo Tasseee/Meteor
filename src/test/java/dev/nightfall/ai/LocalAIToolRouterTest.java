@@ -57,6 +57,15 @@ class LocalAIToolRouterTest {
     }
 
     @Test
+    void ordinaryRequestForHelpDoesNotTriggerCapabilityOverview() {
+        assertFalse(LocalAIToolRouter.isCapabilityQuestion(request(
+                "Hilf mir bitte, ein Haus zu bauen.")));
+        assertFalse(LocalAIToolRouter.isCapabilityQuestion(request(
+                "Help me find a village.")));
+        assertTrue(LocalAIToolRouter.isCapabilityQuestion(request("Hilfe")));
+    }
+
+    @Test
     void capabilityCatalogCoversEveryRegisteredActionAndReportsBridgeSupport() {
         String catalog = LocalAIPlanner.capabilityCatalog();
         var supported = OfflineAgentActionBridge.supportedActions();
