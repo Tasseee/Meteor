@@ -65,9 +65,17 @@ public final class OfflineAgentActionBridge {
         if (AIPlayerController.isBusy() || AICombatController.isActive() || AIBuilder.isRunning())
             return Optional.empty();
         Optional<OfflineAgentCore.StepRef> next = core.nextReadyStep();
-        if (next.isEmpty()) return Optional.empty();
+        if (next.isEmpty()) {
+            setupPromptKey = "";
+            setupPrompt = "";
+            return Optional.empty();
+        }
 
         OfflineAgentCore.StepRef ref = next.get();
+        if (!"smelt_item".equals(ref.step().action())) {
+            setupPromptKey = "";
+            setupPrompt = "";
+        }
         if ("smelt_item".equals(ref.step().action()) && !AIPlayerController.isReadyToPreviewSmelting()) {
             String promptKey = ref.goalId() + "/" + ref.step().id();
             setupPrompt = "Schließe zuerst das Ofenfenster (falls offen) und richte dein Fadenkreuz auf einen leeren normalen Ofen oder Hochofen. Sobald das passt, erstellt Nightfall automatisch die Schmelzvorschau.";
@@ -340,6 +348,8 @@ public final class OfflineAgentActionBridge {
         for (OfflineAgentCore.GoalView goal : core.snapshot()) {
             if (goal.status() == OfflineAgentCore.GoalStatus.ACTIVE) core.cancel(goal.id());
         }
+        setupPromptKey = "";
+        setupPrompt = "";
     }
 
     public synchronized Optional<PreparedStep> pendingPreview() {
