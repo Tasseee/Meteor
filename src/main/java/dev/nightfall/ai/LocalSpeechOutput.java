@@ -5,7 +5,6 @@ import net.minecraft.client.MinecraftClient;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -68,10 +67,12 @@ public final class LocalSpeechOutput {
         Process process;
         if (os.contains("win")) {
             String script = "$ErrorActionPreference='Stop'; "
+                    + "[Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false); "
                     + "Add-Type -AssemblyName System.Speech; "
                     + "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
                     + "$v = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like 'de-*' } | Select-Object -First 1; "
-                    + "if ($null -ne $v) { $s.SelectVoice($v.VoiceInfo.Name) }; "
+                    + "if ($null -eq $v) { throw 'No German system voice is installed' }; "
+                    + "$s.SelectVoice($v.VoiceInfo.Name); "
                     + "$s.Speak([Console]::In.ReadToEnd()); $s.Dispose()";
             process = new ProcessBuilder("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
                     .redirectErrorStream(true)
