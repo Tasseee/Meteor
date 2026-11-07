@@ -110,6 +110,7 @@ public final class OfflineAgentCore {
      * insertion order and declared step order break ties deterministically.
      */
     public synchronized Optional<StepRef> nextReadyStep() {
+        if (hasInFlightAction()) return Optional.empty();
         GoalState selectedGoal = goals.values().stream()
                 .filter(state -> state.status == GoalStatus.ACTIVE)
                 .sorted((left, right) -> Integer.compare(right.goal.priority(), left.goal.priority()))
@@ -126,6 +127,7 @@ public final class OfflineAgentCore {
 
     /** Marks a selected step as running and consumes one bounded attempt. */
     public synchronized void markStarted(String goalId, String stepId) {
+        if (hasInFlightAction()) throw new IllegalStateException("Only one Minecraft action may run at a time.");
         StepState state = findStep(goalId, stepId);
         if (state.status != StepStatus.PENDING || !dependenciesSucceeded(goalId, state.step)) {
             throw new IllegalStateException("Step is not ready to start.");
@@ -206,6 +208,12 @@ public final class OfflineAgentCore {
         return List.copyOf(result);
     }
 
+    private boolean hasInFlightAction() {
+        return goals.values().stream().flatMap(goal -> goal.steps.values().stream())
+                .anyMatch(state -> state.status == StepStatus.RUNNING
+                        || state.status == StepStatus.CANCEL_REQUESTED);
+    }
+
     private boolean isReady(GoalState goal, StepState state) {
         if (state.status != StepStatus.PENDING) return false;
         for (String dependency : state.step.dependsOn()) {
@@ -253,16 +261,6 @@ public final class OfflineAgentCore {
         } else if (goal.steps.values().stream().allMatch(state -> isTerminal(state.status))) {
             goal.status = hasFailure ? GoalStatus.FAILED : GoalStatus.CANCELLED;
         }
-    }
-
-    private boolean hasFailedDependency(GoalState goal, Step step) {
-        for (String dependency : step.dependsOn()) {
-            StepState dependencyState = goal.steps.get(dependency);
-            if (dependencyState == null || dependencyState.status == StepStatus.FAILED
-                    || dependencyState.status == StepStatus.BLOCKED
-                    || dependencyState.status == StepStatus.CANCELLED) return true;
-        }
-        return false;
     }
 
     private static boolean isTerminal(StepStatus status) {
