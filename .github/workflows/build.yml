@@ -58,6 +58,23 @@ jobs:
       - name: Build Nightfall
         run: gradle build --no-daemon
 
+      - name: Print unit test failure details
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob
+          import xml.etree.ElementTree as ET
+
+          for path in glob.glob("build/test-results/test/TEST-*.xml"):
+              root = ET.parse(path).getroot()
+              for case in root.iter("testcase"):
+                  for failure in list(case):
+                      if failure.tag in ("failure", "error"):
+                          print(f"FAILED: {case.attrib.get('classname')}.{case.attrib.get('name')}")
+                          print(failure.attrib.get("message", ""))
+                          print(failure.text or "")
+          PY
+
       - name: Verify Fabric JAR metadata
         run: |
           python3 - <<'PY'
