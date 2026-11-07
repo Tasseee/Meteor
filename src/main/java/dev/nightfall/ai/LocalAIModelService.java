@@ -109,7 +109,15 @@ public final class LocalAIModelService {
                 }
                 state = State.LOADING;
                 status = "Qwen-Modell wird in den Arbeitsspeicher geladen …";
-                LlamaModel loaded = new LlamaModel(new ModelParameters().setModel(target.toAbsolutePath().toString()));
+                int availableProcessors = Runtime.getRuntime().availableProcessors();
+                int inferenceThreads = Math.max(1, Math.min(6, availableProcessors - 1));
+                ModelParameters parameters = new ModelParameters()
+                        .setModel(target.toAbsolutePath().toString())
+                        .setThreads(inferenceThreads)
+                        .setThreadsBatch(Math.max(1, Math.min(4, inferenceThreads)))
+                        .setCtxSize(8_192)
+                        .setPredict(512);
+                LlamaModel loaded = new LlamaModel(parameters);
                 synchronized (LOCK) {
                     model = loaded;
                     setupRunning = false;
