@@ -207,6 +207,9 @@ public final class AIChatScreen extends Screen {
         }
         input = transcript;
         status = "Sprache erkannt · wird lokal verarbeitet";
+        if (MinecraftClient.getInstance().currentScreen == null) {
+            MinecraftClient.getInstance().setScreen(this);
+        }
         sendMessage();
     }
 
