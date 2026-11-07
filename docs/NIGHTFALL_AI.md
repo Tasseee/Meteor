@@ -65,7 +65,7 @@ Beispiel: erst acht Eichenstämme sammeln, danach daraus Bretter craften:
 }
 ```
 
-Direkt im Chat einreichen: `/nf agent plan {"description":"Holz und Bretter","steps":[...]}`. Alternativ als `wood.json` speichern unter `config/nightfall/agent_plans/` und `/nf agent plan_file wood.json` aufrufen. Plan-Dateien sind auf 256 KiB begrenzt; der Dateiname darf keine Pfadangabe enthalten und symbolische Links werden abgewiesen. Es wird kein Code ausgeführt: jeder `action`-Name und jeder Parameter wird erneut gegen das lokale Nightfall-Aktionsregister validiert. Jeder Schritt erhält eine eigene Vorschau und Bestätigung; abhängige Schritte starten erst nach bestätigtem Erfolg.
+Direkt im Chat einreichen: `/nf agent plan {"description":"Holz und Bretter","steps":[...]}`. Ein fertiges Beispiel liegt im Repository unter [`docs/examples/offline-agent-wood-plan.json`](examples/offline-agent-wood-plan.json). Kopiere die Datei nach `config/nightfall/agent_plans/` und rufe `/nf agent plan_file offline-agent-wood-plan.json` auf. Alternativ kannst du eigene JSON-Dateien in diesem Ordner ablegen. Plan-Dateien sind auf 256 KiB begrenzt; der Dateiname darf keine Pfadangabe enthalten und symbolische Links werden abgewiesen. Es wird kein Code ausgeführt: jeder `action`-Name und jeder Parameter wird erneut gegen das lokale Nightfall-Aktionsregister validiert. Jeder Schritt erhält eine eigene Vorschau und Bestätigung; abhängige Schritte starten erst nach bestätigtem Erfolg.
 
 Beispiele für das generische Aktionsformat:
 
