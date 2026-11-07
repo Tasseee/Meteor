@@ -113,12 +113,12 @@ public final class OfflineAgentCore {
         GoalState selectedGoal = goals.values().stream()
                 .filter(state -> state.status == GoalStatus.ACTIVE)
                 .sorted((left, right) -> Integer.compare(right.goal.priority(), left.goal.priority()))
-                .filter(state -> state.steps.values().stream().anyMatch(this::isReady))
+                .filter(state -> state.steps.values().stream().anyMatch(step -> isReady(state, step)))
                 .findFirst().orElse(null);
         if (selectedGoal == null) return Optional.empty();
 
         for (StepState state : selectedGoal.steps.values()) {
-            if (isReady(state)) return Optional.of(new StepRef(
+            if (isReady(selectedGoal, state)) return Optional.of(new StepRef(
                     selectedGoal.goal.id(), state.step, state.attempts));
         }
         return Optional.empty();
@@ -206,15 +206,13 @@ public final class OfflineAgentCore {
         return List.copyOf(result);
     }
 
-    private boolean isReady(StepState state) {
-        return state.status == StepStatus.PENDING
-                && dependenciesSucceededForCurrentGoal(state.step);
-    }
-
-    private boolean dependenciesSucceededForCurrentGoal(Step step) {
-        // This helper is intentionally not used outside nextReadyStep; the owning goal
-        // is resolved by the overload below.
-        return step.dependsOn().isEmpty();
+    private boolean isReady(GoalState goal, StepState state) {
+        if (state.status != StepStatus.PENDING) return false;
+        for (String dependency : state.step.dependsOn()) {
+            StepState dependencyState = goal.steps.get(dependency);
+            if (dependencyState == null || dependencyState.status != StepStatus.SUCCEEDED) return false;
+        }
+        return true;
     }
 
     private boolean dependenciesSucceeded(String goalId, Step step) {
