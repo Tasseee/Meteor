@@ -13,6 +13,7 @@ Controller-Aktionen werden im Client-Tick überwacht: eindeutige Erfolgsmeldunge
 Wichtige Befehle:
 
 - `/nf agent status` – Auftragswarteschlange, Vorschau und Prüfergebnis ansehen.
+- `/nf agent prepare` – den nächsten bereiten Schritt erneut vorbereiten; bei einem Schmelzschritt zeigt Nightfall an, wenn das Ofenfenster geschlossen und ein leerer Ofen/Hochofen anvisiert werden muss.
 - `/nf agent action <name> <json>` – vorhandene lokale Aktionen aus dem Nightfall-Aktionsregister mit skalaren JSON-Parametern einreihen; auch Modul-, Wegpunkt-, Scanner-, Status- und Serverbefehlsaktionen werden vor dem Ausführen lokal validiert und angezeigt. Komplexe Array-Aktionen wie eigene Blocklisten sind in diesem generischen Auftragsformat noch ausgenommen.
 - `/nf agent resume_task` und `/nf agent clear_task` – vorhandenen, server-/dimensionsgebundenen Sammel- oder Navigations-Checkpoint fortsetzen bzw. nach Vorschau löschen.
 - `/nf agent gather wood minecraft:oak_log 16`, `/nf agent gather block minecraft:cobblestone 32`, `/nf agent gather ore minecraft:raw_iron 8` – lokale Sammelaufträge.
