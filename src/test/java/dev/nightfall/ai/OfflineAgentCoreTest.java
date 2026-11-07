@@ -79,6 +79,12 @@ class OfflineAgentCoreTest {
     }
 
     @Test
+    void duplicateDependencyIdsAreRejectedByTheCore() {
+        assertThrows(IllegalArgumentException.class, () -> new OfflineAgentCore.Step(
+                "build", "build_structure", Map.of(), List.of("gather", "gather"), 1));
+    }
+
+    @Test
     void invalidDependencyCyclesAreRejected() {
         assertThrows(IllegalArgumentException.class, () -> new OfflineAgentCore.Goal(
                 "cycle", "Ungültiger Plan", 0, List.of(
