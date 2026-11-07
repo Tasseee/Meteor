@@ -73,6 +73,8 @@ public class Nightfall implements ClientModInitializer {
             AIChatScreen.onDisconnect();
             AIPlayerController.onDisconnect();
             AICombatController.onDisconnect();
+            AIBuilder.onDisconnect();
+            OFFLINE_AGENT_BRIDGE.onDisconnect();
             ModuleManager.get(BaseFinder.class).clear();
             ModuleManager.get(TrapperBot.class).resetSession();
             Config.save();
