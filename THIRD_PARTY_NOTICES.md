@@ -40,7 +40,7 @@ Dependency: JNA 5.7.0
 
 Source: https://github.com/java-native-access/jna
 
-License: LGPL-2.1-or-later with the Classpath Exception (verify the exact distribution terms before redistributing the dependency). JNA is included as a nested runtime dependency for Vosk.
+License: dual-licensed under LGPL-2.1-or-later or Apache License 2.0. JNA is included as a nested runtime dependency for Vosk.
 
 ## Local speech output
 
