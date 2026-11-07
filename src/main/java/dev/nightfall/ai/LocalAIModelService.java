@@ -129,7 +129,7 @@ public final class LocalAIModelService {
                         .setThreads(inferenceThreads)
                         .setThreadsBatch(Math.max(1, Math.min(4, inferenceThreads)))
                         .setCtxSize(8_192)
-                        .setPredict(512);
+                        .setPredict(1_024);
                 LlamaModel loaded = new LlamaModel(parameters);
                 synchronized (LOCK) {
                     model = loaded;
