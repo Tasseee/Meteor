@@ -211,6 +211,7 @@ public final class OfflineAgentCore {
     private boolean hasInFlightAction() {
         return goals.values().stream().flatMap(goal -> goal.steps.values().stream())
                 .anyMatch(state -> state.status == StepStatus.RUNNING
+                        || state.status == StepStatus.VERIFYING
                         || state.status == StepStatus.CANCEL_REQUESTED);
     }
 
