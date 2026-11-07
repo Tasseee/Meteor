@@ -114,4 +114,18 @@ class OfflineAgentPlanParserTest {
         json.append("]}");
         assertThrows(IllegalArgumentException.class, () -> OfflineAgentPlanParser.parse(json.toString(), "too-many"));
     }
+
+    @Test
+    void rejectsUnknownStepFieldsAndNonStringDependencies() {
+        String unknownStep = """
+                {"steps":[{"id":"a","action":"gather_wood","shell":"echo unsafe"}]}
+                """;
+        assertThrows(IllegalArgumentException.class, () -> OfflineAgentPlanParser.parse(unknownStep, "unknown-step"));
+
+        String nonStringDependency = """
+                {"steps":[{"id":"a","action":"gather_wood","dependsOn":[4]}]}
+                """;
+        assertThrows(IllegalArgumentException.class,
+                () -> OfflineAgentPlanParser.parse(nonStringDependency, "bad-dependency"));
+    }
 }
