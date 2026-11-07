@@ -861,22 +861,15 @@ public final class AIChatScreen extends Screen {
         }
         if (!LocalAIModelService.isReady()) return;
 
-        OfflineAgentCore.GoalView replanTarget = requestedReplan(turns)
-                ? latestFailedGoal() : null;
+        boolean replanRequested = requestedReplan(turns);
+        if (replanRequested) Nightfall.offlineAgentBridge().ensureReady();
+        OfflineAgentCore.GoalView replanTarget = replanRequested ? latestFailedGoal() : null;
         boolean buildPlanningRequest = LocalAIToolRouter.selectTools(turns).contains("build_structure")
                 || (replanTarget != null && replanTarget.description().toLowerCase(Locale.ROOT)
                 .matches("(?s).*(haus|hütte|gebäude|burg|turm|farm|bau|bauen|house|castle|tower|build).*"));
         String context = localWorldContextEnabled
                 ? worldContext(buildPlanningRequest) + "\n\n" + AILocalRuntimeContext.capture()
                 : "";
-        if (replanTarget != null) {
-            context += "\n\nFEHLGESCHLAGENER AUFTRAG ZUR NEUPLANUNG: "
-                    + replanTarget.description() + "\n";
-            for (OfflineAgentCore.StepView step : replanTarget.steps()) {
-                context += "- " + step.id() + " / " + step.action() + " / " + step.status()
-                        + " / " + step.detail() + "\n";
-            }
-        }
         String prompt = replanTarget == null
                 ? LocalAIPlanner.buildPrompt(turns, context)
                 : LocalAIPlanner.buildReplanPrompt(turns, context, replanTarget);
