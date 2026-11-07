@@ -24,7 +24,7 @@ public final class OfflineAgentActionBridge {
             "walk_forward", "search_structures", "navigate_to", "mine_block",
             "mine_looked_block", "gather_wood", "gather_block", "gather_ore",
             "smelt_item", "craft_item", "eat_food", "sort_inventory",
-            "build_starter_shelter", "build_structure", "build_schematic", "resume_saved_build",
+            "build_starter_shelter", "build_structure", "build_schematic", "resume_saved_build", "resume_saved_task", "clear_saved_task",
             "attack_nearest_hostile", "guard_nearby_hostiles"
     );
     private static final Set<String> INTEGER_PARAMETERS = Set.of(
@@ -265,7 +265,7 @@ public final class OfflineAgentActionBridge {
             case "gather_ore" -> Set.of("item", "count", "duration_seconds", "target_y");
             case "smelt_item", "craft_item" -> Set.of("item", "count");
             case "eat_food" -> Set.of("item");
-            case "build_starter_shelter", "resume_saved_build",
+            case "build_starter_shelter", "resume_saved_build", "resume_saved_task", "clear_saved_task",
                     "attack_nearest_hostile", "guard_nearby_hostiles" -> Set.of();
             case "build_structure" -> Set.of("structure", "material");
             case "build_schematic" -> Set.of("file", "part_x", "part_y", "part_z", "reset_anchor");
