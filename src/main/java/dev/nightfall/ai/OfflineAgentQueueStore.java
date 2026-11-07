@@ -90,20 +90,32 @@ public final class OfflineAgentQueueStore {
             }
             root.add("goals", encodedGoals);
             byte[] bytes = root.toString().getBytes(StandardCharsets.UTF_8);
-            if (bytes.length > MAX_FILE_BYTES) return false;
+            if (bytes.length > MAX_FILE_BYTES) {
+                // Never leave an older, stale queue that could replay an action
+                // after a newer checkpoint exceeded the storage budget.
+                deleteQuietly(target);
+                return false;
+            }
 
             Files.createDirectories(directory);
             Path temporary = target.resolveSibling(target.getFileName() + ".tmp");
-            Files.write(temporary, bytes);
             try {
-                Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING,
-                        StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException unsupported) {
-                Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
+                Files.write(temporary, bytes);
+                try {
+                    Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING,
+                            StandardCopyOption.ATOMIC_MOVE);
+                } catch (AtomicMoveNotSupportedException unsupported) {
+                    Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (IOException | RuntimeException failure) {
+                deleteQuietly(temporary);
+                deleteQuietly(target);
+                return false;
             }
             pruneOldWorldFiles(target);
             return true;
         } catch (IOException | RuntimeException failure) {
+            deleteQuietly(target);
             return false;
         }
     }
