@@ -148,14 +148,11 @@ public final class AIActionRegistry {
         tools.add(tool("list_fake_base_templates",
                 "List the names of locally learned fake-base templates. Read-only; templates are local and server/dimension scoped.",
                 objectSchema()));
-        tools.add(tool("list_client_modules",
-                "List every currently registered module in this Minecraft client, including its category and enabled state. Read-only. Use this before guessing module names; it covers all modules exposed in the Client ClickGUI.",
-                objectSchema()));
-        tools.add(tool("set_module_state", "Enable or disable an existing module in the Minecraft client. The player must confirm first.",
+        tools.add(tool("set_module_state", "Enable or disable an existing Nightfall client module. The player must confirm first.",
                 moduleStateSchema()));
         JsonObject moduleQuery = objectSchema();
         moduleQuery.getAsJsonObject("properties").add("module", property("module", "string", "Optional exact Nightfall module name. Omit to list settings for all modules.").get("schema"));
-        tools.add(tool("get_module_settings", "Read the live ClickGUI settings for any registered client module, including current values, ranges and allowed modes. Omit module to inspect all modules. Read-only; do not guess setting names; inspect first.", moduleQuery));
+        tools.add(tool("get_module_settings", "Read the live Nightfall ClickGUI module list and their editable settings, current values, ranges and allowed modes. Read-only; no confirmation required. Do not guess setting names; inspect first.", moduleQuery));
         JsonObject setSettingSchema = objectSchema();
         JsonObject setSettingProperties = setSettingSchema.getAsJsonObject("properties");
         setSettingProperties.add("module", property("module", "string", "Exact Nightfall module name.").get("schema"));
@@ -166,7 +163,7 @@ public final class AIActionRegistry {
         setSettingRequired.add("setting");
         setSettingRequired.add("value");
         setSettingSchema.add("required", setSettingRequired);
-        tools.add(tool("set_module_setting", "Change one supported setting on any registered client module by exact module and setting name. Supports boolean toggles, bounded numbers, allowed mode choices, text settings and colors (#RRGGBB). The client validates the setting type and range, shows a preview and requires player confirmation. Unsupported setting types cannot be edited by AI.", setSettingSchema));
+        tools.add(tool("set_module_setting", "Change one existing Nightfall ClickGUI setting by exact module and setting name. Supports boolean toggles, bounded numbers, allowed mode choices, text settings and colors (#RRGGBB). The client validates the setting type and range, shows a preview and requires player confirmation. Unsupported list settings cannot be edited by AI.", setSettingSchema));
         tools.add(tool("open_nightfall_menu", "Open Nightfall's own ClickGUI menu on the client. Does not change any setting.", objectSchema()));
         tools.add(tool("get_inventory", "Read the player's inventory and summarize item names and counts locally. Data stays on the Minecraft client in offline mode.",
                 objectSchema()));
@@ -517,13 +514,12 @@ public final class AIActionRegistry {
             }
             case "list_fake_base_templates" -> new Action(name, args,
                     "Lokale Fake-Base-Vorlagen: " + (FakeBases.templateNames().isEmpty() ? "keine" : String.join(", ", FakeBases.templateNames())));
-            case "list_client_modules" -> new Action(name, args, moduleListSummary());
             case "set_module_state" -> {
                 String moduleName = requiredString(args, "module", 64);
                 boolean enabled = requiredBoolean(args, "enabled");
                 Module module = findModule(moduleName);
-                if (module == null) throw new IllegalArgumentException("Dieses Client-Modul existiert nicht.");
-                yield new Action(name, args, "Der Client wird das Modul „" + module.getName() + "“ "
+                if (module == null) throw new IllegalArgumentException("Dieses Nightfall-Modul existiert nicht.");
+                yield new Action(name, args, "Nightfall wird das Modul „" + module.getName() + "“ "
                         + (enabled ? "aktivieren" : "deaktivieren") + "."
                         + (module.isEnabled() == enabled ? "\nDas Modul hat diesen Zustand bereits." : ""));
             }
@@ -850,7 +846,6 @@ public final class AIActionRegistry {
                 yield names.isEmpty() ? "Es sind noch keine Fake-Base-Vorlagen gelernt."
                         : "Gelernte lokale Fake-Base-Vorlagen: " + String.join(", ", names);
             }
-            case "list_client_modules" -> moduleListSummary();
             case "set_module_state" -> {
                 Module module = findModule(args.get("module").getAsString());
                 if (module == null) yield "Aktion abgebrochen: Das Modul ist nicht mehr verfügbar.";
@@ -862,7 +857,7 @@ public final class AIActionRegistry {
                     Config.save();
                     yield "Modul „" + module.getName() + "“ wurde " + (enabled ? "aktiviert" : "deaktiviert") + " und gespeichert.";
                 } catch (RuntimeException | Error failure) {
-                    yield "Der Client konnte das Modul nicht " + (enabled ? "aktivieren" : "deaktivieren")
+                    yield "Nightfall konnte das Modul nicht " + (enabled ? "aktivieren" : "deaktivieren")
                             + ": " + failure.getClass().getSimpleName() + ".";
                 }
             }
@@ -1031,30 +1026,8 @@ public final class AIActionRegistry {
         return null;
     }
 
-    private static String moduleListSummary() {
-        List<Module> modules = ModuleManager.all();
-        StringBuilder out = new StringBuilder("Registrierte Module dieses Minecraft-Clients:");
-        int shown = 0;
-        for (Module module : modules) {
-            if (module == null) continue;
-            if (shown >= 120 || out.length() > 6_000) {
-                out.append("\n(weitere Module in der ClickGUI ausgelassen)");
-                break;
-            }
-            String category = module.getCategory() == null || module.getCategory().display == null
-                    ? "Ohne Kategorie" : module.getCategory().display;
-            out.append("\n- ").append(module.getName())
-                    .append(" [").append(category).append("] [")
-                    .append(module.isEnabled() ? "AN" : "AUS").append("]");
-            shown++;
-        }
-        out.append("\nAnzahl registrierter Module: ").append(modules.size());
-        out.append("\nZum Lesen der Einstellungen get_module_settings mit dem exakten Modulnamen verwenden.");
-        return out.toString();
-    }
-
     private static String moduleSettingsSummary(String moduleName) {
-        StringBuilder out = new StringBuilder("Client-Modul-Einstellungen:");
+        StringBuilder out = new StringBuilder("Nightfall ClickGUI-Einstellungen:");
         int modules = 0;
         for (Module module : ModuleManager.all()) {
             if (moduleName != null && !module.getName().equalsIgnoreCase(moduleName)) continue;
@@ -1071,7 +1044,7 @@ public final class AIActionRegistry {
                 if (out.length() > 12000) return out.append("\n(gekürzt)").toString();
             }
         }
-        if (modules == 0) return "Kein passendes Client-Modul gefunden.";
+        if (modules == 0) return "Kein passendes Nightfall-Modul gefunden.";
         return out.toString();
     }
 
