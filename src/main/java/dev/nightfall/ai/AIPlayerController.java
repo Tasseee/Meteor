@@ -1417,6 +1417,16 @@ public final class AIPlayerController {
     }
 
 
+    /** True only when a closed, supported furnace is targeted and the player inventory is active. */
+    public static boolean isReadyToPreviewSmelting() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null
+                || mc.player.currentScreenHandler != mc.player.playerScreenHandler) return false;
+        if (!(mc.crosshairTarget instanceof BlockHitResult hit)) return false;
+        BlockState state = mc.world.getBlockState(hit.getBlockPos());
+        return state.getBlock() instanceof AbstractFurnaceBlock && !state.isOf(Blocks.SMOKER);
+    }
+
     /** Preview a bounded raw-metal/ancient-debris smelt in the furnace under the crosshair. */
     public static String previewSmeltItem(String requestedItem, int inputCount) {
         MinecraftClient mc = MinecraftClient.getInstance();
