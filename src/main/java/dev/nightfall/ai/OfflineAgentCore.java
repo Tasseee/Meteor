@@ -239,10 +239,8 @@ public final class OfflineAgentCore {
         if (previous.status != GoalStatus.ACTIVE && previous.status != GoalStatus.FAILED) {
             throw new IllegalStateException("Only an active or failed goal can be replanned.");
         }
-        if (previous.steps.values().stream().anyMatch(state ->
-                state.status == StepStatus.RUNNING || state.status == StepStatus.VERIFYING
-                        || state.status == StepStatus.CANCEL_REQUESTED)) {
-            throw new IllegalStateException("An in-flight or uncertain action must be verified before replanning.");
+        if (hasInFlightAction()) {
+            throw new IllegalStateException("An in-flight or uncertain Minecraft action must be verified before replanning.");
         }
         if (replacementSteps.isEmpty()) {
             throw new IllegalArgumentException("A replacement plan must contain at least one step.");
