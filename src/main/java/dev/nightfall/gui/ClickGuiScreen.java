@@ -254,7 +254,7 @@ public class ClickGuiScreen extends Screen {
         ctx.fill(panelX - 1, viewportTop - 5, panelX + panelW + 1, viewportBottom + 1, 0xB0000000);
         ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportBottom, Theme.withAlpha(Theme.PANEL, 92));
         ctx.fill(panelX, viewportTop - 4, panelX + 2, viewportBottom, Theme.withAlpha(Theme.ACCENT, 120));
-        ctx.fill(panelX + panelW - 2, viewportTop - 4, panelX + panelW, viewportBottom, 0x442FFFFFFF);
+        ctx.fill(panelX + panelW - 2, viewportTop - 4, panelX + panelW, viewportBottom, 0x442FFFFF);
         ctx.enableScissor(panelX, viewportTop, panelX + panelW, viewportBottom);
         float y = viewportTop - scroll;
         Module hovered = null;
