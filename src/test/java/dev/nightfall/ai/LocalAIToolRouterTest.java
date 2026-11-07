@@ -95,6 +95,28 @@ class LocalAIToolRouterTest {
     }
 
     @Test
+    void repairPromptRetainsBuildToolsAndExplainsOnlyRemainingWork() {
+        OfflineAgentCore.GoalView failed = new OfflineAgentCore.GoalView(
+                "failed-house", "Baue ein kleines Haus", 2, OfflineAgentCore.GoalStatus.FAILED,
+                List.of(
+                        new OfflineAgentCore.StepView("gather", "gather_wood",
+                                OfflineAgentCore.StepStatus.SUCCEEDED, 1, "Holz bestätigt"),
+                        new OfflineAgentCore.StepView("build", "build_structure",
+                                OfflineAgentCore.StepStatus.FAILED, 1, "Material fehlt")
+                ));
+        String prompt = LocalAIPlanner.buildReplanPrompt(
+                request("Plane weiter."), "Inventar: minecraft:oak_planks x 12", failed);
+
+        assertTrue(prompt.contains("NEUPLANUNG EINES BESTEHENDEN AUFTRAGS"));
+        assertTrue(prompt.contains("Wiederhole niemals erfolgreich bestätigte Schritte"));
+        assertTrue(prompt.contains("gather / gather_wood: SUCCEEDED"));
+        assertTrue(prompt.contains("build / build_structure: FAILED"));
+        assertTrue(prompt.contains("plan_build_materials"));
+        assertTrue(prompt.contains("gather_wood"));
+        assertTrue(prompt.contains("Inventar: minecraft:oak_planks x 12"));
+    }
+
+    @Test
     void customAndResumedBuildsWaitForBuilderCompletion() {
         assertEquals(OfflineAgentActionBridge.VerificationKind.BUILDER,
                 OfflineAgentActionBridge.verificationKindFor("build_custom_structure"));
