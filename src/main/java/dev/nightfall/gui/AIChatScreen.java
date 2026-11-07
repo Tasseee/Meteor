@@ -126,7 +126,7 @@ public final class AIChatScreen extends Screen {
         AIConfig.load();
         active = this;
         history.add(new ChatLine("assistant",
-                "Hey! Ich bin Nightfall AI. Ich kann dir beim Spielen helfen und auch Nightfall-Module und Menü-Einstellungen für dich ändern. Änderungen frage ich vorher bei dir an."));
+                "Hey! Ich bin Nightfall. Der Offline-Agent ist bereit. Freie Sprache und Stimme sind noch nicht angeschlossen; nutze vorerst /nf agent status und /nf agent gather, craft, smelt, build, wood oder iron. Jede Weltaktion zeigt vorher eine Vorschau."));
     }
 
     private static SuggestionSet suggestionsForCurrentDimension(MinecraftClient mc) {
@@ -179,7 +179,7 @@ public final class AIChatScreen extends Screen {
         }
         AIConfig.Settings settings = AIConfig.current();
         if (settings.apiKey().isBlank()) {
-            session.status = "Für den Sprachanruf zuerst den API-Key in config/nightfall/ai.json eintragen.";
+            session.status = "Stimme ist im Offline-Modus deaktiviert und wird später ergänzt.";
             return;
         }
         AIConfig.Settings updated = AIConfig.updateVoiceSettings(true, true);
@@ -825,6 +825,19 @@ public final class AIChatScreen extends Screen {
 
     private void requestAI() {
         if (waiting || apiHistory.isEmpty()) return;
+        AIConfig.Settings offlineSettings = AIConfig.current();
+        if (offlineSettings.apiKey().isBlank() || offlineSettings.baseUrl().isBlank()) {
+            apiHistory.clear();
+            history.add(new ChatLine("assistant",
+                    "Ich bin gerade im reinen Offline-Modus. Freie Sprache wird später ergänzt. "
+                            + "Nutze /nf agent status oder einen Auftrag wie /nf agent gather wood minecraft:oak_log 16. "
+                            + "Die Vorschau kannst du mit /nf agent confirm bestätigen; danach prüfst du das Ergebnis mit "
+                            + "/nf agent verify success oder /nf agent verify failed."));
+            waiting = false;
+            status = "Offline-Agent bereit";
+            scroll = Float.MAX_VALUE;
+            return;
+        }
         AIChatClient.compactHistoryInPlace(apiHistory);
         if (apiHistory.isEmpty()) return;
         if (actionRoundTrips >= MAX_ACTION_ROUND_TRIPS) {
@@ -838,7 +851,7 @@ public final class AIChatScreen extends Screen {
         int responseIndex = history.size();
         history.add(new ChatLine("assistant", "Nightfall AI denkt …"));
         waiting = true;
-        status = "Verbinde mit dem KI-Anbieter …";
+        status = "Nightfall AI denkt …";
         scroll = Float.MAX_VALUE;
 
         AIConfig.load();
