@@ -136,6 +136,33 @@ class OfflineAgentQueueStoreTest {
     }
 
     @Test
+    void temporaryOrTargetFileSymlinksCannotOverwriteTheirExternalTargets() throws IOException {
+        Path root = Files.createTempDirectory("nightfall-agent-queue-file-symlink-test");
+        try {
+            Path directory = root.resolve("agent_queues");
+            Files.createDirectories(directory);
+            Path external = root.resolve("protected.txt");
+            Files.writeString(external, "keep-this-content");
+            Path target = directory.resolve(WORLD_A + ".json");
+            Path temporary = directory.resolve(WORLD_A + ".json.tmp");
+
+            Files.createSymbolicLink(temporary, external);
+            OfflineAgentQueueStore store = new OfflineAgentQueueStore(directory);
+            assertTrue(store.save(WORLD_A, List.of(simpleCheckpoint())));
+            assertEquals("keep-this-content", Files.readString(external));
+            assertEquals(1, store.load(WORLD_A).size());
+
+            Files.deleteIfExists(target);
+            Files.createSymbolicLink(target, external);
+            assertTrue(store.save(WORLD_A, List.of(simpleCheckpoint())));
+            assertEquals("keep-this-content", Files.readString(external));
+            assertEquals(1, store.load(WORLD_A).size());
+        } finally {
+            deleteTree(root);
+        }
+    }
+
+    @Test
     void rejectsInvalidWorldKeysAndDeletesTheQueueWhenNoGoalsRemain() throws IOException {
         Path directory = Files.createTempDirectory("nightfall-agent-queue-clear-test");
         try {
