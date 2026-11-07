@@ -2132,6 +2132,24 @@ public final class AIBuilder {
         return "Der Bau wurde gestoppt. Bereits gesetzte Blöcke bleiben stehen.";
     }
 
+    /**
+     * Stop in-memory builder work after a server/dimension change without
+     * overwriting the last checkpoint using the newly active world's identity.
+     * The saved checkpoint remains bound to its original server and dimension.
+     */
+    public static void onWorldChanged() {
+        if (running) {
+            preserveCheckpointOnStop = true;
+            stopInternal("Bau wegen eines Welt-/Dimensionswechsels gestoppt. Der letzte gültige Checkpoint bleibt an seine ursprüngliche Welt gebunden.", false);
+        }
+        keepCheckpointDuringCancel = true;
+        cancelPrepared();
+        keepCheckpointDuringCancel = false;
+        checkpointLoadAttempted = false;
+        checkpointScanKey = "";
+        preserveCheckpointOnStop = false;
+    }
+
     public static void onDisconnect() {
         if (running || prepared) {
             saveCheckpoint();
