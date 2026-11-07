@@ -8,7 +8,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 
 import java.util.HashSet;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +30,11 @@ public final class OfflineAgentActionBridge {
     public record PreparedStep(String goalId, String stepId, String preview) {}
 
     private final OfflineAgentCore core;
+    private final OfflineAgentQueueStore queueStore = OfflineAgentQueueStore.inConfigDirectory();
     private final Set<String> rememberedGoals = new HashSet<>();
+    private String loadedQueueWorldKey = "";
+    private long lastQueueSaveRevision = -1L;
+    private boolean queuePersistenceWarning;
     private PreparedStep pending;
     private AIActionRegistry.Action pendingAction;
     private String verifyingGoalId;
@@ -44,7 +47,7 @@ public final class OfflineAgentActionBridge {
     private long builderSequenceAtStart;
     private long combatSequenceAtStart;
 
-    private enum VerificationKind { NONE, PLAYER_CONTROLLER, BUILDER, COMBAT, EXTERNAL }
+    private enum VerificationKind { NONE, PLAYER_CONTROLLER, BUILDER, COMBAT, EXTERNAL, RECOVERED }
 
     public OfflineAgentActionBridge(OfflineAgentCore core) {
         this.core = Objects.requireNonNull(core, "core");
@@ -64,6 +67,8 @@ public final class OfflineAgentActionBridge {
         MinecraftClient client = MinecraftClient.getInstance();
         if (!client.isOnThread()) throw new IllegalStateException("Agentenaktionen müssen auf dem Minecraft-Client-Thread vorbereitet werden.");
         if (client.player == null || client.world == null) return Optional.empty();
+        ensureQueueLoaded(client);
+        persistQueueIfChanged();
         if (pending != null || verifyingGoalId != null) return Optional.empty();
         // Do not replace an action started outside the offline queue.
         if (AIPlayerController.isBusy() || AICombatController.isActive() || AIBuilder.isRunning())
@@ -110,6 +115,8 @@ public final class OfflineAgentActionBridge {
                     OfflineAgentCore.ActionResult.PERMANENT_FAILURE,
                     safeMessage(invalid));
             lastError = safeMessage(invalid);
+            persistQueueIfChanged();
+            rememberFinishedGoals();
             client.player.sendMessage(Text.literal("[Nightfall] Offline-Agent: Auftrag konnte nicht vorbereitet werden: "
                     + lastError), false);
             return Optional.empty();
@@ -131,6 +138,7 @@ public final class OfflineAgentActionBridge {
         AIActionRegistry.Action action = pendingAction;
         pendingAction = null;
         core.markStarted(goalId, stepId);
+        persistQueueIfChanged();
         verificationKind = verificationKindFor(action.name());
         playerSequenceAtStart = AIPlayerController.actionCompletionSequence();
         builderSequenceAtStart = AIBuilder.completionSequence();
@@ -140,6 +148,8 @@ public final class OfflineAgentActionBridge {
             if (verificationKind == VerificationKind.NONE) {
                 core.report(goalId, stepId, OfflineAgentCore.ActionResult.SUCCESS,
                         "Lokale Aktion wurde ausgeführt und hat ein direktes Ergebnis geliefert. " + result);
+                persistQueueIfChanged();
+                rememberFinishedGoals();
                 lastError = "";
                 return result;
             }
@@ -149,12 +159,16 @@ public final class OfflineAgentActionBridge {
                 if (alreadyAtGoal) {
                     core.report(goalId, stepId, OfflineAgentCore.ActionResult.SUCCESS,
                             "Lokales Ergebnis: " + result);
+                    persistQueueIfChanged();
+                    rememberFinishedGoals();
                     verificationKind = VerificationKind.NONE;
                     lastError = "";
                     return result;
                 }
                 core.report(goalId, stepId, OfflineAgentCore.ActionResult.PERMANENT_FAILURE,
                         "Der lokale Controller hat den Auftrag nicht gestartet. " + result);
+                persistQueueIfChanged();
+                rememberFinishedGoals();
                 verificationKind = VerificationKind.NONE;
                 lastError = result;
                 return "Aktion wurde nicht gestartet: " + result;
@@ -163,6 +177,7 @@ public final class OfflineAgentActionBridge {
                     "Aktion läuft oder wartet auf ein externes Ergebnis. " + result);
             verifyingGoalId = goalId;
             verifyingStepId = stepId;
+            persistQueueIfChanged();
             lastError = "";
             return result;
         } catch (RuntimeException failure) {
@@ -174,6 +189,9 @@ public final class OfflineAgentActionBridge {
             AIActionRegistry.cancel(action);
             String detail = safeMessage(failure);
             core.report(goalId, stepId, OfflineAgentCore.ActionResult.PERMANENT_FAILURE, detail);
+            persistQueueIfChanged();
+            rememberFinishedGoals();
+            verificationKind = VerificationKind.NONE;
             lastError = detail;
             return "Aktion fehlgeschlagen: " + detail;
         }
@@ -193,6 +211,8 @@ public final class OfflineAgentActionBridge {
         core.markStarted(goalId, stepId);
         core.report(goalId, stepId, OfflineAgentCore.ActionResult.PERMANENT_FAILURE,
                 "Aktion wurde vor der Ausführung abgelehnt.");
+        persistQueueIfChanged();
+        rememberFinishedGoals();
     }
 
     /**
@@ -200,11 +220,14 @@ public final class OfflineAgentActionBridge {
      * step is released only after the controller reports a terminal outcome.
      */
     public synchronized void tick() {
-        rememberFinishedGoals();
-        if (verifyingGoalId == null || verificationKind == VerificationKind.NONE
-                || verificationKind == VerificationKind.EXTERNAL) return;
         MinecraftClient client = MinecraftClient.getInstance();
         if (!client.isOnThread() || client.player == null || client.world == null) return;
+        ensureQueueLoaded(client);
+        persistQueueIfChanged();
+        rememberFinishedGoals();
+        if (verifyingGoalId == null || verificationKind == VerificationKind.NONE
+                || verificationKind == VerificationKind.EXTERNAL
+                || verificationKind == VerificationKind.RECOVERED) return;
 
         String completion;
         long currentSequence;
@@ -243,6 +266,8 @@ public final class OfflineAgentActionBridge {
         verifyingGoalId = null;
         verifyingStepId = null;
         verificationKind = VerificationKind.NONE;
+        persistQueueIfChanged();
+        rememberFinishedGoals();
         client.player.sendMessage(Text.literal("[Nightfall] Offline-Agent: " + goalId + "/" + stepId
                 + (success ? " wurde automatisch als erfolgreich bestätigt."
                 : " wurde als unvollständig/fehlgeschlagen erkannt. Ein erneuter Versuch benötigt eine neue Vorschau.")), false);
@@ -270,7 +295,7 @@ public final class OfflineAgentActionBridge {
                     || AIBuilder.completionSequence() > builderSequenceAtStart;
             case COMBAT -> AICombatController.isActive() || AIPlayerController.isNavigating()
                     || AICombatController.completionSequence() > combatSequenceAtStart;
-            case EXTERNAL -> true;
+            case EXTERNAL, RECOVERED -> true;
             case NONE -> false;
         };
     }
@@ -293,13 +318,15 @@ public final class OfflineAgentActionBridge {
     /** External server actions still require an explicit player observation. */
     public synchronized void verifyLastAction(boolean confirmedSuccess, String observation) {
         if (verifyingGoalId == null) throw new IllegalStateException("Keine Aktion wartet auf Überprüfung.");
-        if (verificationKind != VerificationKind.EXTERNAL)
+        if (verificationKind != VerificationKind.EXTERNAL && verificationKind != VerificationKind.RECOVERED)
             throw new IllegalStateException("Diese lokale Controller-Aktion wird automatisch anhand ihres Abschlussstatus geprüft. Bitte warte auf die Nightfall-Abschlussmeldung.");
         core.verify(verifyingGoalId, verifyingStepId, confirmedSuccess, observation);
         verifyingGoalId = null;
         verifyingStepId = null;
         verificationKind = VerificationKind.NONE;
+        persistQueueIfChanged();
         rememberFinishedGoals();
+        prepareNext();
     }
 
     /** Cancels the goal behind a prepared preview; no Minecraft action is executed. */
@@ -309,6 +336,8 @@ public final class OfflineAgentActionBridge {
         AIActionRegistry.cancel(pendingAction);
         pending = null;
         pendingAction = null;
+        persistQueueIfChanged();
+        rememberFinishedGoals();
     }
 
     /**
@@ -329,6 +358,7 @@ public final class OfflineAgentActionBridge {
         verificationKind = VerificationKind.NONE;
         setupPromptKey = "";
         setupPrompt = "";
+        persistQueueIfChanged();
         rememberFinishedGoals();
     }
 
@@ -337,26 +367,18 @@ public final class OfflineAgentActionBridge {
      * their own supported checkpoints before this is called.
      */
     public synchronized void onDisconnect() {
-        if (pending != null) {
-            core.cancel(pending.goalId());
-            pending = null;
-            pendingAction = null;
-        }
-        for (OfflineAgentCore.GoalView goal : core.snapshot()) {
-            if (goal.status() == OfflineAgentCore.GoalStatus.ACTIVE) core.cancel(goal.id());
-        }
-        for (OfflineAgentCore.GoalView goal : core.snapshot()) {
-            for (OfflineAgentCore.StepView step : goal.steps()) {
-                if (step.status() == OfflineAgentCore.StepStatus.CANCEL_REQUESTED) {
-                    core.acknowledgeStopped(goal.id(), step.id());
-                }
-            }
-        }
+        if (!loadedQueueWorldKey.isBlank()) persistQueueFor(loadedQueueWorldKey);
+        if (pendingAction != null) AIActionRegistry.cancel(pendingAction);
+        pending = null;
+        pendingAction = null;
         verifyingGoalId = null;
         verifyingStepId = null;
         verificationKind = VerificationKind.NONE;
         setupPromptKey = "";
         setupPrompt = "";
+        core.clearAll();
+        loadedQueueWorldKey = "";
+        lastQueueSaveRevision = -1L;
         rememberFinishedGoals();
     }
 
@@ -391,6 +413,95 @@ public final class OfflineAgentActionBridge {
         }
         setupPromptKey = "";
         setupPrompt = "";
+        persistQueueIfChanged();
+        rememberFinishedGoals();
+    }
+
+    /** Ensures a queue is restored before a command appends another goal. */
+    public synchronized void ensureReady() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) throw new IllegalStateException("Agentenwarteschlange muss auf dem Minecraft-Client-Thread geladen werden.");
+        if (client.player != null && client.world != null) ensureQueueLoaded(client);
+        persistQueueIfChanged();
+    }
+
+    private void ensureQueueLoaded(MinecraftClient client) {
+        String worldKey = OfflineAgentQueueStore.worldKey(client);
+        if (worldKey.isBlank() || worldKey.equals(loadedQueueWorldKey)) return;
+
+        if (!loadedQueueWorldKey.isBlank()) {
+            persistQueueFor(loadedQueueWorldKey);
+            // An agent action must never continue using the previous dimension/world.
+            if (AIPlayerController.isBusy()) AIPlayerController.stop("Offline-Agent: Weltwechsel erkannt; Aktion sicher gestoppt.");
+            if (AICombatController.isActive()) AICombatController.stop("Offline-Agent: Weltwechsel erkannt; Kampf beendet.");
+            if (AIBuilder.isRunning()) AIBuilder.stop();
+            if (pendingAction != null) AIActionRegistry.cancel(pendingAction);
+            pending = null;
+            pendingAction = null;
+            verifyingGoalId = null;
+            verifyingStepId = null;
+            verificationKind = VerificationKind.NONE;
+            core.clearAll();
+        }
+
+        loadedQueueWorldKey = worldKey;
+        lastQueueSaveRevision = core.revision();
+        List<OfflineAgentCore.GoalCheckpoint> restored = queueStore.load(worldKey);
+        if (restored.isEmpty()) return;
+        try {
+            int interrupted = core.restoreActiveCheckpoints(restored);
+            lastQueueSaveRevision = core.revision();
+            if (interrupted > 0) {
+                for (OfflineAgentCore.GoalView goal : core.snapshot()) {
+                    for (OfflineAgentCore.StepView step : goal.steps()) {
+                        if (step.status() == OfflineAgentCore.StepStatus.VERIFYING) {
+                            verifyingGoalId = goal.id();
+                            verifyingStepId = step.id();
+                            verificationKind = VerificationKind.RECOVERED;
+                            break;
+                        }
+                    }
+                    if (verifyingGoalId != null) break;
+                }
+                client.player.sendMessage(Text.literal("[Nightfall] Ein Offline-Agent-Schritt wurde nach einem Client-Neustart wiedergefunden. "
+                        + "Nightfall wiederholt ihn nicht automatisch. Prüfe zuerst Welt und Inventar; danach /nf agent verify success oder /nf agent verify failed. "
+                        + "Status: /nf agent status."), false);
+            } else {
+                client.player.sendMessage(Text.literal("[Nightfall] " + restored.size()
+                        + " gespeicherte Offline-Agent-Auftrag/Aufträge wurden für diese Welt wiederhergestellt. "
+                        + "Der nächste Schritt erhält erneut eine Vorschau."), false);
+            }
+        } catch (RuntimeException invalidCheckpoint) {
+            queueStore.clear(worldKey);
+            core.clearAll();
+            lastQueueSaveRevision = core.revision();
+            lastError = "Gespeicherte Agentenwarteschlange war ungültig und wurde verworfen: " + safeMessage(invalidCheckpoint);
+            client.player.sendMessage(Text.literal("[Nightfall] " + lastError), false);
+        }
+    }
+
+    private void persistQueueIfChanged() {
+        if (loadedQueueWorldKey.isBlank()) return;
+        long currentRevision = core.revision();
+        if (currentRevision == lastQueueSaveRevision) return;
+        persistQueueFor(loadedQueueWorldKey);
+    }
+
+    private void persistQueueFor(String worldKey) {
+        if (worldKey == null || worldKey.isBlank()) return;
+        long currentRevision = core.revision();
+        boolean saved = queueStore.save(worldKey, core.exportActiveCheckpoints());
+        lastQueueSaveRevision = currentRevision;
+        if (!saved && !queuePersistenceWarning) {
+            queuePersistenceWarning = true;
+            lastError = "Offline-Agent-Warteschlange konnte nicht auf dem Datenträger gesichert werden. "
+                    + "Die Aufträge bleiben bis zum Verlassen dieser Sitzung nur im Arbeitsspeicher.";
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client.player != null)
+                client.player.sendMessage(Text.literal("[Nightfall] " + lastError), false);
+        } else if (saved) {
+            queuePersistenceWarning = false;
+        }
     }
 
     public synchronized Optional<PreparedStep> pendingPreview() {
@@ -402,11 +513,13 @@ public final class OfflineAgentActionBridge {
     }
 
     public synchronized boolean awaitingManualVerification() {
-        return verifyingGoalId != null && verificationKind == VerificationKind.EXTERNAL;
+        return verifyingGoalId != null && (verificationKind == VerificationKind.EXTERNAL
+                || verificationKind == VerificationKind.RECOVERED);
     }
 
     public synchronized boolean controllerActionInProgress() {
-        return verifyingGoalId != null && verificationKind != VerificationKind.EXTERNAL;
+        return verifyingGoalId != null && verificationKind != VerificationKind.EXTERNAL
+                && verificationKind != VerificationKind.RECOVERED;
     }
 
     public synchronized boolean waitingForSetup() {
