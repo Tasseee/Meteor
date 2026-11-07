@@ -10,6 +10,8 @@ import dev.nightfall.ai.AIConfig;
 import dev.nightfall.ai.AIRealtimeVoiceClient;
 import dev.nightfall.ai.AIBuilder;
 import dev.nightfall.ai.AIPlayerController;
+import dev.nightfall.ai.OfflineAgentCore;
+import dev.nightfall.ai.OfflineAgentActionBridge;
 import dev.nightfall.ai.AICombatController;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.AutoTpa;
@@ -40,6 +42,13 @@ public class Nightfall implements ClientModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger("nightfall");
 
     private boolean prevGui, prevHud, prevMap, prevAi, prevVoice, prevMic;
+
+    private static final OfflineAgentCore OFFLINE_AGENT_CORE = new OfflineAgentCore();
+    private static final OfflineAgentActionBridge OFFLINE_AGENT_BRIDGE =
+            new OfflineAgentActionBridge(OFFLINE_AGENT_CORE);
+
+    public static OfflineAgentCore offlineAgentCore() { return OFFLINE_AGENT_CORE; }
+    public static OfflineAgentActionBridge offlineAgentBridge() { return OFFLINE_AGENT_BRIDGE; }
 
     @Override
     public void onInitializeClient() {
@@ -121,6 +130,7 @@ public class Nightfall implements ClientModInitializer {
             ModuleManager.pollKeys(mc);
         }
         AIPlayerController.tick();
+        OFFLINE_AGENT_BRIDGE.prepareNext();
         AICombatController.tick();
         AIBuilder.tick();
         ModuleManager.tick();
