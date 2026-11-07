@@ -525,6 +525,16 @@ public final class AIChatClient {
         // AIChatScreen refreshes the on-disk config once before building this request.
         AIConfig.Settings settings = AIConfig.current();
 
+        // Natural-language interpretation is intentionally postponed. Do not try a
+        // remote endpoint here: the offline task commands are the current control path.
+        if (settings.apiKey().isBlank() || settings.baseUrl().isBlank()) {
+            complete(client, callback, new Result(false,
+                    "Offline-Modus aktiv. Sprachverarbeitung kommt später; nutze vorerst /nf agent "
+                            + "(status, gather, craft, smelt, iron, build, attack, guard).",
+                    null, null));
+            return;
+        }
+
         try {
             URI endpoint = URI.create(settings.baseUrl());
             String scheme = endpoint.getScheme();
