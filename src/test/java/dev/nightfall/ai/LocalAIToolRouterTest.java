@@ -69,7 +69,7 @@ class LocalAIToolRouterTest {
             String name = function.get("name").getAsString();
             assertTrue(catalog.contains("- " + name + " ["), "Missing capability: " + name);
             assertTrue(supported.containsKey(name), "Action not accepted by offline bridge: " + name);
-            assertTrue(catalog.contains("- " + name + " [an Offline-Agent-Brücke angebunden]"),
+            assertTrue(catalog.contains("- " + name + " [offline unterstützt]"),
                     "Action is incorrectly labeled unsupported: " + name);
         }
     }
