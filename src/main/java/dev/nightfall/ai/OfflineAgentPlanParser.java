@@ -81,13 +81,23 @@ public final class OfflineAgentPlanParser {
         Path config = FabricLoader.getInstance().getConfigDir().toAbsolutePath().normalize();
         Path nightfall = config.resolve("nightfall");
         Path directory = nightfall.resolve("agent_plans");
-        Files.createDirectories(directory);
-        // The managed directories themselves must not be symlinks. Otherwise a
-        // seemingly local plan filename could read from an arbitrary location.
-        if (Files.isSymbolicLink(nightfall) || Files.isSymbolicLink(directory)
-                || !Files.isDirectory(nightfall, LinkOption.NOFOLLOW_LINKS)
-                || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) {
+        // Check existing path components before creating children: createDirectories
+        // would otherwise follow a pre-existing symlink in the managed config tree.
+        if (Files.isSymbolicLink(nightfall)
+                || (Files.exists(nightfall, LinkOption.NOFOLLOW_LINKS)
+                && !Files.isDirectory(nightfall, LinkOption.NOFOLLOW_LINKS))) {
+            throw new IllegalArgumentException("Der lokale nightfall-Ordner darf kein symbolischer Link sein.");
+        }
+        Files.createDirectories(nightfall);
+        if (Files.isSymbolicLink(nightfall) || !Files.isDirectory(nightfall, LinkOption.NOFOLLOW_LINKS)
+                || Files.isSymbolicLink(directory)
+                || (Files.exists(directory, LinkOption.NOFOLLOW_LINKS)
+                && !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS))) {
             throw new IllegalArgumentException("Der lokale agent_plans-Ordner darf keine symbolischen Links enthalten.");
+        }
+        Files.createDirectories(directory);
+        if (Files.isSymbolicLink(directory) || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IllegalArgumentException("Der lokale agent_plans-Ordner darf kein symbolischer Link sein.");
         }
         return loadFileFromDirectory(directory, fileName, goalId);
     }
@@ -98,6 +108,8 @@ public final class OfflineAgentPlanParser {
         if (fileName == null || !fileName.matches("[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\\.json"))
             throw new IllegalArgumentException("Bitte nur einen lokalen Dateinamen wie shelter.json angeben.");
         Path directory = requestedDirectory.toAbsolutePath().normalize();
+        if (Files.isSymbolicLink(directory))
+            throw new IllegalArgumentException("Der Plan-Ordner darf kein symbolischer Link sein.");
         Files.createDirectories(directory);
         if (Files.isSymbolicLink(directory)
                 || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) {
