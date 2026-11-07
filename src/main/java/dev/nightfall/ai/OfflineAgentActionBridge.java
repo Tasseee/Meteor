@@ -32,6 +32,7 @@ public final class OfflineAgentActionBridge {
 
     private final OfflineAgentCore core;
     private PreparedStep pending;
+    private AIActionRegistry.Action pendingAction;
     private String verifyingGoalId;
     private String verifyingStepId;
     private String lastError = "";
@@ -57,6 +58,7 @@ public final class OfflineAgentActionBridge {
             }
             AIActionRegistry.Action action = AIActionRegistry.prepare(
                     ref.step().action(), toJson(ref.step().action(), ref.step().parameters()).toString());
+            pendingAction = action;
             pending = new PreparedStep(ref.goalId(), ref.step().id(), action.preview());
             lastError = "";
             return Optional.of(pending);
@@ -78,10 +80,10 @@ public final class OfflineAgentActionBridge {
         String goalId = pending.goalId();
         String stepId = pending.stepId();
         pending = null;
+        AIActionRegistry.Action action = pendingAction;
+        pendingAction = null;
         core.markStarted(goalId, stepId);
         try {
-            AIActionRegistry.Action action = AIActionRegistry.prepare(
-                    findAction(goalId, stepId), findParameters(goalId, stepId));
             String result = AIActionRegistry.execute(action);
             core.report(goalId, stepId, OfflineAgentCore.ActionResult.UNCERTAIN,
                     "Aktion ausgeführt; Abschluss muss anhand einer neuen Spielbeobachtung geprüft werden. " + result);
@@ -105,6 +107,7 @@ public final class OfflineAgentActionBridge {
         String goalId = pending.goalId();
         String stepId = pending.stepId();
         pending = null;
+        pendingAction = null;
         core.markStarted(goalId, stepId);
         core.report(goalId, stepId, OfflineAgentCore.ActionResult.PERMANENT_FAILURE,
                 "Aktion wurde vor der Ausführung abgelehnt.");
@@ -124,6 +127,7 @@ public final class OfflineAgentActionBridge {
     /** Cancels a prepared preview; no Minecraft action has been executed. */
     public synchronized void cancelPending() {
         pending = null;
+        pendingAction = null;
     }
 
     /**
@@ -149,29 +153,6 @@ public final class OfflineAgentActionBridge {
     public synchronized String lastError() {
         return lastError;
     }
-
-    private String findAction(String goalId, String stepId) {
-        return core.snapshot().stream()
-                .filter(goal -> goal.id().equals(goalId))
-                .flatMap(goal -> goal.steps().stream())
-                .filter(step -> step.id().equals(stepId))
-                .map(OfflineAgentCore.StepView::action)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Agentenschritt nicht mehr vorhanden."));
-    }
-
-    private String findParameters(String goalId, String stepId) {
-        OfflineAgentCore.GoalView goal = core.snapshot().stream()
-                .filter(item -> item.id().equals(goalId)).findFirst()
-                .orElseThrow(() -> new IllegalStateException("Agentenziel nicht mehr vorhanden."));
-        // The original immutable step definition is retained by the core; this
-        // lookup is intentionally handled by the private parameter cache below.
-        Map<String, String> parameters = parameterCache.get(goalId + "/" + stepId);
-        if (parameters == null) throw new IllegalStateException("Aktionsparameter nicht mehr verfügbar.");
-        return toJson(findAction(goalId, stepId), parameters).toString();
-    }
-
-    private final Map<String, Map<String, String>> parameterCache = new java.util.HashMap<>();
 
     private JsonObject toJson(String action, Map<String, String> parameters) {
         JsonObject json = new JsonObject();
