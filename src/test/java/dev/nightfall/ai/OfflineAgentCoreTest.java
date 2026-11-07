@@ -84,6 +84,36 @@ class OfflineAgentCoreTest {
     }
 
     @Test
+    void onlyOneMinecraftActionMayBeInFlight() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        core.submit(new OfflineAgentCore.Goal("first", "Erster Auftrag", 2,
+                List.of(step("a", "action_a", List.of(), 1))));
+        core.submit(new OfflineAgentCore.Goal("second", "Zweiter Auftrag", 1,
+                List.of(step("b", "action_b", List.of(), 1))));
+
+        core.markStarted("first", "a");
+        assertTrue(core.nextReadyStep().isEmpty());
+        assertThrows(IllegalStateException.class, () -> core.markStarted("second", "b"));
+        core.report("first", "a", OfflineAgentCore.ActionResult.SUCCESS, "Fertig");
+        assertEquals("second", core.nextReadyStep().orElseThrow().goalId());
+    }
+
+    @Test
+    void cancellationWaitsForRunningActionToAcknowledgeStop() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        core.submit(new OfflineAgentCore.Goal("cancel", "Abbrechen", 0,
+                List.of(step("run", "long_action", List.of(), 1))));
+        core.markStarted("cancel", "run");
+        core.cancel("cancel");
+
+        assertEquals(OfflineAgentCore.StepStatus.CANCEL_REQUESTED,
+                core.snapshot().get(0).steps().get(0).status());
+        assertEquals(OfflineAgentCore.GoalStatus.ACTIVE, core.snapshot().get(0).status());
+        core.acknowledgeStopped("cancel", "run");
+        assertEquals(OfflineAgentCore.GoalStatus.CANCELLED, core.snapshot().get(0).status());
+    }
+
+    @Test
     void duplicateGoalIdsAreRejected() {
         OfflineAgentCore core = new OfflineAgentCore();
         core.submit(new OfflineAgentCore.Goal("same", "Erster Plan", 0,
