@@ -7,6 +7,10 @@ import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.nightfall.config.Config;
 import dev.nightfall.ai.OfflineAgentCore;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.AutoTpa;
@@ -258,6 +262,13 @@ public final class Commands {
     private static LiteralArgumentBuilder<FabricClientCommandSource> agentCommand() {
         LiteralArgumentBuilder<FabricClientCommandSource> root = literal("agent");
         root.then(literal("status").executes(c -> offlineAgentStatus(c)));
+        LiteralArgumentBuilder<FabricClientCommandSource> action = literal("action");
+        LiteralArgumentBuilder<FabricClientCommandSource> actionName = argument("name", StringArgumentType.word());
+        actionName.executes(c -> submitRegistryAction(c, str(c, "name"), "{}"));
+        actionName.then(argument("parameters", StringArgumentType.greedyString())
+                .executes(c -> submitRegistryAction(c, str(c, "name"), str(c, "parameters"))));
+        action.then(actionName);
+        root.then(action);
         root.then(literal("confirm").executes(c -> confirmOfflineAgent(c)));
         root.then(literal("reject").executes(c -> rejectOfflineAgent(c)));
         root.then(literal("cancel").executes(c -> cancelOfflineAgent(c)));
@@ -392,13 +403,42 @@ public final class Commands {
         return root;
     }
 
+    private static int submitRegistryAction(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c,
+            String actionName, String rawParameters) {
+        try {
+            if (rawParameters == null || rawParameters.length() > 4_096)
+                throw new IllegalArgumentException("Aktionsargumente dürfen höchstens 4.096 Zeichen lang sein.");
+            JsonElement parsed = JsonParser.parseString(rawParameters);
+            if (!parsed.isJsonObject()) throw new IllegalArgumentException("Aktionen benötigen ein JSON-Objekt als Argumente.");
+            JsonObject json = parsed.getAsJsonObject();
+            if (json.size() > 16) throw new IllegalArgumentException("Zu viele Aktionsparameter.");
+            Map<String, String> parameters = new LinkedHashMap<>();
+            for (Map.Entry<String, JsonElement> entry : json.entrySet()) {
+                if (!entry.getValue().isJsonPrimitive())
+                    throw new IllegalArgumentException("Der Offline-Agent unterstützt hier nur einzelne Text-, Zahlen- und Wahrheitswerte; komplexe JSON-Arrays sind ausgenommen.");
+                parameters.put(entry.getKey(), entry.getValue().getAsString());
+            }
+            return submitOfflineAgentGoal(c, "Lokale Nightfall-Aktion: " + actionName,
+                    actionName, parameters, 1);
+        } catch (RuntimeException failure) {
+            return say(c, "Lokale Aktion nicht eingereiht: " + safeAgentMessage(failure));
+        }
+    }
+
     private static int submitOfflineAgentGoal(
             com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c,
             String description, String action, Map<String, String> parameters) {
+        return submitOfflineAgentGoal(c, description, action, parameters, 2);
+    }
+
+    private static int submitOfflineAgentGoal(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c,
+            String description, String action, Map<String, String> parameters, int maxAttempts) {
         try {
             String goalId = nextOfflineGoalId();
             OfflineAgentCore.Step step = new OfflineAgentCore.Step(
-                    "action", action, parameters, List.of(), 2);
+                    "action", action, parameters, List.of(), maxAttempts);
             Nightfall.offlineAgentCore().submit(new OfflineAgentCore.Goal(
                     goalId, description, 0, List.of(step)));
             Nightfall.offlineAgentBridge().prepareNext();
