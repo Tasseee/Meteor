@@ -273,7 +273,7 @@ public final class Commands {
         root.then(literal("prepare").executes(c -> prepareOfflineAgent(c)));
         root.then(literal("help").executes(c -> say(c,
                 "Offline-Agent: /nf agent memory [clear] · /nf agent gather <wood|block|ore> <item> <count> · craft <item> [count] · smelt <item> <count> · wood <bretter> · iron <erz> · shelter · build <starter|resume|vorlage|pause|continue|stop> · schematic <datei> · navigate <x> <y> <z> · mine <x> <y> <z> · attack · guard · sort · search [struktur]. "
-                        + "Weitere lokale Funktionen: /nf agent action <name> <json>. Jeder Auftrag zeigt vor Ausführung eine Vorschau. "
+                        + "Aktionen entdecken: /nf agent actions · weitere lokale Funktionen: /nf agent action <name> <json>. Jeder Auftrag zeigt vor Ausführung eine Vorschau. "
                         + "confirm bestätigt, reject lehnt ab, verify success|failed prüft das Ergebnis, cancel bricht ab.")));
         LiteralArgumentBuilder<FabricClientCommandSource> action = literal("action");
         var actionName = argument("name", StringArgumentType.word());
