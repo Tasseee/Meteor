@@ -95,9 +95,13 @@ public final class AIActionRegistry {
 
         for (JsonElement element : cachedToolDefinitions()) {
             if (!element.isJsonObject()) continue;
-            JsonObject function = element.getAsJsonObject().getAsJsonObject("function");
-            if (function == null || !function.has("name")) continue;
-            if (selectedNames.contains(function.get("name").getAsString())) {
+            JsonElement functionElement = element.getAsJsonObject().get("function");
+            if (functionElement == null || !functionElement.isJsonObject()) continue;
+            JsonObject function = functionElement.getAsJsonObject();
+            JsonElement nameElement = function.get("name");
+            if (nameElement == null || !nameElement.isJsonPrimitive()
+                    || !nameElement.getAsJsonPrimitive().isString()) continue;
+            if (selectedNames.contains(nameElement.getAsString())) {
                 filtered.add(element.deepCopy());
             }
         }
