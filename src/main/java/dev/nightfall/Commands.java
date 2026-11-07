@@ -263,6 +263,7 @@ public final class Commands {
     private static LiteralArgumentBuilder<FabricClientCommandSource> agentCommand() {
         LiteralArgumentBuilder<FabricClientCommandSource> root = literal("agent");
         root.then(literal("status").executes(c -> offlineAgentStatus(c)));
+        root.then(literal("prepare").executes(c -> prepareOfflineAgent(c)));
         root.then(literal("help").executes(c -> say(c,
                 "Offline-Agent: /nf agent gather <wood|block|ore> <item> <count> · craft <item> [count] · smelt <item> <count> · wood <bretter> · iron <erz> · build <starter|resume|vorlage> · schematic <datei> · navigate <x> <y> <z> · mine <x> <y> <z> · attack · guard · sort · search [struktur]. "
                         + "Weitere lokale Funktionen: /nf agent action <name> <json>. Jeder Auftrag zeigt vor Ausführung eine Vorschau. "
@@ -568,6 +569,20 @@ public final class Commands {
         return count;
     }
 
+    private static int prepareOfflineAgent(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c) {
+        try {
+            var prepared = Nightfall.offlineAgentBridge().prepareNext();
+            if (prepared.isPresent()) return say(c, "Die nächste Offline-Agent-Vorschau wurde im Chat angezeigt.");
+            String prompt = Nightfall.offlineAgentBridge().preparationPrompt();
+            return say(c, prompt.isBlank()
+                    ? "Aktuell ist kein weiterer Schritt zur Vorbereitung bereit."
+                    : prompt);
+        } catch (RuntimeException failure) {
+            return say(c, "Vorbereitung fehlgeschlagen: " + safeAgentMessage(failure));
+        }
+    }
+
     private static int confirmOfflineAgent(
             com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c) {
         var preview = Nightfall.offlineAgentBridge().pendingPreview();
@@ -626,7 +641,9 @@ public final class Commands {
             out.append("\nVorschau wartet auf Bestätigung: ").append(preview.goalId())
                     .append("/").append(preview.stepId());
         } else if (bridge.awaitingVerification()) {
-            out.append("\nEine ausgeführte Aktion wartet auf deine Ergebnisprüfung: /nf agent verify success|failed");
+            out.append("\nEine ausgeführte Aktion wartet auf ihre Ergebnisprüfung. Externe Aktionen: /nf agent verify success|failed");
+        } else if (bridge.waitingForSetup()) {
+            out.append("\nDer nächste Schritt wartet auf deine Vorbereitung: ").append(bridge.preparationPrompt());
         } else {
             out.append("\nKeine Vorschau und keine Ergebnisprüfung offen.");
         }
