@@ -373,7 +373,10 @@ public final class OfflineAgentActionBridge {
      */
     public synchronized void onDisconnect() {
         if (!loadedQueueWorldKey.isBlank()) persistQueueFor(loadedQueueWorldKey);
-        if (pendingAction != null) AIActionRegistry.cancel(pendingAction);
+        // Nightfall calls AIBuilder.onDisconnect() first. Cancelling a prepared
+        // Builder preview afterwards would delete the checkpoint just preserved.
+        if (pendingAction != null && !isBuilderAction(pendingAction.name()))
+            AIActionRegistry.cancel(pendingAction);
         pending = null;
         pendingAction = null;
         verifyingGoalId = null;
@@ -440,8 +443,11 @@ public final class OfflineAgentActionBridge {
             // An agent action must never continue using the previous dimension/world.
             if (AIPlayerController.isBusy()) AIPlayerController.stop("Offline-Agent: Weltwechsel erkannt; Aktion sicher gestoppt.");
             if (AICombatController.isActive()) AICombatController.stop("Offline-Agent: Weltwechsel erkannt; Kampf beendet.");
-            if (AIBuilder.isRunning()) AIBuilder.onWorldChanged();
-            if (pendingAction != null) AIActionRegistry.cancel(pendingAction);
+            // Clear any prepared Builder preview while retaining its last checkpoint
+            // under the original world's server/dimension identity.
+            if (pendingAction != null && !isBuilderAction(pendingAction.name()))
+                AIActionRegistry.cancel(pendingAction);
+            AIBuilder.onWorldChanged();
             pending = null;
             pendingAction = null;
             verifyingGoalId = null;
