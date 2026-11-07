@@ -33,6 +33,12 @@ public final class OfflineAgentActionBridge {
     private String verifyingGoalId;
     private String verifyingStepId;
     private String lastError = "";
+    private VerificationKind verificationKind = VerificationKind.NONE;
+    private long playerSequenceAtStart;
+    private long builderSequenceAtStart;
+    private long combatSequenceAtStart;
+
+    private enum VerificationKind { NONE, PLAYER_CONTROLLER, BUILDER, COMBAT, EXTERNAL }
 
     public OfflineAgentActionBridge(OfflineAgentCore core) {
         this.core = Objects.requireNonNull(core, "core");
@@ -100,10 +106,21 @@ public final class OfflineAgentActionBridge {
         AIActionRegistry.Action action = pendingAction;
         pendingAction = null;
         core.markStarted(goalId, stepId);
+        verificationKind = verificationKindFor(action.name());
+        playerSequenceAtStart = AIPlayerController.actionCompletionSequence();
+        builderSequenceAtStart = AIBuilder.completionSequence();
+        combatSequenceAtStart = AICombatController.completionSequence();
         try {
             String result = AIActionRegistry.execute(action);
+            if (verificationKind == VerificationKind.NONE) {
+                core.report(goalId, stepId, OfflineAgentCore.ActionResult.SUCCESS,
+                        "Lokale Aktion wurde ausgeführt und hat ein direktes Ergebnis geliefert. " + result);
+                verificationKind = VerificationKind.NONE;
+                lastError = "";
+                return result;
+            }
             core.report(goalId, stepId, OfflineAgentCore.ActionResult.UNCERTAIN,
-                    "Aktion ausgeführt; Abschluss muss anhand einer neuen Spielbeobachtung geprüft werden. " + result);
+                    "Aktion läuft oder wartet auf ein externes Ergebnis. " + result);
             verifyingGoalId = goalId;
             verifyingStepId = stepId;
             lastError = "";
@@ -139,14 +156,80 @@ public final class OfflineAgentActionBridge {
     }
 
     /**
-     * Resolves the last executed step using a fresh observation supplied by the
-     * game integration. Never call this merely because execute() returned.
+     * Polls the existing Minecraft controllers on the client thread. A dependent
+     * step is released only after the controller reports a terminal outcome.
      */
+    public synchronized void tick() {
+        if (verifyingGoalId == null || verificationKind == VerificationKind.NONE
+                || verificationKind == VerificationKind.EXTERNAL) return;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread() || client.player == null || client.world == null) return;
+
+        String completion;
+        long currentSequence;
+        boolean running;
+        switch (verificationKind) {
+            case PLAYER_CONTROLLER -> {
+                running = AIPlayerController.isBusy();
+                currentSequence = AIPlayerController.actionCompletionSequence();
+                completion = AIPlayerController.lastActionSummary();
+            }
+            case BUILDER -> {
+                running = AIBuilder.isRunning();
+                currentSequence = AIBuilder.completionSequence();
+                completion = AIBuilder.lastCompletionStatus();
+            }
+            case COMBAT -> {
+                running = AICombatController.isActive() || AIPlayerController.isNavigating();
+                currentSequence = AICombatController.completionSequence();
+                completion = AICombatController.lastCompletionStatus();
+            }
+            default -> { return; }
+        }
+        if (running) return;
+        long baseline = switch (verificationKind) {
+            case PLAYER_CONTROLLER -> playerSequenceAtStart;
+            case BUILDER -> builderSequenceAtStart;
+            case COMBAT -> combatSequenceAtStart;
+            default -> Long.MAX_VALUE;
+        };
+        if (currentSequence <= baseline || completion == null || completion.isBlank()) return;
+
+        boolean success = OfflineAgentOutcome.isSuccessfulControllerCompletion(completion);
+        String goalId = verifyingGoalId;
+        String stepId = verifyingStepId;
+        core.verify(goalId, stepId, success, "Controller-Abschluss: " + completion);
+        verifyingGoalId = null;
+        verifyingStepId = null;
+        verificationKind = VerificationKind.NONE;
+        client.player.sendMessage(Text.literal("[Nightfall] Offline-Agent: " + goalId + "/" + stepId
+                + (success ? " wurde automatisch als erfolgreich bestätigt."
+                : " wurde als unvollständig/fehlgeschlagen erkannt. Ein erneuter Versuch benötigt eine neue Vorschau.")), false);
+        prepareNext();
+    }
+
+    private static VerificationKind verificationKindFor(String action) {
+        return switch (action) {
+            case "walk_forward", "search_structures", "navigate_to", "mine_block",
+                    "mine_looked_block", "gather_wood", "gather_block", "gather_ore",
+                    "smelt_item", "craft_item", "eat_food", "sort_inventory",
+                    "resume_saved_task" -> VerificationKind.PLAYER_CONTROLLER;
+            case "build_starter_shelter", "build_structure", "build_schematic",
+                    "resume_saved_build" -> VerificationKind.BUILDER;
+            case "attack_nearest_hostile", "guard_nearby_hostiles" -> VerificationKind.COMBAT;
+            case "locate_structure", "locate_biome", "random_teleport", "run_server_command",
+                    "search_bases" -> VerificationKind.EXTERNAL;
+            default -> VerificationKind.NONE;
+        };
+    }
+
+    /** External server actions still require an explicit player observation. */
     public synchronized void verifyLastAction(boolean confirmedSuccess, String observation) {
         if (verifyingGoalId == null) throw new IllegalStateException("Keine Aktion wartet auf Überprüfung.");
         core.verify(verifyingGoalId, verifyingStepId, confirmedSuccess, observation);
         verifyingGoalId = null;
         verifyingStepId = null;
+        verificationKind = VerificationKind.NONE;
     }
 
     /** Cancels the goal behind a prepared preview; no Minecraft action is executed. */
@@ -175,6 +258,7 @@ public final class OfflineAgentActionBridge {
         core.acknowledgeStopped(goalId, stepId);
         verifyingGoalId = null;
         verifyingStepId = null;
+        verificationKind = VerificationKind.NONE;
     }
 
     /**
@@ -199,6 +283,7 @@ public final class OfflineAgentActionBridge {
         }
         verifyingGoalId = null;
         verifyingStepId = null;
+        verificationKind = VerificationKind.NONE;
     }
 
     /** Cancels every active offline goal and safely stops the active action. */
