@@ -53,6 +53,9 @@ public final class LocalAIPlanner {
                         ? "AUSGEWÄHLTE WERKZEUGSCHEMAS (nur zur Orientierung):\n"
                         : "VERFÜGBARE LOKALE AKTIONEN FÜR DIESE ANFRAGE (nicht aufgeführte Aktionen sind nicht verfügbar):\n")
                 .append(compactActionSchemas(LocalAIToolRouter.selectTools(history)).toString())
+                .append("\n")
+                .append("VOLLSTÄNDIGER FUNKTIONSINDEX (Kurzbeschreibungen; genaue Parameter stehen bei den ausgewählten Aktionsschemas):\n")
+                .append(compactCapabilityIndex())
                 .append("\n");
         if (LocalAIToolRouter.isCapabilityQuestion(history)) {
             prompt.append("VOLLSTÄNDIGER FÄHIGKEITSKATALOG (alle registrierten Aktionen):\n")
@@ -160,6 +163,36 @@ public final class LocalAIPlanner {
                 .append("Eigene Baupläne sind auf 512 Blöcke begrenzt; Schematics werden in 32er-Abschnitten gebaut. ")
                 .append("Die Kennzeichnung offline unterstützt bestätigt nur Schema/Bridge-Kompatibilität, nicht jeden Weltzustand.");
         return catalog.toString();
+    }
+
+    /**
+     * Small always-present index so the local model knows the complete client
+     * feature surface without loading every detailed JSON schema into context.
+     */
+    private static String compactCapabilityIndex() {
+        Map<String, List<String>> groups = new java.util.LinkedHashMap<>();
+        for (JsonElement element : AIActionRegistry.toolDefinitions()) {
+            if (element == null || !element.isJsonObject()) continue;
+            JsonElement functionElement = element.getAsJsonObject().get("function");
+            if (functionElement == null || !functionElement.isJsonObject()) continue;
+            JsonObject function = functionElement.getAsJsonObject();
+            JsonElement nameElement = function.get("name");
+            if (nameElement == null || !nameElement.isJsonPrimitive()
+                    || !nameElement.getAsJsonPrimitive().isString()) continue;
+            String name = nameElement.getAsString();
+            String description = function.has("description") && function.get("description").isJsonPrimitive()
+                    ? function.get("description").getAsString().replaceAll("[\\r\\n]+", " ").trim() : "";
+            if (description.length() > 62) description = description.substring(0, 59) + "...";
+            groups.computeIfAbsent(capabilityCategory(name), ignored -> new java.util.ArrayList<>())
+                    .add("- " + name + ": " + description);
+        }
+
+        StringBuilder index = new StringBuilder(4_000);
+        for (Map.Entry<String, List<String>> group : groups.entrySet()) {
+            index.append(group.getKey()).append('\n');
+            for (String item : group.getValue()) index.append(item).append('\n');
+        }
+        return index.length() > 6_000 ? index.substring(0, 5_997) + "..." : index.toString();
     }
 
     private static String capabilityCategory(String action) {
