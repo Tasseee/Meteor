@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Explicit allow-list of actions the model may request.
+ * Explicit allow-list of actions shared by the local offline agent and legacy tool schemas.
  *
  * Never add shell/code execution or unrestricted server administration here. Every action
  * must validate its arguments locally and be previewed/confirmed before execution.
@@ -69,7 +69,7 @@ public final class AIActionRegistry {
 
     public record Action(String name, JsonObject arguments, String preview) {}
 
-    /** OpenAI-compatible function definitions. The model can suggest, never execute, these tools. */
+    /** Local action schemas shared by the offline command bridge; actions are validated and never executed from a model response. */
     private static JsonArray cachedToolDefinitions() {
         JsonArray cached = cachedToolDefinitions;
         if (cached == null) {
@@ -95,9 +95,13 @@ public final class AIActionRegistry {
 
         for (JsonElement element : cachedToolDefinitions()) {
             if (!element.isJsonObject()) continue;
-            JsonObject function = element.getAsJsonObject().getAsJsonObject("function");
-            if (function == null || !function.has("name")) continue;
-            if (selectedNames.contains(function.get("name").getAsString())) {
+            JsonElement functionElement = element.getAsJsonObject().get("function");
+            if (functionElement == null || !functionElement.isJsonObject()) continue;
+            JsonObject function = functionElement.getAsJsonObject();
+            JsonElement nameElement = function.get("name");
+            if (nameElement == null || !nameElement.isJsonPrimitive()
+                    || !nameElement.getAsJsonPrimitive().isString()) continue;
+            if (selectedNames.contains(nameElement.getAsString())) {
                 filtered.add(element.deepCopy());
             }
         }
@@ -120,7 +124,7 @@ public final class AIActionRegistry {
         tools.add(tool("add_waypoint", "Save a waypoint at the player's current position. The player must confirm first.",
                 objectSchema(property("name", "string", "Short waypoint name, max 32 characters."), "name")));
         tools.add(tool("list_waypoints",
-                "Read the locally saved waypoints for the current server, including names, dimensions and coordinates. This location data is sent to the configured AI provider, so the player must confirm first. Read-only; does not navigate, add, edit or remove anything.",
+                "Read the locally saved waypoints for the current server, including names, dimensions and coordinates. Data stays on the Minecraft client in offline mode. Read-only; does not navigate, add, edit or remove anything.",
                 objectSchema()));
         tools.add(tool("search_bases",
                 "Start or resume Nightfall's incremental BaseFinder scan. It inspects only chunks already loaded and sent to this client; it does not teleport, issue server commands, or reveal server-side hidden data. Requires player confirmation.",
@@ -161,12 +165,12 @@ public final class AIActionRegistry {
         setSettingSchema.add("required", setSettingRequired);
         tools.add(tool("set_module_setting", "Change one existing Nightfall ClickGUI setting by exact module and setting name. Supports boolean toggles, bounded numbers, allowed mode choices, text settings and colors (#RRGGBB). The client validates the setting type and range, shows a preview and requires player confirmation. Unsupported list settings cannot be edited by AI.", setSettingSchema));
         tools.add(tool("open_nightfall_menu", "Open Nightfall's own ClickGUI menu on the client. Does not change any setting.", objectSchema()));
-        tools.add(tool("get_inventory", "Read the player's inventory and summarize item names and counts. This data is sent to the configured AI provider; the player must confirm first.",
+        tools.add(tool("get_inventory", "Read the player's inventory and summarize item names and counts locally. Data stays on the Minecraft client in offline mode.",
                 objectSchema()));
         tools.add(tool("sort_inventory",
                 "Sort permitted ordinary items in the player's 36 normal inventory/hotbar slots by category and item ID. Preserves exact stack counts, durability, enchantments and item components; does not merge or delete items. Combat-oriented items remain in their exact slots. Armor, offhand, crafting slots and cursor are never moved. Uses normal server-confirmed inventory swaps, one at a time; requires a preview and explicit confirmation.",
                 objectSchema()));
-        tools.add(tool("get_player_status", "Read the player's current dimension, coordinates and health. This data is sent to the configured AI provider; the player must confirm first.",
+        tools.add(tool("get_player_status", "Read the player's current dimension, coordinates and health locally. Data stays on the Minecraft client in offline mode.",
                 objectSchema()));
         tools.add(tool("random_teleport", "Request the server's random teleport using its common /rtp command. The player must confirm first; the server must support it.",
                 objectSchema()));
@@ -185,7 +189,7 @@ public final class AIActionRegistry {
         materialPlanMaterial.addProperty("maxLength", 64);
         materialPlanSchema.getAsJsonObject("properties").add("material", materialPlanMaterial);
         tools.add(tool("plan_build_materials",
-                "Read-only material availability plan for starter_shelter (54 blocks), large_house (130 blocks), or watchtower (74 blocks). Counts suitable full-cube block items across the player's 36 normal inventory/hotbar slots and ranks the best fit before shortages. Optional material selects one exact material. Reads inventory data that will be shared with the configured AI provider, so Nightfall previews the exact analysis and requires player confirmation. Does not prepare a build, save a checkpoint, swap slots, or change the world.",
+                "Read-only material availability plan for starter_shelter (54 blocks), large_house (130 blocks), or watchtower (74 blocks). Counts suitable full-cube block items across the player's 36 normal inventory/hotbar slots and ranks the best fit before shortages. Optional material selects one exact material. Reads inventory data locally on the Minecraft client; no provider receives it in offline mode. Does not prepare a build, save a checkpoint, swap slots, or change the world.",
                 materialPlanSchema));
 
         JsonObject buildStructureSchema = objectSchema(
@@ -217,7 +221,8 @@ public final class AIActionRegistry {
             JsonObject coordinate = new JsonObject();
             coordinate.addProperty("type", "integer");
             coordinate.addProperty("minimum", 0);
-            coordinate.addProperty("maximum", axis.equals("y") ? 10 : 15);
+            coordinate.addProperty("maximum", 31);
+            coordinate.addProperty("description", "Nonnegative block offset from the structure origin; each axis is limited to 0..31.");
             coordinateProps.add(axis, coordinate);
         }
         JsonObject blockMaterial = new JsonObject();
@@ -253,10 +258,11 @@ public final class AIActionRegistry {
         tools.add(tool("list_schematics",
                 "List locally imported schematic files and curated community schematic sources. Does not download files or start building.",
                 objectSchema()));
-        JsonObject schematicFile = property("file", "string",
-                "Exact local filename inside config/nightfall/schematics, ending in .schem or .litematic.").get("schema").getAsJsonObject();
+        JsonObject schematicFileProperty = property("file", "string",
+                "Exact local filename inside config/nightfall/schematics, ending in .schem or .litematic.");
+        JsonObject schematicFile = schematicFileProperty.getAsJsonObject("schema");
         schematicFile.addProperty("maxLength", 110);
-        JsonObject schematicSchema = objectSchema(schematicFile, "file");
+        JsonObject schematicSchema = objectSchema(schematicFileProperty, "file");
         JsonObject partX = property("part_x", "integer", "0-basierter Abschnitt entlang der X-Achse; jeder Abschnitt ist maximal 32 Blöcke breit.").get("schema").getAsJsonObject();
         partX.addProperty("minimum", 0); partX.addProperty("maximum", 15);
         JsonObject partY = property("part_y", "integer", "0-basierter Abschnitt entlang der Y-Achse; jeder Abschnitt ist maximal 32 Blöcke hoch.").get("schema").getAsJsonObject();
@@ -274,19 +280,19 @@ public final class AIActionRegistry {
                 schematicSchema));
         tools.add(tool("repair_schematic",
                 "Create a NEW local Sponge v2 .schem copy containing only the source schematic's block states and still-water sources that Nightfall can import automatically. The original file is never modified or overwritten. Unsupported blocks are replaced with air; entities and custom block-entity NBT/inventories are omitted. This sanitizes the placement subset only; it does not repair farm logic, redstone timing, fluids, villagers or guarantee working output. The player must inspect the generated file again before building. Requires explicit confirmation.",
-                objectSchema(property("file", "string", "Exact original filename inside config/nightfall/schematics, ending in .schem or .litematic.").get("schema").getAsJsonObject(), "file")));
+                objectSchema(property("file", "string", "Exact original filename inside config/nightfall/schematics, ending in .schem or .litematic."), "file")));
         tools.add(tool("build_schematic",
                 "Prepare exactly one 32x32x32 section of a local schematic for building. For oversized structures, pass part_x, part_y and part_z (zero-based); inspect_schematic reports the valid grid. Start with part_x=0, part_y=0, part_z=0: Nightfall stores a server/dimension/file-bound farm anchor in config/nightfall/schematic_build_session.json. Set reset_anchor=true only when intentionally starting another copy at a new location; all remaining calls for that copy must keep it false. Later sections retain the exact overall schematic alignment and report both their build center and an access position at the farm anchor's Y-level; navigate to the access position before previewing so the destination chunks are loaded. Build every section in ascending part_y order (lowest layer first), then across X/Z, so upper components can attach to already-built lower layers. Nightfall then approaches reachable placement targets using bounded A* navigation and saves/resumes section progress across client restarts. It preserves supported BlockStates and stops when a stable orientation/state cannot be reproduced. Redstone dust is placed with its dedicated vanilla item interaction after structural supports and redstone devices; repeaters, comparators, observers, pistons, levers, buttons, lamps and other supported BlockItems retain their static orientation/configuration. Neighbor- and tick-driven values (wire connections/power, powered/locked/lit/extended) are allowed to update naturally and are not treated as fixed schematic values. This does not verify redstone timing, inventory contents, signal paths or farm output. Still water source cells can be placed after solid blocks only in Creative mode when a water bucket is in the player's inventory; flowing water is left to vanilla fluid simulation and must be checked in-game. Survival water, lava, falling blocks, entities and custom block-entity NBT/inventories remain manual.\n"
                 + "Material-shortage workflow: the current section requires its exact materials in the player's inventory; Creative mode only requires one representative stack per material. In Survival, obtain the missing counts before building the section. Do not claim the entire schematic is complete after building one section.",
                 schematicSchema));
         JsonObject schematicProgressSchema = objectSchema(
-                property("file", "string", "Exact local .schem or .litematic filename.").get("schema").getAsJsonObject(), "file");
+                property("file", "string", "Exact local .schem or .litematic filename."), "file");
         schematicProgressSchema.getAsJsonObject("properties").getAsJsonObject("file").addProperty("maxLength", 110);
         tools.add(tool("get_schematic_progress",
                 "Read-only durable progress for a local schematic. Reports fully completed sections for the current server and dimension and the next unfinished section in bottom-up order. Does not create or move the farm anchor and does not start building.",
                 schematicProgressSchema));
         JsonObject verifySchematicSchema = objectSchema(
-                property("file", "string", "Exact local .schem or .litematic filename.").get("schema").getAsJsonObject(), "file");
+                property("file", "string", "Exact local .schem or .litematic filename."), "file");
         verifySchematicSchema.getAsJsonObject("properties").getAsJsonObject("file").addProperty("maxLength", 110);
         for (String axis : List.of("part_x", "part_y", "part_z")) {
             JsonObject index = property(axis, "integer", "Zero-based 32-block section index (0–15).").get("schema").getAsJsonObject();
@@ -297,10 +303,11 @@ public final class AIActionRegistry {
         tools.add(tool("verify_schematic_section",
                 "Read-only in-world structural check for one previously anchored schematic section. Compares expected imported block types/states, still-water sources, clear cells and presence of default block entities against already-loaded client chunks. Reports unloaded positions separately. Does not test villager behavior, custom block-entity inventories, fluid flow, redstone timing/signal paths or farm output; it cannot certify a working farm.",
                 verifySchematicSchema));
-        JsonObject walkTicks = property("ticks", "integer", "Dauer der kurzen Vorwärtsbewegung in Ticks (1 bis 100).").get("schema").getAsJsonObject();
+        JsonObject walkTicksProperty = property("ticks", "integer", "Dauer der kurzen Vorwärtsbewegung in Ticks (1 bis 100).");
+        JsonObject walkTicks = walkTicksProperty.getAsJsonObject("schema");
         walkTicks.addProperty("minimum", 1);
         walkTicks.addProperty("maximum", 100);
-        tools.add(tool("walk_forward", "Walk forward for a short bounded duration. This is not obstacle-aware pathfinding. Requires player confirmation.", objectSchema(walkTicks, "ticks")));
+        tools.add(tool("walk_forward", "Walk forward for a short bounded duration. This is not obstacle-aware pathfinding. Requires player confirmation.", objectSchema(walkTicksProperty, "ticks")));
         tools.add(tool("stop_movement", "Immediately release Nightfall's movement keys and stop its active movement.", objectSchema()));
         JsonObject targetPosition = positionSchema();
         tools.add(tool("navigate_to",
@@ -487,7 +494,7 @@ public final class AIActionRegistry {
                         + waypointName + "“ an deiner aktuellen Position.");
             }
             case "list_waypoints" -> new Action(name, args,
-                    "Nightfall liest die lokalen Wegpunkte dieses Servers und übermittelt Namen, Dimensionen und Koordinaten an den konfigurierten KI-Anbieter. Es wird nichts geändert und keine Navigation gestartet.\n\n" + waypointSummary());
+                    "Nightfall liest die lokalen Wegpunkte dieses Servers. Namen, Dimensionen und Koordinaten bleiben im Offline-Modus auf dem Minecraft-Client. Es wird nichts geändert und keine Navigation gestartet.\n\n" + waypointSummary());
             case "search_bases" -> new Action(name, args,
                     "Nightfall aktiviert den BaseFinder und beginnt mit dem inkrementellen Scan bereits geladener Chunks. Das Ergebnis ist eine lokale Heuristik, kein bestätigter Basisfund.");
             case "get_base_findings" -> new Action(name, args, baseFindingsSummary());
@@ -530,10 +537,10 @@ public final class AIActionRegistry {
             }
             case "open_nightfall_menu" -> new Action(name, args, "Öffnet das Nightfall-Menü auf deinem Bildschirm. Es werden keine Einstellungen geändert.");
             case "get_inventory" -> new Action(name, args,
-                    "Nightfall liest dein Inventar und sendet Itemnamen und Mengen an den konfigurierten KI-Anbieter.");
+                    "Nightfall liest dein Inventar lokal. Itemnamen und Mengen verlassen im Offline-Modus den Minecraft-Client nicht.");
             case "sort_inventory" -> new Action(name, args, AIPlayerController.previewInventorySort());
             case "get_player_status" -> new Action(name, args,
-                    "Nightfall liest Dimension, Position und Lebenspunkte und sendet diese Daten an den konfigurierten KI-Anbieter.");
+                    "Nightfall liest Dimension, Position und Lebenspunkte lokal. Diese Daten verlassen im Offline-Modus den Minecraft-Client nicht.");
             case "random_teleport" -> new Action(name, args,
                     "Nightfall sendet nach deiner Bestätigung den Serverbefehl /rtp. Der Server muss diesen Befehl anbieten; Nightfall kann den Teleport nicht erzwingen.");
             case "run_server_command" -> {
@@ -1216,8 +1223,14 @@ public final class AIActionRegistry {
     }
 
     private static JsonObject objectSchema(JsonObject property, String required) {
+        if (property == null || !property.has("name") || !property.get("name").isJsonPrimitive()
+                || !property.getAsJsonPrimitive("name").isString()
+                || !property.has("schema") || !property.get("schema").isJsonObject()) {
+            throw new IllegalArgumentException("A required tool property must include a name and object schema.");
+        }
+        String propertyName = property.get("name").getAsString();
         JsonObject schema = objectSchema();
-        schema.getAsJsonObject("properties").add(property.get("name").getAsString(), property.get("schema"));
+        schema.getAsJsonObject("properties").add(propertyName, property.get("schema").deepCopy());
         JsonArray requiredList = new JsonArray();
         requiredList.add(required);
         schema.add("required", requiredList);
@@ -1248,7 +1261,17 @@ public final class AIActionRegistry {
     private static JsonObject moduleStateSchema() {
         JsonObject module = property("module", "string", "Exact Nightfall module name.").get("schema").getAsJsonObject();
         JsonArray names = new JsonArray();
-        for (Module item : ModuleManager.all()) names.add(item.getName());
+        try {
+            List<Module> modules = ModuleManager.all();
+            if (modules != null) {
+                for (Module item : modules) {
+                    if (item != null && item.getName() != null && !item.getName().isBlank())
+                        names.add(item.getName());
+                }
+            }
+        } catch (RuntimeException unavailable) {
+            // Keep the schema usable during early client startup and isolated tests.
+        }
         module.add("enum", names);
         JsonObject enabled = property("enabled", "boolean", "True to enable, false to disable.").get("schema").getAsJsonObject();
         JsonObject schema = objectSchema();

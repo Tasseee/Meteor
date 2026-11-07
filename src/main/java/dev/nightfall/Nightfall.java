@@ -10,6 +10,8 @@ import dev.nightfall.ai.AIConfig;
 import dev.nightfall.ai.AIRealtimeVoiceClient;
 import dev.nightfall.ai.AIBuilder;
 import dev.nightfall.ai.AIPlayerController;
+import dev.nightfall.ai.OfflineAgentCore;
+import dev.nightfall.ai.OfflineAgentActionBridge;
 import dev.nightfall.ai.AICombatController;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.AutoTpa;
@@ -41,6 +43,13 @@ public class Nightfall implements ClientModInitializer {
 
     private boolean prevGui, prevHud, prevMap, prevAi, prevVoice, prevMic;
 
+    private static final OfflineAgentCore OFFLINE_AGENT_CORE = new OfflineAgentCore();
+    private static final OfflineAgentActionBridge OFFLINE_AGENT_BRIDGE =
+            new OfflineAgentActionBridge(OFFLINE_AGENT_CORE);
+
+    public static OfflineAgentCore offlineAgentCore() { return OFFLINE_AGENT_CORE; }
+    public static OfflineAgentActionBridge offlineAgentBridge() { return OFFLINE_AGENT_BRIDGE; }
+
     @Override
     public void onInitializeClient() {
         ModuleManager.init();
@@ -64,6 +73,8 @@ public class Nightfall implements ClientModInitializer {
             AIChatScreen.onDisconnect();
             AIPlayerController.onDisconnect();
             AICombatController.onDisconnect();
+            AIBuilder.onDisconnect();
+            OFFLINE_AGENT_BRIDGE.onDisconnect();
             ModuleManager.get(BaseFinder.class).clear();
             ModuleManager.get(TrapperBot.class).resetSession();
             Config.save();
@@ -120,7 +131,12 @@ public class Nightfall implements ClientModInitializer {
             prevGui = g; prevHud = hu; prevMap = m; prevAi = ai; prevVoice = voice; prevMic = mic;
             ModuleManager.pollKeys(mc);
         }
+        // Restore/switch the world-scoped queue before any controller can tick
+        // with a player/world from a different dimension or server.
+        OFFLINE_AGENT_BRIDGE.ensureReady();
         AIPlayerController.tick();
+        OFFLINE_AGENT_BRIDGE.tick();
+        OFFLINE_AGENT_BRIDGE.prepareNext();
         AICombatController.tick();
         AIBuilder.tick();
         ModuleManager.tick();

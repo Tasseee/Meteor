@@ -27,7 +27,7 @@ import java.util.function.Consumer;
  * Optional, push-to-talk voice input and spoken replies.
  *
  * The microphone is opened only after the player explicitly starts a recording.
- * Audio is sent only to the configured speech endpoint and is never stored on disk.
+ * Legacy cloud voice transport. Voice is disabled in the current offline mode; this class is not called by the offline chat UI.
  */
 public final class AIVoiceClient {
     private static final AudioFormat FORMAT = new AudioFormat(16_000.0f, 16, 1, true, false);
@@ -75,7 +75,7 @@ public final class AIVoiceClient {
             return;
         }
         if (settings.apiKey().isBlank()) {
-            notifyStatus(onStatus, "Für Sprache fehlt der API-Key in config/nightfall/ai.json.");
+            notifyStatus(onStatus, "Sprache ist im aktuellen Offline-Modus deaktiviert.");
             return;
         }
 
@@ -158,7 +158,7 @@ public final class AIVoiceClient {
             busy = false;
             return;
         }
-        notifyStatus(onStatus, "Sprachaufnahme wird an den konfigurierten Anbieter gesendet …");
+        notifyStatus(onStatus, "Spracherkennung ist im aktuellen Offline-Modus deaktiviert.");
         transcribe(settings, wav, onTranscript, onStatus);
     }
 

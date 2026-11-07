@@ -18,6 +18,17 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:0.18.1"
     modImplementation "net.fabricmc.fabric-api:fabric-api:0.141.6+1.21.11"
 
+    // Embedded llama.cpp CPU inference; no local server or cloud provider required.
+    implementation 'de.kherud:llama:4.1.0'
+    include 'de.kherud:llama:4.1.0'
+    implementation 'org.jetbrains:annotations:24.1.0'
+    include 'org.jetbrains:annotations:24.1.0'
+    // Local-only German speech recognition; Vosk uses JNA and bundled native libraries.
+    implementation 'com.alphacephei:vosk:0.3.45'
+    include 'com.alphacephei:vosk:0.3.45'
+    implementation 'net.java.dev.jna:jna:5.7.0'
+    include 'net.java.dev.jna:jna:5.7.0'
+
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
 }
