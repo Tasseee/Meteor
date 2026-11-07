@@ -28,6 +28,8 @@ public final class AICombatController {
     private static boolean guardMode;
     private static int activeTicks;
     private static int attacks;
+    private static long completionSequence;
+    private static String lastCompletionStatus = "";
 
     private AICombatController() {}
 
@@ -145,6 +147,10 @@ public final class AICombatController {
 
     public static String stop(String reason) {
         boolean wasActive = active;
+        if (wasActive && reason != null && !reason.isBlank()) {
+            completionSequence++;
+            lastCompletionStatus = reason.length() <= 512 ? reason : reason.substring(0, 509) + "...";
+        }
         active = false;
         target = null;
         activeTicks = 0;
@@ -158,6 +164,8 @@ public final class AICombatController {
 
     public static void onDisconnect() { stop(null); }
     public static boolean isActive() { return active; }
+    public static long completionSequence() { return completionSequence; }
+    public static String lastCompletionStatus() { return lastCompletionStatus; }
 
     private static HostileEntity findNearest(MinecraftClient mc) {
         return findNearest(mc, ACQUIRE_RANGE);
