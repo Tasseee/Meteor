@@ -284,8 +284,11 @@ public final class OfflineAgentActionBridge {
         Set<String> retainedIds = new HashSet<>();
         for (OfflineAgentCore.GoalView goal : snapshot) {
             retainedIds.add(goal.id());
-            if (goal.status() != OfflineAgentCore.GoalStatus.ACTIVE
-                    && rememberedGoals.add(goal.id())) {
+            if (goal.status() == OfflineAgentCore.GoalStatus.ACTIVE) {
+                // A failed goal may have been reopened with a revised plan.
+                // Permit its new terminal state to be recorded as a new history entry.
+                rememberedGoals.remove(goal.id());
+            } else if (rememberedGoals.add(goal.id())) {
                 OfflineAgentMemory.record(goal);
             }
         }
