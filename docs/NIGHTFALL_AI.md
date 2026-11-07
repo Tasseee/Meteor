@@ -13,6 +13,7 @@ Controller-Aktionen werden im Client-Tick überwacht: eindeutige Erfolgsmeldunge
 Wichtige Befehle:
 
 - `/nf agent status` – Auftragswarteschlange, Vorschau und Prüfergebnis ansehen.
+- `/nf agent memory` – den lokal gespeicherten Verlauf der letzten 64 abgeschlossenen/abgebrochenen Agenten-Aufträge ansehen; `/nf agent memory clear` löscht diesen Verlauf.
 - `/nf agent prepare` – den nächsten bereiten Schritt erneut vorbereiten; bei einem Schmelzschritt zeigt Nightfall an, wenn das Ofenfenster geschlossen und ein leerer Ofen/Hochofen anvisiert werden muss.
 - `/nf agent action <name> <json>` – vorhandene lokale Aktionen aus dem Nightfall-Aktionsregister mit einfachen oder begrenzten strukturierten JSON-Parametern einreihen. Auch Modul-, Wegpunkt-, Scanner-, Status- und Serverbefehlsaktionen werden lokal validiert. Arrays/Objekte sind auf 32 KiB pro Auftragsschritt begrenzt; `build_custom_structure` prüft zusätzlich höchstens 512 Blöcke und deren Verbindung, Koordinaten und Materialien.
 - `/nf agent resume_task` und `/nf agent clear_task` – vorhandenen, server-/dimensionsgebundenen Sammel- oder Navigations-Checkpoint fortsetzen bzw. nach Vorschau löschen.
@@ -43,6 +44,8 @@ Der eigene Bauplan muss mit einer sicheren Standfläche oder einem vorhandenen f
 Die JSON-Argumente müssen ein Objekt aus einfachen Text-, Zahlen- oder Wahrheitswerten sein. Nightfalls bestehender Aktionskatalog bleibt die Quelle der erlaubten Namen und Parametertypen; ungültige oder komplexe Parameter werden zurückgewiesen. Auch diese Aufträge erhalten vor einer Ausführung eine lokale Vorschau und müssen bestätigt werden.
 
 Die Sammel-, Crafting-, Schmelz-, Bau- und Kampfaktionen verwenden bestehende Client-Controller und deren lokale Validierung. Kampfziele sind ausschließlich feindliche Minecraft-Mobs; Spieler und neutrale/passive Tiere werden nicht ausgewählt. Die Grenzen der vorhandenen Controller gelten weiterhin (z. B. geladene Chunks, sichere Wege, begrenzte Laufzeiten und Aktionslimits). Die manuelle Ergebnisprüfung ist absichtlich konservativ: Ein zurückgegebener Starttext ist kein Beweis, dass ein mehrtaktiger Vorgang bereits fertig ist.
+
+**Lokales Gedächtnis:** Nightfall speichert bis zu 64 kurze Auftragszusammenfassungen unter `config/nightfall/agent_memory.json`. Es speichert Status, Aktionen und Versuchszähler – keine Inventar-Snapshots, Koordinaten, Serveradressen, Zugangsdaten oder Chatverläufe. Das ist ein lokales Verlaufs-Gedächtnis, kein automatisches Lernen.
 
 **Noch nicht enthalten:** freie Spracheingabe/NLP, lokale Sprachmodelle, echte automatische Beobachtungs-Auswertung, dauerhaft gespeicherte Agenten-Auftragswarteschlange, vollautomatisches Farming und selbstständiges Lernen. Der Aufgabenstatus liegt derzeit im Arbeitsspeicher des laufenden Clients. Bei einem Serverwechsel werden offene Agentenaufträge verworfen; die bestehenden Controller können ihre eigenen unterstützten Checkpoints (z. B. Baufortschritt) separat sichern. Diese Funktionen werden nicht als fertig ausgegeben.
 
