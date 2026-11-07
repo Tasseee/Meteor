@@ -199,7 +199,7 @@ public final class AIChatScreen extends Screen {
 
     private void handleLocalTranscript(String transcript) {
         if (transcript == null || transcript.isBlank()) return;
-        if (waiting || pendingAction != null) {
+        if (waiting || hasPendingActionPreview()) {
             status = "Sprachtext erkannt, aber Nightfall wartet noch auf die laufende Aktion.";
             history.add(new ChatLine("assistant", status));
             scroll = Float.MAX_VALUE;
@@ -387,7 +387,7 @@ public final class AIChatScreen extends Screen {
         }
 
         int contentTop = panelY + 101;
-        int contentBottom = panelY + panelH - (pendingAction == null ? 53 : 80);
+        int contentBottom = panelY + panelH - (hasPendingActionPreview() ? 80 : 53);
         int contentHeight = Math.max(30, contentBottom - contentTop);
         int left = panelX + 14;
         int right = panelX + panelW - 14;
@@ -429,7 +429,7 @@ public final class AIChatScreen extends Screen {
         }
         ctx.disableScissor();
 
-        if (pendingAction != null) {
+        if (hasPendingActionPreview()) {
             confirmY = panelY + panelH - 65;
             confirmH = 20;
             confirmX = panelX + 14;
@@ -624,13 +624,13 @@ public final class AIChatScreen extends Screen {
 
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
-        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && pendingAction != null
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && hasPendingActionPreview()
                 && click.x() >= confirmX && click.x() <= confirmX + confirmW
                 && click.y() >= confirmY && click.y() <= confirmY + confirmH) {
             confirmPendingAction();
             return true;
         }
-        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && pendingAction != null
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && hasPendingActionPreview()
                 && click.x() >= cancelX && click.x() <= cancelX + cancelW
                 && click.y() >= cancelY && click.y() <= cancelY + confirmH) {
             cancelPendingAction();
@@ -801,8 +801,20 @@ public final class AIChatScreen extends Screen {
         }
     }
 
+    private java.util.Optional<dev.nightfall.ai.OfflineAgentActionBridge.PreparedStep> pendingOfflineAgentPreview() {
+        try {
+            return Nightfall.offlineAgentBridge().pendingPreview();
+        } catch (RuntimeException unavailable) {
+            return java.util.Optional.empty();
+        }
+    }
+
+    private boolean hasPendingActionPreview() {
+        return pendingAction != null || pendingOfflineAgentPreview().isPresent();
+    }
+
     private void sendMessage() {
-        if (waiting || pendingAction != null || input.isBlank()) return;
+        if (waiting || hasPendingActionPreview() || input.isBlank()) return;
         String prompt = input.trim();
         input = "";
         boolean truncated = prompt.length() > MAX_USER_MESSAGE_CHARS;
@@ -879,8 +891,10 @@ public final class AIChatScreen extends Screen {
                             + "\n" + plan.goal().steps().size() + " Schritt(e) · Task-ID " + plan.goal().id()
                             + "\n";
                     if (prepared.isPresent()) {
-                        message += "Die erste Aktionsvorschau steht im Minecraft-Chat. Prüfe sie und bestätige mit /nf agent confirm. "
-                                + "Mit /nf agent reject lehnst du sie ab; /nf agent status zeigt den Fortschritt.";
+                        message += "Vorschau für den ersten Schritt:\n" + prepared.get().preview()
+                                + "\n\nPrüfe die Aktion und klicke unten auf AKTION AUSFÜHREN oder ABBRECHEN. "
+                                + "Alternativ funktionieren /nf agent confirm und /nf agent reject. "
+                                + "/nf agent status zeigt den Fortschritt.";
                         status = "Lokaler Plan bereit · wartet auf deine Bestätigung";
                     } else {
                         message += "Der Plan ist eingereiht. Nightfall bereitet den nächsten Schritt vor, sobald ein anderer Auftrag beendet ist.";
@@ -901,7 +915,22 @@ public final class AIChatScreen extends Screen {
     }
 
     private void confirmPendingAction() {
-        if (pendingAction == null || pendingToolCall == null) return;
+        if (pendingAction == null) {
+            var preview = pendingOfflineAgentPreview();
+            if (preview.isEmpty()) return;
+            try {
+                String result = Nightfall.offlineAgentBridge().confirm(preview.get());
+                history.add(new ChatLine("assistant", "Nightfall: " + result));
+                status = "Offline-Agent-Aktion bestätigt · Abschluss wird geprüft";
+            } catch (RuntimeException failure) {
+                String detail = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+                history.add(new ChatLine("assistant", "Die Offline-Agent-Aktion konnte nicht gestartet werden: " + detail));
+                status = "Offline-Agent-Aktion fehlgeschlagen";
+            }
+            scroll = Float.MAX_VALUE;
+            return;
+        }
+        if (pendingToolCall == null) return;
         AIActionRegistry.Action action = pendingAction;
         AIChatClient.ToolCall call = pendingToolCall;
         pendingAction = null;
@@ -959,7 +988,22 @@ public final class AIChatScreen extends Screen {
     }
 
     private void cancelPendingAction() {
-        if (pendingAction == null || pendingToolCall == null) return;
+        if (pendingAction == null) {
+            var preview = pendingOfflineAgentPreview();
+            if (preview.isEmpty()) return;
+            try {
+                Nightfall.offlineAgentBridge().cancelPending();
+                history.add(new ChatLine("assistant", "Der vorbereitete Offline-Agent-Auftrag wurde abgebrochen. Es wurde nichts ausgeführt."));
+                status = "Offline-Agent-Auftrag abgebrochen";
+            } catch (RuntimeException failure) {
+                String detail = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+                history.add(new ChatLine("assistant", "Der Offline-Agent-Auftrag konnte nicht abgebrochen werden: " + detail));
+                status = "Abbruch fehlgeschlagen";
+            }
+            scroll = Float.MAX_VALUE;
+            return;
+        }
+        if (pendingToolCall == null) return;
         AIChatClient.ToolCall call = pendingToolCall;
         AIActionRegistry.cancel(pendingAction);
         pendingAction = null;
