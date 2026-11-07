@@ -19,7 +19,7 @@ import java.util.Set;
 import java.util.concurrent.CompletionException;
 import java.util.function.Consumer;
 
-/** OpenAI-compatible chat client with a restricted function/tool interface. */
+/** Retired remote chat transport. Offline mode rejects requests before any HTTP call. */
 public final class AIChatClient {
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(12))
