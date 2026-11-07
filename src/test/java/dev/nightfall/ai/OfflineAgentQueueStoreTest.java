@@ -115,6 +115,27 @@ class OfflineAgentQueueStoreTest {
     }
 
     @Test
+    void refusesQueueDirectorySymlinksWithoutTouchingTheirTargets() throws IOException {
+        Path root = Files.createTempDirectory("nightfall-agent-queue-symlink-test");
+        try {
+            Path realDirectory = root.resolve("real-queue");
+            Files.createDirectories(realDirectory);
+            Path protectedFile = realDirectory.resolve(WORLD_A + ".json");
+            Files.writeString(protectedFile, "keep-this-file");
+            Path linkedDirectory = root.resolve("queue-link");
+            Files.createSymbolicLink(linkedDirectory, realDirectory);
+
+            OfflineAgentQueueStore store = new OfflineAgentQueueStore(linkedDirectory);
+            assertFalse(store.save(WORLD_A, List.of(simpleCheckpoint())));
+            assertTrue(store.load(WORLD_A).isEmpty());
+            store.clear(WORLD_A);
+            assertEquals("keep-this-file", Files.readString(protectedFile));
+        } finally {
+            deleteTree(root);
+        }
+    }
+
+    @Test
     void rejectsInvalidWorldKeysAndDeletesTheQueueWhenNoGoalsRemain() throws IOException {
         Path directory = Files.createTempDirectory("nightfall-agent-queue-clear-test");
         try {
