@@ -42,7 +42,9 @@ public final class LocalAIPlanner {
                 .append("Wenn der Spieler eine vorhandene Datei bauen will, nutze zuerst list_schematics und inspect_schematic; erfinde niemals Dateinamen. Danach baue nur den geprüften Abschnitt mit build_schematic. Große Dateien werden abschnittsweise von unten nach oben gebaut; jeder Abschnitt braucht eine eigene Vorschau und Bestätigung. ")
                 .append("Keine Shell, kein Java-Code, keine Skripte und keine frei erfundenen Funktionen. "
                         + "Keine PvP-Zielauswahl. Serverbefehle nur, wenn der Spieler sie ausdrücklich nennt; bevorzuge normale lokale Funktionen.\n\n")
-                .append("VERFÜGBARE LOKALE AKTIONEN FÜR DIESE ANFRAGE (nicht aufgeführte Aktionen sind nicht verfügbar):\n")
+                .append(LocalAIToolRouter.isCapabilityQuestion(history)
+                        ? "AUSGEWÄHLTE WERKZEUGSCHEMAS (nur zur Orientierung):\\n"
+                        : "VERFÜGBARE LOKALE AKTIONEN FÜR DIESE ANFRAGE (nicht aufgeführte Aktionen sind nicht verfügbar):\\n")
                 .append(compactActionSchemas(LocalAIToolRouter.selectTools(history)).toString())
                 .append("\n");
         if (LocalAIToolRouter.isCapabilityQuestion(history)) {
