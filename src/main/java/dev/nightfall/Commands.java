@@ -7,6 +7,7 @@ import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.nightfall.config.Config;
 import dev.nightfall.ai.OfflineAgentCore;
+import dev.nightfall.ai.AIBuilder;
 import dev.nightfall.ai.OfflineAgentActionBridge;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -388,6 +389,9 @@ public final class Commands {
                         "build_structure", Map.of("structure", str(c, "structure")))));
         build.then(literal("resume").executes(c -> submitOfflineAgentGoal(c,
                 "Setze einen lokal gespeicherten Bauplan fort.", "resume_saved_build", Map.of())));
+        build.then(literal("pause").executes(c -> say(c, AIBuilder.pause())));
+        build.then(literal("continue").executes(c -> say(c, AIBuilder.resume())));
+        build.then(literal("stop").executes(c -> say(c, AIBuilder.stop())));
         root.then(build);
 
         LiteralArgumentBuilder<FabricClientCommandSource> schematic = literal("schematic");
