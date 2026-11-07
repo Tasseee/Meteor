@@ -7,6 +7,7 @@ import org.vosk.Recognizer;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.TargetDataLine;
 import net.minecraft.client.MinecraftClient;
 
@@ -46,9 +47,87 @@ public final class LocalVoiceClient {
     private static final long MAX_EXTRACTED_BYTES = 140L * 1024L * 1024L;
     private static final int MAX_ENTRIES = 8_000;
     private static final int SAMPLE_RATE = 16_000;
-    private static final AudioFormat AUDIO_FORMAT = new AudioFormat(
-            SAMPLE_RATE, 16, 1, true, false);
     private static final int BUFFER_SIZE = 8_192;
+
+    private record CaptureLine(TargetDataLine line, AudioFormat format) {}
+
+    /**
+     * Streaming PCM converter: averages multiple channels and linearly resamples
+     * common 44.1/48-kHz microphone streams to Vosk's required 16-kHz mono input.
+     */
+    private static final class Pcm16kResampler {
+        private final int channels;
+        private final int frameSize;
+        private final double sourceFramesPerOutputFrame;
+        private double nextSourcePosition;
+        private long totalSourceFrames;
+        private short previousSample;
+        private boolean hasPreviousSample;
+
+        private Pcm16kResampler(AudioFormat sourceFormat) {
+            if (sourceFormat.getSampleSizeInBits() != 16
+                    || sourceFormat.getEncoding() != AudioFormat.Encoding.PCM_SIGNED
+                    || sourceFormat.isBigEndian()) {
+                throw new IllegalArgumentException("Nur 16-Bit-PCM-Signale mit Little-Endian werden unterstützt.");
+            }
+            channels = sourceFormat.getChannels();
+            frameSize = sourceFormat.getFrameSize();
+            sourceFramesPerOutputFrame = sourceFormat.getSampleRate() / SAMPLE_RATE;
+        }
+
+        private short[] convert(byte[] data, int byteCount) {
+            int frameCount = byteCount / frameSize;
+            if (frameCount <= 0) return new short[0];
+
+            short[] mono = new short[frameCount];
+            for (int frame = 0; frame < frameCount; frame++) {
+                int frameOffset = frame * frameSize;
+                int channelSum = 0;
+                for (int channel = 0; channel < channels; channel++) {
+                    int offset = frameOffset + channel * 2;
+                    int low = data[offset] & 0xFF;
+                    int high = data[offset + 1];
+                    channelSum += (short) ((high << 8) | low);
+                }
+                mono[frame] = (short) (channelSum / channels);
+            }
+
+            int prefix = hasPreviousSample ? 1 : 0;
+            short[] source = new short[frameCount + prefix];
+            if (prefix == 1) source[0] = previousSample;
+            System.arraycopy(mono, 0, source, prefix, frameCount);
+            long chunkBaseFrame = hasPreviousSample ? totalSourceFrames - 1L : totalSourceFrames;
+
+            int capacity = Math.max(8, (int) Math.ceil(frameCount / sourceFramesPerOutputFrame) + 4);
+            short[] output = new short[capacity];
+            int outputCount = 0;
+            while (true) {
+                double localPosition = nextSourcePosition - chunkBaseFrame;
+                if (localPosition < 0) {
+                    nextSourcePosition += sourceFramesPerOutputFrame;
+                    continue;
+                }
+                int left = (int) Math.floor(localPosition);
+                int right = left + 1;
+                if (right >= source.length) break;
+                double fraction = localPosition - left;
+                double interpolated = source[left]
+                        + (source[right] - source[left]) * fraction;
+                if (outputCount == output.length) {
+                    output = java.util.Arrays.copyOf(output, output.length * 2);
+                }
+                output[outputCount++] = (short) Math.max(Short.MIN_VALUE,
+                        Math.min(Short.MAX_VALUE, Math.round(interpolated)));
+                nextSourcePosition += sourceFramesPerOutputFrame;
+            }
+
+            previousSample = mono[frameCount - 1];
+            hasPreviousSample = true;
+            totalSourceFrames += frameCount;
+            return outputCount == output.length
+                    ? output : java.util.Arrays.copyOf(output, outputCount);
+        }
+    }
 
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(task -> {
         Thread thread = new Thread(task, "Nightfall-Local-Voice");
@@ -145,12 +224,9 @@ public final class LocalVoiceClient {
             }
             if (!requested.get() || shutdown) return;
 
-            DataLine.Info info = new DataLine.Info(TargetDataLine.class, AUDIO_FORMAT);
-            if (!AudioSystem.isLineSupported(info)) {
-                throw new IOException("Dein Mikrofon unterstützt das benötigte 16-kHz-Mono-Audioformat nicht.");
-            }
-            line = (TargetDataLine) AudioSystem.getLine(info);
-            line.open(AUDIO_FORMAT);
+            CaptureLine capture = openMicrophone();
+            line = capture.line();
+            Pcm16kResampler resampler = new Pcm16kResampler(capture.format());
             line.start();
             activeLine = line;
             state = State.LISTENING;
@@ -171,9 +247,10 @@ public final class LocalVoiceClient {
                         if (!requested.get()) break;
                         continue;
                     }
-                    // Only final Vosk segments are submitted to chat. Partial guesses
-                    // are not commands and never trigger game actions.
-                    if (recognizer.acceptWaveForm(buffer, bytesRead)) {
+                    short[] mono16k = resampler.convert(buffer, bytesRead);
+                    if (mono16k.length > 0 && recognizer.acceptWaveForm(mono16k, mono16k.length)) {
+                        // Only final Vosk segments are submitted to chat. Partial guesses
+                        // are not commands and never trigger game actions.
                         submitRecognizedText(recognizer.getResult());
                     }
                 }
@@ -201,6 +278,35 @@ public final class LocalVoiceClient {
                 }
             }
         }
+    }
+
+    private static CaptureLine openMicrophone() throws IOException {
+        AudioFormat[] candidates = {
+                new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 48_000, 16, 1, 2, 48_000, false),
+                new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44_100, 16, 1, 2, 44_100, false),
+                new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 48_000, 16, 2, 4, 48_000, false),
+                new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44_100, 16, 2, 4, 44_100, false),
+                new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 16_000, 16, 1, 2, 16_000, false)
+        };
+        IOException failure = null;
+        for (AudioFormat format : candidates) {
+            DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+            if (!AudioSystem.isLineSupported(info)) continue;
+            TargetDataLine candidate = null;
+            try {
+                candidate = (TargetDataLine) AudioSystem.getLine(info);
+                candidate.open(format);
+                return new CaptureLine(candidate, format);
+            } catch (LineUnavailableException | IllegalArgumentException unavailable) {
+                if (candidate != null) {
+                    try { candidate.close(); } catch (RuntimeException ignored) {}
+                }
+                failure = new IOException("Mikrofonformat " + format.getSampleRate()
+                        + " Hz / " + format.getChannels() + " Kanal ist nicht verfügbar.", unavailable);
+            }
+        }
+        throw new IOException("Kein kompatibles Mikrofonformat verfügbar. Nightfall versucht 48 kHz, 44,1 kHz oder 16 kHz PCM.",
+                failure);
     }
 
     private static void submitRecognizedText(String json) {
