@@ -2,6 +2,10 @@ package dev.nightfall.ai;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class OfflineAgentPlanParserTest {
@@ -62,6 +66,60 @@ class OfflineAgentPlanParserTest {
 
         assertTrue(goal.steps().get(0).parameters().get("blocks").startsWith("["));
         assertTrue(goal.steps().get(0).parameters().get("blocks").contains("minecraft:stone"));
+    }
+
+    @Test
+    void loadsPlansOnlyFromPlainFilesInsideTheSelectedDirectory() throws IOException {
+        Path directory = Files.createTempDirectory("nightfall-agent-plan-test");
+        try {
+            Path plan = directory.resolve("wood.json");
+            Files.writeString(plan, """
+                    {"description":"Holz sammeln","steps":[
+                      {"id":"gather","action":"gather_wood",
+                       "parameters":{"item":"minecraft:oak_log","count":8}}
+                    ]}
+                    """);
+            OfflineAgentCore.Goal loaded = OfflineAgentPlanParser.loadFileFromDirectory(
+                    directory, "wood.json", "loaded-plan");
+            assertEquals("loaded-plan", loaded.id());
+            assertEquals("gather_wood", loaded.steps().get(0).action());
+            assertThrows(IllegalArgumentException.class, () ->
+                    OfflineAgentPlanParser.loadFileFromDirectory(directory, "../wood.json", "traversal"));
+        } finally {
+            deleteTree(directory);
+        }
+    }
+
+    @Test
+    void rejectsSymbolicLinkPlanFilesAndDirectories() throws IOException {
+        Path root = Files.createTempDirectory("nightfall-agent-plan-symlink-test");
+        try {
+            Path realDirectory = root.resolve("real");
+            Files.createDirectories(realDirectory);
+            Path outsideFile = root.resolve("outside.json");
+            Files.writeString(outsideFile, """
+                    {"steps":[{"id":"gather","action":"gather_wood"}]}
+                    """);
+            Path linkedFile = realDirectory.resolve("linked.json");
+            Files.createSymbolicLink(linkedFile, outsideFile);
+            assertThrows(IllegalArgumentException.class, () ->
+                    OfflineAgentPlanParser.loadFileFromDirectory(realDirectory, "linked.json", "linked"));
+
+            Path linkedDirectory = root.resolve("linked-directory");
+            Files.createSymbolicLink(linkedDirectory, realDirectory);
+            assertThrows(IllegalArgumentException.class, () ->
+                    OfflineAgentPlanParser.loadFileFromDirectory(linkedDirectory, "outside.json", "linked-dir"));
+        } finally {
+            deleteTree(root);
+        }
+    }
+
+    private static void deleteTree(Path root) throws IOException {
+        if (!Files.exists(root, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return;
+        try (var paths = Files.walk(root)) {
+            for (Path path : paths.sorted(java.util.Comparator.reverseOrder()).toList())
+                Files.deleteIfExists(path);
+        }
     }
 
     @Test
