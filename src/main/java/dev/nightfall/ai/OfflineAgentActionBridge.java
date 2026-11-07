@@ -434,7 +434,20 @@ public final class OfflineAgentActionBridge {
                     json.addProperty(key, Boolean.parseBoolean(value));
                 }
                 case "string" -> json.addProperty(key, value);
-                default -> throw new IllegalArgumentException("Komplexe Parameter sind im Offline-Auftragsformat nicht verfügbar.");
+                case "array", "object" -> {
+                    JsonElement parsed;
+                    try {
+                        parsed = com.google.gson.JsonParser.parseString(value);
+                    } catch (RuntimeException invalid) {
+                        throw new IllegalArgumentException("Parameter '" + key + "' enthält kein gültiges JSON.");
+                    }
+                    if (("array".equals(type) && !parsed.isJsonArray())
+                            || ("object".equals(type) && !parsed.isJsonObject())) {
+                        throw new IllegalArgumentException("Parameter '" + key + "' hat nicht den erwarteten JSON-Typ.");
+                    }
+                    json.add(key, parsed.deepCopy());
+                }
+                default -> throw new IllegalArgumentException("Parameter-Typ ist im Offline-Auftragsformat nicht verfügbar.");
             }
         }
         return json;
@@ -442,7 +455,7 @@ public final class OfflineAgentActionBridge {
 
     /**
      * Reuses the existing local action registry as the source of truth. Only tools
-     * whose parameters are scalar JSON values can be queued by OfflineAgentCore.
+     * whose parameters are bounded scalar or JSON-array values can be queued by OfflineAgentCore.
      * The registry still validates required values, ranges, enums and permissions.
      */
     private static Map<String, Map<String, String>> actionSchemas() {
@@ -468,7 +481,7 @@ public final class OfflineAgentActionBridge {
                         break;
                     }
                     String type = property.getValue().getAsJsonObject().get("type").getAsString();
-                    if (!Set.of("string", "integer", "number", "boolean").contains(type)) {
+                    if (!Set.of("string", "integer", "number", "boolean", "array", "object").contains(type)) {
                         scalarOnly = false;
                         break;
                     }
