@@ -55,6 +55,9 @@ public final class OfflineAgentActionBridge {
         if (!client.isOnThread()) throw new IllegalStateException("Agentenaktionen müssen auf dem Minecraft-Client-Thread vorbereitet werden.");
         if (client.player == null || client.world == null) return Optional.empty();
         if (pending != null || verifyingGoalId != null) return Optional.empty();
+        // Do not replace an action started outside the offline queue.
+        if (AIPlayerController.isBusy() || AICombatController.isActive() || AIBuilder.isRunning())
+            return Optional.empty();
         Optional<OfflineAgentCore.StepRef> next = core.nextReadyStep();
         if (next.isEmpty()) return Optional.empty();
 
@@ -88,9 +91,13 @@ public final class OfflineAgentActionBridge {
     public synchronized String confirm(PreparedStep confirmation) {
         if (!MinecraftClient.getInstance().isOnThread())
             throw new IllegalStateException("Agentenaktionen müssen auf dem Minecraft-Client-Thread ausgeführt werden.");
+        if (!MinecraftClient.getInstance().isOnThread())
+            throw new IllegalStateException("Agentenaktionen müssen auf dem Minecraft-Client-Thread bestätigt werden.");
         if (pending == null || pending != confirmation) {
             throw new IllegalStateException("Es liegt keine passende Aktionsvorschau zur Bestätigung vor.");
         }
+        if (AIPlayerController.isBusy() || AICombatController.isActive() || AIBuilder.isRunning())
+            throw new IllegalStateException("Eine andere Nightfall-Aktion läuft bereits. Stoppe sie zuerst.");
         String goalId = pending.goalId();
         String stepId = pending.stepId();
         pending = null;
@@ -106,9 +113,11 @@ public final class OfflineAgentActionBridge {
             lastError = "";
             return result;
         } catch (RuntimeException failure) {
-            if (AIPlayerController.isBusy()) {
+            if (AIPlayerController.isBusy())
                 AIPlayerController.stop("Offline-Agentenaktion nach einem Ausführungsfehler gestoppt.");
-            }
+            if (AICombatController.isActive())
+                AICombatController.stop("Offline-Agentenaktion nach einem Ausführungsfehler gestoppt.");
+            AIBuilder.stop();
             String detail = safeMessage(failure);
             core.report(goalId, stepId, OfflineAgentCore.ActionResult.PERMANENT_FAILURE, detail);
             lastError = detail;
