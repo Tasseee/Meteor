@@ -8,6 +8,16 @@ Die Sprachbedienung verwendet Vosk für lokale deutsche Spracherkennung und die 
 
 Das 1,5B-Modell ist ein kleiner CPU-freundlicher Einstieg und kann bei komplexen Plänen Fehler machen. Nightfalls lokale Aktions-Allowlist, Parameterprüfung, Vorschau und Spielerbestätigung bleiben deshalb zwingend. Vosk bringt in seinem Java-Paket native Windows-Bibliotheken mit; auf Linux/macOS muss die native Vosk-Bibliothek zusätzlich lokal verfügbar sein, sonst bleibt die Mikrofonfunktion deaktiviert. Voice-Ausgabe hängt ebenfalls von installierten Systemstimmen bzw. lokalen TTS-Programmen ab.
 
+
+## Adaptive offline-agent replanning · 2026-11-07
+
+- A failed goal can now be reopened with a replacement plan. Confirmed successful steps are retained as immutable history; only unfinished, failed or blocked steps are replaced.
+- The local repair prompt receives the failed goal, per-step status and bounded result details, plus the current local world/inventory snapshot. It asks the local model to plan only the remaining work and routes the original goal's relevant local action schemas into the prompt.
+- In the AI chat, ask **„Plane weiter“**, **„Plane neu“** or **„Auftrag neu planen“** after a goal is marked failed. Nightfall validates every proposed action against the local offline allowlist and prepares a fresh preview; world-changing actions still require player confirmation.
+- Replanning is rejected while any Minecraft action is running, awaiting verification or awaiting stop acknowledgement. A failed goal cannot be resumed by blindly retrying an uncertain action.
+- The failed-goal repair flow currently targets failed goals available in the current world's in-memory/loaded task queue. It does not yet automatically invoke the model after every failure, and it does not restore failed goals as active tasks after a client restart.
+- Automated tests cover failed-goal reopening, preservation of successful steps, invalid replacement dependencies, in-flight safety and repair-prompt tool routing. Live Minecraft behavior still needs in-game validation.
+
 ## Offline-Agent im Spiel
 
 Alle Aufträge laufen über den deterministischen `OfflineAgentCore` und bestehende lokale Minecraft-Controller. Die `/nf agent`-Befehle funktionieren auch ohne geladenes Sprachmodell; der natürlichsprachliche Chat und die Planung verwenden das eingebettete lokale Qwen-Modell. Externe KI-Endpunkte werden nicht verwendet. Der Agent kann mehrere Aufträge in eine begrenzte Warteschlange aufnehmen, führt aber nur eine Minecraft-Aktion gleichzeitig aus. Abhängige Schritte werden erst freigeschaltet, wenn ihr Vorgänger nach einem Controller-Abschluss anhand des eindeutigen Abschlussstatus automatisch als erfolgreich erkannt wurde. Externe Serverbefehle warten weiterhin auf eine manuelle Rückmeldung.
