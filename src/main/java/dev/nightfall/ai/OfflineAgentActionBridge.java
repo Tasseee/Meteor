@@ -1,10 +1,13 @@
 package dev.nightfall.ai;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -20,17 +23,7 @@ import java.util.Set;
  * an asynchronous Minecraft action completed successfully.
  */
 public final class OfflineAgentActionBridge {
-    private static final Set<String> ALLOWED_ACTIONS = Set.of(
-            "walk_forward", "search_structures", "navigate_to", "mine_block",
-            "mine_looked_block", "gather_wood", "gather_block", "gather_ore",
-            "smelt_item", "craft_item", "eat_food", "sort_inventory",
-            "build_starter_shelter", "build_structure", "build_schematic", "resume_saved_build", "resume_saved_task", "clear_saved_task",
-            "attack_nearest_hostile", "guard_nearby_hostiles"
-    );
-    private static final Set<String> INTEGER_PARAMETERS = Set.of(
-            "ticks", "x", "y", "z", "count", "duration_seconds", "target_y", "part_x", "part_y", "part_z"
-    );
-    private static final Set<String> BOOLEAN_PARAMETERS = Set.of("reset_anchor");
+    private static volatile Map<String, Map<String, String>> ACTION_SCHEMAS;
 
     public record PreparedStep(String goalId, String stepId, String preview) {}
 
@@ -63,8 +56,8 @@ public final class OfflineAgentActionBridge {
 
         OfflineAgentCore.StepRef ref = next.get();
         try {
-            if (!ALLOWED_ACTIONS.contains(ref.step().action())) {
-                throw new IllegalArgumentException("Aktion ist für den Offline-Agenten nicht freigegeben.");
+            if (!actionSchemas().containsKey(ref.step().action())) {
+                throw new IllegalArgumentException("Aktion ist nicht in der lokalen Offline-Allowlist oder benötigt komplexe Parameter.");
             }
             AIActionRegistry.Action action = AIActionRegistry.prepare(
                     ref.step().action(), toJson(ref.step().action(), ref.step().parameters()).toString());
@@ -229,48 +222,85 @@ public final class OfflineAgentActionBridge {
     }
 
     private JsonObject toJson(String action, Map<String, String> parameters) {
-        Set<String> allowed = allowedParameters(action);
+        Map<String, String> schema = actionSchemas().get(action);
+        if (schema == null) throw new IllegalArgumentException("Aktion ist nicht lokal freigegeben.");
         JsonObject json = new JsonObject();
         for (Map.Entry<String, String> entry : parameters.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
-            if (!allowed.contains(key)) {
+            String type = schema.get(key);
+            if (type == null) {
                 throw new IllegalArgumentException("Parameter '" + key + "' ist für diese Aktion nicht erlaubt.");
             }
-            if (INTEGER_PARAMETERS.contains(key)) {
-                try {
-                    json.add(key, new JsonPrimitive(Integer.parseInt(value)));
-                } catch (NumberFormatException invalid) {
-                    throw new IllegalArgumentException("Parameter '" + key + "' muss eine ganze Zahl sein.");
+            switch (type) {
+                case "integer" -> {
+                    try {
+                        json.add(key, new JsonPrimitive(Integer.parseInt(value)));
+                    } catch (NumberFormatException invalid) {
+                        throw new IllegalArgumentException("Parameter '" + key + "' muss eine ganze Zahl sein.");
+                    }
                 }
-            } else if (BOOLEAN_PARAMETERS.contains(key)) {
-                if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value))
-                    throw new IllegalArgumentException("Parameter '" + key + "' muss true oder false sein.");
-                json.addProperty(key, Boolean.parseBoolean(value));
-            } else {
-                json.addProperty(key, value);
+                case "number" -> {
+                    try {
+                        double number = Double.parseDouble(value);
+                        if (!Double.isFinite(number)) throw new NumberFormatException();
+                        json.addProperty(key, number);
+                    } catch (NumberFormatException invalid) {
+                        throw new IllegalArgumentException("Parameter '" + key + "' muss eine gültige Zahl sein.");
+                    }
+                }
+                case "boolean" -> {
+                    if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value))
+                        throw new IllegalArgumentException("Parameter '" + key + "' muss true oder false sein.");
+                    json.addProperty(key, Boolean.parseBoolean(value));
+                }
+                case "string" -> json.addProperty(key, value);
+                default -> throw new IllegalArgumentException("Komplexe Parameter sind im Offline-Auftragsformat nicht verfügbar.");
             }
         }
         return json;
     }
 
-
-    private static Set<String> allowedParameters(String action) {
-        return switch (action) {
-            case "walk_forward" -> Set.of("ticks");
-            case "search_structures" -> Set.of("structure");
-            case "navigate_to", "mine_block" -> Set.of("x", "y", "z");
-            case "mine_looked_block", "sort_inventory" -> Set.of();
-            case "gather_wood", "gather_block" -> Set.of("item", "count", "duration_seconds");
-            case "gather_ore" -> Set.of("item", "count", "duration_seconds", "target_y");
-            case "smelt_item", "craft_item" -> Set.of("item", "count");
-            case "eat_food" -> Set.of("item");
-            case "build_starter_shelter", "resume_saved_build", "resume_saved_task", "clear_saved_task",
-                    "attack_nearest_hostile", "guard_nearby_hostiles" -> Set.of();
-            case "build_structure" -> Set.of("structure", "material");
-            case "build_schematic" -> Set.of("file", "part_x", "part_y", "part_z", "reset_anchor");
-            default -> throw new IllegalArgumentException("Aktion ist für den Offline-Agenten nicht freigegeben.");
-        };
+    /**
+     * Reuses the existing local action registry as the source of truth. Only tools
+     * whose parameters are scalar JSON values can be queued by OfflineAgentCore.
+     * The registry still validates required values, ranges, enums and permissions.
+     */
+    private static Map<String, Map<String, String>> actionSchemas() {
+        Map<String, Map<String, String>> cached = ACTION_SCHEMAS;
+        if (cached != null) return cached;
+        synchronized (OfflineAgentActionBridge.class) {
+            cached = ACTION_SCHEMAS;
+            if (cached != null) return cached;
+            JsonArray definitions = AIActionRegistry.toolDefinitions();
+            Map<String, Map<String, String>> actions = new LinkedHashMap<>();
+            for (JsonElement definition : definitions) {
+                if (!definition.isJsonObject()) continue;
+                JsonObject function = definition.getAsJsonObject().getAsJsonObject("function");
+                if (function == null || !function.has("name") || !function.has("parameters")) continue;
+                JsonObject parameterSchema = function.getAsJsonObject("parameters");
+                JsonObject properties = parameterSchema.getAsJsonObject("properties");
+                if (properties == null) continue;
+                Map<String, String> fields = new LinkedHashMap<>();
+                boolean scalarOnly = true;
+                for (Map.Entry<String, JsonElement> property : properties.entrySet()) {
+                    if (!property.getValue().isJsonObject() || !property.getValue().getAsJsonObject().has("type")) {
+                        scalarOnly = false;
+                        break;
+                    }
+                    String type = property.getValue().getAsJsonObject().get("type").getAsString();
+                    if (!Set.of("string", "integer", "number", "boolean").contains(type)) {
+                        scalarOnly = false;
+                        break;
+                    }
+                    fields.put(property.getKey(), type);
+                }
+                if (scalarOnly) actions.put(function.get("name").getAsString(), Map.copyOf(fields));
+            }
+            cached = Map.copyOf(actions);
+            ACTION_SCHEMAS = cached;
+            return cached;
+        }
     }
 
     private static String safeMessage(RuntimeException error) {
