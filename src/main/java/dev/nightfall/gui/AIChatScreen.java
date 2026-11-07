@@ -5,6 +5,7 @@ import dev.nightfall.ai.AIChatClient;
 import dev.nightfall.ai.LocalAIModelService;
 import dev.nightfall.ai.LocalAIPlanner;
 import dev.nightfall.ai.LocalAIResponseParser;
+import dev.nightfall.ai.OfflineAgentCore;
 import dev.nightfall.ai.AIConfig;
 import dev.nightfall.ai.AIVoiceClient;
 import dev.nightfall.ai.AIRealtimeVoiceClient;
