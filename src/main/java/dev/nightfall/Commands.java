@@ -707,20 +707,20 @@ public final class Commands {
         if (entries.isEmpty()) return say(c, "Das lokale Offline-Agent-Gedächtnis ist noch leer.");
         StringBuilder out = new StringBuilder("Lokales Offline-Agent-Gedächtnis (neueste Aufträge zuerst):");
         for (OfflineAgentMemory.Entry entry : entries) {
-            out.append("\\n").append(entry.status()).append(" · ")
+            out.append("\n").append(entry.status()).append(" · ")
                     .append(entry.description()).append(" · ")
                     .append(java.time.Instant.ofEpochMilli(entry.completedAtMillis()));
             int shownSteps = 0;
             for (OfflineAgentMemory.StepMemory step : entry.steps()) {
                 if (shownSteps++ >= 6) {
-                    out.append("\\n  … weitere Schritte gespeichert");
+                    out.append("\n  … weitere Schritte gespeichert");
                     break;
                 }
-                out.append("\\n  ").append(step.action()).append(": ")
+                out.append("\n  ").append(step.action()).append(": ")
                         .append(step.status()).append(" · Versuche ").append(step.attempts());
             }
         }
-        out.append("\\nGespeichert lokal in config/nightfall/agent_memory.json. Löschen: /nf agent memory clear");
+        out.append("\nGespeichert lokal in config/nightfall/agent_memory.json. Löschen: /nf agent memory clear");
         return say(c, out.toString());
     }
 
