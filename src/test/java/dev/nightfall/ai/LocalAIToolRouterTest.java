@@ -88,6 +88,17 @@ class LocalAIToolRouterTest {
     }
 
     @Test
+    void fullClientFunctionIndexIsPresentForOrdinaryAiRequests() {
+        String prompt = LocalAIPlanner.buildPrompt(request("Wie ist mein aktueller Status?"), null);
+
+        assertTrue(prompt.contains("VOLLSTÄNDIGER FUNKTIONSINDEX"));
+        assertTrue(prompt.contains("- list_client_modules:"));
+        assertTrue(prompt.contains("- attack_nearest_hostile:"));
+        assertTrue(prompt.contains("- build_custom_structure:"));
+        assertFalse(prompt.contains("VOLLSTÄNDIGER FÄHIGKEITSKATALOG"));
+    }
+
+    @Test
     void randomTeleportRequestExposesOnlyTheExplicitTeleportAction() {
         Set<String> tools = LocalAIToolRouter.selectTools(request("Teleportiere mich zufällig mit /rtp."));
 
