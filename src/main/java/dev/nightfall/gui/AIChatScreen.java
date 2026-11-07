@@ -3,6 +3,8 @@ package dev.nightfall.gui;
 import dev.nightfall.Nightfall;
 import dev.nightfall.ai.AIChatClient;
 import dev.nightfall.ai.LocalAIModelService;
+import dev.nightfall.ai.LocalVoiceClient;
+import dev.nightfall.ai.LocalSpeechOutput;
 import dev.nightfall.ai.LocalAIPlanner;
 import dev.nightfall.ai.LocalAIResponseParser;
 import dev.nightfall.ai.AILocalRuntimeContext;
@@ -160,7 +162,9 @@ public final class AIChatScreen extends Screen {
 
     @Override
     public void removed() {
-        // A realtime call is independent of this screen and stays active while the player explores.
+        // Local microphone capture is strictly scoped to the visible chat session.
+        LocalVoiceClient.stopListening();
+        LocalSpeechOutput.stopSpeaking();
         AIVoiceClient.stopRecording();
         AIVoiceClient.stopSpeaking();
     }
@@ -168,39 +172,62 @@ public final class AIChatScreen extends Screen {
     /** Stops all local audio resources when Minecraft itself is shutting down. */
     public static void onClientStopping() {
         AIRealtimeVoiceClient.stop();
+        LocalVoiceClient.shutdown();
+        LocalSpeechOutput.shutdown();
         AIVoiceClient.stopRecording();
         AIVoiceClient.stopSpeaking();
         LocalAIModelService.shutdown();
     }
 
-    /** Toggle the voice call. Voice is intentionally disabled in the current offline build. */
+    /** F8 toggles local German speech recognition; audio never leaves this client. */
     public static void toggleVoiceCall() {
-        AIChatScreen session = getOrCreate();
-        if (AIRealtimeVoiceClient.isActive()) AIRealtimeVoiceClient.stop();
-        session.status = "Stimme ist im Offline-Modus noch nicht angeschlossen. Die Steuerung erfolgt vorerst über /nf agent help.";
+        toggleVoiceMicrophone();
     }
 
-    /** Microphone input is disabled in the current offline build. */
+    /** F9 and the microphone button toggle the same local push-to-talk session. */
     public static void toggleVoiceMicrophone() {
         AIChatScreen session = getOrCreate();
-        session.status = "Mikrofon ist im Offline-Modus deaktiviert; Sprachsteuerung folgt später.";
+        if (AIRealtimeVoiceClient.isActive()) AIRealtimeVoiceClient.stop();
+        LocalVoiceClient.toggleListening(
+                session::handleLocalTranscript,
+                message -> {
+                    AIChatScreen current = active;
+                    if (current != null) current.status = message;
+                });
+        session.status = LocalVoiceClient.status();
+    }
+
+    private void handleLocalTranscript(String transcript) {
+        if (transcript == null || transcript.isBlank()) return;
+        if (waiting || pendingAction != null) {
+            status = "Sprachtext erkannt, aber Nightfall wartet noch auf die laufende Aktion.";
+            history.add(new ChatLine("assistant", status));
+            scroll = Float.MAX_VALUE;
+            return;
+        }
+        input = transcript;
+        status = "Sprache erkannt · wird lokal verarbeitet";
+        sendMessage();
     }
 
     /** Small persistent HUD chip makes call, microphone and speaking state visible. */
     public static void renderVoiceIndicator(DrawContext ctx) {
-        if (!AIRealtimeVoiceClient.isActive()) return;
+        boolean localListening = LocalVoiceClient.isListening();
+        boolean realtimeActive = AIRealtimeVoiceClient.isActive();
+        if (!localListening && !realtimeActive) return;
         MinecraftClient mc = MinecraftClient.getInstance();
-        int right = 248;
+        int right = localListening ? 274 : 248;
         ctx.fill(10, 10, right, 31, 0xD91A202B);
         ctx.fill(10, 10, 13, 31, Theme.ACCENT);
-        String label = AIRealtimeVoiceClient.isMicrophoneMuted()
+        String label = localListening ? "LOKALES MIKRO AKTIV · F9 STOP"
+                : AIRealtimeVoiceClient.isMicrophoneMuted()
                 ? "MIKRO STUMM · F9 AN"
                 : AIRealtimeVoiceClient.isSpeaking() ? "NIGHTFALL SPRICHT · F9 STUMM"
                 : AIRealtimeVoiceClient.isReady() ? "NIGHTFALL CALL · F9 STUMM · F8 STOP"
                 : "NIGHTFALL VERBINDET …";
         ctx.drawText(mc.textRenderer, label, 20, 17,
-                AIRealtimeVoiceClient.isMicrophoneMuted() ? 0xFFFFD27A
-                        : AIRealtimeVoiceClient.isSpeaking() ? 0xFFFFD27A : Theme.ACCENT, true);
+                localListening || AIRealtimeVoiceClient.isMicrophoneMuted()
+                        ? 0xFFFFD27A : Theme.ACCENT, true);
     }
 
     /** Called from the client tick so command/locate deadlines continue while this screen is hidden. */
@@ -221,6 +248,8 @@ public final class AIChatScreen extends Screen {
 
     public static void onDisconnect() {
         AIRealtimeVoiceClient.stop();
+        LocalVoiceClient.stopListening();
+        LocalSpeechOutput.stopSpeaking();
         AIVoiceClient.stopRecording();
         AIVoiceClient.stopSpeaking();
         AIBuilder.onDisconnect();
@@ -457,22 +486,23 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, shownInput, inputX + 7, sendY + 7,
                 input.isEmpty() ? Theme.TEXT_DIM : Theme.TEXT, false);
 
-        int micColor = AIRealtimeVoiceClient.isActive() ? 0xFF267B69 : 0xFF343848;
+        boolean localMicActive = LocalVoiceClient.isListening();
+        int micColor = localMicActive ? 0xFF267B69 : 0xFF343848;
         ctx.fill(micX, micY, micX + micW, micY + micH, micColor);
-        String micLabel = "VOICE AUS";
+        String micLabel = localMicActive ? "MIKRO AN" : "MIKRO AUS";
         ctx.drawText(mc.textRenderer, micLabel,
                 micX + (micW - mc.textRenderer.getWidth(micLabel)) / 2,
                 micY + 7, Theme.TEXT, true);
 
-        boolean ttsEnabled = AIConfig.current().voiceOutputEnabled();
+        boolean ttsEnabled = LocalSpeechOutput.isEnabled();
         int ttsColor = ttsEnabled ? 0xFF267B69 : 0xFF343848;
         ctx.fill(ttsX, ttsY, ttsX + ttsW, ttsY + ttsH, ttsColor);
-        String ttsLabel = "AUDIO AUS";
+        String ttsLabel = ttsEnabled ? "AUDIO AN" : "AUDIO AUS";
         ctx.drawText(mc.textRenderer, ttsLabel,
                 ttsX + (ttsW - mc.textRenderer.getWidth(ttsLabel)) / 2,
                 ttsY + 7, Theme.TEXT, true);
 
-        String voiceLabel = "SPÄTER";
+        String voiceLabel = "DEUTSCH";
         ctx.fill(voiceX, voiceY, voiceX + voiceW, voiceY + voiceH, 0xFF293342);
         ctx.fill(voiceX, voiceY, voiceX + voiceW, voiceY + 1, Theme.ACCENT);
         ctx.drawText(mc.textRenderer, voiceLabel,
@@ -744,11 +774,14 @@ public final class AIChatScreen extends Screen {
     }
 
     private void cycleSpeechVoice() {
-        status = "Stimmenauswahl ist im Offline-Modus noch nicht verfügbar.";
+        status = "Nightfall verwendet die lokal installierte deutsche Systemstimme. Stimme und Audio verlassen diesen PC nicht.";
     }
 
     private void toggleVoiceOutput() {
-        status = "Sprachausgabe ist im Offline-Modus noch nicht verfügbar.";
+        boolean enabled = LocalSpeechOutput.toggleEnabled();
+        status = enabled
+                ? "Lokale Sprachausgabe aktiviert · nutzt die installierte Systemstimme."
+                : "Lokale Sprachausgabe deaktiviert.";
     }
 
     private void trimVisibleHistory() {
@@ -824,6 +857,7 @@ public final class AIChatScreen extends Screen {
                 if (response instanceof LocalAIResponseParser.Answer answer) {
                     history.set(responseIndex, new ChatLine("assistant", answer.text()));
                     status = "Lokal beantwortet · keine Daten übertragen";
+                    if (LocalSpeechOutput.isEnabled()) LocalSpeechOutput.speak(answer.text());
                 } else if (response instanceof LocalAIResponseParser.Plan plan) {
                     MinecraftClient mc = MinecraftClient.getInstance();
                     if (mc.player == null || mc.world == null) {
