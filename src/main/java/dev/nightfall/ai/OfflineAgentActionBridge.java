@@ -46,7 +46,7 @@ public final class OfflineAgentActionBridge {
         this.core = Objects.requireNonNull(core, "core");
     }
 
-    /** True when an existing local action has a scalar-only offline parameter schema. */
+    /** True when an existing local action has a supported bounded offline parameter schema. */
     public static boolean supportsAction(String actionName) {
         return actionName != null && actionSchemas().containsKey(actionName);
     }
@@ -455,7 +455,7 @@ public final class OfflineAgentActionBridge {
 
     /**
      * Reuses the existing local action registry as the source of truth. Only tools
-     * whose parameters are bounded scalar or JSON-array values can be queued by OfflineAgentCore.
+     * whose parameters are bounded scalar, array or object JSON values can be queued by OfflineAgentCore.
      * The registry still validates required values, ranges, enums and permissions.
      */
     private static Map<String, Map<String, String>> actionSchemas() {
