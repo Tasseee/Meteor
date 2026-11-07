@@ -129,6 +129,53 @@ class OfflineAgentQueueStoreTest {
         }
     }
 
+    @Test
+    void expiredAndMalformedWorldQueuesAreDiscarded() throws IOException {
+        Path directory = Files.createTempDirectory("nightfall-agent-queue-expiry-test");
+        try {
+            OfflineAgentQueueStore store = new OfflineAgentQueueStore(directory);
+            Path expired = directory.resolve(WORLD_A + ".json");
+            com.google.gson.JsonObject root = new com.google.gson.JsonObject();
+            root.addProperty("version", 1);
+            root.addProperty("savedAtMillis", System.currentTimeMillis() - (25L * 60L * 60L * 1_000L));
+            root.addProperty("scopeHash", WORLD_A);
+            root.add("goals", new com.google.gson.JsonArray());
+            Files.writeString(expired, root.toString());
+
+            assertTrue(store.load(WORLD_A).isEmpty());
+            assertFalse(Files.exists(expired), "Expired offline goals must be deleted.");
+
+            Path malformed = directory.resolve(WORLD_B + ".json");
+            Files.writeString(malformed, "{not-json");
+            assertTrue(store.load(WORLD_B).isEmpty());
+            assertFalse(Files.exists(malformed), "Malformed offline goals must be deleted.");
+        } finally {
+            deleteTree(directory);
+        }
+    }
+
+    @Test
+    void worldQueueFilesRemainBounded() throws IOException {
+        Path directory = Files.createTempDirectory("nightfall-agent-queue-world-bound-test");
+        try {
+            OfflineAgentQueueStore store = new OfflineAgentQueueStore(directory);
+            for (int index = 0; index < 10; index++) {
+                String key = java.util.HexFormat.of().formatHex(
+                        java.security.MessageDigest.getInstance("SHA-256")
+                                .digest(("world-" + index).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                assertTrue(store.save(key, List.of(simpleCheckpoint())));
+            }
+            try (var files = Files.list(directory)) {
+                long retained = files.filter(file -> file.getFileName().toString().endsWith(".json")).count();
+                assertEquals(8, retained);
+            }
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new AssertionError(impossible);
+        } finally {
+            deleteTree(directory);
+        }
+    }
+
     private static OfflineAgentCore.GoalCheckpoint simpleCheckpoint() {
         OfflineAgentCore.Step step = new OfflineAgentCore.Step(
                 "step", "sort_inventory", Map.of(), List.of(), 1);
