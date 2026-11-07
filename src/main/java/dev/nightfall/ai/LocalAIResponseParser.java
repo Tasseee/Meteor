@@ -8,6 +8,7 @@ import java.util.UUID;
 
 /** Parses the local model's answer/plan envelope; all plan steps are still client-validated. */
 public final class LocalAIResponseParser {
+    private static final int MAX_MODEL_PLAN_STEPS = 12;
     public sealed interface Response permits Answer, Plan {}
     public record Answer(String text) implements Response {}
     public record Plan(OfflineAgentCore.Goal goal) implements Response {}
@@ -45,6 +46,11 @@ public final class LocalAIResponseParser {
             return new Answer(text);
         }
         if ("plan".equals(mode)) {
+            JsonElement steps = root.get("steps");
+            if (steps != null && steps.isJsonArray() && steps.getAsJsonArray().size() > MAX_MODEL_PLAN_STEPS) {
+                throw new IllegalArgumentException("Ein automatisch geplanter Auftrag darf höchstens "
+                        + MAX_MODEL_PLAN_STEPS + " Schritte enthalten. Bitte teile das Ziel in Etappen auf.");
+            }
             root.remove("mode");
             OfflineAgentCore.Goal goal = OfflineAgentPlanParser.parse(
                     root.toString(), "local-" + UUID.randomUUID());
