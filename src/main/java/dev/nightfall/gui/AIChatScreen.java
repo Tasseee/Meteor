@@ -291,18 +291,15 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, modeLabel, panelX + panelW - mc.textRenderer.getWidth(modeLabel) - 16,
                 panelY + 14, Theme.TEXT_DIM, false);
 
-        AIConfig.Settings settings = AIConfig.current();
-        String contextState = "Kontext:";
-        ctx.drawText(mc.textRenderer, contextState, panelX + 16, panelY + 34,
-                settings.shareWorldContext() ? Theme.ACCENT : Theme.TEXT_DIM, false);
+        ctx.drawText(mc.textRenderer, "Daten:", panelX + 16, panelY + 34, Theme.TEXT_DIM, false);
         contextToggleW = 112;
         contextToggleH = 18;
         contextToggleX = panelX + panelW - contextToggleW - 14;
         contextToggleY = panelY + 30;
-        int contextButtonColor = settings.shareWorldContext() ? 0xFF267B69 : 0xFF343848;
+        int contextButtonColor = 0xFF343848;
         ctx.fill(contextToggleX, contextToggleY, contextToggleX + contextToggleW,
                 contextToggleY + contextToggleH, contextButtonColor);
-        String contextToggleLabel = settings.shareWorldContext() ? "WELTKONTEXT: AN" : "WELTKONTEXT: AUS";
+        String contextToggleLabel = "NUR LOKAL";
         int contextLabelX = contextToggleX + (contextToggleW - mc.textRenderer.getWidth(contextToggleLabel)) / 2;
         ctx.drawText(mc.textRenderer, contextToggleLabel, contextLabelX, contextToggleY + 5,
                 Theme.TEXT, true);
@@ -695,18 +692,7 @@ public final class AIChatScreen extends Screen {
     }
 
     private void toggleWorldContextSharing() {
-        AIConfig.Settings settings = AIConfig.current();
-        boolean enabled = !settings.shareWorldContext();
-        AIConfig.Settings updated = AIConfig.updateWorldContextSharing(enabled);
-        if (updated.shareWorldContext() != enabled) {
-            status = "Weltkontext-Einstellung konnte nicht gespeichert werden.";
-            return;
-        }
-        status = enabled
-                ? "Weltkontext aktiviert · Position, Dimension und Hand werden mit KI-Anfragen geteilt"
-                : "Weltkontext deaktiviert · keine Weltinformationen werden automatisch angehängt";
-        history.add(new ChatLine("assistant", status));
-        scroll = Float.MAX_VALUE;
+        status = "Offline-Modus: Welt-, Inventar- und Modulbeobachtungen bleiben lokal. Es wird kein Weltkontext an einen KI-Anbieter gesendet.";
     }
 
     private void cycleSpeechVoice() {
