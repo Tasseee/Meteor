@@ -9,6 +9,7 @@ import dev.nightfall.config.Config;
 import dev.nightfall.ai.OfflineAgentCore;
 import dev.nightfall.ai.AIBuilder;
 import dev.nightfall.ai.OfflineAgentActionBridge;
+import dev.nightfall.ai.OfflineAgentMemory;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -264,6 +265,10 @@ public final class Commands {
     private static LiteralArgumentBuilder<FabricClientCommandSource> agentCommand() {
         LiteralArgumentBuilder<FabricClientCommandSource> root = literal("agent");
         root.then(literal("status").executes(c -> offlineAgentStatus(c)));
+        LiteralArgumentBuilder<FabricClientCommandSource> memory = literal("memory");
+        memory.executes(c -> offlineAgentMemory(c, false));
+        memory.then(literal("clear").executes(c -> offlineAgentMemory(c, true)));
+        root.then(memory);
         root.then(literal("prepare").executes(c -> prepareOfflineAgent(c)));
         root.then(literal("help").executes(c -> say(c,
                 "Offline-Agent: /nf agent gather <wood|block|ore> <item> <count> · craft <item> [count] · smelt <item> <count> · wood <bretter> · iron <erz> · shelter · build <starter|resume|vorlage|pause|continue|stop> · schematic <datei> · navigate <x> <y> <z> · mine <x> <y> <z> · attack · guard · sort · search [struktur]. "
@@ -687,6 +692,34 @@ public final class Commands {
         } catch (RuntimeException failure) {
             return say(c, "Abbruch fehlgeschlagen: " + safeAgentMessage(failure));
         }
+    }
+
+    private static int offlineAgentMemory(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c,
+            boolean clear) {
+        if (clear) {
+            OfflineAgentMemory.clear();
+            return say(c, "Das lokale Offline-Agent-Gedächtnis wurde gelöscht. Laufende Aufträge sind davon nicht betroffen.");
+        }
+        List<OfflineAgentMemory.Entry> entries = OfflineAgentMemory.recent(6);
+        if (entries.isEmpty()) return say(c, "Das lokale Offline-Agent-Gedächtnis ist noch leer.");
+        StringBuilder out = new StringBuilder("Lokales Offline-Agent-Gedächtnis (neueste Aufträge zuerst):");
+        for (OfflineAgentMemory.Entry entry : entries) {
+            out.append("\\n").append(entry.status()).append(" · ")
+                    .append(entry.description()).append(" · ")
+                    .append(java.time.Instant.ofEpochMilli(entry.completedAtMillis()));
+            int shownSteps = 0;
+            for (OfflineAgentMemory.StepMemory step : entry.steps()) {
+                if (shownSteps++ >= 6) {
+                    out.append("\\n  … weitere Schritte gespeichert");
+                    break;
+                }
+                out.append("\\n  ").append(step.action()).append(": ")
+                        .append(step.status()).append(" · Versuche ").append(step.attempts());
+            }
+        }
+        out.append("\\nGespeichert lokal in config/nightfall/agent_memory.json. Löschen: /nf agent memory clear");
+        return say(c, out.toString());
     }
 
     private static int offlineAgentStatus(
