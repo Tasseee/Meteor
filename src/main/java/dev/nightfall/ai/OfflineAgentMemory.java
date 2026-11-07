@@ -27,8 +27,10 @@ public final class OfflineAgentMemory {
     private static final int MAX_ENTRIES = 64;
     private static final int MAX_STEPS_PER_ENTRY = OfflineAgentCore.MAX_STEPS_PER_GOAL;
     private static final int MAX_DESCRIPTION_CHARS = 512;
-    private static final Path FILE = FabricLoader.getInstance().getConfigDir()
-            .resolve("nightfall").resolve("agent_memory.json");
+    private static Path file() {
+        return FabricLoader.getInstance().getConfigDir()
+                .resolve("nightfall").resolve("agent_memory.json");
+    }
 
     public record StepMemory(String id, String action, String status, int attempts) {}
 
@@ -86,7 +88,7 @@ public final class OfflineAgentMemory {
         loadIfNeeded();
         ENTRIES.clear();
         try {
-            Files.deleteIfExists(FILE);
+            Files.deleteIfExists(file());
             return true;
         } catch (IOException failure) {
             Nightfall.LOGGER.warn("Lokales Nightfall-Auftragsgedächtnis konnte nicht gelöscht werden: {}",
@@ -147,9 +149,10 @@ public final class OfflineAgentMemory {
     private static void loadIfNeeded() {
         if (loaded) return;
         loaded = true;
-        if (!Files.isRegularFile(FILE)) return;
+        Path file = file();
+        if (!Files.isRegularFile(file)) return;
         try {
-            JsonObject root = JsonParser.parseString(Files.readString(FILE)).getAsJsonObject();
+            JsonObject root = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
             JsonArray records = root.getAsJsonArray("entries");
             if (records == null) return;
             int start = Math.max(0, records.size() - MAX_ENTRIES);
@@ -188,7 +191,8 @@ public final class OfflineAgentMemory {
 
     private static void persist() {
         try {
-            Files.createDirectories(FILE.getParent());
+            Path file = file();
+            Files.createDirectories(file.getParent());
             JsonObject root = new JsonObject();
             JsonArray records = new JsonArray();
             for (Entry entry : ENTRIES) {
@@ -210,13 +214,13 @@ public final class OfflineAgentMemory {
                 records.add(json);
             }
             root.add("entries", records);
-            Path temporary = FILE.resolveSibling(FILE.getFileName() + ".tmp");
+            Path temporary = file.resolveSibling(file.getFileName() + ".tmp");
             Files.writeString(temporary, root.toString());
             try {
-                Files.move(temporary, FILE, StandardCopyOption.REPLACE_EXISTING,
+                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING,
                         StandardCopyOption.ATOMIC_MOVE);
             } catch (AtomicMoveNotSupportedException unsupported) {
-                Files.move(temporary, FILE, StandardCopyOption.REPLACE_EXISTING);
+                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException failure) {
             Nightfall.LOGGER.warn("Lokales Nightfall-Auftragsgedächtnis konnte nicht gespeichert werden: {}",
