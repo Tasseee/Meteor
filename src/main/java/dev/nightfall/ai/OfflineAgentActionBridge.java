@@ -7,6 +7,7 @@ import com.google.gson.JsonPrimitive;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -28,6 +29,7 @@ public final class OfflineAgentActionBridge {
     public record PreparedStep(String goalId, String stepId, String preview) {}
 
     private final OfflineAgentCore core;
+    private final Set<String> rememberedGoals = new HashSet<>();
     private PreparedStep pending;
     private AIActionRegistry.Action pendingAction;
     private String verifyingGoalId;
@@ -196,6 +198,7 @@ public final class OfflineAgentActionBridge {
      * step is released only after the controller reports a terminal outcome.
      */
     public synchronized void tick() {
+        rememberFinishedGoals();
         if (verifyingGoalId == null || verificationKind == VerificationKind.NONE
                 || verificationKind == VerificationKind.EXTERNAL) return;
         MinecraftClient client = MinecraftClient.getInstance();
@@ -244,6 +247,15 @@ public final class OfflineAgentActionBridge {
         prepareNext();
     }
 
+    private void rememberFinishedGoals() {
+        for (OfflineAgentCore.GoalView goal : core.snapshot()) {
+            if (goal.status() != OfflineAgentCore.GoalStatus.ACTIVE
+                    && rememberedGoals.add(goal.id())) {
+                OfflineAgentMemory.record(goal);
+            }
+        }
+    }
+
     private boolean controllerActionStarted() {
         return switch (verificationKind) {
             case PLAYER_CONTROLLER -> AIPlayerController.isBusy()
@@ -281,6 +293,7 @@ public final class OfflineAgentActionBridge {
         verifyingGoalId = null;
         verifyingStepId = null;
         verificationKind = VerificationKind.NONE;
+        rememberFinishedGoals();
     }
 
     /** Cancels the goal behind a prepared preview; no Minecraft action is executed. */
@@ -310,6 +323,7 @@ public final class OfflineAgentActionBridge {
         verificationKind = VerificationKind.NONE;
         setupPromptKey = "";
         setupPrompt = "";
+        rememberFinishedGoals();
     }
 
     /**
@@ -337,6 +351,7 @@ public final class OfflineAgentActionBridge {
         verificationKind = VerificationKind.NONE;
         setupPromptKey = "";
         setupPrompt = "";
+        rememberFinishedGoals();
     }
 
     /** Cancels only a queued or running Builder step, preserving unrelated goals. */
