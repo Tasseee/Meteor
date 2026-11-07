@@ -88,11 +88,11 @@ public final class LocalAIPlanner {
             if (function == null || !function.has("name")) continue;
             String name = function.get("name").getAsString();
             String description = function.has("description") && function.get("description").isJsonPrimitive()
-                    ? function.get("description").getAsString().replace('\\n', ' ').trim() : "";
+                    ? function.get("description").getAsString().replace('\n', ' ').trim() : "";
             if (description.length() > 150) description = description.substring(0, 147) + "...";
             catalog.append("- ").append(name)
                     .append(supported.containsKey(name) ? " [an Offline-Agent-Brücke angebunden]" : " [nicht als Offline-Agent-Schritt unterstützt]")
-                    .append(": ").append(description).append('\\n');
+                    .append(": ").append(description).append('\n');
         }
         return catalog.toString();
     }
