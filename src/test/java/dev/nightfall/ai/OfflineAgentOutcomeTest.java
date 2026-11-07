@@ -32,6 +32,8 @@ class OfflineAgentOutcomeTest {
         assertFalse(OfflineAgentOutcome.isSuccessfulImmediateControllerResult(
                 "Kein sicherer erster Wegabschnitt gefunden."));
         assertFalse(OfflineAgentOutcome.isSuccessfulImmediateControllerResult(null));
+        assertTrue(OfflineAgentOutcome.isSuccessfulImmediateControllerResult(
+                "Dein normales Inventar ist bereits sortiert."));
         assertTrue(OfflineAgentOutcome.isSuccessfulControllerCompletion(
                 "Strukturhinweis erkannt: ancient_city nahe X=10, Y=20, Z=30."));
     }
