@@ -115,9 +115,24 @@ public final class OfflineAgentActionBridge {
             if (verificationKind == VerificationKind.NONE) {
                 core.report(goalId, stepId, OfflineAgentCore.ActionResult.SUCCESS,
                         "Lokale Aktion wurde ausgeführt und hat ein direktes Ergebnis geliefert. " + result);
-                verificationKind = VerificationKind.NONE;
                 lastError = "";
                 return result;
+            }
+            if (verificationKind != VerificationKind.EXTERNAL && !controllerActionStarted()) {
+                boolean alreadyAtGoal = verificationKind == VerificationKind.PLAYER_CONTROLLER
+                        && OfflineAgentOutcome.isSuccessfulImmediateControllerResult(result);
+                if (alreadyAtGoal) {
+                    core.report(goalId, stepId, OfflineAgentCore.ActionResult.SUCCESS,
+                            "Lokales Ergebnis: " + result);
+                    verificationKind = VerificationKind.NONE;
+                    lastError = "";
+                    return result;
+                }
+                core.report(goalId, stepId, OfflineAgentCore.ActionResult.PERMANENT_FAILURE,
+                        "Der lokale Controller hat den Auftrag nicht gestartet. " + result);
+                verificationKind = VerificationKind.NONE;
+                lastError = result;
+                return "Aktion wurde nicht gestartet: " + result;
             }
             core.report(goalId, stepId, OfflineAgentCore.ActionResult.UNCERTAIN,
                     "Aktion läuft oder wartet auf ein externes Ergebnis. " + result);
@@ -206,6 +221,19 @@ public final class OfflineAgentActionBridge {
                 + (success ? " wurde automatisch als erfolgreich bestätigt."
                 : " wurde als unvollständig/fehlgeschlagen erkannt. Ein erneuter Versuch benötigt eine neue Vorschau.")), false);
         prepareNext();
+    }
+
+    private boolean controllerActionStarted() {
+        return switch (verificationKind) {
+            case PLAYER_CONTROLLER -> AIPlayerController.isBusy()
+                    || AIPlayerController.actionCompletionSequence() > playerSequenceAtStart;
+            case BUILDER -> AIBuilder.isRunning()
+                    || AIBuilder.completionSequence() > builderSequenceAtStart;
+            case COMBAT -> AICombatController.isActive() || AIPlayerController.isNavigating()
+                    || AICombatController.completionSequence() > combatSequenceAtStart;
+            case EXTERNAL -> true;
+            case NONE -> false;
+        };
     }
 
     private static VerificationKind verificationKindFor(String action) {
