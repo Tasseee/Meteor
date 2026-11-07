@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.LinkOption;
@@ -125,7 +126,14 @@ public final class OfflineAgentPlanParser {
         long size = Files.size(file);
         if (size <= 0 || size > MAX_PLAN_FILE_BYTES)
             throw new IllegalArgumentException("Plan-Dateien müssen zwischen 1 Byte und 256 KiB groß sein.");
-        return parse(Files.readString(file), goalId);
+        // Open without following a final-component symlink, and enforce the byte
+        // limit again while reading so a replaced file cannot bypass the size check.
+        try (var input = Files.newInputStream(file, LinkOption.NOFOLLOW_LINKS)) {
+            byte[] bytes = input.readNBytes(MAX_PLAN_FILE_BYTES + 1);
+            if (bytes.length <= 0 || bytes.length > MAX_PLAN_FILE_BYTES)
+                throw new IllegalArgumentException("Plan-Dateien müssen zwischen 1 Byte und 256 KiB groß sein.");
+            return parse(new String(bytes, StandardCharsets.UTF_8), goalId);
+        }
     }
 
     private static Map<String, String> readParameters(JsonObject step) {
