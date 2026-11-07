@@ -122,6 +122,7 @@ public final class OfflineAgentActionBridge {
             lastError = safeMessage(invalid);
             persistQueueIfChanged();
             rememberFinishedGoals();
+            requestAutomaticRepairIfFailed(ref.goalId());
             client.player.sendMessage(Text.literal("[Nightfall] Offline-Agent: Auftrag konnte nicht vorbereitet werden: "
                     + lastError), false);
             return Optional.empty();
@@ -174,6 +175,7 @@ public final class OfflineAgentActionBridge {
                         "Der lokale Controller hat den Auftrag nicht gestartet. " + result);
                 persistQueueIfChanged();
                 rememberFinishedGoals();
+                requestAutomaticRepairIfFailed(goalId);
                 verificationKind = VerificationKind.NONE;
                 lastError = result;
                 return "Aktion wurde nicht gestartet: " + result;
@@ -196,6 +198,7 @@ public final class OfflineAgentActionBridge {
             core.report(goalId, stepId, OfflineAgentCore.ActionResult.PERMANENT_FAILURE, detail);
             persistQueueIfChanged();
             rememberFinishedGoals();
+            requestAutomaticRepairIfFailed(goalId);
             verificationKind = VerificationKind.NONE;
             lastError = detail;
             return "Aktion fehlgeschlagen: " + detail;
@@ -273,10 +276,17 @@ public final class OfflineAgentActionBridge {
         verificationKind = VerificationKind.NONE;
         persistQueueIfChanged();
         rememberFinishedGoals();
+        if (!success) requestAutomaticRepairIfFailed(goalId);
         client.player.sendMessage(Text.literal("[Nightfall] Offline-Agent: " + goalId + "/" + stepId
                 + (success ? " wurde automatisch als erfolgreich bestätigt."
                 : " wurde als unvollständig/fehlgeschlagen erkannt. Ein erneuter Versuch benötigt eine neue Vorschau.")), false);
         prepareNext();
+    }
+
+    private void requestAutomaticRepairIfFailed(String goalId) {
+        boolean failed = core.snapshot().stream().anyMatch(goal ->
+                goal.id().equals(goalId) && goal.status() == OfflineAgentCore.GoalStatus.FAILED);
+        if (failed) dev.nightfall.gui.AIChatScreen.requestAutomaticRepair(goalId);
     }
 
     private void rememberFinishedGoals() {
@@ -334,6 +344,7 @@ public final class OfflineAgentActionBridge {
         verificationKind = VerificationKind.NONE;
         persistQueueIfChanged();
         rememberFinishedGoals();
+        if (!confirmedSuccess) requestAutomaticRepairIfFailed(goalId);
         prepareNext();
     }
 
