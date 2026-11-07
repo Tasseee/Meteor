@@ -1,3 +1,32 @@
+# Nightfall – Offline-Agent und lokale Aktionen
+
+<escape></escape>
+**Offline-Modus auf dem Branch `nightfall/offline-agent-core`:** Chat-Anfragen werden nicht mehr an OpenAI oder andere Anbieter gesendet. Alte Provider-URLs und API-Schlüssel werden beim Laden der Nightfall-AI-Konfiguration durch lokale Offline-Defaults ersetzt. Cloud-Chat, Cloud-Transkription und Cloud-Sprachausgabe sind damit deaktiviert. Es gibt aktuell **keinen Sprachparser und kein lokales Sprachmodell**; die Bedienung des Offline-Agenten erfolgt vorerst über die unten aufgeführten Minecraft-Befehle. Stimme und natürlichsprachlicher Chat bleiben bewusst spätere Ausbaustufen.
+
+## Offline-Agent im Spiel
+
+Alle Aufträge laufen über den deterministischen `OfflineAgentCore` und bestehende lokale Minecraft-Controller. Es werden keine KI-Modelle oder externen KI-Endpunkte benötigt. Der Agent kann mehrere Aufträge in eine begrenzte Warteschlange aufnehmen, führt aber nur eine Minecraft-Aktion gleichzeitig aus. Abhängige Schritte werden erst freigeschaltet, wenn ihr Vorgänger als erfolgreich geprüft wurde.
+
+**Jeder verändernde Schritt benötigt eine Vorschau und Bestätigung.** Nach dem Einreihen zeigt Nightfall die Vorschau im Chat. Bestätige sie mit `/nf agent confirm`, lehne mit `/nf agent reject` ab. Nach der Ausführung ist das Ergebnis zunächst ungeprüft; prüfe die Welt und Inventaränderung und melde danach `/nf agent verify success` oder `/nf agent verify failed`. `/nf agent cancel` stoppt die aktive Offline-Aufgabe und verwirft wartende Schritte.
+
+Wichtige Befehle:
+
+- `/nf agent status` – Auftragswarteschlange, Vorschau und Prüfergebnis ansehen.
+- `/nf agent gather wood minecraft:oak_log 16`, `/nf agent gather block minecraft:cobblestone 32`, `/nf agent gather ore minecraft:raw_iron 8` – lokale Sammelaufträge.
+- `/nf agent craft minecraft:oak_planks 32`, `/nf agent smelt minecraft:raw_iron 8`, `/nf agent eat`, `/nf agent sort` – Crafting, Schmelzen, Essen und Inventarsortierung.
+- `/nf agent wood 32` – mehrstufig: Eichenstämme sammeln, danach Eichenbretter herstellen.
+- `/nf agent iron 8` – mehrstufig: rohes Eisen sammeln, danach in einem erreichbaren Ofen schmelzen.
+- `/nf agent build starter` oder `/nf agent build large_house` – vorhandene Bauvorlagen vorbereiten und bauen.
+- `/nf agent schematic datei.schem` – ersten Abschnitt einer lokalen Schematic vorbereiten.
+- `/nf agent navigate X Y Z`, `/nf agent mine X Y Z`, `/nf agent walk 20` – begrenzte Navigation, Abbau und Bewegung.
+- `/nf agent search ancient_city`, `/nf agent attack`, `/nf agent guard` – Strukturhinweise suchen oder nahe feindliche Mobs abwehren.
+
+Die Sammel-, Crafting-, Schmelz-, Bau- und Kampfaktionen verwenden bestehende Client-Controller und deren lokale Validierung. Kampfziele sind ausschließlich feindliche Minecraft-Mobs; Spieler und neutrale/passive Tiere werden nicht ausgewählt. Die Grenzen der vorhandenen Controller gelten weiterhin (z. B. geladene Chunks, sichere Wege, begrenzte Laufzeiten und Aktionslimits). Die manuelle Ergebnisprüfung ist absichtlich konservativ: Ein zurückgegebener Starttext ist kein Beweis, dass ein mehrtaktiger Vorgang bereits fertig ist.
+
+**Noch nicht enthalten:** freie Spracheingabe/NLP, lokale Sprachmodelle, echte automatische Beobachtungs-Auswertung, dauerhaft gespeicherte Agenten-Auftragswarteschlange, vollautomatisches Farming und selbstständiges Lernen. Der Aufgabenstatus liegt derzeit im Arbeitsspeicher des laufenden Clients. Diese Funktionen werden nicht als fertig ausgegeben.
+
+---
+
 # Nightfall AI – Extensible Skills and Actions
 
 Nightfall AI is an in-game Minecraft companion with an extensible, allow-listed tool system. The AI model may choose from the tools exposed by the client, but **the client validates every argument and controls every execution**.
