@@ -83,24 +83,66 @@ public final class LocalAIPlanner {
         return prompt.toString();
     }
 
-    static String capabilityCatalog() {
+    public static String capabilityCatalog() {
         StringBuilder catalog = new StringBuilder();
         Map<String, Map<String, String>> supported = OfflineAgentActionBridge.supportedActions();
+        Map<String, List<String>> groups = new java.util.LinkedHashMap<>();
         for (JsonElement element : AIActionRegistry.toolDefinitions()) {
-            if (!element.isJsonObject()) continue;
-            JsonObject wrapper = element.getAsJsonObject();
-            JsonObject function = wrapper.has("function") && wrapper.get("function").isJsonObject()
-                    ? wrapper.getAsJsonObject("function") : null;
-            if (function == null || !function.has("name")) continue;
-            String name = function.get("name").getAsString();
+            if (element == null || !element.isJsonObject()) continue;
+            JsonElement functionElement = element.getAsJsonObject().get("function");
+            if (functionElement == null || !functionElement.isJsonObject()) continue;
+            JsonObject function = functionElement.getAsJsonObject();
+            JsonElement nameElement = function.get("name");
+            if (nameElement == null || !nameElement.isJsonPrimitive()
+                    || !nameElement.getAsJsonPrimitive().isString()) continue;
+            String name = nameElement.getAsString();
             String description = function.has("description") && function.get("description").isJsonPrimitive()
                     ? function.get("description").getAsString().replace('\n', ' ').trim() : "";
-            if (description.length() > 150) description = description.substring(0, 147) + "...";
-            catalog.append("- ").append(name)
-                    .append(supported.containsKey(name) ? " [an Offline-Agent-Brücke angebunden]" : " [nicht als Offline-Agent-Schritt unterstützt]")
-                    .append(": ").append(description).append('\n');
+            if (description.length() > 110) description = description.substring(0, 107) + "...";
+            String line = "- " + name
+                    + (supported.containsKey(name) ? " [offline unterstützt]" : " [nicht als Offline-Schritt unterstützt]")
+                    + ": " + description;
+            groups.computeIfAbsent(capabilityCategory(name), ignored -> new java.util.ArrayList<>()).add(line);
         }
+        for (Map.Entry<String, List<String>> group : groups.entrySet()) {
+            catalog.append(group.getKey()).append('\n');
+            for (String line : group.getValue()) catalog.append(line).append('\n');
+            catalog.append('\n');
+        }
+        catalog.append("Grenzen: Aktionen benötigen die in der Vorschau angezeigte Bestätigung. ")
+                .append("Serverbefehle hängen von Serverrechten ab; Scanner sehen nur clientseitig geladene Daten. ")
+                .append("Eigene Baupläne sind auf 512 Blöcke begrenzt; Schematics werden in 32er-Abschnitten gebaut. ")
+                .append("Die Kennzeichnung offline unterstützt bestätigt nur Schema/Bridge-Kompatibilität, nicht jeden Weltzustand.");
         return catalog.toString();
+    }
+
+    private static String capabilityCategory(String action) {
+        return switch (action) {
+            case "search_structures", "locate_structure", "locate_biome", "add_waypoint",
+                    "list_waypoints", "random_teleport", "run_server_command", "walk_forward",
+                    "stop_movement", "navigate_to", "resume_saved_task", "clear_saved_task" ->
+                    "Welt erkunden und Navigation";
+            case "search_bases", "get_base_findings", "get_module_observations",
+                    "mark_fake_base", "list_fake_base_templates" ->
+                    "Scanner und lokale Weltbeobachtungen";
+            case "set_module_state", "get_module_settings", "set_module_setting",
+                    "open_nightfall_menu" ->
+                    "Nightfall-Module und Einstellungen";
+            case "get_inventory", "sort_inventory", "get_player_status", "mine_block",
+                    "mine_looked_block", "gather_wood", "gather_block", "gather_ore",
+                    "smelt_item", "craft_item", "eat_food", "get_player_action_status",
+                    "stop_current_action" ->
+                    "Inventar und Survival";
+            case "plan_build_materials", "build_structure", "build_starter_shelter",
+                    "build_custom_structure", "search_blueprints", "list_schematics",
+                    "inspect_schematic", "repair_schematic", "build_schematic",
+                    "get_schematic_progress", "verify_schematic_section", "resume_saved_build",
+                    "get_build_status", "pause_build", "resume_build", "stop_build" ->
+                    "Bauen und Schematics";
+            case "attack_nearest_hostile", "guard_nearby_hostiles" ->
+                    "Mob-Verteidigung";
+            default -> "Weitere Funktionen";
+        };
     }
 
     private static JsonArray compactActionSchemas(Set<String> selectedNames) {
