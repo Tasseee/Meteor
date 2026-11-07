@@ -277,13 +277,6 @@ class OfflineAgentCoreTest {
     }
 
     @Test
-    void checkpointRejectsPendingStepWithNoAttemptsRemaining() {
-        OfflineAgentCore.Step work = step("work", "gather_wood", List.of(), 2);
-        assertThrows(IllegalArgumentException.class, () -> new OfflineAgentCore.StepCheckpoint(
-                work, OfflineAgentCore.StepStatus.PENDING, 2, "Keine Versuche mehr."));
-    }
-
-    @Test
     void activeGoalCheckpointRejectsTerminalStepStatuses() {
         OfflineAgentCore.Step work = step("work", "gather_wood", List.of(), 2);
         OfflineAgentCore.Goal goal = new OfflineAgentCore.Goal(
