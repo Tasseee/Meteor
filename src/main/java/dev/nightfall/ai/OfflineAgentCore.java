@@ -75,10 +75,11 @@ public final class OfflineAgentCore {
             Objects.requireNonNull(step, "step");
             Objects.requireNonNull(status, "status");
             if (attempts < 0 || attempts > step.maxAttempts()
+                    || (status == StepStatus.PENDING && attempts >= step.maxAttempts())
                     || ((status == StepStatus.RUNNING || status == StepStatus.VERIFYING
                     || status == StepStatus.CANCEL_REQUESTED || status == StepStatus.SUCCEEDED
                     || status == StepStatus.FAILED) && attempts == 0))
-                throw new IllegalArgumentException("Invalid checkpoint attempt count.");
+                throw new IllegalArgumentException("Invalid checkpoint attempt count or step status.");
             detail = boundedDetail(detail);
         }
     }
@@ -88,8 +89,10 @@ public final class OfflineAgentCore {
             Objects.requireNonNull(goal, "goal");
             Objects.requireNonNull(status, "status");
             steps = List.copyOf(Objects.requireNonNull(steps, "steps"));
-            if (status != GoalStatus.ACTIVE || steps.size() != goal.steps().size())
-                throw new IllegalArgumentException("Only complete active goal checkpoints may be restored.");
+            if (status != GoalStatus.ACTIVE || steps.size() != goal.steps().size()
+                    || steps.stream().anyMatch(step -> step.status() == StepStatus.FAILED
+                    || step.status() == StepStatus.BLOCKED || step.status() == StepStatus.CANCELLED))
+                throw new IllegalArgumentException("Only complete, non-terminal active goal checkpoints may be restored.");
         }
     }
 
@@ -201,6 +204,14 @@ public final class OfflineAgentCore {
             }
             if (restoredStepIds.size() != state.steps.size())
                 throw new IllegalArgumentException("Checkpoint omits one or more goal steps.");
+            for (StepState stepState : state.steps.values()) {
+                if (stepState.status == StepStatus.PENDING) continue;
+                for (String dependencyId : stepState.step.dependsOn()) {
+                    StepState dependency = state.steps.get(dependencyId);
+                    if (dependency == null || dependency.status != StepStatus.SUCCEEDED)
+                        throw new IllegalArgumentException("Checkpoint marks a step complete/in-flight before its dependencies succeeded.");
+                }
+            }
             refreshGoal(state);
             restored.add(state);
         }
