@@ -1385,11 +1385,11 @@ public final class AIChatScreen extends Screen {
         StringBuilder presetMaterialPlanning = new StringBuilder();
         for (String structure : List.of("starter_shelter", "large_house", "watchtower")) {
             try {
-                presetMaterialPlanning.append(AIBuilder.analyzeStructureMaterials(structure, null)).append("\\n");
+                presetMaterialPlanning.append(AIBuilder.analyzeStructureMaterials(structure, null)).append("\n");
             } catch (RuntimeException unavailable) {
                 String detail = unavailable.getMessage() == null
                         ? "Materialanalyse momentan nicht verfügbar."
-                        : unavailable.getMessage().replaceAll("[\\\\r\\\\n\\\\t]+", " ").trim();
+                        : unavailable.getMessage().replaceAll("[\\r\\n\\t]+", " ").trim();
                 presetMaterialPlanning.append("Materialplanung ").append(structure)
                         .append(": nicht verfügbar (").append(detail).append(").\\n");
             }
