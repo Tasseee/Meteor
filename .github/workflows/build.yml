@@ -45,6 +45,13 @@ jobs:
       - name: Validate bundled community schematic index
         run: python3 -m json.tool src/main/resources/nightfall/community_schematics.json > /dev/null
 
+      - name: Verify embedded local model configuration
+        run: |
+          grep -q 'setThreads(inferenceThreads)' src/main/java/dev/nightfall/ai/LocalAIModelService.java
+          grep -q 'setCtxSize(8_192)' src/main/java/dev/nightfall/ai/LocalAIModelService.java
+          grep -q 'LocalAIModelService.generate(prompt' src/main/java/dev/nightfall/gui/AIChatScreen.java
+          ! grep -q 'AIChatClient.request(' src/main/java/dev/nightfall/gui/AIChatScreen.java
+
       - name: Build Nightfall
         run: gradle build --no-daemon
 
