@@ -78,6 +78,19 @@ class LocalAIResponseParserTest {
     }
 
     @Test
+    void rejectsModelPlansWithMoreThanTwelveSteps() {
+        StringBuilder json = new StringBuilder("{\"mode\":\"plan\",\"description\":\"Zu großer Plan\",\"steps\":[");
+        for (int i = 0; i < 13; i++) {
+            if (i > 0) json.append(',');
+            json.append("{\"id\":\"step").append(i)
+                    .append("\",\"action\":\"get_player_status\"}");
+        }
+        json.append("]}");
+        assertThrows(IllegalArgumentException.class,
+                () -> LocalAIResponseParser.parse(json.toString()));
+    }
+
+    @Test
     void rejectsPlansWithInvalidDependencies() {
         assertThrows(IllegalArgumentException.class, () -> LocalAIResponseParser.parse("""
                 {
