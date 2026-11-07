@@ -85,6 +85,36 @@ class OfflineAgentQueueStoreTest {
     }
 
     @Test
+    void oversizedNewQueueNeverLeavesAnOlderStaleCheckpointBehind() throws IOException {
+        Path directory = Files.createTempDirectory("nightfall-agent-queue-size-test");
+        try {
+            OfflineAgentQueueStore store = new OfflineAgentQueueStore(directory);
+            assertTrue(store.save(WORLD_A, List.of(simpleCheckpoint())));
+
+            String payload = "x".repeat(32_760);
+            List<OfflineAgentCore.Step> steps = new java.util.ArrayList<>();
+            List<OfflineAgentCore.StepCheckpoint> checkpoints = new java.util.ArrayList<>();
+            for (int i = 0; i < 40; i++) {
+                OfflineAgentCore.Step step = new OfflineAgentCore.Step(
+                        "step-" + i, "local_action_" + i, Map.of("payload", payload), List.of(), 1);
+                steps.add(step);
+                checkpoints.add(new OfflineAgentCore.StepCheckpoint(
+                        step, OfflineAgentCore.StepStatus.PENDING, 0, ""));
+            }
+            OfflineAgentCore.Goal goal = new OfflineAgentCore.Goal(
+                    "large", "Große, aber gültige Offline-Aufgabe.", 0, steps);
+            OfflineAgentCore.GoalCheckpoint oversized = new OfflineAgentCore.GoalCheckpoint(
+                    goal, OfflineAgentCore.GoalStatus.ACTIVE, checkpoints);
+
+            assertFalse(store.save(WORLD_A, List.of(oversized)));
+            assertTrue(store.load(WORLD_A).isEmpty(),
+                    "A stale earlier checkpoint must not replay work after a newer save failed.");
+        } finally {
+            deleteTree(directory);
+        }
+    }
+
+    @Test
     void rejectsInvalidWorldKeysAndDeletesTheQueueWhenNoGoalsRemain() throws IOException {
         Path directory = Files.createTempDirectory("nightfall-agent-queue-clear-test");
         try {
