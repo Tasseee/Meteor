@@ -132,6 +132,7 @@ public class Nightfall implements ClientModInitializer {
             ModuleManager.pollKeys(mc);
         }
         AIPlayerController.tick();
+        OFFLINE_AGENT_BRIDGE.tick();
         OFFLINE_AGENT_BRIDGE.prepareNext();
         AICombatController.tick();
         AIBuilder.tick();
