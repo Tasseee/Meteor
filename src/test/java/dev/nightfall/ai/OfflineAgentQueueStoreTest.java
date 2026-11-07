@@ -123,7 +123,7 @@ class OfflineAgentQueueStoreTest {
             Path protectedFile = realDirectory.resolve(WORLD_A + ".json");
             Files.writeString(protectedFile, "keep-this-file");
             Path linkedDirectory = root.resolve("queue-link");
-            Files.createSymbolicLink(linkedDirectory, realDirectory);
+            createSymlinkOrAbort(linkedDirectory, realDirectory);
 
             OfflineAgentQueueStore store = new OfflineAgentQueueStore(linkedDirectory);
             assertFalse(store.save(WORLD_A, List.of(simpleCheckpoint())));
@@ -146,14 +146,14 @@ class OfflineAgentQueueStoreTest {
             Path target = directory.resolve(WORLD_A + ".json");
             Path temporary = directory.resolve(WORLD_A + ".json.tmp");
 
-            Files.createSymbolicLink(temporary, external);
+            createSymlinkOrAbort(temporary, external);
             OfflineAgentQueueStore store = new OfflineAgentQueueStore(directory);
             assertTrue(store.save(WORLD_A, List.of(simpleCheckpoint())));
             assertEquals("keep-this-content", Files.readString(external));
             assertEquals(1, store.load(WORLD_A).size());
 
             Files.deleteIfExists(target);
-            Files.createSymbolicLink(target, external);
+            createSymlinkOrAbort(target, external);
             assertTrue(store.save(WORLD_A, List.of(simpleCheckpoint())));
             assertEquals("keep-this-content", Files.readString(external));
             assertEquals(1, store.load(WORLD_A).size());
@@ -232,6 +232,16 @@ class OfflineAgentQueueStoreTest {
         return new OfflineAgentCore.GoalCheckpoint(goal, OfflineAgentCore.GoalStatus.ACTIVE,
                 List.of(new OfflineAgentCore.StepCheckpoint(
                         step, OfflineAgentCore.StepStatus.PENDING, 0, "")));
+    }
+
+    private static void createSymlinkOrAbort(Path link, Path target) throws IOException {
+        try {
+            Files.createSymbolicLink(link, target);
+        } catch (IOException | UnsupportedOperationException | SecurityException unavailable) {
+            org.junit.jupiter.api.Assumptions.assumeTrue(false,
+                    "Symbolische Links werden auf diesem Betriebssystem/Benutzerkonto nicht unterstützt: "
+                            + unavailable.getClass().getSimpleName());
+        }
     }
 
     private static void deleteTree(Path root) throws IOException {
