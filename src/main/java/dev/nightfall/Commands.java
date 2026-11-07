@@ -474,21 +474,29 @@ public final class Commands {
             com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c, int plankCount) {
         try {
             String goalId = nextOfflineGoalId();
-            int logsNeeded = Math.max(1, (plankCount + 3) / 4);
-            OfflineAgentCore.Step gather = new OfflineAgentCore.Step(
-                    "gather_logs", "gather_wood",
-                    Map.of("item", "minecraft:oak_log", "count", Integer.toString(logsNeeded)),
-                    List.of(), 2);
-            OfflineAgentCore.Step craft = new OfflineAgentCore.Step(
+            int logsRequired = Math.max(1, (plankCount + 3) / 4);
+            int logsOwned = countInventoryItem("minecraft:oak_log");
+            List<OfflineAgentCore.Step> steps = new java.util.ArrayList<>();
+            String previousStep = null;
+            if (logsOwned < logsRequired) {
+                steps.add(new OfflineAgentCore.Step(
+                        "gather_logs", "gather_wood",
+                        Map.of("item", "minecraft:oak_log", "count", Integer.toString(logsRequired)),
+                        List.of(), 2));
+                previousStep = "gather_logs";
+            }
+            steps.add(new OfflineAgentCore.Step(
                     "craft_planks", "craft_item",
                     Map.of("item", "minecraft:oak_planks", "count", Integer.toString(plankCount)),
-                    List.of("gather_logs"), 2);
+                    previousStep == null ? List.of() : List.of(previousStep), 2));
             Nightfall.offlineAgentCore().submit(new OfflineAgentCore.Goal(
-                    goalId, "Beschaffe Holz und stelle " + plankCount + " Eichenbretter her.",
-                    5, List.of(gather, craft)));
+                    goalId, "Beschaffe bei Bedarf Eichenstämme und stelle " + plankCount + " zusätzliche Eichenbretter her.",
+                    5, steps));
             Nightfall.offlineAgentBridge().prepareNext();
-            return say(c, "Holz-Workflow " + goalId + " eingereiht: erst Eichenstämme sammeln, dann Bretter craften. "
-                    + "Jeder Schritt braucht eine eigene Vorschau und Ergebnisprüfung.");
+            return say(c, "Holz-Workflow " + goalId + " eingereiht. Vorhandene Eichenstämme: " + logsOwned
+                    + ", Zielbestand für die Rezeptmenge: " + logsRequired + ". "
+                    + "Ausreichende Stämme werden nicht erneut gesammelt; Crafting stellt " + plankCount
+                    + " zusätzliche Bretter her. Jeder Schritt hat eine eigene Vorschau.");
         } catch (RuntimeException failure) {
             return say(c, "Holz-Workflow nicht eingereiht: " + safeAgentMessage(failure));
         }
@@ -498,22 +506,53 @@ public final class Commands {
             com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c, int count) {
         try {
             String goalId = nextOfflineGoalId();
-            OfflineAgentCore.Step gather = new OfflineAgentCore.Step(
-                    "gather", "gather_ore",
-                    Map.of("item", "minecraft:raw_iron", "count", Integer.toString(count)),
-                    List.of(), 2);
-            OfflineAgentCore.Step smelt = new OfflineAgentCore.Step(
-                    "smelt", "smelt_item",
-                    Map.of("item", "minecraft:raw_iron", "count", Integer.toString(count)),
-                    List.of("gather"), 2);
+            int rawIronOwned = countInventoryItem("minecraft:raw_iron");
+            List<OfflineAgentCore.Step> steps = new java.util.ArrayList<>();
+            String previousStep = null;
+            if (rawIronOwned < count) {
+                steps.add(new OfflineAgentCore.Step(
+                        "gather", "gather_ore",
+                        Map.of("item", "minecraft:raw_iron", "count", Integer.toString(count)),
+                        List.of(), 2));
+                previousStep = "gather";
+            }
+            int remaining = count;
+            int batch = 1;
+            while (remaining > 0) {
+                int batchCount = Math.min(16, remaining);
+                String stepId = "smelt_" + batch;
+                steps.add(new OfflineAgentCore.Step(
+                        stepId, "smelt_item",
+                        Map.of("item", "minecraft:raw_iron", "count", Integer.toString(batchCount)),
+                        previousStep == null ? List.of() : List.of(previousStep), 2));
+                previousStep = stepId;
+                remaining -= batchCount;
+                batch++;
+            }
             Nightfall.offlineAgentCore().submit(new OfflineAgentCore.Goal(
-                    goalId, "Sammle und schmelze " + count + " rohes Eisen.", 10, List.of(gather, smelt)));
+                    goalId, "Beschaffe bei Bedarf und schmelze " + count + " rohes Eisen in Ofen-Chargen.",
+                    10, steps));
             Nightfall.offlineAgentBridge().prepareNext();
-            return say(c, "Zwei-Schritt-Workflow " + goalId + " eingereiht: erst Erz sammeln, danach schmelzen. "
-                    + "Jeder Schritt braucht seine eigene Vorschau-Bestätigung und Ergebnisprüfung.");
+            return say(c, "Eisen-Workflow " + goalId + " eingereiht. Vorhandenes Roheisen: " + rawIronOwned
+                    + ". Es folgen " + ((count + 15) / 16) + " Schmelz-Charge(n) mit höchstens 16 Stück. "
+                    + "Jede Charge braucht eine eigene Vorschau und wird erst nach bestätigtem Ergebnis fortgesetzt.");
         } catch (RuntimeException failure) {
             return say(c, "Workflow nicht eingereiht: " + safeAgentMessage(failure));
         }
+    }
+
+    private static int countInventoryItem(String itemId) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null) return 0;
+        Identifier id = Identifier.tryParse(itemId);
+        if (id == null || !Registries.ITEM.containsId(id)) return 0;
+        var item = Registries.ITEM.get(id);
+        int count = 0;
+        for (int slot = 0; slot < 36; slot++) {
+            var stack = mc.player.getInventory().getStack(slot);
+            if (stack.isOf(item)) count += stack.getCount();
+        }
+        return count;
     }
 
     private static int confirmOfflineAgent(
