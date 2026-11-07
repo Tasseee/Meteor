@@ -275,6 +275,8 @@ public final class OfflineAgentActionBridge {
     /** External server actions still require an explicit player observation. */
     public synchronized void verifyLastAction(boolean confirmedSuccess, String observation) {
         if (verifyingGoalId == null) throw new IllegalStateException("Keine Aktion wartet auf Überprüfung.");
+        if (verificationKind != VerificationKind.EXTERNAL)
+            throw new IllegalStateException("Diese lokale Controller-Aktion wird automatisch anhand ihres Abschlussstatus geprüft. Bitte warte auf die Nightfall-Abschlussmeldung.");
         core.verify(verifyingGoalId, verifyingStepId, confirmedSuccess, observation);
         verifyingGoalId = null;
         verifyingStepId = null;
@@ -358,6 +360,14 @@ public final class OfflineAgentActionBridge {
 
     public synchronized boolean awaitingVerification() {
         return verifyingGoalId != null;
+    }
+
+    public synchronized boolean awaitingManualVerification() {
+        return verifyingGoalId != null && verificationKind == VerificationKind.EXTERNAL;
+    }
+
+    public synchronized boolean controllerActionInProgress() {
+        return verifyingGoalId != null && verificationKind != VerificationKind.EXTERNAL;
     }
 
     public synchronized boolean waitingForSetup() {
