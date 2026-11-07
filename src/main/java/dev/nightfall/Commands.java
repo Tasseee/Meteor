@@ -413,6 +413,8 @@ public final class Commands {
         iron.then(argument("count", IntegerArgumentType.integer(1, 64))
                 .executes(c -> queueIronWorkflow(c, IntegerArgumentType.getInteger(c, "count"))));
         root.then(iron);
+
+        root.then(literal("shelter").executes(c -> queueShelterWorkflow(c)));
         return root;
     }
 
@@ -512,6 +514,50 @@ public final class Commands {
                     + " zusätzliche Bretter her. Jeder Schritt hat eine eigene Vorschau.");
         } catch (RuntimeException failure) {
             return say(c, "Holz-Workflow nicht eingereiht: " + safeAgentMessage(failure));
+        }
+    }
+
+    private static int queueShelterWorkflow(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c) {
+        try {
+            String goalId = nextOfflineGoalId();
+            final int requiredPlanks = 54;
+            int planksOwned = countInventoryItem("minecraft:oak_planks");
+            int missingPlanks = Math.max(0, requiredPlanks - planksOwned);
+            int logsRequired = (missingPlanks + 3) / 4;
+            int logsOwned = countInventoryItem("minecraft:oak_log");
+            List<OfflineAgentCore.Step> steps = new java.util.ArrayList<>();
+            String previousStep = null;
+
+            if (missingPlanks > 0) {
+                if (logsOwned < logsRequired) {
+                    steps.add(new OfflineAgentCore.Step(
+                            "gather_logs", "gather_wood",
+                            Map.of("item", "minecraft:oak_log", "count", Integer.toString(logsRequired)),
+                            List.of(), 2));
+                    previousStep = "gather_logs";
+                }
+                steps.add(new OfflineAgentCore.Step(
+                        "craft_planks", "craft_item",
+                        Map.of("item", "minecraft:oak_planks", "count", Integer.toString(missingPlanks)),
+                        previousStep == null ? List.of() : List.of(previousStep), 2));
+                previousStep = "craft_planks";
+            }
+
+            steps.add(new OfflineAgentCore.Step(
+                    "build_shelter", "build_structure",
+                    Map.of("structure", "starter_shelter", "material", "minecraft:oak_planks"),
+                    previousStep == null ? List.of() : List.of(previousStep), 2));
+            Nightfall.offlineAgentCore().submit(new OfflineAgentCore.Goal(
+                    goalId, "Bereite 54 Eichenbretter vor und baue ein Starter-Schutzhaus.",
+                    15, steps));
+            Nightfall.offlineAgentBridge().prepareNext();
+            return say(c, "Starter-Schutzhaus-Workflow " + goalId + " eingereiht. Bretter vorhanden: "
+                    + planksOwned + "/54; Eichenstämme vorhanden: " + logsOwned + ". "
+                    + "Nightfall sammelt und craftet nur die Fehlmenge und bereitet danach den Bau vor. "
+                    + "Jeder Schritt bekommt eine eigene Vorschau.");
+        } catch (RuntimeException failure) {
+            return say(c, "Schutzhaus-Workflow nicht eingereiht: " + safeAgentMessage(failure));
         }
     }
 
