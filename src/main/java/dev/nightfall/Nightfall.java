@@ -131,6 +131,9 @@ public class Nightfall implements ClientModInitializer {
             prevGui = g; prevHud = hu; prevMap = m; prevAi = ai; prevVoice = voice; prevMic = mic;
             ModuleManager.pollKeys(mc);
         }
+        // Restore/switch the world-scoped queue before any controller can tick
+        // with a player/world from a different dimension or server.
+        OFFLINE_AGENT_BRIDGE.ensureReady();
         AIPlayerController.tick();
         OFFLINE_AGENT_BRIDGE.tick();
         OFFLINE_AGENT_BRIDGE.prepareNext();
