@@ -103,6 +103,22 @@ class LocalAIToolRouterTest {
     }
 
     @Test
+    void waypointRequestGetsWaypointTools() {
+        Set<String> tools = LocalAIToolRouter.selectTools(request("Setze hier einen Wegpunkt und zeige meine Wegpunkte."));
+        assertTrue(tools.contains("add_waypoint"));
+        assertTrue(tools.contains("list_waypoints"));
+    }
+
+    @Test
+    void moduleSettingRequestGetsReadAndWriteTools() {
+        Set<String> tools = LocalAIToolRouter.selectTools(
+                request("Prüfe die Einstellungen des ESP-Moduls und ändere die Reichweite."));
+        assertTrue(tools.contains("get_module_settings"));
+        assertTrue(tools.contains("set_module_setting"));
+        assertTrue(tools.contains("get_module_observations"));
+    }
+
+    @Test
     void navigationRequestGetsNavigationTools() {
         Set<String> tools = LocalAIToolRouter.selectTools(
                 request("Finde das nächste Dschungel-Biom und setze danach einen Wegpunkt."));
