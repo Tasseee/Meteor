@@ -973,7 +973,7 @@ public final class AIChatScreen extends Screen {
             }
         }
         String normalized = lastUser.toLowerCase(Locale.ROOT);
-        return normalized.matches("(?s).*(plane (?:weiter|neu)|neu planen|plan(?:e|ung) anpassen|versuch(?:e)? es anders|auftrag (?:neu|anders) planen|mach einen neuen plan).*");
+        return normalized.matches("(?s).*(plane (?:weiter|neu)|weiter planen|neu planen|plan(?:e|ung) anpassen|versuch(?:e)? es anders|auftrag (?:neu|anders) planen|mach (?:bitte )?weiter|setz(?:e)? (?:den )?auftrag fort|mach einen neuen plan).*");
     }
 
     private void confirmPendingAction() {
