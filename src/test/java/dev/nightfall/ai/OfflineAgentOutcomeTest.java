@@ -26,6 +26,17 @@ class OfflineAgentOutcomeTest {
     }
 
     @Test
+    void recognizesAnAlreadyReachedNavigationTargetWithoutStartingMovement() {
+        assertTrue(OfflineAgentOutcome.isSuccessfulImmediateControllerResult(
+                "Du bist bereits am gewünschten Ziel."));
+        assertFalse(OfflineAgentOutcome.isSuccessfulImmediateControllerResult(
+                "Kein sicherer erster Wegabschnitt gefunden."));
+        assertFalse(OfflineAgentOutcome.isSuccessfulImmediateControllerResult(null));
+        assertTrue(OfflineAgentOutcome.isSuccessfulControllerCompletion(
+                "Strukturhinweis erkannt: ancient_city nahe X=10, Y=20, Z=30."));
+    }
+
+    @Test
     void partialAndSafetyStopResultsAreNeverSuccess() {
         assertFalse(OfflineAgentOutcome.isSuccessfulControllerCompletion(null));
         assertFalse(OfflineAgentOutcome.isSuccessfulControllerCompletion(""));
