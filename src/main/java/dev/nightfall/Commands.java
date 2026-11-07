@@ -10,6 +10,7 @@ import dev.nightfall.ai.OfflineAgentCore;
 import dev.nightfall.ai.AIBuilder;
 import dev.nightfall.ai.OfflineAgentActionBridge;
 import dev.nightfall.ai.OfflineAgentMemory;
+import dev.nightfall.ai.OfflineAgentPlanParser;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -266,6 +267,12 @@ public final class Commands {
         LiteralArgumentBuilder<FabricClientCommandSource> root = literal("agent");
         root.then(literal("status").executes(c -> offlineAgentStatus(c)));
         root.then(literal("actions").executes(c -> offlineAgentActions(c)));
+        var planJson = argument("json", StringArgumentType.greedyString());
+        planJson.executes(c -> submitOfflineAgentPlan(c, str(c, "json"), null));
+        root.then(literal("plan").then(planJson));
+        root.then(literal("plan_file")
+                .then(argument("file", StringArgumentType.word())
+                        .executes(c -> submitOfflineAgentPlan(c, null, str(c, "file")))));
         LiteralArgumentBuilder<FabricClientCommandSource> memory = literal("memory");
         memory.executes(c -> offlineAgentMemory(c, false));
         memory.then(literal("clear").executes(c -> offlineAgentMemory(c, true)));
@@ -273,7 +280,7 @@ public final class Commands {
         root.then(literal("prepare").executes(c -> prepareOfflineAgent(c)));
         root.then(literal("help").executes(c -> say(c,
                 "Offline-Agent: /nf agent memory [clear] · /nf agent gather <wood|block|ore> <item> <count> · craft <item> [count] · smelt <item> <count> · wood <bretter> · iron <erz> · shelter · build <starter|resume|vorlage|pause|continue|stop> · schematic <datei> · navigate <x> <y> <z> · mine <x> <y> <z> · attack · guard · sort · search [struktur]. "
-                        + "Aktionen entdecken: /nf agent actions · weitere lokale Funktionen: /nf agent action <name> <json>. Jeder Auftrag zeigt vor Ausführung eine Vorschau. "
+                        + "Aktionen entdecken: /nf agent actions · Einzelaktion: /nf agent action <name> <json> · Mehrschrittplan: /nf agent plan <json> oder /nf agent plan_file <datei.json>. Jeder Schritt zeigt vor Ausführung eine Vorschau. "
                         + "confirm bestätigt, reject lehnt ab, verify success|failed prüft das Ergebnis, cancel bricht ab.")));
         LiteralArgumentBuilder<FabricClientCommandSource> action = literal("action");
         var actionName = argument("name", StringArgumentType.word());
@@ -422,6 +429,33 @@ public final class Commands {
 
         root.then(literal("shelter").executes(c -> queueShelterWorkflow(c)));
         return root;
+    }
+
+    private static int submitOfflineAgentPlan(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c,
+            String rawJson, String fileName) {
+        try {
+            String goalId = nextOfflineGoalId();
+            OfflineAgentCore.Goal goal = fileName == null
+                    ? OfflineAgentPlanParser.parse(rawJson, goalId)
+                    : OfflineAgentPlanParser.loadFile(fileName, goalId);
+            for (OfflineAgentCore.Step step : goal.steps()) {
+                if (!OfflineAgentActionBridge.supportsAction(step.action()))
+                    throw new IllegalArgumentException("Aktion '" + step.action()
+                            + "' ist nicht im lokalen Offline-Aktionsregister freigegeben oder benötigt nicht unterstützte Parameter.");
+            }
+            Nightfall.offlineAgentBridge().ensureReady();
+            Nightfall.offlineAgentCore().submit(goal);
+            Nightfall.offlineAgentBridge().prepareNext();
+            return say(c, "Mehrschrittplan " + goalId + " mit " + goal.steps().size()
+                    + " Schritten eingereiht: " + goal.description()
+                    + ". Abhängigkeiten werden automatisch beachtet; jeder Schritt braucht eine eigene Vorschau und Bestätigung.");
+        } catch (java.io.IOException | RuntimeException failure) {
+            String message = failure.getMessage();
+            if (message == null || message.isBlank()) message = failure.getClass().getSimpleName();
+            if (message.length() > 240) message = message.substring(0, 237) + "...";
+            return say(c, "Offline-Plan nicht eingereiht: " + message);
+        }
     }
 
     private static int submitRegistryAction(
