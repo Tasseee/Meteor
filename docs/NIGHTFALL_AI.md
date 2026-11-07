@@ -349,9 +349,10 @@ ausdrücklich anfordern; erst dann wird `navigate_to` mit den gespeicherten Koor
 Nightfall übernimmt Dimension und Koordinaten unverändert und behauptet nicht, dass ein Wegpunkt
 in einer anderen Dimension erreichbar ist.
 
-## Gespeicherte Aufgaben fortsetzen oder löschen
+## Gespeicherte Aufgaben fortsetzen oder löschen · älterer Controller-Checkpoint
 
-Nightfall speichert beim Verbindungsabbruch höchstens einen lokalen Aufgaben-Checkpoint für einen ausdrücklich gestarteten Sammelauftrag oder ein ausdrücklich gesetztes Navigationsziel. Gespeichert werden nur die Absicht und Server-/Dimensionskennung, keine alten Blockziele, Pfade, Inventar-Snapshots oder Zugangsdaten. Der Checkpoint läuft nach 24 Stunden ab und wird bei Fortsetzung neu validiert. `resume_saved_task` zeigt eine Vorschau und startet die Aufgabe erst nach ausdrücklicher Bestätigung. `clear_saved_task` löscht nach separater Vorschau und Bestätigung ausschließlich den passenden Aufgaben-Checkpoint der aktuellen Server-/Dimensionskombination. Checkpoints anderer Welten bleiben erhalten; laufende Aktionen und Baufortschritt bleiben unverändert.
+Dieser Abschnitt beschreibt den älteren, separaten `task_resume.json`-Checkpoint der Bewegungs-/Sammelcontroller – nicht die neue Mehrziel-Warteschlange des Offline-Agenten. Das ältere Format speichert höchstens einen lokalen Auftrag für Sammeln oder Navigation, sofern der Controller ihn unterstützt. Gespeichert werden Absicht und Server-/Dimensionskennung, keine alten Blockziele, Pfade, Inventar-Snapshots oder Zugangsdaten. Der Checkpoint läuft nach 24 Stunden ab und wird bei Fortsetzung neu validiert. `resume_saved_task` zeigt eine Vorschau und startet die Aufgabe erst nach ausdrücklicher Bestätigung. `clear_saved_task` löscht nach separater Vorschau und Bestätigung ausschließlich diesen älteren Controller-Checkpoint. Die neue Offline-Agenten-Warteschlange liegt unabhängig davon unter `config/nightfall/agent_queues/` und kann mehrere abhängige Ziele pro Welt speichern.
+
 
 ## Nightfall AI: Basissuche und Fake-Base-Werkzeuge
 
