@@ -120,6 +120,7 @@ public final class AIChatScreen extends Screen {
     private final List<AIChatClient.Message> apiHistory = new ArrayList<>();
     private int actionRoundTrips;
     private final Map<String, Integer> failedToolAttempts = new HashMap<>();
+    private final Map<String, Integer> automaticRepairAttempts = new HashMap<>();
     private int confirmX, confirmY, confirmW, confirmH;
     private int cancelX, cancelY, cancelW;
     private boolean waitingLocate;
@@ -846,11 +847,15 @@ public final class AIChatScreen extends Screen {
 
     /** Uses only the embedded local model. Its response can suggest a validated plan, never execute it. */
     private void requestAI() {
+        requestAI(null, false);
+    }
+
+    private void requestAI(OfflineAgentCore.GoalView forcedReplanTarget, boolean automaticRepair) {
         if (waiting || history.isEmpty()) return;
         List<LocalAIPlanner.Turn> turns = history.stream()
                 .map(line -> new LocalAIPlanner.Turn(line.role(), line.content()))
                 .toList();
-        if (LocalAIToolRouter.isCapabilityQuestion(turns)) {
+        if (forcedReplanTarget == null && LocalAIToolRouter.isCapabilityQuestion(turns)) {
             history.add(new ChatLine("assistant",
                     "Hier ist die vollständige Funktionsübersicht aus Nightfalls lokalem Aktionsregister. "
                             + "Die Kennzeichnung bestätigt die Schema-/Bridge-Anbindung, nicht die Verfügbarkeit in jedem Weltzustand.\n\n"
@@ -861,9 +866,10 @@ public final class AIChatScreen extends Screen {
         }
         if (!LocalAIModelService.isReady()) return;
 
-        boolean replanRequested = requestedReplan(turns);
+        boolean replanRequested = forcedReplanTarget != null || requestedReplan(turns);
         if (replanRequested) Nightfall.offlineAgentBridge().ensureReady();
-        OfflineAgentCore.GoalView replanTarget = replanRequested ? latestFailedGoal() : null;
+        OfflineAgentCore.GoalView replanTarget = forcedReplanTarget != null
+                ? forcedReplanTarget : replanRequested ? latestFailedGoal() : null;
         if (replanRequested && replanTarget == null) {
             history.add(new ChatLine("assistant",
                     "Ich finde in der aktuellen Welt-Warteschlange keinen fehlgeschlagenen Auftrag, den ich neu planen kann. "
@@ -884,7 +890,10 @@ public final class AIChatScreen extends Screen {
         int requestGeneration = sessionGeneration;
         int responseIndex = history.size();
         history.add(new ChatLine("assistant", replanTarget == null
-                ? "Nightfall denkt lokal …" : "Nightfall prüft den fehlgeschlagenen Auftrag und plant den offenen Teil neu …"));
+                ? "Nightfall denkt lokal …"
+                : automaticRepair
+                ? "Nightfall hat einen Fehlschlag erkannt und plant den offenen Teil automatisch neu …"
+                : "Nightfall prüft den fehlgeschlagenen Auftrag und plant den offenen Teil neu …"));
         waiting = true;
         status = "Lokale Inferenz läuft auf diesem PC …";
         scroll = Float.MAX_VALUE;
@@ -952,6 +961,31 @@ public final class AIChatScreen extends Screen {
             }
             scroll = Float.MAX_VALUE;
         });
+    }
+
+    /**
+     * Called by the offline action bridge only after a goal has conclusively failed.
+     * At most two automatic repairs are attempted per goal in one client session;
+     * every replacement still stops at the normal player-confirmed action preview.
+     */
+    public static void requestAutomaticRepair(String goalId) {
+        AIChatScreen session = active;
+        if (session == null || session.waiting || !LocalAIModelService.isReady()) return;
+        OfflineAgentCore.GoalView failed = Nightfall.offlineAgentCore().snapshot().stream()
+                .filter(goal -> goal.id().equals(goalId)
+                        && goal.status() == OfflineAgentCore.GoalStatus.FAILED)
+                .findFirst().orElse(null);
+        if (failed == null) return;
+        int attempts = session.automaticRepairAttempts.getOrDefault(goalId, 0);
+        if (attempts >= 2) {
+            session.history.add(new ChatLine("assistant",
+                    "Der Auftrag ist erneut fehlgeschlagen. Ich stoppe die automatische Neuplanung nach zwei Versuchen. "
+                            + "Du kannst den Auftrag prüfen und mich mit „Plane weiter“ erneut beauftragen."));
+            session.scroll = Float.MAX_VALUE;
+            return;
+        }
+        session.automaticRepairAttempts.put(goalId, attempts + 1);
+        session.requestAI(failed, true);
     }
 
     private static OfflineAgentCore.GoalView latestFailedGoal() {
