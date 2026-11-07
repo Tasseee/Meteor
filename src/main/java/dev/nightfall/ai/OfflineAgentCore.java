@@ -223,6 +223,60 @@ public final class OfflineAgentCore {
         return inFlight;
     }
 
+    /**
+     * Replaces only the unfinished portion of an active goal after a planner has
+     * inspected fresh observations. Confirmed successful steps are retained as
+     * immutable history; pending/failed/blocked steps are replaced. An action
+     * that is running, awaiting verification, or stopping can never be replanned.
+     *
+     * The caller must validate the replacement steps against the current local
+     * action registry before calling this method.
+     */
+    public synchronized void replanRemaining(String goalId, List<Step> replacementSteps) {
+        Objects.requireNonNull(replacementSteps, "replacementSteps");
+        GoalState previous = findGoal(goalId);
+        if (previous.status != GoalStatus.ACTIVE) {
+            throw new IllegalStateException("Only an active goal can be replanned.");
+        }
+        if (previous.steps.values().stream().anyMatch(state ->
+                state.status == StepStatus.RUNNING || state.status == StepStatus.VERIFYING
+                        || state.status == StepStatus.CANCEL_REQUESTED)) {
+            throw new IllegalStateException("An in-flight or uncertain action must be verified before replanning.");
+        }
+        if (replacementSteps.isEmpty()) {
+            throw new IllegalArgumentException("A replacement plan must contain at least one step.");
+        }
+
+        List<Step> revisedSteps = new ArrayList<>();
+        for (StepState state : previous.steps.values()) {
+            if (state.status == StepStatus.SUCCEEDED) revisedSteps.add(state.step);
+        }
+        Set<String> retainedIds = new LinkedHashSet<>();
+        for (Step step : revisedSteps) retainedIds.add(step.id());
+        for (Step step : replacementSteps) {
+            if (retainedIds.contains(step.id())) {
+                throw new IllegalArgumentException("Replacement plan reuses a completed step ID.");
+            }
+            revisedSteps.add(step);
+        }
+        if (revisedSteps.size() > MAX_STEPS_PER_GOAL) {
+            throw new IllegalArgumentException("Revised goal exceeds the maximum step count.");
+        }
+
+        Goal revisedGoal = new Goal(previous.goal.id(), previous.goal.description(),
+                previous.goal.priority(), revisedSteps);
+        GoalState revised = new GoalState(revisedGoal);
+        for (StepState state : previous.steps.values()) {
+            if (state.status != StepStatus.SUCCEEDED) continue;
+            StepState retained = revised.steps.get(state.step.id());
+            retained.status = StepStatus.SUCCEEDED;
+            retained.attempts = state.attempts;
+            retained.detail = state.detail;
+        }
+        goals.put(goalId, revised);
+        revision++;
+    }
+
     /** Clears in-memory goals after their world-scoped queue has been saved. */
     public synchronized void clearAll() {
         if (!goals.isEmpty()) {
