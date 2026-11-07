@@ -70,11 +70,10 @@ public final class OfflineAgentActionBridge {
         OfflineAgentCore.StepRef ref = next.get();
         if ("smelt_item".equals(ref.step().action()) && !AIPlayerController.isReadyToPreviewSmelting()) {
             String promptKey = ref.goalId() + "/" + ref.step().id();
-            setupPromptKey = promptKey;
             setupPrompt = "Schließe zuerst das Ofenfenster (falls offen) und richte dein Fadenkreuz auf einen leeren normalen Ofen oder Hochofen. Sobald das passt, erstellt Nightfall automatisch die Schmelzvorschau.";
             if (!promptKey.equals(setupPromptKey)) {
-                client.player.sendMessage(Text.literal("[Nightfall] Offline-Agent wartet auf dich: " + setupPrompt), false);
                 setupPromptKey = promptKey;
+                client.player.sendMessage(Text.literal("[Nightfall] Offline-Agent wartet auf dich: " + setupPrompt), false);
             }
             return Optional.empty();
         }
