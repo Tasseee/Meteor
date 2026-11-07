@@ -137,6 +137,8 @@ public final class AIBuilder {
     private static String materialName = "";
     private static String blueprintName = "";
     private static String status = "Builder bereit";
+    private static long completionSequence;
+    private static String lastCompletionStatus = "";
     private static int preparedMaxBlocks = 200;
     private static int preparedMaxHorizontal = 15;
     private static int preparedMaxY = 10;
@@ -2021,6 +2023,8 @@ public final class AIBuilder {
     }
 
     public static boolean isRunning() { return running; }
+    public static long completionSequence() { return completionSequence; }
+    public static String lastCompletionStatus() { return lastCompletionStatus; }
     public static String statusLabel() { return running ? "Builder · " + status : status; }
 
     public static String describeStatus() {
@@ -2143,6 +2147,9 @@ public final class AIBuilder {
     }
 
     private static void stopInternal(String message, boolean notify) {
+        completionSequence++;
+        lastCompletionStatus = message == null ? "" : message.length() <= 512
+                ? message : message.substring(0, 509) + "...";
         MinecraftClient mc = MinecraftClient.getInstance();
         if (message.startsWith("Bauabschnitt abgeschlossen:") && !schematicSourceFile.isBlank()
                 && schematicPartX >= 0 && schematicPartY >= 0 && schematicPartZ >= 0) {
