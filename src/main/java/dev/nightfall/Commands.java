@@ -6,6 +6,8 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.nightfall.config.Config;
+import dev.nightfall.ai.OfflineAgentCore;
+import java.util.Map;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.AutoText;
@@ -32,6 +34,7 @@ import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.lit
 
 /** /nf wp | /nf tpa | /nf profile | /nf scan */
 public final class Commands {
+    private static long offlineAgentSequence;
     private Commands() {}
 
     private static int say(com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c, String s) {
@@ -247,7 +250,231 @@ public final class Commands {
                     return say(c, "Markierungen dieses Servers/Dimension geloescht");
                 })));
 
+        // ---- Offline Agent: strukturierte lokale Aufträge ohne Chat-/Cloud-KI ----
+        root.then(literal("agent")
+                .then(literal("status").executes(c -> offlineAgentStatus(c)))
+                .then(literal("confirm").executes(c -> confirmOfflineAgent(c)))
+                .then(literal("reject").executes(c -> rejectOfflineAgent(c)))
+                .then(literal("verify")
+                        .then(literal("success").executes(c -> verifyOfflineAgent(c, true, "Erfolg vom Spieler bestätigt.")))
+                        .then(literal("failed")
+                                .executes(c -> verifyOfflineAgent(c, false, "Fehlschlag vom Spieler bestätigt."))
+                                .then(argument("reason", StringArgumentType.greedyString())
+                                        .executes(c -> verifyOfflineAgent(c, false, str(c, "reason"))))))
+                .then(literal("cancel").executes(c -> cancelOfflineAgent(c)))
+                .then(literal("walk").then(argument("ticks", IntegerArgumentType.integer(1, 100))
+                        .executes(c -> submitOfflineAgentGoal(c, "Gehe für eine kurze, begrenzte Zeit vorwärts.",
+                                "walk_forward", Map.of("ticks", Integer.toString(IntegerArgumentType.getInteger(c, "ticks")))))))
+                .then(literal("navigate")
+                        .then(argument("x", IntegerArgumentType.integer(-30_000_000, 30_000_000))
+                                .then(argument("y", IntegerArgumentType.integer(-2_048, 2_048))
+                                        .then(argument("z", IntegerArgumentType.integer(-30_000_000, 30_000_000))
+                                                .executes(c -> submitOfflineAgentGoal(c, "Navigiere zum angegebenen Ziel.",
+                                                        "navigate_to", Map.of(
+                                                                "x", Integer.toString(IntegerArgumentType.getInteger(c, "x")),
+                                                                "y", Integer.toString(IntegerArgumentType.getInteger(c, "y")),
+                                                                "z", Integer.toString(IntegerArgumentType.getInteger(c, "z")))))))))
+                .then(literal("mine")
+                        .then(argument("x", IntegerArgumentType.integer(-30_000_000, 30_000_000))
+                                .then(argument("y", IntegerArgumentType.integer(-2_048, 2_048))
+                                        .then(argument("z", IntegerArgumentType.integer(-30_000_000, 30_000_000))
+                                                .executes(c -> submitOfflineAgentGoal(c, "Baue den angegebenen Block ab.",
+                                                        "mine_block", Map.of(
+                                                                "x", Integer.toString(IntegerArgumentType.getInteger(c, "x")),
+                                                                "y", Integer.toString(IntegerArgumentType.getInteger(c, "y")),
+                                                                "z", Integer.toString(IntegerArgumentType.getInteger(c, "z")))))))))
+                .then(literal("gather")
+                        .then(argument("kind", StringArgumentType.word())
+                                .then(argument("item", StringArgumentType.word())
+                                        .then(argument("count", IntegerArgumentType.integer(1, 256))
+                                                .executes(c -> queueGatherGoal(c, str(c, "kind"), str(c, "item"),
+                                                        IntegerArgumentType.getInteger(c, "count"))))))
+                .then(literal("craft")
+                        .then(argument("item", StringArgumentType.word())
+                                .executes(c -> submitOfflineAgentGoal(c, "Stelle das gewünschte Item her.",
+                                        "craft_item", Map.of("item", str(c, "item"), "count", "1")))
+                                .then(argument("count", IntegerArgumentType.integer(1, 256))
+                                        .executes(c -> submitOfflineAgentGoal(c, "Stelle die gewünschte Anzahl her.",
+                                                "craft_item", Map.of("item", str(c, "item"),
+                                                        "count", Integer.toString(IntegerArgumentType.getInteger(c, "count"))))))))
+                .then(literal("smelt")
+                        .then(argument("item", StringArgumentType.word())
+                                .then(argument("count", IntegerArgumentType.integer(1, 16))
+                                        .executes(c -> submitOfflineAgentGoal(c, "Schmelze die angegebene Menge im erreichbaren Ofen.",
+                                                "smelt_item", Map.of("item", str(c, "item"),
+                                                        "count", Integer.toString(IntegerArgumentType.getInteger(c, "count"))))))))
+                .then(literal("eat")
+                        .executes(c -> submitOfflineAgentGoal(c, "Iss ein geeignetes Nahrungsmittel.",
+                                "eat_food", Map.of()))
+                        .then(argument("item", StringArgumentType.word())
+                                .executes(c -> submitOfflineAgentGoal(c, "Iss bevorzugt das angegebene Nahrungsmittel.",
+                                        "eat_food", Map.of("item", str(c, "item"))))))
+                .then(literal("sort").executes(c -> submitOfflineAgentGoal(c, "Sortiere das Inventar nach den lokalen Regeln.",
+                        "sort_inventory", Map.of())))
+                .then(literal("search")
+                        .executes(c -> submitOfflineAgentGoal(c, "Erkunde die Umgebung nach Strukturhinweisen.",
+                                "search_structures", Map.of("structure", "any")))
+                        .then(argument("structure", StringArgumentType.word())
+                                .executes(c -> submitOfflineAgentGoal(c, "Erkunde die Umgebung nach der angegebenen Struktur.",
+                                        "search_structures", Map.of("structure", str(c, "structure"))))))
+                .then(literal("attack").executes(c -> submitOfflineAgentGoal(c, "Greife einen nahen feindlichen Mob an.",
+                        "attack_nearest_hostile", Map.of())))
+                .then(literal("guard").executes(c -> submitOfflineAgentGoal(c, "Verteidige den Spieler vor nahen feindlichen Mobs.",
+                        "guard_nearby_hostiles", Map.of())))
+                .then(literal("build")
+                        .then(literal("starter").executes(c -> submitOfflineAgentGoal(c, "Baue das vorbereitete Starter-Schutzhaus.",
+                                "build_starter_shelter", Map.of())))
+                        .then(argument("structure", StringArgumentType.word())
+                                .executes(c -> submitOfflineAgentGoal(c, "Bereite die angegebene lokale Bauvorlage vor.",
+                                        "build_structure", Map.of("structure", str(c, "structure"))))))
+                .then(literal("iron")
+                        .then(argument("count", IntegerArgumentType.integer(1, 64))
+                                .executes(c -> queueIronWorkflow(c, IntegerArgumentType.getInteger(c, "count"))))));
+
         d.register(root);
+    }
+
+    private static int submitOfflineAgentGoal(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c,
+            String description, String action, Map<String, String> parameters) {
+        try {
+            String goalId = nextOfflineGoalId();
+            OfflineAgentCore.Step step = new OfflineAgentCore.Step(
+                    "action", action, parameters, List.of(), 2);
+            Nightfall.offlineAgentCore().submit(new OfflineAgentCore.Goal(
+                    goalId, description, 0, List.of(step)));
+            Nightfall.offlineAgentBridge().prepareNext();
+            return say(c, "Offline-Auftrag " + goalId + " eingereiht. Prüfe die Vorschau im Chat; "
+                    + "bestätige mit /nf agent confirm. Status: /nf agent status.");
+        } catch (RuntimeException failure) {
+            return say(c, "Offline-Auftrag nicht eingereiht: " + safeAgentMessage(failure));
+        }
+    }
+
+    private static int queueGatherGoal(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c,
+            String kind, String item, int count) {
+        String action = switch (kind.toLowerCase(java.util.Locale.ROOT)) {
+            case "wood", "holz" -> "gather_wood";
+            case "block", "blocks" -> "gather_block";
+            case "ore", "erz" -> "gather_ore";
+            default -> null;
+        };
+        if (action == null) return say(c, "Art muss wood, block oder ore sein.");
+        return submitOfflineAgentGoal(c, "Sammle " + count + " × " + item + ".",
+                action, Map.of("item", item, "count", Integer.toString(count)));
+    }
+
+    private static int queueIronWorkflow(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c, int count) {
+        try {
+            String goalId = nextOfflineGoalId();
+            OfflineAgentCore.Step gather = new OfflineAgentCore.Step(
+                    "gather", "gather_ore",
+                    Map.of("item", "minecraft:raw_iron", "count", Integer.toString(count)),
+                    List.of(), 2);
+            OfflineAgentCore.Step smelt = new OfflineAgentCore.Step(
+                    "smelt", "smelt_item",
+                    Map.of("item", "minecraft:raw_iron", "count", Integer.toString(count)),
+                    List.of("gather"), 2);
+            Nightfall.offlineAgentCore().submit(new OfflineAgentCore.Goal(
+                    goalId, "Sammle und schmelze " + count + " rohes Eisen.", 10, List.of(gather, smelt)));
+            Nightfall.offlineAgentBridge().prepareNext();
+            return say(c, "Zwei-Schritt-Workflow " + goalId + " eingereiht: erst Erz sammeln, danach schmelzen. "
+                    + "Jeder Schritt braucht seine eigene Vorschau-Bestätigung und Ergebnisprüfung.");
+        } catch (RuntimeException failure) {
+            return say(c, "Workflow nicht eingereiht: " + safeAgentMessage(failure));
+        }
+    }
+
+    private static int confirmOfflineAgent(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c) {
+        var preview = Nightfall.offlineAgentBridge().pendingPreview();
+        if (preview.isEmpty()) return say(c, "Es liegt keine Offline-Agent-Vorschau zur Bestätigung vor.");
+        try {
+            String result = Nightfall.offlineAgentBridge().confirm(preview.get());
+            return say(c, result + " Danach den tatsächlichen Spielzustand prüfen und /nf agent verify success oder /nf agent verify failed verwenden.");
+        } catch (RuntimeException failure) {
+            return say(c, "Bestätigung fehlgeschlagen: " + safeAgentMessage(failure));
+        }
+    }
+
+    private static int rejectOfflineAgent(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c) {
+        var preview = Nightfall.offlineAgentBridge().pendingPreview();
+        if (preview.isEmpty()) return say(c, "Es liegt keine Offline-Agent-Vorschau zum Ablehnen vor.");
+        try {
+            Nightfall.offlineAgentBridge().reject(preview.get());
+            return say(c, "Vorschau abgelehnt. Diese Aktion wurde nicht ausgeführt.");
+        } catch (RuntimeException failure) {
+            return say(c, "Ablehnen fehlgeschlagen: " + safeAgentMessage(failure));
+        }
+    }
+
+    private static int verifyOfflineAgent(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c,
+            boolean success, String observation) {
+        try {
+            Nightfall.offlineAgentBridge().verifyLastAction(success, observation);
+            Nightfall.offlineAgentBridge().prepareNext();
+            return say(c, success
+                    ? "Ergebnis als erfolgreich bestätigt. Abhängige Schritte können jetzt vorbereitet werden."
+                    : "Fehlschlag eingetragen. Ein erneuter Versuch wird – falls noch erlaubt – mit neuer Vorschau vorbereitet.");
+        } catch (RuntimeException failure) {
+            return say(c, "Ergebnisprüfung nicht möglich: " + safeAgentMessage(failure));
+        }
+    }
+
+    private static int cancelOfflineAgent(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c) {
+        try {
+            Nightfall.offlineAgentBridge().cancelAll();
+            return say(c, "Alle aktiven Offline-Agent-Aufträge wurden abgebrochen.");
+        } catch (RuntimeException failure) {
+            return say(c, "Abbruch fehlgeschlagen: " + safeAgentMessage(failure));
+        }
+    }
+
+    private static int offlineAgentStatus(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c) {
+        OfflineAgentCore core = Nightfall.offlineAgentCore();
+        var bridge = Nightfall.offlineAgentBridge();
+        StringBuilder out = new StringBuilder("Offline-Agent:");
+        if (bridge.pendingPreview().isPresent()) {
+            var preview = bridge.pendingPreview().get();
+            out.append("\\nVorschau wartet auf Bestätigung: ").append(preview.goalId())
+                    .append("/").append(preview.stepId());
+        } else if (bridge.awaitingVerification()) {
+            out.append("\\nEine ausgeführte Aktion wartet auf deine Ergebnisprüfung: /nf agent verify success|failed");
+        } else {
+            out.append("\\nKeine Vorschau und keine Ergebnisprüfung offen.");
+        }
+        int shown = 0;
+        for (OfflineAgentCore.GoalView goal : core.snapshot()) {
+            if (shown++ >= 8) {
+                out.append("\\nWeitere Aufträge in der Historie vorhanden.");
+                break;
+            }
+            out.append("\\n").append(goal.id()).append(" · ").append(goal.status())
+                    .append(" · ").append(goal.description());
+            for (OfflineAgentCore.StepView step : goal.steps()) {
+                out.append("\\n  ").append(step.id()).append(": ").append(step.action())
+                        .append(" · ").append(step.status()).append(" · Versuche ")
+                        .append(step.attempts()).append(step.detail().isBlank() ? "" : " · " + step.detail());
+            }
+        }
+        if (!bridge.lastError().isBlank()) out.append("\\nLetzter Fehler: ").append(bridge.lastError());
+        return say(c, out.toString());
+    }
+
+    private static String nextOfflineGoalId() {
+        return "manual-" + (++offlineAgentSequence);
+    }
+
+    private static String safeAgentMessage(RuntimeException failure) {
+        String message = failure.getMessage();
+        if (message == null || message.isBlank()) return failure.getClass().getSimpleName();
+        return message.length() <= 240 ? message : message.substring(0, 237) + "...";
     }
 
     private static LiteralArgumentBuilder<FabricClientCommandSource> listCmd(String lit, ListSetting list, String label) {
