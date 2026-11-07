@@ -6,9 +6,10 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Keeps local-model prompts small by exposing only action schemas relevant to
- * the latest request. This is prompt routing, not authorization: the action
- * registry and OfflineAgentActionBridge still validate every proposed step.
+ * Keeps local-model prompts small by exposing the read-only client index plus
+ * action schemas relevant to the player's latest request. This is prompt
+ * routing, not authorization: the action registry and OfflineAgentActionBridge
+ * still validate every proposed step.
  */
 public final class LocalAIToolRouter {
     private static final Set<String> ALWAYS_READ_ONLY = Set.of(
@@ -16,7 +17,14 @@ public final class LocalAIToolRouter {
             "get_inventory",
             "get_module_observations",
             "get_player_action_status",
-            "get_build_status"
+            "get_build_status",
+            "list_client_modules",
+            "get_module_settings",
+            "list_waypoints",
+            "get_base_findings",
+            "list_fake_base_templates",
+            "list_schematics",
+            "search_blueprints"
     );
 
     private static final Set<String> SAFE_STOPS = Set.of(
@@ -36,11 +44,13 @@ public final class LocalAIToolRouter {
         boolean inventory = containsAny(request, "inventar", "material", "bestand", "rüstung",
                 "ruestung", "werkzeug", "gegenstand", "item", "sortier", "sortiere",
                 "inventory", "armour", "armor", "gear", "sort inventory", "vorräte", "vorrat",
-                "ressourcen", "materialbedarf", "materialien prüfen", "materialien prüfen",
-                "bestände", "bestand prüfen", "wie viele blöcke", "how many blocks");
+                "ressourcen", "materialbedarf", "materialien prüfen", "materialien pruefen",
+                "bestände", "bestaende", "bestand prüfen", "bestand pruefen", "wie viele blöcke",
+                "wie viele bloecke", "hotbar", "inventarplatz", "inventarplätze", "inventarplaetze",
+                "how many blocks", "how many items");
         boolean building = containsAny(request, "bau", "baue", "bauen", "haus", "hausbau",
-                "schutzhaus", "wachturm", "bauplan", "blueprint", "schematic", "sorgt für",
-                "build", "house", "tower", "structure", "etage", "stockwerk", "geschoss", "mehrstöckig",
+                "schutzhaus", "wachturm", "bauplan", "blueprint", "schematic", "build",
+                "house", "tower", "structure", "etage", "stockwerk", "geschoss", "mehrstöckig",
                 "mehrstoeckig", "burg", "schloss", "mauer", "brücke", "bruecke", "farmhaus",
                 "gebäude", "gebaeude", "bauabschnitt", "baufortschritt", "materialliste",
                 "materialien", "baustufe", "bauetappe", "castle", "fortress", "building",
@@ -50,33 +60,50 @@ public final class LocalAIToolRouter {
                 "stamm", "erz", "kohle", "eisen", "stein", "abbau", "mine", "craft",
                 "crafting", "herstell", "schmelz", "ofen", "essen", "hunger",
                 "gather", "collect", "wood", "log", "ore", "coal", "iron", "stone",
-                "mine", "craft", "smelt", "furnace", "eat", "food", "abbauen", "sammeln",
+                "smelt", "furnace", "eat", "food", "abbauen", "sammeln",
                 "beschaffe", "beschaffen", "herstellen", "herstelle", "schmelzen",
-                "nahrung", "verpflegung", "werkbank", "rohstoffe", "ressourcen sammeln");
+                "nahrung", "verpflegung", "werkbank", "rohstoffe", "ressourcen sammeln",
+                "grinden", "grind", "minen", "mine mir");
         boolean navigation = containsAny(request, "navig", "geh zu", "gehe zu", "lauf", "laufe",
                 "beweg", "wegpunkt", "waypoint", "route", "struktur", "dorf", "festung",
                 "biom", "dschungel", "wüste", "wueste", "tempel", "antike stadt", "stronghold",
-                "bastion", "trial chamber", "navigate", "go to", "walk", "waypoint", "wegpunkt", "markiere", "markierung",
-                "route", "locate", "biome", "jungle", "desert", "temple", "village",
-                "fortress", "stronghold", "koordinaten", "wo ist", "finde", "suche nach",
-                "entfernung", "position", "erkunde", "erkunden", "entdecken");
+                "bastion", "trial chamber", "navigate", "go to", "walk", "locate", "biome",
+                "jungle", "desert", "temple", "village", "fortress", "koordinaten",
+                "wo ist", "finde", "suche nach", "entfernung", "position", "erkunde",
+                "erkunden", "entdecken", "teleportiere", "teleport", "rtp", "zufalls-teleport",
+                "zufallsteleport");
+        boolean randomTeleport = containsAny(request, "rtp", "zufalls-teleport",
+                "zufallsteleport", "random teleport", "teleportiere mich zufällig");
         boolean scanning = containsAny(request, "base", "basis", "scanner", "scan", "chunk",
                 "fund", "finden", "suche", "such", "heatmap", "analyse", "analysiere",
                 "spielerbasis", "versteckte basis", "truhen", "kisten", "blockentities",
-                "beobachtungen", "scanergebnis", "scannergebnisse");
-        boolean modules = containsAny(request, "modul", "module", "esp", "clickgui", "einstellung",
-                "setting", "aktiviere", "deaktiviere", "schalte", "theme", "hud",
-                "enable", "disable", "toggle", "settings", "turn on", "turn off",
-                "einstellung ändern", "einstellung aendern", "wert ändern", "wert aendern",
-                "menü öffnen", "menue oeffnen", "menü", "menue");
+                "block entities", "beobachtungen", "scanergebnis", "scannergebnisse",
+                "fakebase", "fake base", "decoy", "staff", "vanish", "unsichtbar",
+                "spieler finden", "spielersuche");
+        boolean modules = containsAny(request, "modul", "module", "esp", "clickgui",
+                "einstellung", "einstellungen", "setting", "settings", "aktiviere",
+                "aktivieren", "aktivier", "deaktiviere", "deaktivieren", "schalte",
+                "einschalt", "ausschalt", "theme", "hud", "enable", "disable", "toggle",
+                "turn on", "turn off", "konfig", "configuration", "konfigur",
+                "verändere", "veraendere", "ändern", "aendern", "anpassen",
+                "optimiere", "optimier", "mach an", "mach aus", "menü öffnen",
+                "menue oeffnen", "click gui", "client-menü", "client menü",
+                "client menu", "module einstellen", "client einstellen");
         boolean schematics = containsAny(request, "schematic", "schematics", "bauplan",
-                "blueprint", "struktur vergleichen", "reparier", "repariere");
+                "blueprint", "struktur vergleichen", "reparier", "repariere",
+                "schematic prüfen", "schematic pruefen", "bauvorlage", "vorlage bauen");
         boolean combat = containsAny(request, "feindliche mobs", "feindlicher mob", "monster",
                 "skelett", "zombie", "creeper", "bewache", "verteidige mich gegen mobs",
-                "mob angreifen", "mob abwehren");
+                "mob angreifen", "mob abwehren", "greif den mob", "greife mobs",
+                "beschütze mich", "beschuetze mich", "bewach mich", "wache halten",
+                "hostile", "guard me", "attack the mob");
         boolean serverCommand = request.contains("/locate") || request.contains("/rtp")
                 || request.contains("/home") || request.contains("/spawn")
-                || request.contains("serverbefehl") || request.contains("server command");
+                || request.contains("serverbefehl") || request.contains("server command")
+                || request.contains("führe den befehl") || request.contains("fuehre den befehl");
+        boolean taskManagement = containsAny(request, "agent", "auftrag", "aufträge",
+                "auftraege", "task", "fortsetzen", "weiter machen", "abbrechen",
+                "verwerfen", "checkpoint", "gespeicherte aufgabe", "gespeicherten auftrag");
 
         if (inventory) {
             add(selected, "get_inventory", "get_player_status", "sort_inventory",
@@ -97,13 +124,15 @@ public final class LocalAIToolRouter {
         }
         if (gathering) {
             add(selected, "gather_wood", "gather_block", "gather_ore", "craft_item",
-                    "smelt_item", "eat_food", "sort_inventory", "resume_saved_task");
+                    "smelt_item", "eat_food", "sort_inventory", "resume_saved_task",
+                    "mine_block", "mine_looked_block");
         }
         if (navigation) {
             add(selected, "locate_structure", "locate_biome", "search_structures",
                     "navigate_to", "walk_forward", "add_waypoint", "list_waypoints",
                     "resume_saved_task", "clear_saved_task");
         }
+        if (randomTeleport) add(selected, "random_teleport");
         if (containsAny(request, "wegpunkt", "waypoint", "markierung", "markiere")) {
             add(selected, "add_waypoint", "list_waypoints");
         }
@@ -112,21 +141,25 @@ public final class LocalAIToolRouter {
                     "mark_fake_base", "list_fake_base_templates");
         }
         if (modules) {
-            add(selected, "get_module_settings", "set_module_state", "set_module_setting",
-                    "open_nightfall_menu", "get_module_observations");
+            add(selected, "list_client_modules", "get_module_settings", "set_module_state",
+                    "set_module_setting", "open_nightfall_menu", "get_module_observations");
         }
-        if (combat) {
-            add(selected, "attack_nearest_hostile", "guard_nearby_hostiles");
-        }
+        if (combat) add(selected, "attack_nearest_hostile", "guard_nearby_hostiles");
         if (serverCommand) {
             add(selected, "run_server_command", "locate_structure", "locate_biome",
                     "random_teleport");
         }
+        if (taskManagement) {
+            add(selected, "get_player_action_status", "get_build_status", "resume_saved_task",
+                    "clear_saved_task", "resume_saved_build", "pause_build", "resume_build",
+                    "stop_build", "stop_current_action");
+        }
 
         // A capability overview is read-only and never exposes mutating action schemas.
         if (isCapabilityQuestion(history)) {
-            add(selected, "list_waypoints", "get_base_findings", "search_blueprints",
-                    "list_schematics", "get_module_settings");
+            add(selected, "list_client_modules", "get_module_settings", "list_waypoints",
+                    "get_base_findings", "list_fake_base_templates", "search_blueprints",
+                    "list_schematics");
         }
         return Set.copyOf(selected);
     }
@@ -136,9 +169,14 @@ public final class LocalAIToolRouter {
         if (Set.of("hilfe", "help", "/nf agent help").contains(request)) return true;
         return containsAny(request, "was kannst du", "was kannst du alles", "welche funktionen",
                 "welche skills", "was ist möglich", "was ist moeglich",
-                "zeige deine funktionen", "liste deine funktionen", "fähigkeiten", "faehigkeiten",
-                "what can you do", "what are your capabilities", "list your functions",
-                "show your capabilities", "capabilities overview");
+                "zeige deine funktionen", "liste deine funktionen", "fähigkeiten",
+                "faehigkeiten", "what can you do", "what are your capabilities",
+                "list your functions", "show your capabilities", "capabilities overview",
+                "alle funktionen", "funktionen vom client", "client funktionen",
+                "was kann der client", "welche module", "alle module", "module anzeigen",
+                "modulliste", "modul liste", "modulübersicht", "moduluebersicht",
+                "welche module gibt es", "all features", "list all modules",
+                "show available modules");
     }
 
     private static String lastUserTurns(List<LocalAIPlanner.Turn> history) {
