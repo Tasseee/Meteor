@@ -83,6 +83,47 @@ public final class LocalAIPlanner {
         return prompt.toString();
     }
 
+    /**
+     * Builds a constrained repair prompt for a failed goal. Completed steps are
+     * supplied as immutable history; the model must plan only the remaining work.
+     */
+    public static String buildReplanPrompt(List<Turn> history, String localWorldContext,
+                                           OfflineAgentCore.GoalView failedGoal) {
+        if (failedGoal == null || failedGoal.status() != OfflineAgentCore.GoalStatus.FAILED) {
+            throw new IllegalArgumentException("Nur fehlgeschlagene Aufträge können neu geplant werden.");
+        }
+        StringBuilder instruction = new StringBuilder(2_000);
+        instruction.append("NEUPLANUNG EINES BESTEHENDEN AUFTRAGS\n")
+                .append("Ziel: ").append(promptSafe(failedGoal.description(), 512)).append("\n")
+                .append("Der vorherige Plan ist fehlgeschlagen. Erstelle ausschließlich einen Ersatzplan ")
+                .append("für die noch nicht erledigte Arbeit. Wiederhole niemals erfolgreich bestätigte Schritte. ")
+                .append("Verwende ausschließlich aktuelle Inventar-/Weltbeobachtungen aus dem Kontext; ")
+                .append("rate keine Fehlmengen oder Ergebnisse. Wenn eine sichere Alternative nicht belegbar ist, ")
+                .append("antworte mit einer Rückfrage im answer-Modus.\n")
+                .append("Schrittstatus des alten Plans (nur Beobachtung):\n");
+        for (OfflineAgentCore.StepView step : failedGoal.steps()) {
+            instruction.append("- ").append(promptSafe(step.id(), 64)).append(" / ")
+                    .append(promptSafe(step.action(), 64)).append(": ").append(step.status())
+                    .append(" · ").append(promptSafe(step.detail(), 300)).append("\n");
+        }
+        instruction.append("Erzeuge einen normalen JSON-Plan mit höchstens 12 neuen Schritten. ")
+                .append("Die lokale Aufgabenverwaltung fügt die bereits erfolgreichen Schritte selbst als Historie hinzu. ")
+                .append("Abhängigkeiten neuer Schritte dürfen auf die IDs der bereits erfolgreichen Schritte verweisen. ")
+                .append("Wähle neue, eindeutige IDs und beginne nicht mit einem Schritt, dessen Ergebnis bereits bestätigt ist.");
+        String base = buildPrompt(history, localWorldContext);
+        int assistant = base.lastIndexOf("<|im_start|>assistant\n");
+        if (assistant < 0) throw new IllegalStateException("Planner-Prompt konnte nicht erstellt werden.");
+        return base.substring(0, assistant) + "<|im_start|>system\n"
+                + instruction + "\n<|im_end|>\n" + base.substring(assistant);
+    }
+
+    private static String promptSafe(String value, int limit) {
+        if (value == null) return "";
+        String safe = value.replace("<|im_start|>", "").replace("<|im_end|>", "")
+                .replaceAll("[\\r\\n]+", " ").trim();
+        return safe.length() <= limit ? safe : safe.substring(0, limit);
+    }
+
     public static String capabilityCatalog() {
         StringBuilder catalog = new StringBuilder();
         Map<String, Map<String, String>> supported = OfflineAgentActionBridge.supportedActions();
