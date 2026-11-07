@@ -860,14 +860,30 @@ public final class AIChatScreen extends Screen {
             return;
         }
         if (!LocalAIModelService.isReady()) return;
-        boolean buildPlanningRequest = LocalAIToolRouter.selectTools(turns).contains("build_structure");
+
+        OfflineAgentCore.GoalView replanTarget = requestedReplan(turns)
+                ? latestFailedGoal() : null;
+        boolean buildPlanningRequest = LocalAIToolRouter.selectTools(turns).contains("build_structure")
+                || (replanTarget != null && replanTarget.description().toLowerCase(Locale.ROOT)
+                .matches("(?s).*(haus|hütte|gebäude|burg|turm|farm|bau|bauen|house|castle|tower|build).*"));
         String context = localWorldContextEnabled
                 ? worldContext(buildPlanningRequest) + "\n\n" + AILocalRuntimeContext.capture()
                 : "";
-        String prompt = LocalAIPlanner.buildPrompt(turns, context);
+        if (replanTarget != null) {
+            context += "\n\nFEHLGESCHLAGENER AUFTRAG ZUR NEUPLANUNG: "
+                    + replanTarget.description() + "\n";
+            for (OfflineAgentCore.StepView step : replanTarget.steps()) {
+                context += "- " + step.id() + " / " + step.action() + " / " + step.status()
+                        + " / " + step.detail() + "\n";
+            }
+        }
+        String prompt = replanTarget == null
+                ? LocalAIPlanner.buildPrompt(turns, context)
+                : LocalAIPlanner.buildReplanPrompt(turns, context, replanTarget);
         int requestGeneration = sessionGeneration;
         int responseIndex = history.size();
-        history.add(new ChatLine("assistant", "Nightfall denkt lokal …"));
+        history.add(new ChatLine("assistant", replanTarget == null
+                ? "Nightfall denkt lokal …" : "Nightfall prüft den fehlgeschlagenen Auftrag und plant den offenen Teil neu …"));
         waiting = true;
         status = "Lokale Inferenz läuft auf diesem PC …";
         scroll = Float.MAX_VALUE;
@@ -900,19 +916,27 @@ public final class AIChatScreen extends Screen {
                         }
                     }
                     Nightfall.offlineAgentBridge().ensureReady();
-                    Nightfall.offlineAgentCore().submit(plan.goal());
+                    if (replanTarget != null) {
+                        Nightfall.offlineAgentCore().replanRemaining(replanTarget.id(), plan.goal().steps());
+                    } else {
+                        Nightfall.offlineAgentCore().submit(plan.goal());
+                    }
                     var prepared = Nightfall.offlineAgentBridge().prepareNext();
-                    String message = "Ich habe den Auftrag lokal geplant: " + plan.goal().description()
-                            + "\n" + plan.goal().steps().size() + " Schritt(e) · Task-ID " + plan.goal().id()
+                    String message = replanTarget == null
+                            ? "Ich habe den Auftrag lokal geplant: " + plan.goal().description()
+                            : "Ich habe den fehlgeschlagenen Auftrag neu geplant: " + replanTarget.description()
+                                    + "\nBestätigte Schritte bleiben erhalten; nur der offene Teil wurde ersetzt.";
+                    message += "\n" + plan.goal().steps().size() + " neue Schritt(e)"
+                            + (replanTarget == null ? " · Task-ID " + plan.goal().id() : " · bestehende Task-ID " + replanTarget.id())
                             + "\n";
                     if (prepared.isPresent()) {
-                        message += "Vorschau für den ersten Schritt:\n" + prepared.get().preview()
+                        message += "Vorschau für den nächsten Schritt:\n" + prepared.get().preview()
                                 + "\n\nPrüfe die Aktion und klicke unten auf AKTION AUSFÜHREN oder ABBRECHEN. "
                                 + "Alternativ funktionieren /nf agent confirm und /nf agent reject. "
                                 + "/nf agent status zeigt den Fortschritt.";
-                        status = "Lokaler Plan bereit · wartet auf deine Bestätigung";
+                        status = "Neuer lokaler Plan bereit · wartet auf deine Bestätigung";
                     } else {
-                        message += "Der Plan ist eingereiht. Nightfall bereitet den nächsten Schritt vor, sobald ein anderer Auftrag beendet ist.";
+                        message += "Der Plan ist eingereiht. Nightfall bereitet den nächsten Schritt vor, sobald es sicher möglich ist.";
                         status = "Lokaler Plan eingereiht";
                     }
                     history.set(responseIndex, new ChatLine("assistant", message));
@@ -927,6 +951,28 @@ public final class AIChatScreen extends Screen {
             }
             scroll = Float.MAX_VALUE;
         });
+    }
+
+    private static OfflineAgentCore.GoalView latestFailedGoal() {
+        List<OfflineAgentCore.GoalView> goals = Nightfall.offlineAgentCore().snapshot();
+        for (int i = goals.size() - 1; i >= 0; i--) {
+            OfflineAgentCore.GoalView goal = goals.get(i);
+            if (goal.status() == OfflineAgentCore.GoalStatus.FAILED) return goal;
+        }
+        return null;
+    }
+
+    private static boolean requestedReplan(List<LocalAIPlanner.Turn> turns) {
+        if (turns == null || turns.isEmpty()) return false;
+        String lastUser = "";
+        for (int i = turns.size() - 1; i >= 0; i--) {
+            if ("user".equals(turns.get(i).role())) {
+                lastUser = turns.get(i).content() == null ? "" : turns.get(i).content();
+                break;
+            }
+        }
+        String normalized = lastUser.toLowerCase(Locale.ROOT);
+        return normalized.matches("(?s).*(plane (?:weiter|neu)|neu planen|plan(?:e|ung) anpassen|versuch(?:e)? es anders|auftrag (?:neu|anders) planen|mach einen neuen plan).*");
     }
 
     private void confirmPendingAction() {
