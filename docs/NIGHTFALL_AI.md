@@ -1,6 +1,6 @@
 # Nightfall – Offline-Agent und lokale Aktionen
 
-**Offline-Modus auf dem Branch `nightfall/offline-agent-core`:** Chat-Anfragen werden nicht mehr an OpenAI oder andere Anbieter gesendet. Alte Provider-URLs und API-Schlüssel werden beim Laden der Nightfall-AI-Konfiguration durch lokale Offline-Defaults ersetzt. Cloud-Chat, Cloud-Transkription und Cloud-Sprachausgabe sind damit deaktiviert. Es gibt aktuell **keinen Sprachparser und kein lokales Sprachmodell**; die Bedienung des Offline-Agenten erfolgt vorerst über die unten aufgeführten Minecraft-Befehle. Stimme und natürlichsprachlicher Chat bleiben bewusst spätere Ausbaustufen.
+**Offline-Modus auf dem Branch `nightfall/offline-agent-core`:** Nightfall verwendet jetzt ein eingebettetes lokales Sprachmodell über Java-Bindings für `llama.cpp`. Chat, Planung und Minecraft-Kontext laufen auf dem PC; Nightfall sendet dabei keine Prompts, Inventardaten, Koordinaten oder Weltbeobachtungen an einen KI-Anbieter. Es gibt keinen Ollama-Dienst, keinen API-Key, kein Konto und kein Abo. Beim ersten Klick auf **MODELL LADEN** lädt Nightfall einmalig die GGUF-Datei `Qwen2.5-1.5B-Instruct Q4_K_M` (rund 1,1 GB) von Hugging Face nach `config/nightfall/models/`; danach ist die Inferenz lokal und offline nutzbar. Die Modell-Datei wird nicht in das Mod-JAR gepackt. Das kleine 1,5B-Modell ist ein ressourcenschonender Einstieg und kann bei komplizierten Plänen Fehler machen; Nightfalls lokale Aktions-Allowlist, Parameterprüfung, Vorschau und Spielerbestätigung bleiben deshalb zwingend. Voice/STT/TTS sind weiterhin nicht angeschlossen.
 
 ## Offline-Agent im Spiel
 
@@ -113,14 +113,16 @@ gefunden wurde.
 
 ## Setup
 
-Der Offline-Agent benötigt keinen API-Key, kein Modell-Download und keine Netzwerkverbindung zu einem KI-Anbieter. Nightfall erstellt bzw. ersetzt `config/nightfall/ai.json` beim Laden mit Offline-Defaults. Alte API-Keys und Remote-Endpunkte aus der früheren Provider-Konfiguration werden dabei entfernt.
+Nightfall benötigt keinen API-Key und keine Netzwerkverbindung zu einem KI-Anbieter. Nightfall erstellt bzw. ersetzt `config/nightfall/ai.json` beim Laden mit Offline-Defaults. Alte API-Keys und Remote-Endpunkte aus der früheren Provider-Konfiguration werden dabei entfernt.
 
-Starte Minecraft mit dem Mod und nutze `/nf agent status`. Die Befehle unter „Offline-Agent im Spiel“ sind der aktuelle lokale Steuerungsweg. Freie Spracheingabe und Sprachausgabe sind in diesem Stand deaktiviert und werden später ergänzt.
+**Ersteinrichtung:** Starte Minecraft mit dem Mod, öffne mit `J` das Nightfall-AI-Fenster und klicke oben rechts auf **MODELL LADEN**. Beim ersten Mal wird die GGUF-Datei mit ungefähr 1,1 GB einmalig heruntergeladen und anschließend im Hintergrund geladen. Die Datei liegt unter `config/nightfall/models/qwen2.5-1.5b-instruct-q4_k_m.gguf`. Der Download erfolgt nur nach deinem Klick; eine unvollständige Datei wird nicht als Modell übernommen. Sobald der Status `MODELL BEREIT` zeigt, kannst du natürlichsprachliche Fragen und Weltaufträge eingeben. Bei späteren Starts muss nur noch das lokal vorhandene Modell geladen werden.
+
+Das Modell braucht Arbeitsspeicher zusätzlich zu Minecraft. Die erste Inferenz kann länger dauern; die Berechnung läuft auf einem eigenen Hintergrundthread und blockiert nicht den Minecraft-Tick. Auf Windows x64, Linux x86-64/ARM64 und macOS x86-64/ARM64 bringt die eingebettete `llama.cpp`-Bibliothek CPU-Unterstützung mit. Andere Plattformen oder fehlende native Bibliotheken können einen Ladefehler erzeugen. Derzeit gibt es keine GPU-Beschleunigungskonfiguration und keinen Spracherkennungs-/Sprachausgabe-Pfad.
 
 ## In-game use · Offline
 
 - Press **J** to open Nightfall's companion screen.
-- Natural-language chat is intentionally not connected yet. The text field explains the offline controls; use `/nf agent help` for the local command list.
+- The text field uses the embedded local Qwen model for ordinary chat and structured world/build plans. Click `MODELL LADEN` once to download/load the model. No conversation or Minecraft context is sent to a provider.
 - Use `/nf agent status` to inspect queued goals, previews and controller progress.
 - Each world-changing action gets a preview in Minecraft chat. Confirm with `/nf agent confirm` or reject with `/nf agent reject`.
 - Local controller completions are checked automatically against explicit success messages. Partial results and safety stops do not count as success. External server commands still require `/nf agent verify success|failed` after the server response.
@@ -175,7 +177,7 @@ Before a world-changing offline action, Nightfall displays a preview in Minecraf
 - Server-command feedback is matched at word boundaries to the actual command root, so short commands such as `tp` do not accidentally match unrelated words. The ordinary command tool accepts a single command with no command chaining. It blocks server administration roots (for example `op`, `ban`, `stop`, `whitelist`, common permission-management aliases) and high-impact world-edit roots/aliases (for example `execute`, `fill`, `clone`, `setblock`, `worldedit`, `we`, `fawe`, `//set`, `//paste`, `//undo`). Every command is shown exactly as it will be sent and needs confirmation. The server still decides whether the user has permission.
 - Server permissions remain authoritative. The biome search command can fail on servers that do not permit `/locate`; Nightfall does not bypass permissions or teleport the player.
 - For ordinary commands, Nightfall watches game/system chat and player chat for up to 30 seconds, including while the AI screen is closed; only one command response may be pending at a time to avoid mixing replies. It can surface a likely related response or explicit permission/unknown-command rejection, then passes that server message back to the AI for explanation without repeating the command. If no unique response arrives or the connection drops, it reports execution as unconfirmed. Generic plugin messages cannot always be correlated reliably. A sent command is never reported as successfully executed without a clear server response.
-- No AI model, API key, or network endpoint is required in offline mode.
+- The local Qwen GGUF model is stored under `config/nightfall/models/`; inference runs in-process through `llama.cpp`. No API key, account, cloud endpoint, Ollama server or subscription is used. A one-time model download requires an internet connection.
 - Offline goals support bounded dependency graphs and retries; only one Minecraft action is in flight at a time. Controller completion is automatically classified only for explicit successful terminal messages.
 - The in-memory chat session is reused when the AI screen is closed and reopened. The visible transcript remains available during the client session; on server disconnect, pending actions are cancelled and the AI context is cleared so old world/inventory data cannot leak into a different server.
 - The builder offers three deterministic templates: a 4x4 starter shelter (54 blocks), a 6x6 house with three-block-high walls (130 blocks), and a 5x5 watchtower with four six-block-high corner pillars (74 blocks). Other structures can be supplied as a bounded JSON block list through `/nf agent action build_custom_structure`, up to 512 blocks in a 32x32x32 grid.
