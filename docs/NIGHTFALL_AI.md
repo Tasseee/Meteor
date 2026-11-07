@@ -1,6 +1,5 @@
 # Nightfall – Offline-Agent und lokale Aktionen
 
-<escape></escape>
 **Offline-Modus auf dem Branch `nightfall/offline-agent-core`:** Chat-Anfragen werden nicht mehr an OpenAI oder andere Anbieter gesendet. Alte Provider-URLs und API-Schlüssel werden beim Laden der Nightfall-AI-Konfiguration durch lokale Offline-Defaults ersetzt. Cloud-Chat, Cloud-Transkription und Cloud-Sprachausgabe sind damit deaktiviert. Es gibt aktuell **keinen Sprachparser und kein lokales Sprachmodell**; die Bedienung des Offline-Agenten erfolgt vorerst über die unten aufgeführten Minecraft-Befehle. Stimme und natürlichsprachlicher Chat bleiben bewusst spätere Ausbaustufen.
 
 ## Offline-Agent im Spiel
@@ -16,14 +15,17 @@ Wichtige Befehle:
 - `/nf agent craft minecraft:oak_planks 32`, `/nf agent smelt minecraft:raw_iron 8`, `/nf agent eat`, `/nf agent sort` – Crafting, Schmelzen, Essen und Inventarsortierung.
 - `/nf agent wood 32` – mehrstufig: Eichenstämme sammeln, danach Eichenbretter herstellen.
 - `/nf agent iron 8` – mehrstufig: rohes Eisen sammeln, danach in einem erreichbaren Ofen schmelzen.
-- `/nf agent build starter` oder `/nf agent build large_house` – vorhandene Bauvorlagen vorbereiten und bauen.
+- `/nf agent build starter`, `/nf agent build large_house`, `/nf agent build watchtower` – vorhandene Bauvorlagen vorbereiten und bauen.
+- `/nf agent build resume` – einen vom vorhandenen Builder gespeicherten und server-/dimensionsgebundenen Bau-Checkpoint fortsetzen.
 - `/nf agent schematic datei.schem` – ersten Abschnitt einer lokalen Schematic vorbereiten.
 - `/nf agent navigate X Y Z`, `/nf agent mine X Y Z`, `/nf agent walk 20` – begrenzte Navigation, Abbau und Bewegung.
 - `/nf agent search ancient_city`, `/nf agent attack`, `/nf agent guard` – Strukturhinweise suchen oder nahe feindliche Mobs abwehren.
 
 Die Sammel-, Crafting-, Schmelz-, Bau- und Kampfaktionen verwenden bestehende Client-Controller und deren lokale Validierung. Kampfziele sind ausschließlich feindliche Minecraft-Mobs; Spieler und neutrale/passive Tiere werden nicht ausgewählt. Die Grenzen der vorhandenen Controller gelten weiterhin (z. B. geladene Chunks, sichere Wege, begrenzte Laufzeiten und Aktionslimits). Die manuelle Ergebnisprüfung ist absichtlich konservativ: Ein zurückgegebener Starttext ist kein Beweis, dass ein mehrtaktiger Vorgang bereits fertig ist.
 
-**Noch nicht enthalten:** freie Spracheingabe/NLP, lokale Sprachmodelle, echte automatische Beobachtungs-Auswertung, dauerhaft gespeicherte Agenten-Auftragswarteschlange, vollautomatisches Farming und selbstständiges Lernen. Der Aufgabenstatus liegt derzeit im Arbeitsspeicher des laufenden Clients. Diese Funktionen werden nicht als fertig ausgegeben.
+**Noch nicht enthalten:** freie Spracheingabe/NLP, lokale Sprachmodelle, echte automatische Beobachtungs-Auswertung, dauerhaft gespeicherte Agenten-Auftragswarteschlange, vollautomatisches Farming und selbstständiges Lernen. Der Aufgabenstatus liegt derzeit im Arbeitsspeicher des laufenden Clients. Bei einem Serverwechsel werden offene Agentenaufträge verworfen; die bestehenden Controller können ihre eigenen unterstützten Checkpoints (z. B. Baufortschritt) separat sichern. Diese Funktionen werden nicht als fertig ausgegeben.
+
+Die folgenden älteren Abschnitte dokumentieren die vorhandenen Minecraft-Aktionen und deren lokale Grenzen. Hinweise auf einen konfigurierten KI-Anbieter beschreiben den früheren Provider-Betrieb; dieser ist auf diesem Branch deaktiviert.
 
 ---
 
