@@ -83,8 +83,6 @@ public final class OfflineAgentActionBridge {
     /** Executes only the exact step whose preview was most recently returned. */
     public synchronized String confirm(PreparedStep confirmation) {
         if (!MinecraftClient.getInstance().isOnThread())
-            throw new IllegalStateException("Agentenaktionen müssen auf dem Minecraft-Client-Thread ausgeführt werden.");
-        if (!MinecraftClient.getInstance().isOnThread())
             throw new IllegalStateException("Agentenaktionen müssen auf dem Minecraft-Client-Thread bestätigt werden.");
         if (pending == null || pending != confirmation) {
             throw new IllegalStateException("Es liegt keine passende Aktionsvorschau zur Bestätigung vor.");
