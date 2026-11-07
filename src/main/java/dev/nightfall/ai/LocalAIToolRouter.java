@@ -43,7 +43,9 @@ public final class LocalAIToolRouter {
                 "build", "house", "tower", "structure", "etage", "stockwerk", "geschoss", "mehrstöckig",
                 "mehrstoeckig", "burg", "schloss", "mauer", "brücke", "bruecke", "farmhaus",
                 "gebäude", "gebaeude", "bauabschnitt", "baufortschritt", "materialliste",
-                "materialien", "baustufe", "bauetappe");
+                "materialien", "baustufe", "bauetappe", "castle", "fortress", "building",
+                "construct", "floor", "floors", "story", "stories", "storey", "storeys",
+                "multi-storey", "two-story", "two-storey");
         boolean gathering = containsAny(request, "sammel", "sammle", "farm", "farmen", "holz",
                 "stamm", "erz", "kohle", "eisen", "stein", "abbau", "mine", "craft",
                 "crafting", "herstell", "schmelz", "ofen", "essen", "hunger",
