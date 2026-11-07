@@ -217,7 +217,8 @@ public final class AIActionRegistry {
             JsonObject coordinate = new JsonObject();
             coordinate.addProperty("type", "integer");
             coordinate.addProperty("minimum", 0);
-            coordinate.addProperty("maximum", axis.equals("y") ? 10 : 15);
+            coordinate.addProperty("maximum", 31);
+            coordinate.addProperty("description", "Nonnegative block offset from the structure origin; each axis is limited to 0..31.");
             coordinateProps.add(axis, coordinate);
         }
         JsonObject blockMaterial = new JsonObject();
