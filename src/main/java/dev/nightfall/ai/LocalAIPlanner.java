@@ -11,8 +11,8 @@ import java.util.Map;
 public final class LocalAIPlanner {
     public record Turn(String role, String content) {}
 
-    private static final int MAX_CONTEXT_CHARS = 3_200;
-    private static final int MAX_TURN_CHARS = 650;
+    private static final int MAX_CONTEXT_CHARS = 1_800;
+    private static final int MAX_TURN_CHARS = 350;
 
     private LocalAIPlanner() {}
 
@@ -49,7 +49,7 @@ public final class LocalAIPlanner {
         }
 
         if (history != null) {
-            int first = Math.max(0, history.size() - 6);
+            int first = Math.max(0, history.size() - 4);
             for (int i = first; i < history.size(); i++) {
                 Turn turn = history.get(i);
                 String role = "user".equals(turn.role()) ? "user" : "assistant";
@@ -79,8 +79,8 @@ public final class LocalAIPlanner {
             compact.addProperty("name", name);
             if (function.has("description") && function.get("description").isJsonPrimitive()) {
                 String description = function.get("description").getAsString();
-                compact.addProperty("description", description.length() > 220
-                        ? description.substring(0, 217) + "..." : description);
+                compact.addProperty("description", description.length() > 140
+                        ? description.substring(0, 137) + "..." : description);
             }
             if (function.has("parameters") && function.get("parameters").isJsonObject()) {
                 JsonObject schema = function.getAsJsonObject("parameters").deepCopy();
