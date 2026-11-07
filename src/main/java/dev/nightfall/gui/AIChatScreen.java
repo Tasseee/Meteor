@@ -5,6 +5,7 @@ import dev.nightfall.ai.AIChatClient;
 import dev.nightfall.ai.LocalAIModelService;
 import dev.nightfall.ai.LocalAIPlanner;
 import dev.nightfall.ai.LocalAIResponseParser;
+import dev.nightfall.ai.AILocalRuntimeContext;
 import dev.nightfall.ai.OfflineAgentCore;
 import dev.nightfall.ai.AIConfig;
 import dev.nightfall.ai.AIVoiceClient;
@@ -797,7 +798,9 @@ public final class AIChatScreen extends Screen {
         List<LocalAIPlanner.Turn> turns = history.stream()
                 .map(line -> new LocalAIPlanner.Turn(line.role(), line.content()))
                 .toList();
-        String context = localWorldContextEnabled ? worldContext() : "";
+        String context = localWorldContextEnabled
+                ? worldContext() + "\n\n" + AILocalRuntimeContext.capture()
+                : "";
         String prompt = LocalAIPlanner.buildPrompt(turns, context);
         int requestGeneration = sessionGeneration;
         int responseIndex = history.size();
