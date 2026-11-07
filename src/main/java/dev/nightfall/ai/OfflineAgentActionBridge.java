@@ -248,12 +248,16 @@ public final class OfflineAgentActionBridge {
     }
 
     private void rememberFinishedGoals() {
-        for (OfflineAgentCore.GoalView goal : core.snapshot()) {
+        List<OfflineAgentCore.GoalView> snapshot = core.snapshot();
+        Set<String> retainedIds = new HashSet<>();
+        for (OfflineAgentCore.GoalView goal : snapshot) {
+            retainedIds.add(goal.id());
             if (goal.status() != OfflineAgentCore.GoalStatus.ACTIVE
                     && rememberedGoals.add(goal.id())) {
                 OfflineAgentMemory.record(goal);
             }
         }
+        rememberedGoals.retainAll(retainedIds);
     }
 
     private boolean controllerActionStarted() {
