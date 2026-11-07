@@ -709,10 +709,10 @@ public final class Commands {
         for (Map.Entry<String, Map<String, String>> entry : actions.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey()).toList()) {
             if (shown++ >= 45) {
-                out.append("\\n… weitere Aktionen sind über /nf agent action <name> <json> verfügbar.");
+                out.append("\n… weitere Aktionen sind über /nf agent action <name> <json> verfügbar.");
                 break;
             }
-            out.append("\\n").append(entry.getKey()).append(" {");
+            out.append("\n").append(entry.getKey()).append(" {");
             boolean first = true;
             for (Map.Entry<String, String> parameter : entry.getValue().entrySet()) {
                 if (!first) out.append(", ");
@@ -721,7 +721,7 @@ public final class Commands {
             }
             out.append("}");
         }
-        out.append("\\nAufruf: /nf agent action <name> <json>. Vor jeder Weltänderung erscheint eine Vorschau.");
+        out.append("\nAufruf: /nf agent action <name> <json>. Vor jeder Weltänderung erscheint eine Vorschau.");
         return say(c, out.toString());
     }
 
