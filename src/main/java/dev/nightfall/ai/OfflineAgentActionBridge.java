@@ -376,10 +376,11 @@ public final class OfflineAgentActionBridge {
         verificationKind = VerificationKind.NONE;
         setupPromptKey = "";
         setupPrompt = "";
+        rememberFinishedGoals();
         core.clearAll();
+        rememberedGoals.clear();
         loadedQueueWorldKey = "";
         lastQueueSaveRevision = -1L;
-        rememberFinishedGoals();
     }
 
     /** Cancels only a queued or running Builder step, preserving unrelated goals. */
@@ -434,7 +435,7 @@ public final class OfflineAgentActionBridge {
             // An agent action must never continue using the previous dimension/world.
             if (AIPlayerController.isBusy()) AIPlayerController.stop("Offline-Agent: Weltwechsel erkannt; Aktion sicher gestoppt.");
             if (AICombatController.isActive()) AICombatController.stop("Offline-Agent: Weltwechsel erkannt; Kampf beendet.");
-            if (AIBuilder.isRunning()) AIBuilder.stop();
+            if (AIBuilder.isRunning()) AIBuilder.onDisconnect();
             if (pendingAction != null) AIActionRegistry.cancel(pendingAction);
             pending = null;
             pendingAction = null;
