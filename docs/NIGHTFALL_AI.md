@@ -14,6 +14,7 @@ Wichtige Befehle:
 
 - `/nf agent status` – Auftragswarteschlange, Vorschau und Prüfergebnis ansehen.
 - `/nf agent actions` – zeigt die lokal freigegebenen Aktionen mit ihren Parametertypen; die Details eines konkreten Auftrags stehen weiterhin in der Vorschau.
+- `/nf agent plan <json>` – einen eigenen Mehrschrittplan direkt einreichen; `/nf agent plan_file name.json` liest eine Datei aus `config/nightfall/agent_plans/`.
 - `/nf agent memory` – den lokal gespeicherten Verlauf der letzten 64 abgeschlossenen/abgebrochenen Agenten-Aufträge ansehen; `/nf agent memory clear` löscht diesen Verlauf.
 - `/nf agent prepare` – den nächsten bereiten Schritt erneut vorbereiten; bei einem Schmelzschritt zeigt Nightfall an, wenn das Ofenfenster geschlossen und ein leerer Ofen/Hochofen anvisiert werden muss.
 - `/nf agent action <name> <json>` – vorhandene lokale Aktionen aus dem Nightfall-Aktionsregister mit einfachen oder begrenzten strukturierten JSON-Parametern einreihen. Auch Modul-, Wegpunkt-, Scanner-, Status- und Serverbefehlsaktionen werden lokal validiert. Arrays/Objekte sind auf 32 KiB pro Auftragsschritt begrenzt; `build_custom_structure` prüft zusätzlich höchstens 512 Blöcke und deren Verbindung, Koordinaten und Materialien.
@@ -29,6 +30,42 @@ Wichtige Befehle:
 - `/nf agent schematic datei.schem` – ersten Abschnitt einer lokalen Schematic vorbereiten.
 - `/nf agent navigate X Y Z`, `/nf agent mine X Y Z`, `/nf agent walk 20` – begrenzte Navigation, Abbau und Bewegung.
 - `/nf agent search ancient_city`, `/nf agent attack`, `/nf agent guard` – Strukturhinweise suchen oder nahe feindliche Mobs abwehren.
+
+### Eigene Mehrschrittpläne
+
+Ein Plan ist eine JSON-Datei bzw. ein JSON-Objekt mit `description`, optionaler `priority` (−100 bis 100) und `steps`. Jeder Schritt braucht eine eindeutige `id` und einen lokal freigegebenen `action`-Namen. `parameters` enthält die Aktionsargumente; `dependsOn` nennt Schritt-IDs, die zuvor erfolgreich abgeschlossen sein müssen. `maxAttempts` ist optional (1 bis 5, Standard 2). Zyklen, unbekannte Abhängigkeiten und doppelte Abhängigkeiten werden zurückgewiesen. Ein Plan darf höchstens 64 Schritte enthalten.
+
+Beispiel: erst acht Eichenstämme sammeln, danach daraus Bretter craften:
+
+```json
+{
+  "description": "Holz sammeln und Bretter craften",
+  "priority": 10,
+  "steps": [
+    {
+      "id": "gather",
+      "action": "gather_wood",
+      "parameters": {
+        "item": "minecraft:oak_log",
+        "count": 8
+      },
+      "maxAttempts": 2
+    },
+    {
+      "id": "craft",
+      "action": "craft_item",
+      "parameters": {
+        "item": "minecraft:oak_planks",
+        "count": 32
+      },
+      "dependsOn": ["gather"],
+      "maxAttempts": 2
+    }
+  ]
+}
+```
+
+Direkt im Chat einreichen: `/nf agent plan {"description":"Holz und Bretter","steps":[...]}`. Alternativ als `wood.json` speichern unter `config/nightfall/agent_plans/` und `/nf agent plan_file wood.json` aufrufen. Plan-Dateien sind auf 256 KiB begrenzt; der Dateiname darf keine Pfadangabe enthalten und symbolische Links werden abgewiesen. Es wird kein Code ausgeführt: jeder `action`-Name und jeder Parameter wird erneut gegen das lokale Nightfall-Aktionsregister validiert. Jeder Schritt erhält eine eigene Vorschau und Bestätigung; abhängige Schritte starten erst nach bestätigtem Erfolg.
 
 Beispiele für das generische Aktionsformat:
 
