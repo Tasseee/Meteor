@@ -283,7 +283,7 @@ public final class OfflineAgentQueueStore {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory, "*.json")) {
             List<Path> files = new ArrayList<>();
             for (Path path : stream) {
-                if (Files.isRegularFile(path)) files.add(path);
+                if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) files.add(path);
             }
             if (files.size() <= MAX_WORLD_FILES) return;
             files.sort((left, right) -> {
