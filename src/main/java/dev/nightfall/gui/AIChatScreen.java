@@ -783,7 +783,7 @@ public final class AIChatScreen extends Screen {
             history.add(new ChatLine("assistant",
                     "Das lokale Sprachmodell ist noch nicht geladen. Klicke oben rechts auf MODELL LADEN. "
                             + "Beim ersten Mal wird eine Modell-Datei von ungefähr 1,1 GB einmalig heruntergeladen; "
-                            + danach läuft die KI lokal ohne API-Key oder Cloud-Dienst."));
+                            + "danach läuft die KI lokal ohne API-Key oder Cloud-Dienst.""));
             status = "Bitte zuerst lokales Modell laden";
             return;
         }
