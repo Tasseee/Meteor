@@ -164,61 +164,17 @@ public final class AIChatScreen extends Screen {
         AIVoiceClient.stopSpeaking();
     }
 
-    /** Toggle the persistent voice call. Can be invoked from F8 while the chat screen is closed. */
+    /** Toggle the voice call. Voice is intentionally disabled in the current offline build. */
     public static void toggleVoiceCall() {
         AIChatScreen session = getOrCreate();
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (AIRealtimeVoiceClient.isActive()) {
-            AIRealtimeVoiceClient.stop();
-            session.status = "Nightfall-Sprachanruf beendet.";
-            return;
-        }
-        if (mc.player == null || mc.world == null) {
-            session.status = "Starte den Sprachanruf in einer Minecraft-Welt.";
-            return;
-        }
-        AIConfig.Settings settings = AIConfig.current();
-        if (settings.apiKey().isBlank()) {
-            session.status = "Stimme ist im Offline-Modus deaktiviert und wird später ergänzt.";
-            return;
-        }
-        AIConfig.Settings updated = AIConfig.updateVoiceSettings(true, true);
-        if (!updated.voiceInputEnabled() || !updated.voiceOutputEnabled()) {
-            session.status = "Die Stimmeinstellungen konnten nicht gespeichert werden.";
-            return;
-        }
-        AIRealtimeVoiceClient.start(new AIRealtimeVoiceClient.Listener() {
-            @Override public void onStatus(String message) {
-                if (active != null) active.status = message;
-            }
-
-            @Override public void onTranscript(String transcript) {
-                AIChatScreen current = active == null ? new AIChatScreen() : active;
-                current.handleRealtimeTranscript(transcript);
-            }
-
-            @Override public void onAssistantText(String text) {
-                AIChatScreen current = active == null ? new AIChatScreen() : active;
-                current.history.add(new ChatLine("assistant", text));
-                current.status = "Nightfall hat geantwortet";
-                current.scroll = Float.MAX_VALUE;
-            }
-
-            @Override public void onToolCall(AIChatClient.ToolCall call) {
-                AIChatScreen current = active == null ? new AIChatScreen() : active;
-                current.handleRealtimeToolCall(call);
-            }
-        });
+        if (AIRealtimeVoiceClient.isActive()) AIRealtimeVoiceClient.stop();
+        session.status = "Stimme ist im Offline-Modus noch nicht angeschlossen. Die Steuerung erfolgt vorerst über /nf agent help.";
     }
 
-    /** Toggle microphone uplink while keeping the voice conversation connected. */
+    /** Microphone input is disabled in the current offline build. */
     public static void toggleVoiceMicrophone() {
-        AIRealtimeVoiceClient.toggleMicrophone();
-        if (active != null && AIRealtimeVoiceClient.isActive()) {
-            active.status = AIRealtimeVoiceClient.isMicrophoneMuted()
-                    ? "Mikrofon stumm · F9 aktiviert es wieder."
-                    : "Mikrofon aktiv · F9 schaltet stumm.";
-        }
+        AIChatScreen session = getOrCreate();
+        session.status = "Mikrofon ist im Offline-Modus deaktiviert; Sprachsteuerung folgt später.";
     }
 
     /** Small persistent HUD chip makes call, microphone and speaking state visible. */
@@ -754,39 +710,11 @@ public final class AIChatScreen extends Screen {
     }
 
     private void cycleSpeechVoice() {
-        status = "Stimme ist in diesem Offline-Stand deaktiviert und wird später lokal ergänzt.";
-        return;
-        List<String> voices = AIConfig.supportedSpeechVoices();
-        AIConfig.Settings current = AIConfig.current();
-        int currentIndex = voices.indexOf(current.speechVoice());
-        String nextVoice = voices.get((currentIndex + 1 + voices.size()) % voices.size());
-        AIConfig.Settings updated = AIConfig.updateSpeechVoice(nextVoice);
-        if (!nextVoice.equals(updated.speechVoice())) {
-            status = "Die neue Stimme konnte nicht gespeichert werden.";
-            return;
-        }
-        AIVoiceClient.stopSpeaking();
-        AIRealtimeVoiceClient.updateVoice(updated);
-        String displayName = nextVoice.substring(0, 1).toUpperCase(Locale.ROOT) + nextVoice.substring(1);
-        status = "Nightfall-Stimme geändert: " + displayName;
-        history.add(new ChatLine("assistant", status));
-        scroll = Float.MAX_VALUE;
+        status = "Stimmenauswahl ist im Offline-Modus noch nicht verfügbar.";
     }
 
     private void toggleVoiceOutput() {
-        status = "Sprachausgabe ist in diesem Offline-Stand deaktiviert und wird später lokal ergänzt.";
-        return;
-        AIConfig.Settings settings = AIConfig.current();
-        boolean enabled = !settings.voiceOutputEnabled();
-        AIConfig.Settings updated = AIConfig.updateVoiceSettings(settings.voiceInputEnabled(), enabled);
-        if (updated.voiceOutputEnabled() != enabled) {
-            status = "TTS-Einstellung konnte nicht gespeichert werden.";
-            return;
-        }
-        if (!enabled) AIVoiceClient.stopSpeaking();
-        AIRealtimeVoiceClient.setSpeechEnabled(enabled);
-        status = enabled ? "Sprachausgabe aktiviert · Nightfall spricht fertige Antworten."
-                : "Sprachausgabe ausgeschaltet.";
+        status = "Sprachausgabe ist im Offline-Modus noch nicht verfügbar.";
     }
 
     private void trimVisibleHistory() {
