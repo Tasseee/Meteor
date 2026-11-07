@@ -8,6 +8,10 @@ package dev.nightfall.ai;
 public final class OfflineAgentOutcome {
     private OfflineAgentOutcome() {}
 
+    public static boolean isSuccessfulImmediateControllerResult(String result) {
+        return result != null && result.startsWith("Du bist bereits am gewünschten Ziel.");
+    }
+
     public static boolean isSuccessfulControllerCompletion(String summary) {
         if (summary == null || summary.isBlank()) return false;
         String result = summary.trim();
@@ -15,6 +19,7 @@ public final class OfflineAgentOutcome {
                 || result.equals("Bewegung abgeschlossen.")
                 || result.startsWith("Blockänderung bestätigt · Abbau abgeschlossen.")
                 || result.startsWith("Materialsammlung abgeschlossen:")
+                || result.startsWith("Strukturhinweis erkannt:")
                 || result.startsWith("Schmelzen abgeschlossen:")
                 || result.startsWith("Crafting vollständig abgeschlossen:")
                 || result.startsWith("Inventarsortierung verifiziert: Alle ")
