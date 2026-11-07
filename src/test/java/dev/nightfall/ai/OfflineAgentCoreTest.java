@@ -114,6 +114,24 @@ class OfflineAgentCoreTest {
     }
 
     @Test
+    void cancellationOfVerifyingStepDoesNotRequireRunningActionAcknowledgement() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        core.submit(new OfflineAgentCore.Goal("verify-cancel", "Brich eine laufende Prüfung ab", 0,
+                List.of(step("work", "gather_wood", List.of(), 2))));
+        core.markStarted("verify-cancel", "work");
+        core.report("verify-cancel", "work", OfflineAgentCore.ActionResult.UNCERTAIN,
+                "Controller läuft noch oder Ergebnis wartet auf Prüfung.");
+
+        core.cancel("verify-cancel");
+
+        assertEquals(OfflineAgentCore.StepStatus.CANCELLED,
+                core.snapshot().get(0).steps().get(0).status());
+        assertEquals(OfflineAgentCore.GoalStatus.CANCELLED,
+                core.snapshot().get(0).status());
+        assertTrue(core.nextReadyStep().isEmpty());
+    }
+
+    @Test
     void completedGoalHistoryRemainsBounded() {
         OfflineAgentCore core = new OfflineAgentCore();
         for (int i = 0; i < OfflineAgentCore.MAX_RETAINED_GOALS + 1; i++) {
