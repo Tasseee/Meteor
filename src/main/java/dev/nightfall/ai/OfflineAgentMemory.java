@@ -82,14 +82,16 @@ public final class OfflineAgentMemory {
         return ENTRIES.size();
     }
 
-    public static synchronized void clear() {
+    public static synchronized boolean clear() {
         loadIfNeeded();
         ENTRIES.clear();
         try {
             Files.deleteIfExists(FILE);
+            return true;
         } catch (IOException failure) {
             Nightfall.LOGGER.warn("Lokales Nightfall-Auftragsgedächtnis konnte nicht gelöscht werden: {}",
                     failure.getClass().getSimpleName());
+            return false;
         }
     }
 
