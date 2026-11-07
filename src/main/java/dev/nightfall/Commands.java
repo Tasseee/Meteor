@@ -250,88 +250,126 @@ public final class Commands {
                     return say(c, "Markierungen dieses Servers/Dimension geloescht");
                 })));
 
-        // ---- Offline Agent: strukturierte lokale Aufträge ohne Chat-/Cloud-KI ----
-        root.then(literal("agent")
-                .then(literal("status").executes(c -> offlineAgentStatus(c)))
-                .then(literal("confirm").executes(c -> confirmOfflineAgent(c)))
-                .then(literal("reject").executes(c -> rejectOfflineAgent(c)))
-                .then(literal("verify")
-                        .then(literal("success").executes(c -> verifyOfflineAgent(c, true, "Erfolg vom Spieler bestätigt.")))
-                        .then(literal("failed")
-                                .executes(c -> verifyOfflineAgent(c, false, "Fehlschlag vom Spieler bestätigt."))
-                                .then(argument("reason", StringArgumentType.greedyString())
-                                        .executes(c -> verifyOfflineAgent(c, false, str(c, "reason"))))))
-                .then(literal("cancel").executes(c -> cancelOfflineAgent(c)))
-                .then(literal("walk").then(argument("ticks", IntegerArgumentType.integer(1, 100))
-                        .executes(c -> submitOfflineAgentGoal(c, "Gehe für eine kurze, begrenzte Zeit vorwärts.",
-                                "walk_forward", Map.of("ticks", Integer.toString(IntegerArgumentType.getInteger(c, "ticks")))))))
-                .then(literal("navigate")
-                        .then(argument("x", IntegerArgumentType.integer(-30_000_000, 30_000_000))
-                                .then(argument("y", IntegerArgumentType.integer(-2_048, 2_048))
-                                        .then(argument("z", IntegerArgumentType.integer(-30_000_000, 30_000_000))
-                                                .executes(c -> submitOfflineAgentGoal(c, "Navigiere zum angegebenen Ziel.",
-                                                        "navigate_to", Map.of(
-                                                                "x", Integer.toString(IntegerArgumentType.getInteger(c, "x")),
-                                                                "y", Integer.toString(IntegerArgumentType.getInteger(c, "y")),
-                                                                "z", Integer.toString(IntegerArgumentType.getInteger(c, "z")))))))))
-                .then(literal("mine")
-                        .then(argument("x", IntegerArgumentType.integer(-30_000_000, 30_000_000))
-                                .then(argument("y", IntegerArgumentType.integer(-2_048, 2_048))
-                                        .then(argument("z", IntegerArgumentType.integer(-30_000_000, 30_000_000))
-                                                .executes(c -> submitOfflineAgentGoal(c, "Baue den angegebenen Block ab.",
-                                                        "mine_block", Map.of(
-                                                                "x", Integer.toString(IntegerArgumentType.getInteger(c, "x")),
-                                                                "y", Integer.toString(IntegerArgumentType.getInteger(c, "y")),
-                                                                "z", Integer.toString(IntegerArgumentType.getInteger(c, "z")))))))))
-                .then(literal("gather")
-                        .then(argument("kind", StringArgumentType.word())
-                                .then(argument("item", StringArgumentType.word())
-                                        .then(argument("count", IntegerArgumentType.integer(1, 256))
-                                                .executes(c -> queueGatherGoal(c, str(c, "kind"), str(c, "item"),
-                                                        IntegerArgumentType.getInteger(c, "count"))))))
-                .then(literal("craft")
-                        .then(argument("item", StringArgumentType.word())
-                                .executes(c -> submitOfflineAgentGoal(c, "Stelle das gewünschte Item her.",
-                                        "craft_item", Map.of("item", str(c, "item"), "count", "1")))
-                                .then(argument("count", IntegerArgumentType.integer(1, 256))
-                                        .executes(c -> submitOfflineAgentGoal(c, "Stelle die gewünschte Anzahl her.",
-                                                "craft_item", Map.of("item", str(c, "item"),
-                                                        "count", Integer.toString(IntegerArgumentType.getInteger(c, "count"))))))))
-                .then(literal("smelt")
-                        .then(argument("item", StringArgumentType.word())
-                                .then(argument("count", IntegerArgumentType.integer(1, 16))
-                                        .executes(c -> submitOfflineAgentGoal(c, "Schmelze die angegebene Menge im erreichbaren Ofen.",
-                                                "smelt_item", Map.of("item", str(c, "item"),
-                                                        "count", Integer.toString(IntegerArgumentType.getInteger(c, "count"))))))))
-                .then(literal("eat")
-                        .executes(c -> submitOfflineAgentGoal(c, "Iss ein geeignetes Nahrungsmittel.",
-                                "eat_food", Map.of()))
-                        .then(argument("item", StringArgumentType.word())
-                                .executes(c -> submitOfflineAgentGoal(c, "Iss bevorzugt das angegebene Nahrungsmittel.",
-                                        "eat_food", Map.of("item", str(c, "item"))))))
-                .then(literal("sort").executes(c -> submitOfflineAgentGoal(c, "Sortiere das Inventar nach den lokalen Regeln.",
-                        "sort_inventory", Map.of())))
-                .then(literal("search")
-                        .executes(c -> submitOfflineAgentGoal(c, "Erkunde die Umgebung nach Strukturhinweisen.",
-                                "search_structures", Map.of("structure", "any")))
-                        .then(argument("structure", StringArgumentType.word())
-                                .executes(c -> submitOfflineAgentGoal(c, "Erkunde die Umgebung nach der angegebenen Struktur.",
-                                        "search_structures", Map.of("structure", str(c, "structure"))))))
-                .then(literal("attack").executes(c -> submitOfflineAgentGoal(c, "Greife einen nahen feindlichen Mob an.",
-                        "attack_nearest_hostile", Map.of())))
-                .then(literal("guard").executes(c -> submitOfflineAgentGoal(c, "Verteidige den Spieler vor nahen feindlichen Mobs.",
-                        "guard_nearby_hostiles", Map.of())))
-                .then(literal("build")
-                        .then(literal("starter").executes(c -> submitOfflineAgentGoal(c, "Baue das vorbereitete Starter-Schutzhaus.",
-                                "build_starter_shelter", Map.of())))
-                        .then(argument("structure", StringArgumentType.word())
-                                .executes(c -> submitOfflineAgentGoal(c, "Bereite die angegebene lokale Bauvorlage vor.",
-                                        "build_structure", Map.of("structure", str(c, "structure"))))))
-                .then(literal("iron")
-                        .then(argument("count", IntegerArgumentType.integer(1, 64))
-                                .executes(c -> queueIronWorkflow(c, IntegerArgumentType.getInteger(c, "count"))))));
+        root.then(agentCommand());
 
         d.register(root);
+    }
+
+    private static LiteralArgumentBuilder<FabricClientCommandSource> agentCommand() {
+        LiteralArgumentBuilder<FabricClientCommandSource> root = literal("agent");
+        root.then(literal("status").executes(c -> offlineAgentStatus(c)));
+        root.then(literal("confirm").executes(c -> confirmOfflineAgent(c)));
+        root.then(literal("reject").executes(c -> rejectOfflineAgent(c)));
+        root.then(literal("cancel").executes(c -> cancelOfflineAgent(c)));
+
+        LiteralArgumentBuilder<FabricClientCommandSource> verify = literal("verify");
+        verify.then(literal("success").executes(c ->
+                verifyOfflineAgent(c, true, "Erfolg vom Spieler bestätigt.")));
+        LiteralArgumentBuilder<FabricClientCommandSource> failed = literal("failed");
+        failed.executes(c -> verifyOfflineAgent(c, false, "Fehlschlag vom Spieler bestätigt."));
+        failed.then(argument("reason", StringArgumentType.greedyString())
+                .executes(c -> verifyOfflineAgent(c, false, str(c, "reason"))));
+        verify.then(failed);
+        root.then(verify);
+
+        LiteralArgumentBuilder<FabricClientCommandSource> walk = literal("walk");
+        walk.then(argument("ticks", IntegerArgumentType.integer(1, 100))
+                .executes(c -> submitOfflineAgentGoal(c, "Gehe für eine kurze, begrenzte Zeit vorwärts.",
+                        "walk_forward", Map.of("ticks", Integer.toString(IntegerArgumentType.getInteger(c, "ticks"))))));
+        root.then(walk);
+
+        LiteralArgumentBuilder<FabricClientCommandSource> navigate = literal("navigate");
+        var nx = argument("x", IntegerArgumentType.integer(-30_000_000, 30_000_000));
+        var ny = argument("y", IntegerArgumentType.integer(-2_048, 2_048));
+        var nz = argument("z", IntegerArgumentType.integer(-30_000_000, 30_000_000));
+        nz.executes(c -> submitOfflineAgentGoal(c, "Navigiere zum angegebenen Ziel.", "navigate_to", Map.of(
+                "x", Integer.toString(IntegerArgumentType.getInteger(c, "x")),
+                "y", Integer.toString(IntegerArgumentType.getInteger(c, "y")),
+                "z", Integer.toString(IntegerArgumentType.getInteger(c, "z")))));
+        ny.then(nz);
+        nx.then(ny);
+        navigate.then(nx);
+        root.then(navigate);
+
+        LiteralArgumentBuilder<FabricClientCommandSource> mine = literal("mine");
+        var mx = argument("x", IntegerArgumentType.integer(-30_000_000, 30_000_000));
+        var my = argument("y", IntegerArgumentType.integer(-2_048, 2_048));
+        var mz = argument("z", IntegerArgumentType.integer(-30_000_000, 30_000_000));
+        mz.executes(c -> submitOfflineAgentGoal(c, "Baue den angegebenen Block ab.", "mine_block", Map.of(
+                "x", Integer.toString(IntegerArgumentType.getInteger(c, "x")),
+                "y", Integer.toString(IntegerArgumentType.getInteger(c, "y")),
+                "z", Integer.toString(IntegerArgumentType.getInteger(c, "z")))));
+        my.then(mz);
+        mx.then(my);
+        mine.then(mx);
+        root.then(mine);
+
+        LiteralArgumentBuilder<FabricClientCommandSource> gather = literal("gather");
+        var gatherKind = argument("kind", StringArgumentType.word());
+        var gatherItem = argument("item", StringArgumentType.word());
+        gatherItem.then(argument("count", IntegerArgumentType.integer(1, 256))
+                .executes(c -> queueGatherGoal(c, str(c, "kind"), str(c, "item"),
+                        IntegerArgumentType.getInteger(c, "count"))));
+        gatherKind.then(gatherItem);
+        gather.then(gatherKind);
+        root.then(gather);
+
+        LiteralArgumentBuilder<FabricClientCommandSource> craft = literal("craft");
+        var craftItem = argument("item", StringArgumentType.word());
+        craftItem.executes(c -> submitOfflineAgentGoal(c, "Stelle das gewünschte Item her.",
+                "craft_item", Map.of("item", str(c, "item"), "count", "1")));
+        craftItem.then(argument("count", IntegerArgumentType.integer(1, 256))
+                .executes(c -> submitOfflineAgentGoal(c, "Stelle die gewünschte Anzahl her.",
+                        "craft_item", Map.of("item", str(c, "item"),
+                                "count", Integer.toString(IntegerArgumentType.getInteger(c, "count"))))));
+        craft.then(craftItem);
+        root.then(craft);
+
+        LiteralArgumentBuilder<FabricClientCommandSource> smelt = literal("smelt");
+        var smeltItem = argument("item", StringArgumentType.word());
+        smeltItem.then(argument("count", IntegerArgumentType.integer(1, 16))
+                .executes(c -> submitOfflineAgentGoal(c, "Schmelze die angegebene Menge im erreichbaren Ofen.",
+                        "smelt_item", Map.of("item", str(c, "item"),
+                                "count", Integer.toString(IntegerArgumentType.getInteger(c, "count"))))));
+        smelt.then(smeltItem);
+        root.then(smelt);
+
+        LiteralArgumentBuilder<FabricClientCommandSource> eat = literal("eat");
+        eat.executes(c -> submitOfflineAgentGoal(c, "Iss ein geeignetes Nahrungsmittel.", "eat_food", Map.of()));
+        eat.then(argument("item", StringArgumentType.word())
+                .executes(c -> submitOfflineAgentGoal(c, "Iss bevorzugt das angegebene Nahrungsmittel.",
+                        "eat_food", Map.of("item", str(c, "item")))));
+        root.then(eat);
+
+        root.then(literal("sort").executes(c -> submitOfflineAgentGoal(c,
+                "Sortiere das Inventar nach den lokalen Regeln.", "sort_inventory", Map.of())));
+
+        LiteralArgumentBuilder<FabricClientCommandSource> search = literal("search");
+        search.executes(c -> submitOfflineAgentGoal(c, "Erkunde die Umgebung nach Strukturhinweisen.",
+                "search_structures", Map.of("structure", "any")));
+        search.then(argument("structure", StringArgumentType.word())
+                .executes(c -> submitOfflineAgentGoal(c, "Erkunde die Umgebung nach der angegebenen Struktur.",
+                        "search_structures", Map.of("structure", str(c, "structure")))));
+        root.then(search);
+
+        root.then(literal("attack").executes(c -> submitOfflineAgentGoal(c,
+                "Greife einen nahen feindlichen Mob an.", "attack_nearest_hostile", Map.of())));
+        root.then(literal("guard").executes(c -> submitOfflineAgentGoal(c,
+                "Verteidige den Spieler vor nahen feindlichen Mobs.", "guard_nearby_hostiles", Map.of())));
+
+        LiteralArgumentBuilder<FabricClientCommandSource> build = literal("build");
+        build.then(literal("starter").executes(c -> submitOfflineAgentGoal(c,
+                "Baue das vorbereitete Starter-Schutzhaus.", "build_starter_shelter", Map.of())));
+        build.then(argument("structure", StringArgumentType.word())
+                .executes(c -> submitOfflineAgentGoal(c, "Bereite die angegebene lokale Bauvorlage vor.",
+                        "build_structure", Map.of("structure", str(c, "structure")))));
+        root.then(build);
+
+        LiteralArgumentBuilder<FabricClientCommandSource> iron = literal("iron");
+        iron.then(argument("count", IntegerArgumentType.integer(1, 64))
+                .executes(c -> queueIronWorkflow(c, IntegerArgumentType.getInteger(c, "count"))));
+        root.then(iron);
+        return root;
     }
 
     private static int submitOfflineAgentGoal(
