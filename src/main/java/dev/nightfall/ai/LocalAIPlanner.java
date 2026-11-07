@@ -110,7 +110,11 @@ public final class LocalAIPlanner {
                 .append("Die lokale Aufgabenverwaltung fügt die bereits erfolgreichen Schritte selbst als Historie hinzu. ")
                 .append("Abhängigkeiten neuer Schritte dürfen auf die IDs der bereits erfolgreichen Schritte verweisen. ")
                 .append("Wähle neue, eindeutige IDs und beginne nicht mit einem Schritt, dessen Ergebnis bereits bestätigt ist.");
-        String base = buildPrompt(history, localWorldContext);
+        java.util.ArrayList<Turn> planningTurns = new java.util.ArrayList<>();
+        if (history != null) planningTurns.addAll(history);
+        planningTurns.add(new Turn("user", "Setze den fehlgeschlagenen Auftrag fort: "
+                + promptSafe(failedGoal.description(), 512)));
+        String base = buildPrompt(planningTurns, localWorldContext);
         int assistant = base.lastIndexOf("<|im_start|>assistant\n");
         if (assistant < 0) throw new IllegalStateException("Planner-Prompt konnte nicht erstellt werden.");
         return base.substring(0, assistant) + "<|im_start|>system\n"
