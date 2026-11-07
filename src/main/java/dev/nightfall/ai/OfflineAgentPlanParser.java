@@ -78,15 +78,38 @@ public final class OfflineAgentPlanParser {
 
     /** Loads a plan file from config/nightfall/agent_plans without accepting paths or traversal. */
     public static OfflineAgentCore.Goal loadFile(String fileName, String goalId) throws IOException {
+        Path config = FabricLoader.getInstance().getConfigDir().toAbsolutePath().normalize();
+        Path nightfall = config.resolve("nightfall");
+        Path directory = nightfall.resolve("agent_plans");
+        Files.createDirectories(directory);
+        // The managed directories themselves must not be symlinks. Otherwise a
+        // seemingly local plan filename could read from an arbitrary location.
+        if (Files.isSymbolicLink(nightfall) || Files.isSymbolicLink(directory)
+                || !Files.isDirectory(nightfall, LinkOption.NOFOLLOW_LINKS)
+                || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IllegalArgumentException("Der lokale agent_plans-Ordner darf keine symbolischen Links enthalten.");
+        }
+        return loadFileFromDirectory(directory, fileName, goalId);
+    }
+
+    /** Package-private path injection keeps file-loading and symlink checks testable. */
+    static OfflineAgentCore.Goal loadFileFromDirectory(Path requestedDirectory,
+                                                       String fileName, String goalId) throws IOException {
         if (fileName == null || !fileName.matches("[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\\.json"))
             throw new IllegalArgumentException("Bitte nur einen lokalen Dateinamen wie shelter.json angeben.");
-        Path directory = planDirectory().toAbsolutePath().normalize();
+        Path directory = requestedDirectory.toAbsolutePath().normalize();
         Files.createDirectories(directory);
+        if (Files.isSymbolicLink(directory)
+                || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IllegalArgumentException("Der Plan-Ordner darf kein symbolischer Link sein.");
+        }
         Path file = directory.resolve(fileName).normalize();
         if (!directory.equals(file.getParent()))
             throw new IllegalArgumentException("Der Plan muss direkt im lokalen agent_plans-Ordner liegen.");
-        if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS))
-            throw new IllegalArgumentException("Plan-Datei nicht gefunden: config/nightfall/agent_plans/" + fileName);
+        if (Files.isSymbolicLink(file)
+                || !Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IllegalArgumentException("Plan-Datei nicht gefunden oder nicht als normale lokale Datei verfügbar: " + fileName);
+        }
         long size = Files.size(file);
         if (size <= 0 || size > MAX_PLAN_FILE_BYTES)
             throw new IllegalArgumentException("Plan-Dateien müssen zwischen 1 Byte und 256 KiB groß sein.");
