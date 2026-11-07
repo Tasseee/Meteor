@@ -10,7 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-/** Local settings for the optional OpenAI-compatible Nightfall AI endpoint. */
+/** Offline-only settings; remote AI and voice provider configuration is intentionally disabled. */
 public final class AIConfig {
     private static final Path FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("nightfall").resolve("ai.json");
@@ -40,7 +40,7 @@ public final class AIConfig {
         return settings;
     }
 
-    /** Loads settings and creates a safe, empty template on first launch. */
+    /** Enforces offline defaults and removes legacy remote provider credentials/endpoints. */
     public static synchronized void load() {
         // Intentionally overwrite legacy provider settings. Old API keys and remote
         // endpoints are removed from ai.json so the retired cloud clients cannot send data.
