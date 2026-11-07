@@ -52,8 +52,47 @@ class LocalAIToolRouterTest {
 
         assertTrue(LocalAIToolRouter.isCapabilityQuestion(turns));
         assertTrue(tools.contains("get_player_status"));
+        assertTrue(tools.contains("list_client_modules"));
         assertFalse(tools.contains("build_structure"));
         assertFalse(tools.contains("run_server_command"));
+    }
+
+    @Test
+    void clientModuleIndexAndSettingsAreAvailableForOrdinaryRequests() {
+        Set<String> tools = LocalAIToolRouter.selectTools(request("Wie ist mein aktueller Status?"));
+
+        assertTrue(tools.contains("list_client_modules"));
+        assertTrue(tools.contains("get_module_settings"));
+    }
+
+    @Test
+    void naturalLanguageModuleChangesExposeListStateAndSettingTools() {
+        Set<String> tools = LocalAIToolRouter.selectTools(
+                request("Mach das ESP an und stelle die Reichweite höher."));
+
+        assertTrue(tools.contains("list_client_modules"));
+        assertTrue(tools.contains("get_module_settings"));
+        assertTrue(tools.contains("set_module_state"));
+        assertTrue(tools.contains("set_module_setting"));
+        assertTrue(tools.contains("get_module_observations"));
+    }
+
+    @Test
+    void clientModuleAndFeatureQuestionsAreCapabilityQuestions() {
+        List<LocalAIPlanner.Turn> turns = request("Welche Module und Funktionen hat der Client?");
+
+        assertTrue(LocalAIToolRouter.isCapabilityQuestion(turns));
+        String prompt = LocalAIPlanner.buildPrompt(turns, null);
+        assertTrue(prompt.contains("list_client_modules"));
+        assertTrue(prompt.contains("Client-Module und Einstellungen"));
+    }
+
+    @Test
+    void randomTeleportRequestExposesOnlyTheExplicitTeleportAction() {
+        Set<String> tools = LocalAIToolRouter.selectTools(request("Teleportiere mich zufällig mit /rtp."));
+
+        assertTrue(tools.contains("random_teleport"));
+        assertFalse(tools.contains("build_structure"));
     }
 
     @Test
