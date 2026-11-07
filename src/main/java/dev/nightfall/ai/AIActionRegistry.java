@@ -258,10 +258,11 @@ public final class AIActionRegistry {
         tools.add(tool("list_schematics",
                 "List locally imported schematic files and curated community schematic sources. Does not download files or start building.",
                 objectSchema()));
-        JsonObject schematicFile = property("file", "string",
-                "Exact local filename inside config/nightfall/schematics, ending in .schem or .litematic.").get("schema").getAsJsonObject();
+        JsonObject schematicFileProperty = property("file", "string",
+                "Exact local filename inside config/nightfall/schematics, ending in .schem or .litematic.");
+        JsonObject schematicFile = schematicFileProperty.getAsJsonObject("schema");
         schematicFile.addProperty("maxLength", 110);
-        JsonObject schematicSchema = objectSchema(schematicFile, "file");
+        JsonObject schematicSchema = objectSchema(schematicFileProperty, "file");
         JsonObject partX = property("part_x", "integer", "0-basierter Abschnitt entlang der X-Achse; jeder Abschnitt ist maximal 32 Blöcke breit.").get("schema").getAsJsonObject();
         partX.addProperty("minimum", 0); partX.addProperty("maximum", 15);
         JsonObject partY = property("part_y", "integer", "0-basierter Abschnitt entlang der Y-Achse; jeder Abschnitt ist maximal 32 Blöcke hoch.").get("schema").getAsJsonObject();
@@ -279,19 +280,19 @@ public final class AIActionRegistry {
                 schematicSchema));
         tools.add(tool("repair_schematic",
                 "Create a NEW local Sponge v2 .schem copy containing only the source schematic's block states and still-water sources that Nightfall can import automatically. The original file is never modified or overwritten. Unsupported blocks are replaced with air; entities and custom block-entity NBT/inventories are omitted. This sanitizes the placement subset only; it does not repair farm logic, redstone timing, fluids, villagers or guarantee working output. The player must inspect the generated file again before building. Requires explicit confirmation.",
-                objectSchema(property("file", "string", "Exact original filename inside config/nightfall/schematics, ending in .schem or .litematic.").get("schema").getAsJsonObject(), "file")));
+                objectSchema(property("file", "string", "Exact original filename inside config/nightfall/schematics, ending in .schem or .litematic."), "file")));
         tools.add(tool("build_schematic",
                 "Prepare exactly one 32x32x32 section of a local schematic for building. For oversized structures, pass part_x, part_y and part_z (zero-based); inspect_schematic reports the valid grid. Start with part_x=0, part_y=0, part_z=0: Nightfall stores a server/dimension/file-bound farm anchor in config/nightfall/schematic_build_session.json. Set reset_anchor=true only when intentionally starting another copy at a new location; all remaining calls for that copy must keep it false. Later sections retain the exact overall schematic alignment and report both their build center and an access position at the farm anchor's Y-level; navigate to the access position before previewing so the destination chunks are loaded. Build every section in ascending part_y order (lowest layer first), then across X/Z, so upper components can attach to already-built lower layers. Nightfall then approaches reachable placement targets using bounded A* navigation and saves/resumes section progress across client restarts. It preserves supported BlockStates and stops when a stable orientation/state cannot be reproduced. Redstone dust is placed with its dedicated vanilla item interaction after structural supports and redstone devices; repeaters, comparators, observers, pistons, levers, buttons, lamps and other supported BlockItems retain their static orientation/configuration. Neighbor- and tick-driven values (wire connections/power, powered/locked/lit/extended) are allowed to update naturally and are not treated as fixed schematic values. This does not verify redstone timing, inventory contents, signal paths or farm output. Still water source cells can be placed after solid blocks only in Creative mode when a water bucket is in the player's inventory; flowing water is left to vanilla fluid simulation and must be checked in-game. Survival water, lava, falling blocks, entities and custom block-entity NBT/inventories remain manual.\n"
                 + "Material-shortage workflow: the current section requires its exact materials in the player's inventory; Creative mode only requires one representative stack per material. In Survival, obtain the missing counts before building the section. Do not claim the entire schematic is complete after building one section.",
                 schematicSchema));
         JsonObject schematicProgressSchema = objectSchema(
-                property("file", "string", "Exact local .schem or .litematic filename.").get("schema").getAsJsonObject(), "file");
+                property("file", "string", "Exact local .schem or .litematic filename."), "file");
         schematicProgressSchema.getAsJsonObject("properties").getAsJsonObject("file").addProperty("maxLength", 110);
         tools.add(tool("get_schematic_progress",
                 "Read-only durable progress for a local schematic. Reports fully completed sections for the current server and dimension and the next unfinished section in bottom-up order. Does not create or move the farm anchor and does not start building.",
                 schematicProgressSchema));
         JsonObject verifySchematicSchema = objectSchema(
-                property("file", "string", "Exact local .schem or .litematic filename.").get("schema").getAsJsonObject(), "file");
+                property("file", "string", "Exact local .schem or .litematic filename."), "file");
         verifySchematicSchema.getAsJsonObject("properties").getAsJsonObject("file").addProperty("maxLength", 110);
         for (String axis : List.of("part_x", "part_y", "part_z")) {
             JsonObject index = property(axis, "integer", "Zero-based 32-block section index (0–15).").get("schema").getAsJsonObject();
@@ -302,10 +303,11 @@ public final class AIActionRegistry {
         tools.add(tool("verify_schematic_section",
                 "Read-only in-world structural check for one previously anchored schematic section. Compares expected imported block types/states, still-water sources, clear cells and presence of default block entities against already-loaded client chunks. Reports unloaded positions separately. Does not test villager behavior, custom block-entity inventories, fluid flow, redstone timing/signal paths or farm output; it cannot certify a working farm.",
                 verifySchematicSchema));
-        JsonObject walkTicks = property("ticks", "integer", "Dauer der kurzen Vorwärtsbewegung in Ticks (1 bis 100).").get("schema").getAsJsonObject();
+        JsonObject walkTicksProperty = property("ticks", "integer", "Dauer der kurzen Vorwärtsbewegung in Ticks (1 bis 100).");
+        JsonObject walkTicks = walkTicksProperty.getAsJsonObject("schema");
         walkTicks.addProperty("minimum", 1);
         walkTicks.addProperty("maximum", 100);
-        tools.add(tool("walk_forward", "Walk forward for a short bounded duration. This is not obstacle-aware pathfinding. Requires player confirmation.", objectSchema(walkTicks, "ticks")));
+        tools.add(tool("walk_forward", "Walk forward for a short bounded duration. This is not obstacle-aware pathfinding. Requires player confirmation.", objectSchema(walkTicksProperty, "ticks")));
         tools.add(tool("stop_movement", "Immediately release Nightfall's movement keys and stop its active movement.", objectSchema()));
         JsonObject targetPosition = positionSchema();
         tools.add(tool("navigate_to",
@@ -1221,8 +1223,14 @@ public final class AIActionRegistry {
     }
 
     private static JsonObject objectSchema(JsonObject property, String required) {
+        if (property == null || !property.has("name") || !property.get("name").isJsonPrimitive()
+                || !property.getAsJsonPrimitive("name").isString()
+                || !property.has("schema") || !property.get("schema").isJsonObject()) {
+            throw new IllegalArgumentException("A required tool property must include a name and object schema.");
+        }
+        String propertyName = property.get("name").getAsString();
         JsonObject schema = objectSchema();
-        schema.getAsJsonObject("properties").add(property.get("name").getAsString(), property.get("schema"));
+        schema.getAsJsonObject("properties").add(propertyName, property.get("schema").deepCopy());
         JsonArray requiredList = new JsonArray();
         requiredList.add(required);
         schema.add("required", requiredList);
