@@ -265,6 +265,7 @@ public final class Commands {
     private static LiteralArgumentBuilder<FabricClientCommandSource> agentCommand() {
         LiteralArgumentBuilder<FabricClientCommandSource> root = literal("agent");
         root.then(literal("status").executes(c -> offlineAgentStatus(c)));
+        root.then(literal("actions").executes(c -> offlineAgentActions(c)));
         LiteralArgumentBuilder<FabricClientCommandSource> memory = literal("memory");
         memory.executes(c -> offlineAgentMemory(c, false));
         memory.then(literal("clear").executes(c -> offlineAgentMemory(c, true)));
@@ -696,6 +697,32 @@ public final class Commands {
         } catch (RuntimeException failure) {
             return say(c, "Abbruch fehlgeschlagen: " + safeAgentMessage(failure));
         }
+    }
+
+    private static int offlineAgentActions(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c) {
+        Map<String, Map<String, String>> actions = OfflineAgentActionBridge.supportedActions();
+        if (actions.isEmpty()) return say(c, "Das lokale Aktionsregister enthält keine für den Offline-Agenten geeigneten Aktionen.");
+        StringBuilder out = new StringBuilder("Lokale Offline-Aktionen (")
+                .append(actions.size()).append("):");
+        int shown = 0;
+        for (Map.Entry<String, Map<String, String>> entry : actions.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey()).toList()) {
+            if (shown++ >= 45) {
+                out.append("\\n… weitere Aktionen sind über /nf agent action <name> <json> verfügbar.");
+                break;
+            }
+            out.append("\\n").append(entry.getKey()).append(" {");
+            boolean first = true;
+            for (Map.Entry<String, String> parameter : entry.getValue().entrySet()) {
+                if (!first) out.append(", ");
+                first = false;
+                out.append(parameter.getKey()).append(":").append(parameter.getValue());
+            }
+            out.append("}");
+        }
+        out.append("\\nAufruf: /nf agent action <name> <json>. Vor jeder Weltänderung erscheint eine Vorschau.");
+        return say(c, out.toString());
     }
 
     private static int offlineAgentMemory(
