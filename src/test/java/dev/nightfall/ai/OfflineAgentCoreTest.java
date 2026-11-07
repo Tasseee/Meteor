@@ -354,4 +354,26 @@ class OfflineAgentCoreTest {
         assertEquals(1, core.snapshot().get(0).steps().size());
     }
 
+
+    @Test
+    void failedGoalCanBeReopenedWithAReplacementPlanAfterFreshObservation() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        core.submit(new OfflineAgentCore.Goal("recover", "Baue eine Hütte", 3,
+                List.of(step("old-build", "build_structure", List.of(), 1))));
+        core.markStarted("recover", "old-build");
+        core.report("recover", "old-build", OfflineAgentCore.ActionResult.PERMANENT_FAILURE,
+                "Vorschau meldet fehlendes Material");
+        assertEquals(OfflineAgentCore.GoalStatus.FAILED, core.snapshot().get(0).status());
+
+        OfflineAgentCore.Step gather = step("gather", "gather_wood", List.of(), 2);
+        OfflineAgentCore.Step revisedBuild = step("revised-build", "build_structure", List.of("gather"), 1);
+        core.replanRemaining("recover", List.of(gather, revisedBuild));
+
+        OfflineAgentCore.GoalView reopened = core.snapshot().get(0);
+        assertEquals(OfflineAgentCore.GoalStatus.ACTIVE, reopened.status());
+        assertEquals(List.of("gather", "revised-build"),
+                reopened.steps().stream().map(OfflineAgentCore.StepView::id).toList());
+        assertEquals("gather", core.nextReadyStep().orElseThrow().step().id());
+    }
+
 }
