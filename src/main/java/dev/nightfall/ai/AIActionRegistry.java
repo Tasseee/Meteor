@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Explicit allow-list of actions the model may request.
+ * Explicit allow-list of actions shared by the local offline agent and legacy tool schemas.
  *
  * Never add shell/code execution or unrestricted server administration here. Every action
  * must validate its arguments locally and be previewed/confirmed before execution.
