@@ -45,6 +45,30 @@ class LocalAIToolRouterTest {
     }
 
     @Test
+    void capabilityQuestionIsRecognizedWithoutExposingMutatingActions() {
+        List<LocalAIPlanner.Turn> turns = request("Was kannst du alles?");
+        Set<String> tools = LocalAIToolRouter.selectTools(turns);
+
+        assertTrue(LocalAIToolRouter.isCapabilityQuestion(turns));
+        assertTrue(tools.contains("get_player_status"));
+        assertFalse(tools.contains("build_structure"));
+        assertFalse(tools.contains("run_server_command"));
+    }
+
+    @Test
+    void capabilityCatalogCoversEveryRegisteredActionAndReportsBridgeSupport() {
+        String catalog = LocalAIPlanner.capabilityCatalog();
+        var supported = OfflineAgentActionBridge.supportedActions();
+
+        for (var definition : AIActionRegistry.toolDefinitions()) {
+            String name = definition.getAsJsonObject().getAsJsonObject("function")
+                    .get("name").getAsString();
+            assertTrue(catalog.contains("- " + name + " ["), "Missing capability: " + name);
+            assertTrue(supported.containsKey(name), "Action not accepted by offline bridge: " + name);
+        }
+    }
+
+    @Test
     void navigationRequestGetsNavigationTools() {
         Set<String> tools = LocalAIToolRouter.selectTools(
                 request("Finde das nächste Dschungel-Biom und setze danach einen Wegpunkt."));
