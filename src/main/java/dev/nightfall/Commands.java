@@ -463,6 +463,7 @@ public final class Commands {
             com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c,
             String description, String action, Map<String, String> parameters, int maxAttempts) {
         try {
+            Nightfall.offlineAgentBridge().ensureReady();
             String goalId = nextOfflineGoalId();
             OfflineAgentCore.Step step = new OfflineAgentCore.Step(
                     "action", action, parameters, List.of(), maxAttempts);
@@ -493,6 +494,7 @@ public final class Commands {
     private static int queueWoodWorkflow(
             com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c, int plankCount) {
         try {
+            Nightfall.offlineAgentBridge().ensureReady();
             String goalId = nextOfflineGoalId();
             int logsRequired = Math.max(1, (plankCount + 3) / 4);
             int logsOwned = countInventoryItem("minecraft:oak_log");
@@ -525,6 +527,7 @@ public final class Commands {
     private static int queueShelterWorkflow(
             com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c) {
         try {
+            Nightfall.offlineAgentBridge().ensureReady();
             String goalId = nextOfflineGoalId();
             final int requiredPlanks = 54;
             int planksOwned = countInventoryItem("minecraft:oak_planks");
@@ -569,6 +572,7 @@ public final class Commands {
     private static int queueIronWorkflow(
             com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c, int count) {
         try {
+            Nightfall.offlineAgentBridge().ensureReady();
             String goalId = nextOfflineGoalId();
             int rawIronOwned = countInventoryItem("minecraft:raw_iron");
             List<OfflineAgentCore.Step> steps = new java.util.ArrayList<>();
