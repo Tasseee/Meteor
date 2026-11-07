@@ -34,20 +34,27 @@ public final class LocalAIToolRouter {
         selected.addAll(SAFE_STOPS);
 
         boolean inventory = containsAny(request, "inventar", "material", "bestand", "rüstung",
-                "ruestung", "werkzeug", "gegenstand", "item", "sortier", "sortiere");
+                "ruestung", "werkzeug", "gegenstand", "item", "sortier", "sortiere",
+                "inventory", "armour", "armor", "gear", "sort inventory");
         boolean building = containsAny(request, "bau", "baue", "bauen", "haus", "hausbau",
-                "schutzhaus", "wachturm", "bauplan", "blueprint", "schematic", "sorgt für");
+                "schutzhaus", "wachturm", "bauplan", "blueprint", "schematic", "sorgt für",
+                "build", "house", "tower", "structure");
         boolean gathering = containsAny(request, "sammel", "sammle", "farm", "farmen", "holz",
                 "stamm", "erz", "kohle", "eisen", "stein", "abbau", "mine", "craft",
-                "crafting", "herstell", "schmelz", "ofen", "essen", "hunger");
+                "crafting", "herstell", "schmelz", "ofen", "essen", "hunger",
+                "gather", "collect", "wood", "log", "ore", "coal", "iron", "stone",
+                "mine", "craft", "smelt", "furnace", "eat", "food");
         boolean navigation = containsAny(request, "navig", "geh zu", "gehe zu", "lauf", "laufe",
                 "beweg", "wegpunkt", "waypoint", "route", "struktur", "dorf", "festung",
                 "biom", "dschungel", "wüste", "wueste", "tempel", "antike stadt", "stronghold",
-                "bastion", "trial chamber");
+                "bastion", "trial chamber", "navigate", "go to", "walk", "waypoint",
+                "route", "locate", "biome", "jungle", "desert", "temple", "village",
+                "fortress", "stronghold");
         boolean scanning = containsAny(request, "base", "basis", "scanner", "scan", "chunk",
                 "fund", "finden", "suche", "such", "heatmap", "analyse", "analysiere");
         boolean modules = containsAny(request, "modul", "module", "esp", "clickgui", "einstellung",
-                "setting", "aktiviere", "deaktiviere", "schalte", "theme", "hud");
+                "setting", "aktiviere", "deaktiviere", "schalte", "theme", "hud",
+                "enable", "disable", "toggle", "settings", "turn on", "turn off");
         boolean schematics = containsAny(request, "schematic", "schematics", "bauplan",
                 "blueprint", "struktur vergleichen", "reparier", "repariere");
         boolean combat = containsAny(request, "feindliche mobs", "feindlicher mob", "monster",
