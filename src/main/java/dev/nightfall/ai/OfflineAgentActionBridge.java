@@ -3,6 +3,7 @@ package dev.nightfall.ai;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.text.Text;
 
 import java.util.Map;
 import java.util.Objects;
@@ -22,11 +23,14 @@ public final class OfflineAgentActionBridge {
     private static final Set<String> ALLOWED_ACTIONS = Set.of(
             "walk_forward", "search_structures", "navigate_to", "mine_block",
             "mine_looked_block", "gather_wood", "gather_block", "gather_ore",
-            "smelt_item", "craft_item", "eat_food", "sort_inventory"
+            "smelt_item", "craft_item", "eat_food", "sort_inventory",
+            "build_starter_shelter", "build_structure", "build_schematic",
+            "attack_nearest_hostile", "guard_nearby_hostiles"
     );
     private static final Set<String> INTEGER_PARAMETERS = Set.of(
-            "ticks", "x", "y", "z", "count", "duration_seconds", "target_y"
+            "ticks", "x", "y", "z", "count", "duration_seconds", "target_y", "part_x", "part_y", "part_z"
     );
+    private static final Set<String> BOOLEAN_PARAMETERS = Set.of("reset_anchor");
 
     public record PreparedStep(String goalId, String stepId, String preview) {}
 
@@ -64,6 +68,9 @@ public final class OfflineAgentActionBridge {
             pendingAction = action;
             pending = new PreparedStep(ref.goalId(), ref.step().id(), action.preview());
             lastError = "";
+            client.player.sendMessage(Text.literal("[Nightfall] Offline-Agent-Vorschau für "
+                    + ref.goalId() + "/" + ref.step().id() + ":\n" + action.preview()
+                    + "\nBestätigen: /nf agent confirm · Ablehnen: /nf agent reject"), false);
             return Optional.of(pending);
         } catch (RuntimeException invalid) {
             core.markStarted(ref.goalId(), ref.step().id());
@@ -71,6 +78,8 @@ public final class OfflineAgentActionBridge {
                     OfflineAgentCore.ActionResult.PERMANENT_FAILURE,
                     safeMessage(invalid));
             lastError = safeMessage(invalid);
+            client.player.sendMessage(Text.literal("[Nightfall] Offline-Agent: Auftrag konnte nicht vorbereitet werden: "
+                    + lastError), false);
             return Optional.empty();
         }
     }
@@ -114,8 +123,10 @@ public final class OfflineAgentActionBridge {
         }
         String goalId = pending.goalId();
         String stepId = pending.stepId();
+        AIActionRegistry.Action action = pendingAction;
         pending = null;
         pendingAction = null;
+        AIActionRegistry.cancel(action);
         core.markStarted(goalId, stepId);
         core.report(goalId, stepId, OfflineAgentCore.ActionResult.PERMANENT_FAILURE,
                 "Aktion wurde vor der Ausführung abgelehnt.");
@@ -136,6 +147,7 @@ public final class OfflineAgentActionBridge {
     public synchronized void cancelPending() {
         if (pending == null) return;
         core.cancel(pending.goalId());
+        AIActionRegistry.cancel(pendingAction);
         pending = null;
         pendingAction = null;
     }
@@ -149,9 +161,25 @@ public final class OfflineAgentActionBridge {
             throw new IllegalStateException("Agentenaktionen müssen auf dem Minecraft-Client-Thread gestoppt werden.");
         if (verifyingGoalId == null) return;
         if (AIPlayerController.isBusy()) AIPlayerController.stop("Offline-Agentenaktion abgebrochen.");
-        core.cancel(verifyingGoalId);
+        if (AICombatController.isActive()) AICombatController.stop("Offline-Agentenaktion abgebrochen.");
+        AIBuilder.stop();
+        String goalId = verifyingGoalId;
+        String stepId = verifyingStepId;
+        core.cancel(goalId);
+        core.acknowledgeStopped(goalId, stepId);
         verifyingGoalId = null;
         verifyingStepId = null;
+    }
+
+    /** Cancels every active offline goal and safely stops the active action. */
+    public synchronized void cancelAll() {
+        if (!MinecraftClient.getInstance().isOnThread())
+            throw new IllegalStateException("Agentenaktionen müssen auf dem Minecraft-Client-Thread gestoppt werden.");
+        cancelVerifyingAction();
+        cancelPending();
+        for (OfflineAgentCore.GoalView goal : core.snapshot()) {
+            if (goal.status() == OfflineAgentCore.GoalStatus.ACTIVE) core.cancel(goal.id());
+        }
     }
 
     public synchronized Optional<PreparedStep> pendingPreview() {
@@ -181,6 +209,10 @@ public final class OfflineAgentActionBridge {
                 } catch (NumberFormatException invalid) {
                     throw new IllegalArgumentException("Parameter '" + key + "' muss eine ganze Zahl sein.");
                 }
+            } else if (BOOLEAN_PARAMETERS.contains(key)) {
+                if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value))
+                    throw new IllegalArgumentException("Parameter '" + key + "' muss true oder false sein.");
+                json.addProperty(key, Boolean.parseBoolean(value));
             } else {
                 json.addProperty(key, value);
             }
@@ -199,6 +231,9 @@ public final class OfflineAgentActionBridge {
             case "gather_ore" -> Set.of("item", "count", "duration_seconds", "target_y");
             case "smelt_item", "craft_item" -> Set.of("item", "count");
             case "eat_food" -> Set.of("item");
+            case "build_starter_shelter", "attack_nearest_hostile", "guard_nearby_hostiles" -> Set.of();
+            case "build_structure" -> Set.of("structure", "material");
+            case "build_schematic" -> Set.of("file", "part_x", "part_y", "part_z", "reset_anchor");
             default -> throw new IllegalArgumentException("Aktion ist für den Offline-Agenten nicht freigegeben.");
         };
     }
