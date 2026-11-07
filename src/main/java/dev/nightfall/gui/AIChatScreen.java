@@ -846,8 +846,9 @@ public final class AIChatScreen extends Screen {
         List<LocalAIPlanner.Turn> turns = history.stream()
                 .map(line -> new LocalAIPlanner.Turn(line.role(), line.content()))
                 .toList();
+        boolean buildPlanningRequest = LocalAIToolRouter.selectTools(turns).contains("build_structure");
         String context = localWorldContextEnabled
-                ? worldContext() + "\n\n" + AILocalRuntimeContext.capture()
+                ? worldContext(buildPlanningRequest) + "\n\n" + AILocalRuntimeContext.capture()
                 : "";
         String prompt = LocalAIPlanner.buildPrompt(turns, context);
         int requestGeneration = sessionGeneration;
@@ -1188,7 +1189,7 @@ public final class AIChatScreen extends Screen {
      * Builds a bounded snapshot from data already available to the local client.
      * This method is called only when the player has enabled world-context sharing.
      */
-    private String worldContext() {
+    private String worldContext(boolean includeMaterialPlanning) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null) return "";
 
@@ -1383,16 +1384,20 @@ public final class AIChatScreen extends Screen {
         if (inventorySummary.isBlank()) inventorySummary = "leer";
 
         StringBuilder presetMaterialPlanning = new StringBuilder();
-        for (String structure : List.of("starter_shelter", "large_house", "watchtower")) {
-            try {
-                presetMaterialPlanning.append(AIBuilder.analyzeStructureMaterials(structure, null)).append("\n");
-            } catch (RuntimeException unavailable) {
-                String detail = unavailable.getMessage() == null
-                        ? "Materialanalyse momentan nicht verfügbar."
-                        : unavailable.getMessage().replaceAll("[\\r\\n\\t]+", " ").trim();
-                presetMaterialPlanning.append("Materialplanung ").append(structure)
-                        .append(": nicht verfügbar (").append(detail).append(").\\n");
+        if (includeMaterialPlanning) {
+            for (String structure : List.of("starter_shelter", "large_house", "watchtower")) {
+                try {
+                    presetMaterialPlanning.append(AIBuilder.analyzeStructureMaterials(structure, null)).append("\n");
+                } catch (RuntimeException unavailable) {
+                    String detail = unavailable.getMessage() == null
+                            ? "Materialanalyse momentan nicht verfügbar."
+                            : unavailable.getMessage().replaceAll("[\\r\\n\\t]+", " ").trim();
+                    presetMaterialPlanning.append("Materialplanung ").append(structure)
+                            .append(": nicht verfügbar (").append(detail).append(").\n");
+                }
             }
+        } else {
+            presetMaterialPlanning.append("Für diese Anfrage nicht berechnet.\n");
         }
 
         return "Lokaler Minecraft-Weltkontext (Momentaufnahme):\n"
