@@ -26,6 +26,7 @@ public abstract class EspBase extends Module {
     protected final ModeSetting   origin     = add(new ModeSetting("Tracer-Start", "Mitte", "Mitte", "Unten"));
     protected final BoolSetting   names      = add(new BoolSetting("Name", true));
     protected final BoolSetting   distance   = add(new BoolSetting("Distanz", true));
+    protected final BoolSetting   labelBackground = add(new BoolSetting("Label-Hintergrund", true));
     protected final ColorSetting  color;
 
     private final double[] pt = new double[2];
@@ -47,10 +48,10 @@ public abstract class EspBase extends Module {
         if (!style.is("Aus")) shown = Draw.box(ctx, box, col, thickness.getInt(), style.is("3D"));
         double cx = (box.minX + box.maxX) / 2, cy = (box.minY + box.maxY) / 2, cz = (box.minZ + box.maxZ) / 2;
         boolean centerOk = Projection.project(cx, cy, cz, pt);
-        if (shown && label != null && !label.isEmpty())
-            Draw.centeredText(ctx, mc.textRenderer, label, Draw.topX, Draw.topY - 10, 0xFFFFFFFF);
-        else if (!shown && centerOk && label != null && !label.isEmpty())
-            Draw.centeredText(ctx, mc.textRenderer, label, (float) pt[0], (float) pt[1] - 4, 0xFFFFFFFF);
+        if (label != null && !label.isEmpty()) {
+            if (shown) drawLabel(ctx, label, Draw.topX, Draw.topY - 11, rgb);
+            else if (centerOk) drawLabel(ctx, label, (float) pt[0], (float) pt[1] - 7, rgb);
+        }
         if (tracers.get() && centerOk) {
             float sx = Projection.width() / 2f;
             float sy = origin.is("Mitte") ? Projection.height() / 2f : Projection.height();
@@ -58,6 +59,21 @@ public abstract class EspBase extends Module {
             shown = true;
         }
         if (shown) drawn++;
+    }
+
+    private void drawLabel(DrawContext ctx, String text, float centerX, float baselineY, int rgb) {
+        int textWidth = mc.textRenderer.getWidth(text);
+        int left = Math.round(centerX - textWidth / 2f) - 4;
+        int top = Math.round(baselineY) - 2;
+        int right = left + textWidth + 8;
+        int bottom = top + 12;
+        if (labelBackground.get()) {
+            ctx.fill(left - 1, top - 1, right + 1, bottom + 1, 0xA0000000);
+            ctx.fill(left, top, right, bottom, 0xB80B1019);
+            ctx.fill(left, top, left + 2, bottom, Theme.withAlpha(rgb, 220));
+        }
+        ctx.drawText(mc.textRenderer, text, left + (labelBackground.get() ? 5 : 4),
+                top + 2, 0xFFFFFFFF, true);
     }
 
     protected String label(String name, double dist) {
