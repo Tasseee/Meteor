@@ -864,6 +864,14 @@ public final class AIChatScreen extends Screen {
         boolean replanRequested = requestedReplan(turns);
         if (replanRequested) Nightfall.offlineAgentBridge().ensureReady();
         OfflineAgentCore.GoalView replanTarget = replanRequested ? latestFailedGoal() : null;
+        if (replanRequested && replanTarget == null) {
+            history.add(new ChatLine("assistant",
+                    "Ich finde in der aktuellen Welt-Warteschlange keinen fehlgeschlagenen Auftrag, den ich neu planen kann. "
+                            + "Starte zuerst einen Auftrag oder beschreibe ein neues Ziel."));
+            status = "Kein fehlgeschlagener Auftrag zur Neuplanung vorhanden";
+            scroll = Float.MAX_VALUE;
+            return;
+        }
         boolean buildPlanningRequest = LocalAIToolRouter.selectTools(turns).contains("build_structure")
                 || (replanTarget != null && replanTarget.description().toLowerCase(Locale.ROOT)
                 .matches("(?s).*(haus|hütte|gebäude|burg|turm|farm|bau|bauen|house|castle|tower|build).*"));
