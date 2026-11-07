@@ -103,7 +103,7 @@ public final class OfflineAgentMemory {
      */
     public static String promptSummary(List<Entry> entries, int limit) {
         if (entries == null || entries.isEmpty() || limit <= 0) return "";
-        StringBuilder summary = new StringBuilder("LOKALES AUFTRAGSGEDÄCHTNIS (ältere Ergebnisse, keine aktuellen Weltfakten):\\n");
+        StringBuilder summary = new StringBuilder("LOKALES AUFTRAGSGEDÄCHTNIS (ältere Ergebnisse, keine aktuellen Weltfakten):\n");
         int start = Math.max(0, entries.size() - Math.min(limit, 4));
         for (int i = start; i < entries.size(); i++) {
             Entry entry = entries.get(i);
@@ -120,18 +120,18 @@ public final class OfflineAgentMemory {
                 if (added++ > 0) summary.append(", ");
                 summary.append(action).append('=').append(step.status());
             }
-            summary.append('\\n');
+            summary.append('\n');
             if (summary.length() >= 1_600) break;
         }
-        if (summary.toString().endsWith("):\\n")) return "";
-        summary.append("Nutze dies nur als schwachen Erfahrungs-Hinweis. Frühere Erfolge beweisen nicht, dass Voraussetzungen jetzt gelten. Prüfe aktuelle Beobachtungen erneut; kopiere keine alten Parameter.\\n");
+        if (summary.toString().equals("LOKALES AUFTRAGSGEDÄCHTNIS (ältere Ergebnisse, keine aktuellen Weltfakten):\n")) return "";
+        summary.append("Nutze dies nur als schwachen Erfahrungs-Hinweis. Frühere Erfolge beweisen nicht, dass Voraussetzungen jetzt gelten. Prüfe aktuelle Beobachtungen erneut; kopiere keine alten Parameter.\n");
         return summary.length() > 1_800 ? summary.substring(0, 1_800) : summary.toString();
     }
 
     private static String promptSafe(String value, int maximum) {
         if (value == null) return "";
         String safe = value.replace("<|im_start|>", "").replace("<|im_end|>", "")
-                .replaceAll("[\\\\r\\\\n]+", " ").trim();
+                .replaceAll("[\\r\\n]+", " ").trim();
         return safe.length() <= maximum ? safe : safe.substring(0, maximum);
     }
 
