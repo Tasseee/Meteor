@@ -4,9 +4,11 @@
 
 ## Offline-Agent im Spiel
 
-Alle Aufträge laufen über den deterministischen `OfflineAgentCore` und bestehende lokale Minecraft-Controller. Es werden keine KI-Modelle oder externen KI-Endpunkte benötigt. Der Agent kann mehrere Aufträge in eine begrenzte Warteschlange aufnehmen, führt aber nur eine Minecraft-Aktion gleichzeitig aus. Abhängige Schritte werden erst freigeschaltet, wenn ihr Vorgänger als erfolgreich geprüft wurde.
+Alle Aufträge laufen über den deterministischen `OfflineAgentCore` und bestehende lokale Minecraft-Controller. Es werden keine KI-Modelle oder externen KI-Endpunkte benötigt. Der Agent kann mehrere Aufträge in eine begrenzte Warteschlange aufnehmen, führt aber nur eine Minecraft-Aktion gleichzeitig aus. Abhängige Schritte werden erst freigeschaltet, wenn ihr Vorgänger nach einem Controller-Abschluss anhand des eindeutigen Abschlussstatus automatisch als erfolgreich erkannt wurde. Externe Serverbefehle warten weiterhin auf eine manuelle Rückmeldung.
 
-**Jeder verändernde Schritt benötigt eine Vorschau und Bestätigung.** Nach dem Einreihen zeigt Nightfall die Vorschau im Chat. Bestätige sie mit `/nf agent confirm`, lehne mit `/nf agent reject` ab. Nach der Ausführung ist das Ergebnis zunächst ungeprüft; prüfe die Welt und Inventaränderung und melde danach `/nf agent verify success` oder `/nf agent verify failed`. `/nf agent cancel` stoppt die aktive Offline-Aufgabe und verwirft wartende Schritte.
+**Jeder verändernde Schritt benötigt eine Vorschau und Bestätigung.** Nach dem Einreihen zeigt Nightfall die Vorschau im Chat. Bestätige sie mit `/nf agent confirm`, lehne mit `/nf agent reject` ab. Bei Aktionen, deren Abschluss vom Server abhängt und die Nightfall nicht lokal beobachten kann, bleibt das Ergebnis ungeprüft; prüfe die Serverantwort und melde danach `/nf agent verify success` oder `/nf agent verify failed`. `/nf agent cancel` stoppt die aktive Offline-Aufgabe und verwirft wartende Schritte.
+
+Controller-Aktionen werden im Client-Tick überwacht: eindeutige Erfolgsmeldungen wie „Materialsammlung abgeschlossen“ und „Crafting vollständig abgeschlossen“ werden automatisch verbucht. Teil-Ergebnisse, Zeitlimits und Sicherheitsstopps gelten nicht als Erfolg und lösen – soweit noch erlaubt – eine neue Vorschau aus. Externe Serverbefehle wie `/locate` bleiben manuell zu bestätigen, weil Nightfall deren Serverantwort noch nicht zuverlässig mit dem Agenten verknüpft.
 
 Wichtige Befehle:
 
