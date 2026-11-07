@@ -174,6 +174,17 @@ class OfflineAgentPlanParserTest {
     }
 
     @Test
+    void rejectsDuplicateDependencies() {
+        String json = """
+                {"steps":[
+                  {"id":"a","action":"gather_wood"},
+                  {"id":"b","action":"craft_item","dependsOn":["a","a"]}
+                ]}
+                """;
+        assertThrows(IllegalArgumentException.class, () -> OfflineAgentPlanParser.parse(json, "duplicate-dependency"));
+    }
+
+    @Test
     void rejectsUnknownStepFieldsAndNonStringDependencies() {
         String unknownStep = """
                 {"steps":[{"id":"a","action":"gather_wood","shell":"echo unsafe"}]}
