@@ -233,6 +233,32 @@ class OfflineAgentCoreTest {
     }
 
     @Test
+    void checkpointRejectsPendingStepsWithNoAttemptsRemaining() {
+        OfflineAgentCore.Step exhausted = step("work", "gather_wood", List.of(), 2);
+        assertThrows(IllegalArgumentException.class, () ->
+                new OfflineAgentCore.StepCheckpoint(
+                        exhausted, OfflineAgentCore.StepStatus.PENDING, 2, "Alle Versuche verbraucht."));
+    }
+
+    @Test
+    void restoreRejectsACompletedStepWhoseDependencyIsStillPending() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        OfflineAgentCore.Step prepare = step("prepare", "gather_block", List.of(), 1);
+        OfflineAgentCore.Step build = step("build", "build_structure", List.of("prepare"), 1);
+        OfflineAgentCore.Goal goal = new OfflineAgentCore.Goal(
+                "bad-order", "Ungültiger Wiederaufnahmeplan", 0, List.of(prepare, build));
+        OfflineAgentCore.GoalCheckpoint checkpoint = new OfflineAgentCore.GoalCheckpoint(
+                goal, OfflineAgentCore.GoalStatus.ACTIVE, List.of(
+                new OfflineAgentCore.StepCheckpoint(prepare, OfflineAgentCore.StepStatus.PENDING, 0, ""),
+                new OfflineAgentCore.StepCheckpoint(build, OfflineAgentCore.StepStatus.SUCCEEDED, 1, "Ungültig markiert.")
+        ));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> core.restoreActiveCheckpoints(List.of(checkpoint)));
+        assertTrue(core.snapshot().isEmpty());
+    }
+
+    @Test
     void duplicateGoalIdsAreRejected() {
         OfflineAgentCore core = new OfflineAgentCore();
         core.submit(new OfflineAgentCore.Goal("same", "Erster Plan", 0,
