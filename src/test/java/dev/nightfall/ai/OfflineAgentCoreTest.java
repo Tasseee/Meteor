@@ -301,4 +301,57 @@ class OfflineAgentCoreTest {
                 new OfflineAgentCore.Goal("same", "Zweiter Plan", 0,
                         List.of(step("b", "action_b", List.of(), 1)))));
     }
+
+    @Test
+    void replanningPreservesConfirmedProgressAndReplacesOnlyUnfinishedSteps() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        OfflineAgentCore.Step gather = step("gather", "gather_wood", List.of(), 2);
+        OfflineAgentCore.Step oldCraft = step("old-craft", "craft_item", List.of("gather"), 1);
+        OfflineAgentCore.Step oldBuild = step("old-build", "build_structure", List.of("old-craft"), 1);
+        core.submit(new OfflineAgentCore.Goal("replan", "Baue eine kleine Hütte", 4,
+                List.of(gather, oldCraft, oldBuild)));
+        core.markStarted("replan", "gather");
+        core.report("replan", "gather", OfflineAgentCore.ActionResult.SUCCESS, "Holz bestätigt");
+
+        OfflineAgentCore.Step newCraft = step("new-craft", "craft_item", List.of("gather"), 2);
+        OfflineAgentCore.Step newBuild = step("new-build", "build_custom_structure", List.of("new-craft"), 1);
+        core.replanRemaining("replan", List.of(newCraft, newBuild));
+
+        OfflineAgentCore.GoalView revised = core.snapshot().get(0);
+        assertEquals(OfflineAgentCore.GoalStatus.ACTIVE, revised.status());
+        assertEquals(List.of("gather", "new-craft", "new-build"),
+                revised.steps().stream().map(OfflineAgentCore.StepView::id).toList());
+        assertEquals(OfflineAgentCore.StepStatus.SUCCEEDED, revised.steps().get(0).status());
+        assertEquals("new-craft", core.nextReadyStep().orElseThrow().step().id());
+    }
+
+    @Test
+    void replanningIsRejectedWhileAnActionIsRunningOrUncertain() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        core.submit(new OfflineAgentCore.Goal("busy-replan", "Sammle Holz", 0,
+                List.of(step("gather", "gather_wood", List.of(), 2))));
+        core.markStarted("busy-replan", "gather");
+        assertThrows(IllegalStateException.class, () -> core.replanRemaining(
+                "busy-replan", List.of(step("alternate", "gather_block", List.of(), 1))));
+
+        core.report("busy-replan", "gather", OfflineAgentCore.ActionResult.UNCERTAIN, "Ergebnis unklar");
+        assertThrows(IllegalStateException.class, () -> core.replanRemaining(
+                "busy-replan", List.of(step("alternate", "gather_block", List.of(), 1))));
+    }
+
+    @Test
+    void invalidReplacementPlanDoesNotMutateExistingGoal() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        core.submit(new OfflineAgentCore.Goal("invalid-replan", "Sammle Holz", 0,
+                List.of(step("gather", "gather_wood", List.of(), 2))));
+        core.markStarted("invalid-replan", "gather");
+        core.report("invalid-replan", "gather", OfflineAgentCore.ActionResult.SUCCESS, "Holz bestätigt");
+
+        assertThrows(IllegalArgumentException.class, () -> core.replanRemaining(
+                "invalid-replan", List.of(step("missing-dependency", "craft_item", List.of("unknown"), 1))));
+        assertEquals(OfflineAgentCore.StepStatus.SUCCEEDED,
+                core.snapshot().get(0).steps().get(0).status());
+        assertEquals(1, core.snapshot().get(0).steps().size());
+    }
+
 }
