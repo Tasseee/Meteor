@@ -261,6 +261,12 @@ public final class Commands {
         root.then(literal("confirm").executes(c -> confirmOfflineAgent(c)));
         root.then(literal("reject").executes(c -> rejectOfflineAgent(c)));
         root.then(literal("cancel").executes(c -> cancelOfflineAgent(c)));
+        root.then(literal("resume_task").executes(c -> submitOfflineAgentGoal(c,
+                "Setze einen lokal gespeicherten Sammel- oder Navigationsauftrag fort.",
+                "resume_saved_task", Map.of())));
+        root.then(literal("clear_task").executes(c -> submitOfflineAgentGoal(c,
+                "Lösche den gespeicherten Sammel- oder Navigationsauftrag dieser Welt.",
+                "clear_saved_task", Map.of())));
 
         LiteralArgumentBuilder<FabricClientCommandSource> verify = literal("verify");
         verify.then(literal("success").executes(c ->
