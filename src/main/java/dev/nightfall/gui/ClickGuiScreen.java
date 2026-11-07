@@ -12,6 +12,7 @@ import dev.nightfall.util.Theme;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.input.CharInput;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
@@ -126,8 +127,6 @@ public class ClickGuiScreen extends Screen {
                 } catch (NumberFormatException ex) { notice("Bitte genau 6 Hex-Zeichen eingeben"); }
                 editingColor = null; messageDraft = ""; return;
             }
-            if (k >= GLFW.GLFW_KEY_0 && k <= GLFW.GLFW_KEY_9 && messageDraft.length() < 6) { messageDraft += (char) ('0' + k - GLFW.GLFW_KEY_0); return; }
-            if (k >= GLFW.GLFW_KEY_A && k <= GLFW.GLFW_KEY_F && messageDraft.length() < 6) { messageDraft += (char) ('A' + k - GLFW.GLFW_KEY_A); return; }
             return;
         }
         if (editingMessages != null || editingString != null) {
@@ -143,17 +142,6 @@ public class ClickGuiScreen extends Screen {
                 }
                 messageDraft = ""; return;
             }
-            if (k == GLFW.GLFW_KEY_SPACE) { if (messageDraft.length() < 256) messageDraft += " "; return; }
-            if (k >= GLFW.GLFW_KEY_A && k <= GLFW.GLFW_KEY_Z && messageDraft.length() < 256) {
-                boolean shift = GLFW.glfwGetKey(MinecraftClient.getInstance().getWindow().getHandle(), GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
-                        || GLFW.glfwGetKey(MinecraftClient.getInstance().getWindow().getHandle(), GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
-                messageDraft += (char) ((shift ? 'A' : 'a') + (k - GLFW.GLFW_KEY_A)); return;
-            }
-            if (k >= GLFW.GLFW_KEY_0 && k <= GLFW.GLFW_KEY_9 && messageDraft.length() < 256) { messageDraft += (char) ('0' + k - GLFW.GLFW_KEY_0); return; }
-            if (k == GLFW.GLFW_KEY_MINUS && messageDraft.length() < 256) { messageDraft += "-"; return; }
-            if (k == GLFW.GLFW_KEY_PERIOD && messageDraft.length() < 256) { messageDraft += "."; return; }
-            if (k == GLFW.GLFW_KEY_COMMA && messageDraft.length() < 256) { messageDraft += ","; return; }
-            if (k == GLFW.GLFW_KEY_SLASH && messageDraft.length() < 256) { messageDraft += "/"; return; }
             return;
         }
         if (!searchFocus && k == GLFW.GLFW_KEY_K && hoveredModule != null) {
@@ -162,15 +150,43 @@ public class ClickGuiScreen extends Screen {
             return;
         }
         if (!searchFocus) return;
-        if (k == GLFW.GLFW_KEY_BACKSPACE) { if (!search.isEmpty()) search = search.substring(0, search.length() - 1); scroll = 0; }
-        else if (k >= GLFW.GLFW_KEY_A && k <= GLFW.GLFW_KEY_Z) { search += (char) ('a' + k - GLFW.GLFW_KEY_A); scroll = 0; }
-        else if (k >= GLFW.GLFW_KEY_0 && k <= GLFW.GLFW_KEY_9) { search += (char) ('0' + k - GLFW.GLFW_KEY_0); scroll = 0; }
-        else if (k == GLFW.GLFW_KEY_SPACE) { search += ' '; scroll = 0; }
-        else if (k == GLFW.GLFW_KEY_ENTER) searchFocus = false;
+        if (k == GLFW.GLFW_KEY_BACKSPACE) {
+            if (!search.isEmpty()) search = search.substring(0, search.offsetByCodePoints(search.length(), -1));
+            scroll = 0;
+        } else if (k == GLFW.GLFW_KEY_ENTER || k == GLFW.GLFW_KEY_KP_ENTER) searchFocus = false;
         else if (k == GLFW.GLFW_KEY_ESCAPE) { search = ""; searchFocus = false; scroll = 0; }
     }
 
     private void notice(String s) { notice = s; noticeUntil = System.currentTimeMillis() + 2600; }
+
+    /**
+     * Uses Minecraft's real character input so search and setting editors support
+     * umlauts, punctuation and the active keyboard layout.
+     */
+    @Override
+    public boolean charTyped(CharInput charInput) {
+        if (!charInput.isValidChar()) return super.charTyped(charInput);
+        String typed = charInput.asString();
+        if (typed == null || typed.isEmpty() || listening != null) return false;
+
+        if (editingColor != null) {
+            for (int i = 0; i < typed.length() && messageDraft.length() < 6; i++) {
+                char c = typed.charAt(i);
+                if (Character.digit(c, 16) >= 0) messageDraft += Character.toUpperCase(c);
+            }
+            return true;
+        }
+        if (editingString != null || editingMessages != null) {
+            if (messageDraft.length() + typed.length() <= 256) messageDraft += typed;
+            return true;
+        }
+        if (searchFocus) {
+            if (search.length() + typed.length() <= 64) search += typed;
+            scroll = 0;
+            return true;
+        }
+        return super.charTyped(charInput);
+    }
 
     @Override
     public void render(DrawContext ctx, int mx, int my, float delta) {
@@ -207,7 +223,10 @@ public class ClickGuiScreen extends Screen {
         if (clickL && in(mx, my, searchX, 6, searchW, 19)) { searchFocus = true; clickL = false; }
         else if (clickL && searchFocus) searchFocus = false;
 
-        if (!l) slider = null;
+        if (!l && slider != null) {
+            slider = null;
+            Config.save();
+        }
         if (slider != null && sliderW > 0) {
             double t = (mx - sliderX) / (double) sliderW;
             slider.set(slider.min + Math.max(0, Math.min(1, t)) * (slider.max - slider.min));
@@ -232,7 +251,10 @@ public class ClickGuiScreen extends Screen {
         float maxScroll = Math.max(0, totalHeight - (viewportBottom - viewportTop));
         scroll = Math.max(0, Math.min(maxScroll, scroll));
 
-        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportBottom, 0x3A000000);
+        ctx.fill(panelX - 1, viewportTop - 5, panelX + panelW + 1, viewportBottom + 1, 0xB0000000);
+        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportBottom, Theme.withAlpha(Theme.PANEL, 92));
+        ctx.fill(panelX, viewportTop - 4, panelX + 2, viewportBottom, Theme.withAlpha(Theme.ACCENT, 120));
+        ctx.fill(panelX + panelW - 2, viewportTop - 4, panelX + panelW, viewportBottom, 0x442FFFFFFF);
         ctx.enableScissor(panelX, viewportTop, panelX + panelW, viewportBottom);
         float y = viewportTop - scroll;
         Module hovered = null;
@@ -295,6 +317,16 @@ public class ClickGuiScreen extends Screen {
         }
         ctx.disableScissor();
 
+        if (displayedCats.isEmpty()) {
+            String empty = "Keine Module gefunden";
+            int emptyW = mc.textRenderer.getWidth(empty);
+            int emptyY = viewportTop + (viewportBottom - viewportTop) / 2 - 4;
+            ctx.drawText(mc.textRenderer, empty, panelX + (panelW - emptyW) / 2, emptyY, Theme.TEXT_DIM, false);
+            String clear = "Suchtext löschen (Esc)";
+            int clearW = mc.textRenderer.getWidth(clear);
+            ctx.drawText(mc.textRenderer, clear, panelX + (panelW - clearW) / 2, emptyY + 14, Theme.ACCENT, false);
+        }
+
         // Minimal scrollbar, positioned relative to the full accordion content.
         if (totalHeight > viewportBottom - viewportTop + 1) {
             int trackX = panelX + panelW - 3;
@@ -335,9 +367,13 @@ public class ClickGuiScreen extends Screen {
         ctx.fill(panelX + 8, y + 6, panelX + 24, y + 22, Theme.withAlpha(Theme.ACCENT, 45));
         ctx.drawText(mc.textRenderer, icon, panelX + 12, y + 10, Theme.ACCENT, true);
         ctx.drawText(mc.textRenderer, c.display.toUpperCase(Locale.ROOT), panelX + 32, y + 10, Theme.TEXT, true);
-        String count = String.valueOf(visible(c).size());
+        List<Module> modules = visible(c);
+        int enabledCount = 0;
+        for (Module module : modules) if (module.isEnabled()) enabledCount++;
+        String count = enabledCount + "/" + modules.size();
         int countW = mc.textRenderer.getWidth(count);
-        ctx.drawText(mc.textRenderer, count, panelX + panelW - 34 - countW, y + 10, Theme.TEXT_DIM, false);
+        ctx.drawText(mc.textRenderer, count, panelX + panelW - 34 - countW, y + 10,
+                enabledCount > 0 ? Theme.ACCENT : Theme.TEXT_DIM, false);
         String chevron = open ? "v" : ">";
         ctx.drawText(mc.textRenderer, chevron, panelX + panelW - 18, y + 10, Theme.ACCENT, true);
     }
