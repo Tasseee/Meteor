@@ -2,7 +2,6 @@ package dev.nightfall.ai;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import net.minecraft.client.MinecraftClient;
 
 import java.util.Map;
 import java.util.Objects;
@@ -57,7 +56,7 @@ public final class OfflineAgentActionBridge {
                 throw new IllegalArgumentException("Aktion ist für den Offline-Agenten nicht freigegeben.");
             }
             AIActionRegistry.Action action = AIActionRegistry.prepare(
-                    ref.step().action(), toJson(ref.step().action(), ref.step().parameters()).toString());
+                    ref.step().action(), toJson(ref.step().parameters()).toString());
             pendingAction = action;
             pending = new PreparedStep(ref.goalId(), ref.step().id(), action.preview());
             lastError = "";
@@ -92,6 +91,9 @@ public final class OfflineAgentActionBridge {
             lastError = "";
             return result;
         } catch (RuntimeException failure) {
+            if (AIPlayerController.isBusy()) {
+                AIPlayerController.stop("Offline-Agentenaktion nach einem Ausführungsfehler gestoppt.");
+            }
             String detail = safeMessage(failure);
             core.report(goalId, stepId, OfflineAgentCore.ActionResult.PERMANENT_FAILURE, detail);
             lastError = detail;
@@ -154,7 +156,7 @@ public final class OfflineAgentActionBridge {
         return lastError;
     }
 
-    private JsonObject toJson(String action, Map<String, String> parameters) {
+    private JsonObject toJson(Map<String, String> parameters) {
         JsonObject json = new JsonObject();
         for (Map.Entry<String, String> entry : parameters.entrySet()) {
             String key = entry.getKey();
