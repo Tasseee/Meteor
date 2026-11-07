@@ -128,7 +128,7 @@ public final class OfflineAgentQueueStore {
             }
             pruneOldWorldFiles(target);
             return true;
-        } catch (IOException | RuntimeException failure) {
+        } catch (RuntimeException failure) {
             deleteQuietly(target);
             return false;
         }
