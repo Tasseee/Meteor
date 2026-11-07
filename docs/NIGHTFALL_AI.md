@@ -469,3 +469,17 @@ Die KI-Anfragen und die Chat-Oberfläche begrenzen unnötige Arbeit und behalten
 - `ai.json` wird vor einer neuen Chat-Anfrage nur einmal eingelesen; doppelte synchrone Dateizugriffe im HTTP-Client und beim Start der TTS-Wiedergabe entfallen.
 
 Die Grenzen für Verlauf und Audio dienen der Reaktionsfähigkeit; bei sehr langen Gesprächen können ältere Chat-Details aus dem KI-Kontext herausfallen. Die sichtbare Unterhaltung wird davon getrennt verwaltet. Diese Änderungen wurden durch den CI-Build geprüft, sind aber nicht als Minecraft-Laufzeittest oder Mikrofon-/Lautsprechertest zu verstehen.
+
+
+## Lokales Erfahrungs-Gedächtnis für die KI · 2026-11-07
+
+Der Offline-Planer erhält bei aktiviertem **KONTEXT AN** zusätzlich höchstens vier
+abgeschlossene lokale Aufträge als knappe Erfahrungsübersicht. Sie enthält ausschließlich
+die frühere Zielbeschreibung, das Endergebnis sowie Aktionsnamen und Schrittstatus.
+Aktuelle Inventarstände, Koordinaten, Serverkennungen, Chatverläufe und Aktionsparameter
+werden daraus nicht übernommen. Die KI muss alle Voraussetzungen anhand des aktuellen
+Weltkontexts erneut prüfen; ein früherer Erfolg ist kein Beleg für die aktuelle Situation.
+Fehlgeschlagene Aktionen dienen als Warnhinweis, nicht als automatische Sperre oder
+Wiederholungsanweisung. Bei **KONTEXT AUS** wird auch diese Erfahrungsübersicht nicht
+an den Planer übergeben. Das Gedächtnis bleibt lokal in
+`config/nightfall/agent_memory.json`; es ist keine Modell-Nachtrainierung.

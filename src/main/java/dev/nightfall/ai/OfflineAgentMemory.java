@@ -95,6 +95,46 @@ public final class OfflineAgentMemory {
         }
     }
 
+
+    /**
+     * Formats a tiny, privacy-conscious summary for the local planner.
+     * Only past goal descriptions, action names and terminal statuses are exposed;
+     * parameters, inventory, coordinates, chat messages and server identifiers are never included.
+     */
+    public static String promptSummary(List<Entry> entries, int limit) {
+        if (entries == null || entries.isEmpty() || limit <= 0) return "";
+        StringBuilder summary = new StringBuilder("LOKALES AUFTRAGSGEDÄCHTNIS (ältere Ergebnisse, keine aktuellen Weltfakten):\\n");
+        int start = Math.max(0, entries.size() - Math.min(limit, 4));
+        for (int i = start; i < entries.size(); i++) {
+            Entry entry = entries.get(i);
+            if (entry == null) continue;
+            String description = promptSafe(entry.description(), 180);
+            if (description.isBlank()) continue;
+            summary.append("- Vergangenes Ziel: ").append(description)
+                    .append(" | Ergebnis: ").append(entry.status()).append(" | Schritte: ");
+            int added = 0;
+            for (StepMemory step : entry.steps()) {
+                if (added >= 6) break;
+                String action = step.action();
+                if (action == null || !action.matches("[A-Za-z0-9_]{1,64}")) continue;
+                if (added++ > 0) summary.append(", ");
+                summary.append(action).append('=').append(step.status());
+            }
+            summary.append('\\n');
+            if (summary.length() >= 1_600) break;
+        }
+        if (summary.toString().endsWith("):\\n")) return "";
+        summary.append("Nutze dies nur als schwachen Erfahrungs-Hinweis. Frühere Erfolge beweisen nicht, dass Voraussetzungen jetzt gelten. Prüfe aktuelle Beobachtungen erneut; kopiere keine alten Parameter.\\n");
+        return summary.length() > 1_800 ? summary.substring(0, 1_800) : summary.toString();
+    }
+
+    private static String promptSafe(String value, int maximum) {
+        if (value == null) return "";
+        String safe = value.replace("<|im_start|>", "").replace("<|im_end|>", "")
+                .replaceAll("[\\\\r\\\\n]+", " ").trim();
+        return safe.length() <= maximum ? safe : safe.substring(0, maximum);
+    }
+
     private static void loadIfNeeded() {
         if (loaded) return;
         loaded = true;

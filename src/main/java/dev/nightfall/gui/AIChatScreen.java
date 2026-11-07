@@ -10,6 +10,7 @@ import dev.nightfall.ai.LocalAIToolRouter;
 import dev.nightfall.ai.LocalAIResponseParser;
 import dev.nightfall.ai.AILocalRuntimeContext;
 import dev.nightfall.ai.OfflineAgentCore;
+import dev.nightfall.ai.OfflineAgentMemory;
 import dev.nightfall.ai.AIConfig;
 import dev.nightfall.ai.AIVoiceClient;
 import dev.nightfall.ai.AIRealtimeVoiceClient;
@@ -884,6 +885,10 @@ public final class AIChatScreen extends Screen {
         String context = localWorldContextEnabled
                 ? worldContext(buildPlanningRequest) + "\n\n" + AILocalRuntimeContext.capture()
                 : "";
+        if (localWorldContextEnabled) {
+            String learnedHistory = OfflineAgentMemory.promptSummary(OfflineAgentMemory.recent(4), 4);
+            if (!learnedHistory.isBlank()) context += "\n\n" + learnedHistory;
+        }
         String prompt = replanTarget == null
                 ? LocalAIPlanner.buildPrompt(turns, context)
                 : LocalAIPlanner.buildReplanPrompt(turns, context, replanTarget);
