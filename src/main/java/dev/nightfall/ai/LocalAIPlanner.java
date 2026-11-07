@@ -28,7 +28,7 @@ public final class LocalAIPlanner {
                 .append("Für einen ausführbaren Auftrag: {\"mode\":\"plan\",\"description\":\"Ziel\",\"priority\":0,")
                 .append("\"steps\":[{\"id\":\"step1\",\"action\":\"EXAKTER_TOOLNAME\",")
                 .append("\"parameters\":{},\"dependsOn\":[],\"maxAttempts\":2}]}. ")
-                .append("Ein Plan darf bis zu 64 Schritte enthalten, aber nutze nur so viele wie nötig. ")
+                .append("Ein automatisch geplanter Auftrag darf höchstens 12 Schritte enthalten. Für größere Ziele teile die Arbeit auf oder frage nach. ")
                 .append("Bei Folge-Schritten setze dependsOn auf die IDs der tatsächlich nötigen Vorgänger. "
                         + "Verwende nur die unten aufgelisteten Aktionsnamen und Parameter. "
                         + "Erfinde keine IDs, Koordinaten, Gegenstände, Rezepte oder verfügbaren Mengen. "
