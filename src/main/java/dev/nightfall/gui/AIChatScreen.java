@@ -830,7 +830,7 @@ public final class AIChatScreen extends Screen {
             apiHistory.clear();
             history.add(new ChatLine("assistant",
                     "Ich bin gerade im reinen Offline-Modus. Freie Sprache wird später ergänzt. "
-                            + "Nutze /nf agent status oder einen Auftrag wie /nf agent gather wood minecraft:oak_log 16. "
+                            + "Nutze /nf agent help, /nf agent status oder einen Auftrag wie /nf agent gather wood minecraft:oak_log 16. "
                             + "Die Vorschau kannst du mit /nf agent confirm bestätigen; danach prüfst du das Ergebnis mit "
                             + "/nf agent verify success oder /nf agent verify failed."));
             waiting = false;
