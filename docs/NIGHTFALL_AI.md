@@ -50,30 +50,9 @@ gefunden wurde.
 
 ## Setup
 
-1. Start Nightfall once. It creates `config/nightfall/ai.json`.
-2. Set `apiKey` to an API key from your chosen provider.
-3. Keep `baseUrl` and `model` aligned with that provider. The default points to an OpenAI-compatible Chat Completions endpoint.
-4. The model/provider must support Chat Completions function/tool calling.
-5. Restart Minecraft or reopen the chat and send a message.
+Der Offline-Agent benötigt keinen API-Key, kein Modell-Download und keine Netzwerkverbindung zu einem KI-Anbieter. Nightfall erstellt bzw. ersetzt `config/nightfall/ai.json` beim Laden mit Offline-Defaults. Alte API-Keys und Remote-Endpunkte aus der früheren Provider-Konfiguration werden dabei entfernt.
 
-Example:
-
-```json
-{
-  "baseUrl": "https://api.openai.com/v1/chat/completions",
-  "model": "gpt-4o-mini",
-  "apiKey": "YOUR_API_KEY",
-  "shareWorldContext": true,
-  "audioBaseUrl": "https://api.openai.com/v1",
-  "transcriptionModel": "gpt-4o-mini-transcribe",
-  "speechModel": "gpt-4o-mini-tts",
-  "speechVoice": "alloy",
-  "voiceInputEnabled": false,
-  "voiceOutputEnabled": false
-}
-```
-
-The key is stored locally as plain text in the Minecraft config folder. Do not upload or share this file, include it in a bug report, or commit it to a repository. Nightfall does not log the key.
+Starte Minecraft mit dem Mod und nutze `/nf agent status`. Die Befehle unter „Offline-Agent im Spiel“ sind der aktuelle lokale Steuerungsweg. Freie Spracheingabe und Sprachausgabe sind in diesem Stand deaktiviert und werden später ergänzt.
 
 ## In-game use
 
