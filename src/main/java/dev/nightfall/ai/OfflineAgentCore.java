@@ -176,7 +176,10 @@ public final class OfflineAgentCore {
             GoalState state = new GoalState(goal);
             if (checkpoint.steps().size() != state.steps.size())
                 throw new IllegalArgumentException("Checkpoint step count does not match its goal.");
+            Set<String> restoredStepIds = new LinkedHashSet<>();
             for (StepCheckpoint stepCheckpoint : checkpoint.steps()) {
+                if (!restoredStepIds.add(stepCheckpoint.step().id()))
+                    throw new IllegalArgumentException("Checkpoint contains duplicate step IDs.");
                 StepState stepState = state.steps.get(stepCheckpoint.step().id());
                 if (stepState == null || !stepState.step.equals(stepCheckpoint.step()))
                     throw new IllegalArgumentException("Checkpoint step definition does not match its goal.");
@@ -193,6 +196,8 @@ public final class OfflineAgentCore {
                     stepState.detail = "Der vorherige Clientlauf wurde unterbrochen. Prüfe Welt und Inventar vor der Fortsetzung.";
                 }
             }
+            if (restoredStepIds.size() != state.steps.size())
+                throw new IllegalArgumentException("Checkpoint omits one or more goal steps.");
             refreshGoal(state);
             restored.add(state);
         }
