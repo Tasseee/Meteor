@@ -226,8 +226,9 @@ public final class OfflineAgentCore {
     /**
      * Replaces only the unfinished portion of an active goal after a planner has
      * inspected fresh observations. Confirmed successful steps are retained as
-     * immutable history; pending/failed/blocked steps are replaced. An action
-     * that is running, awaiting verification, or stopping can never be replanned.
+     * immutable history; pending/failed/blocked steps are replaced. A failed goal
+     * may be reopened after fresh observations. An action that is running, awaiting
+     * verification, or stopping can never be replanned.
      *
      * The caller must validate the replacement steps against the current local
      * action registry before calling this method.
@@ -235,8 +236,8 @@ public final class OfflineAgentCore {
     public synchronized void replanRemaining(String goalId, List<Step> replacementSteps) {
         Objects.requireNonNull(replacementSteps, "replacementSteps");
         GoalState previous = findGoal(goalId);
-        if (previous.status != GoalStatus.ACTIVE) {
-            throw new IllegalStateException("Only an active goal can be replanned.");
+        if (previous.status != GoalStatus.ACTIVE && previous.status != GoalStatus.FAILED) {
+            throw new IllegalStateException("Only an active or failed goal can be replanned.");
         }
         if (previous.steps.values().stream().anyMatch(state ->
                 state.status == StepStatus.RUNNING || state.status == StepStatus.VERIFYING
