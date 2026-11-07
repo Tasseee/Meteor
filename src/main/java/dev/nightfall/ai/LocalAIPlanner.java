@@ -50,7 +50,7 @@ public final class LocalAIPlanner {
                         + "Keine PvP-Zielauswahl. Serverbefehle nur, wenn der Spieler sie ausdrücklich nennt; bevorzuge normale lokale Funktionen.\n\n")
                 .append(LocalAIToolRouter.isCapabilityQuestion(history)
                         ? "AUSGEWÄHLTE WERKZEUGSCHEMAS (nur zur Orientierung):\n"
-                        : "VERFÜGBARE LOKALE AKTIONEN FÜR DIESE ANFRAGE (nicht aufgeführte Aktionen sind nicht verfügbar):\\n")
+                        : "VERFÜGBARE LOKALE AKTIONEN FÜR DIESE ANFRAGE (nicht aufgeführte Aktionen sind nicht verfügbar):\n")
                 .append(compactActionSchemas(LocalAIToolRouter.selectTools(history)).toString())
                 .append("\n");
         if (LocalAIToolRouter.isCapabilityQuestion(history)) {
