@@ -589,7 +589,7 @@ public final class Commands {
         if (preview.isEmpty()) return say(c, "Es liegt keine Offline-Agent-Vorschau zur Bestätigung vor.");
         try {
             String result = Nightfall.offlineAgentBridge().confirm(preview.get());
-            return say(c, result + " Danach den tatsächlichen Spielzustand prüfen und /nf agent verify success oder /nf agent verify failed verwenden.");
+            return say(c, result + " Lokale Controller-Abschlüsse prüft Nightfall automatisch. Nur externe Serveraktionen musst du nach ihrer Serverantwort mit /nf agent verify success oder /nf agent verify failed bestätigen. Status: /nf agent status.");
         } catch (RuntimeException failure) {
             return say(c, "Bestätigung fehlgeschlagen: " + safeAgentMessage(failure));
         }
