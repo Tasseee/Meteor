@@ -516,6 +516,17 @@ public final class Commands {
                         List.of(), 2));
                 previousStep = "gather";
             }
+            int fuelRequired = (count + 7) / 8;
+            int coalOwned = countInventoryItem("minecraft:coal");
+            int charcoalOwned = countInventoryItem("minecraft:charcoal");
+            if (Math.max(coalOwned, charcoalOwned) < fuelRequired) {
+                String fuelStep = "gather_fuel";
+                steps.add(new OfflineAgentCore.Step(
+                        fuelStep, "gather_ore",
+                        Map.of("item", "minecraft:coal", "count", Integer.toString(fuelRequired)),
+                        previousStep == null ? List.of() : List.of(previousStep), 2));
+                previousStep = fuelStep;
+            }
             int remaining = count;
             int batch = 1;
             while (remaining > 0) {
@@ -534,7 +545,9 @@ public final class Commands {
                     10, steps));
             Nightfall.offlineAgentBridge().prepareNext();
             return say(c, "Eisen-Workflow " + goalId + " eingereiht. Vorhandenes Roheisen: " + rawIronOwned
-                    + ". Es folgen " + ((count + 15) / 16) + " Schmelz-Charge(n) mit höchstens 16 Stück. "
+                    + "; Kohle: " + coalOwned + "; Holzkohle: " + charcoalOwned
+                    + ". Fehlendes Erz und bei Bedarf ein ausreichender Kohlevorrat werden zuerst gesammelt. "
+                    + "Danach folgen " + ((count + 15) / 16) + " Schmelz-Charge(n) mit höchstens 16 Stück. "
                     + "Jede Charge braucht eine eigene Vorschau und wird erst nach bestätigtem Ergebnis fortgesetzt.");
         } catch (RuntimeException failure) {
             return say(c, "Workflow nicht eingereiht: " + safeAgentMessage(failure));
