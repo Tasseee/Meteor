@@ -123,9 +123,8 @@ public final class LocalAIToolRouter {
                     "random_teleport");
         }
 
-        // A question about capability discovery should not expose every mutating action.
-        if (containsAny(request, "was kannst du", "welche funktionen", "welche skills",
-                "was ist möglich", "was ist moeglich", "hilfe", "help")) {
+        // A capability overview is read-only and never exposes mutating action schemas.
+        if (isCapabilityQuestion(history)) {
             add(selected, "list_waypoints", "get_base_findings", "search_blueprints",
                     "list_schematics", "get_module_settings");
         }
@@ -133,10 +132,13 @@ public final class LocalAIToolRouter {
     }
 
     public static boolean isCapabilityQuestion(List<LocalAIPlanner.Turn> history) {
-        String request = lastUserTurns(history).toLowerCase(Locale.ROOT);
+        String request = lastUserTurns(history).toLowerCase(Locale.ROOT).trim();
+        if (Set.of("hilfe", "help", "/nf agent help").contains(request)) return true;
         return containsAny(request, "was kannst du", "was kannst du alles", "welche funktionen",
-                "welche skills", "was ist möglich", "was ist moeglich", "hilfe", "help",
-                "zeige deine funktionen", "liste deine funktionen", "fähigkeiten", "faehigkeiten");
+                "welche skills", "was ist möglich", "was ist moeglich",
+                "zeige deine funktionen", "liste deine funktionen", "fähigkeiten", "faehigkeiten",
+                "what can you do", "what are your capabilities", "list your functions",
+                "show your capabilities", "capabilities overview");
     }
 
     private static String lastUserTurns(List<LocalAIPlanner.Turn> history) {
