@@ -33,7 +33,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
- * Push-to-talk local speech recognition. Microphone audio is streamed directly
+ * Toggle-controlled local speech recognition. Microphone audio is streamed directly
  * into Vosk and is never written to disk or transmitted to a network service.
  */
 public final class LocalVoiceClient {
@@ -65,7 +65,8 @@ public final class LocalVoiceClient {
     private static volatile TargetDataLine activeLine;
     private static volatile Consumer<String> transcriptConsumer = ignored -> {};
     private static volatile Consumer<String> statusConsumer = ignored -> {};
-    private static boolean startupQueued;
+    private static volatile boolean startupQueued;
+    private static volatile boolean shutdown;
 
     private LocalVoiceClient() {}
 
@@ -97,7 +98,7 @@ public final class LocalVoiceClient {
         Objects.requireNonNull(onTranscript, "onTranscript");
         Objects.requireNonNull(onStatus, "onStatus");
         synchronized (LOCK) {
-            if (state == State.STOPPED) {
+            if (shutdown || state == State.STOPPED) {
                 deliverStatus(onStatus, "Die lokale Spracherkennung wurde bereits beendet.");
                 return;
             }
@@ -135,14 +136,14 @@ public final class LocalVoiceClient {
             Model activeModel = model;
             if (activeModel == null) {
                 ensureModelInstalled();
-                if (!requested.get()) return;
+                if (!requested.get() || shutdown) return;
                 state = State.LOADING;
                 status = "Deutsches Sprachmodell wird lokal geladen …";
                 deliverStatus(statusConsumer, status);
                 activeModel = new Model(modelDirectory().toAbsolutePath().toString());
                 model = activeModel;
             }
-            if (!requested.get()) return;
+            if (!requested.get() || shutdown) return;
 
             DataLine.Info info = new DataLine.Info(TargetDataLine.class, AUDIO_FORMAT);
             if (!AudioSystem.isLineSupported(info)) {
@@ -383,6 +384,8 @@ public final class LocalVoiceClient {
     }
 
     public static void shutdown() {
+        if (shutdown) return;
+        shutdown = true;
         stopListening();
         state = State.STOPPED;
         status = "Lokale Spracherkennung beendet";
