@@ -852,7 +852,7 @@ public final class AIChatScreen extends Screen {
         if (LocalAIToolRouter.isCapabilityQuestion(turns)) {
             history.add(new ChatLine("assistant",
                     "Hier ist die vollständige Funktionsübersicht aus Nightfalls lokalem Aktionsregister. "
-                            + "Die Kennzeichnung bestätigt die Schema-/Bridge-Anbindung, nicht die Verfügbarkeit in jedem Weltzustand.\\n\\n"
+                            + "Die Kennzeichnung bestätigt die Schema-/Bridge-Anbindung, nicht die Verfügbarkeit in jedem Weltzustand.\n\n"
                             + LocalAIPlanner.capabilityCatalog()));
             status = "Vollständige lokale Funktionsübersicht";
             scroll = Float.MAX_VALUE;
