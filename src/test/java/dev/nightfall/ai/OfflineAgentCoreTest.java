@@ -132,6 +132,28 @@ class OfflineAgentCoreTest {
     }
 
     @Test
+    void failedVerificationRequeuesOnlyWhileAttemptsRemain() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        core.submit(new OfflineAgentCore.Goal("verify-retry", "Prüfe einen Aktionsabschluss", 0,
+                List.of(step("work", "gather_wood", List.of(), 2))));
+
+        core.markStarted("verify-retry", "work");
+        core.report("verify-retry", "work", OfflineAgentCore.ActionResult.UNCERTAIN, "Läuft");
+        core.verify("verify-retry", "work", false, "Nur teilweise abgeschlossen");
+        assertEquals(OfflineAgentCore.StepStatus.PENDING,
+                core.snapshot().get(0).steps().get(0).status());
+        assertEquals("work", core.nextReadyStep().orElseThrow().step().id());
+
+        core.markStarted("verify-retry", "work");
+        core.report("verify-retry", "work", OfflineAgentCore.ActionResult.UNCERTAIN, "Zweiter Versuch");
+        core.verify("verify-retry", "work", false, "Wieder unvollständig");
+        assertEquals(OfflineAgentCore.StepStatus.FAILED,
+                core.snapshot().get(0).steps().get(0).status());
+        assertEquals(OfflineAgentCore.GoalStatus.FAILED,
+                core.snapshot().get(0).status());
+    }
+
+    @Test
     void duplicateGoalIdsAreRejected() {
         OfflineAgentCore core = new OfflineAgentCore();
         core.submit(new OfflineAgentCore.Goal("same", "Erster Plan", 0,
