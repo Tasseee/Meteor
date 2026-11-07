@@ -698,8 +698,10 @@ public final class Commands {
             com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c,
             boolean clear) {
         if (clear) {
-            OfflineAgentMemory.clear();
-            return say(c, "Das lokale Offline-Agent-Gedächtnis wurde gelöscht. Laufende Aufträge sind davon nicht betroffen.");
+            boolean cleared = OfflineAgentMemory.clear();
+            return say(c, cleared
+                    ? "Das lokale Offline-Agent-Gedächtnis wurde gelöscht. Laufende Aufträge sind davon nicht betroffen."
+                    : "Der Verlauf wurde im Arbeitsspeicher geleert, aber die Datei konnte nicht gelöscht werden. Prüfe config/nightfall/agent_memory.json.");
         }
         List<OfflineAgentMemory.Entry> entries = OfflineAgentMemory.recent(6);
         if (entries.isEmpty()) return say(c, "Das lokale Offline-Agent-Gedächtnis ist noch leer.");
