@@ -287,7 +287,7 @@ public final class AIChatScreen extends Screen {
         drawHologram(ctx, panelX + 29, panelY + 15, waiting || AIRealtimeVoiceClient.isSpeaking());
         ctx.drawText(mc.textRenderer, "NIGHTFALL", panelX + 54, panelY + 10, Theme.TEXT, true);
         ctx.drawText(mc.textRenderer, "DEIN KI-COMPANION", panelX + 54, panelY + 23, Theme.ACCENT, false);
-        String modeLabel = AIRealtimeVoiceClient.isActive() ? "VOICE LINK" : "HOLO INTERFACE";
+        String modeLabel = "OFFLINE COMPANION";
         ctx.drawText(mc.textRenderer, modeLabel, panelX + panelW - mc.textRenderer.getWidth(modeLabel) - 16,
                 panelY + 14, Theme.TEXT_DIM, false);
 
@@ -436,7 +436,7 @@ public final class AIChatScreen extends Screen {
 
         int micColor = AIRealtimeVoiceClient.isActive() ? 0xFF267B69 : 0xFF343848;
         ctx.fill(micX, micY, micX + micW, micY + micH, micColor);
-        String micLabel = AIRealtimeVoiceClient.isActive() ? "STOP" : "CALL";
+        String micLabel = "VOICE AUS";
         ctx.drawText(mc.textRenderer, micLabel,
                 micX + (micW - mc.textRenderer.getWidth(micLabel)) / 2,
                 micY + 7, Theme.TEXT, true);
@@ -444,12 +444,12 @@ public final class AIChatScreen extends Screen {
         boolean ttsEnabled = AIConfig.current().voiceOutputEnabled();
         int ttsColor = ttsEnabled ? 0xFF267B69 : 0xFF343848;
         ctx.fill(ttsX, ttsY, ttsX + ttsW, ttsY + ttsH, ttsColor);
-        String ttsLabel = ttsEnabled ? "TTS ON" : "TTS OFF";
+        String ttsLabel = "AUDIO AUS";
         ctx.drawText(mc.textRenderer, ttsLabel,
                 ttsX + (ttsW - mc.textRenderer.getWidth(ttsLabel)) / 2,
                 ttsY + 7, Theme.TEXT, true);
 
-        String voiceLabel = AIConfig.current().speechVoice().toUpperCase(Locale.ROOT);
+        String voiceLabel = "SPÄTER";
         ctx.fill(voiceX, voiceY, voiceX + voiceW, voiceY + voiceH, 0xFF293342);
         ctx.fill(voiceX, voiceY, voiceX + voiceW, voiceY + 1, Theme.ACCENT);
         ctx.drawText(mc.textRenderer, voiceLabel,
@@ -463,7 +463,7 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, sendLabel, sendLabelX, sendY + 7,
                 waiting || input.isBlank() ? Theme.TEXT_DIM : 0xFF081014, true);
 
-        ctx.drawText(mc.textRenderer, "ENTER: senden · F8: Call an/aus · F9: Mikro stumm/an · TTS: Sprachausgabe · Stimmenfeld: wechseln · ESC: schließen",
+        ctx.drawText(mc.textRenderer, "ENTER: Offline-Hinweis · /nf agent help: Befehle · ESC: schließen",
                 panelX + 16, panelY + panelH - 10, Theme.TEXT_DIM, false);
     }
 
