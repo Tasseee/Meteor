@@ -363,6 +363,8 @@ public final class Commands {
         build.then(argument("structure", StringArgumentType.word())
                 .executes(c -> submitOfflineAgentGoal(c, "Bereite die angegebene lokale Bauvorlage vor.",
                         "build_structure", Map.of("structure", str(c, "structure")))));
+        build.then(literal("resume").executes(c -> submitOfflineAgentGoal(c,
+                "Setze einen lokal gespeicherten Bauplan fort.", "resume_saved_build", Map.of())));
         root.then(build);
 
         LiteralArgumentBuilder<FabricClientCommandSource> schematic = literal("schematic");
