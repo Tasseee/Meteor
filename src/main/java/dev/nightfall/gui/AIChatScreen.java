@@ -1,6 +1,10 @@
 package dev.nightfall.gui;
 
+import dev.nightfall.Nightfall;
 import dev.nightfall.ai.AIChatClient;
+import dev.nightfall.ai.LocalAIModelService;
+import dev.nightfall.ai.LocalAIPlanner;
+import dev.nightfall.ai.LocalAIResponseParser;
 import dev.nightfall.ai.AIConfig;
 import dev.nightfall.ai.AIVoiceClient;
 import dev.nightfall.ai.AIRealtimeVoiceClient;
@@ -77,6 +81,8 @@ public final class AIChatScreen extends Screen {
     private int ttsX, ttsY, ttsW, ttsH;
     private int voiceX, voiceY, voiceW, voiceH;
     private int contextToggleX, contextToggleY, contextToggleW, contextToggleH;
+    private int modelButtonX, modelButtonY, modelButtonW, modelButtonH;
+    private boolean localWorldContextEnabled = true;
     private final int[] suggestionX = new int[3];
     private final int[] suggestionW = new int[3];
     private int suggestionY;
@@ -126,7 +132,7 @@ public final class AIChatScreen extends Screen {
         AIConfig.load();
         active = this;
         history.add(new ChatLine("assistant",
-                "Hey! Ich bin Nightfall. Der Offline-Agent ist bereit. Freie Sprache und Stimme sind noch nicht angeschlossen; nutze vorerst /nf agent status und /nf agent gather, craft, smelt, build, wood oder iron. Jede Weltaktion zeigt vorher eine Vorschau."));
+                "Hey! Ich bin Nightfall. Die lokale KI läuft direkt auf deinem PC. Lade zuerst über MODELL LADEN das Qwen-Modell (einmalig ca. 1,1 GB). Danach kannst du mich normal fragen oder mir Welt- und Bauaufträge geben. Jede Aktion wird lokal geprüft und vor der Ausführung als Vorschau gezeigt."));
     }
 
     private static SuggestionSet suggestionsForCurrentDimension(MinecraftClient mc) {
@@ -162,6 +168,7 @@ public final class AIChatScreen extends Screen {
         AIRealtimeVoiceClient.stop();
         AIVoiceClient.stopRecording();
         AIVoiceClient.stopSpeaking();
+        LocalAIModelService.shutdown();
     }
 
     /** Toggle the voice call. Voice is intentionally disabled in the current offline build. */
@@ -287,9 +294,26 @@ public final class AIChatScreen extends Screen {
         drawHologram(ctx, panelX + 29, panelY + 15, waiting || AIRealtimeVoiceClient.isSpeaking());
         ctx.drawText(mc.textRenderer, "NIGHTFALL", panelX + 54, panelY + 10, Theme.TEXT, true);
         ctx.drawText(mc.textRenderer, "DEIN KI-COMPANION", panelX + 54, panelY + 23, Theme.ACCENT, false);
-        String modeLabel = "OFFLINE COMPANION";
-        ctx.drawText(mc.textRenderer, modeLabel, panelX + panelW - mc.textRenderer.getWidth(modeLabel) - 16,
-                panelY + 14, Theme.TEXT_DIM, false);
+        modelButtonW = Math.min(142, Math.max(96, panelW / 3));
+        modelButtonH = 21;
+        modelButtonX = panelX + panelW - modelButtonW - 14;
+        modelButtonY = panelY + 9;
+        String modelLabel = switch (LocalAIModelService.state()) {
+            case READY, GENERATING -> "MODELL BEREIT";
+            case DOWNLOADING -> LocalAIModelService.status().toUpperCase(Locale.ROOT);
+            case LOADING -> "MODELL LÄDT …";
+            case ERROR -> "ERNEUT VERSUCHEN";
+            case STOPPED -> "MODELL BEENDET";
+            case MISSING -> "MODELL LADEN";
+        };
+        ctx.fill(modelButtonX, modelButtonY, modelButtonX + modelButtonW, modelButtonY + modelButtonH,
+                LocalAIModelService.isReady() ? 0xFF245D53 : 0xFF293342);
+        ctx.fill(modelButtonX, modelButtonY, modelButtonX + modelButtonW, modelButtonY + 1, Theme.ACCENT);
+        while (mc.textRenderer.getWidth(modelLabel) > modelButtonW - 10 && modelLabel.length() > 8)
+            modelLabel = modelLabel.substring(0, modelLabel.length() - 2) + "…";
+        ctx.drawText(mc.textRenderer, modelLabel,
+                modelButtonX + (modelButtonW - mc.textRenderer.getWidth(modelLabel)) / 2,
+                modelButtonY + 7, Theme.TEXT, true);
 
         ctx.drawText(mc.textRenderer, "Daten:", panelX + 16, panelY + 34, Theme.TEXT_DIM, false);
         contextToggleW = 112;
@@ -299,7 +323,7 @@ public final class AIChatScreen extends Screen {
         int contextButtonColor = 0xFF343848;
         ctx.fill(contextToggleX, contextToggleY, contextToggleX + contextToggleW,
                 contextToggleY + contextToggleH, contextButtonColor);
-        String contextToggleLabel = "NUR LOKAL";
+        String contextToggleLabel = localWorldContextEnabled ? "KONTEXT AN" : "KONTEXT AUS";
         int contextLabelX = contextToggleX + (contextToggleW - mc.textRenderer.getWidth(contextToggleLabel)) / 2;
         ctx.drawText(mc.textRenderer, contextToggleLabel, contextLabelX, contextToggleY + 5,
                 Theme.TEXT, true);
@@ -460,7 +484,7 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, sendLabel, sendLabelX, sendY + 7,
                 waiting || input.isBlank() ? Theme.TEXT_DIM : 0xFF081014, true);
 
-        ctx.drawText(mc.textRenderer, "ENTER: Offline-Hinweis · /nf agent help: Befehle · ESC: schließen",
+        ctx.drawText(mc.textRenderer, "ENTER: lokal fragen · /nf agent help: Befehle · ESC: schließen",
                 panelX + 16, panelY + panelH - 10, Theme.TEXT_DIM, false);
     }
 
@@ -588,6 +612,12 @@ public final class AIChatScreen extends Screen {
             }
         }
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && click.x() >= modelButtonX && click.x() <= modelButtonX + modelButtonW
+                && click.y() >= modelButtonY && click.y() <= modelButtonY + modelButtonH) {
+            setupLocalModel();
+            return true;
+        }
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
                 && click.x() >= contextToggleX && click.x() <= contextToggleX + contextToggleW
                 && click.y() >= contextToggleY && click.y() <= contextToggleY + contextToggleH) {
             toggleWorldContextSharing();
@@ -692,7 +722,23 @@ public final class AIChatScreen extends Screen {
     }
 
     private void toggleWorldContextSharing() {
-        status = "Offline-Modus: Welt-, Inventar- und Modulbeobachtungen bleiben lokal. Es wird kein Weltkontext an einen KI-Anbieter gesendet.";
+        localWorldContextEnabled = !localWorldContextEnabled;
+        status = localWorldContextEnabled
+                ? "Lokaler Weltkontext ist für die nächste Anfrage aktiviert. Die Daten verlassen diesen PC nicht."
+                : "Lokaler Weltkontext ist deaktiviert. Nightfall beantwortet Fragen ohne aktuellen Welt-Snapshot.";
+    }
+
+    private void setupLocalModel() {
+        if (LocalAIModelService.isReady()) {
+            status = "Das lokale Modell ist bereits geladen.";
+            return;
+        }
+        status = "Lokales Modell wird vorbereitet. Der erste Download ist ungefähr 1,1 GB groß.";
+        LocalAIModelService.setup(result -> {
+            status = result.text();
+            history.add(new ChatLine("assistant", result.text()));
+            scroll = Float.MAX_VALUE;
+        });
     }
 
     private void cycleSpeechVoice() {
@@ -725,133 +771,90 @@ public final class AIChatScreen extends Screen {
         if (truncated) prompt = prompt.substring(0, MAX_USER_MESSAGE_CHARS);
         history.add(new ChatLine("user", prompt));
         if (truncated) history.add(new ChatLine("assistant",
-                "Hinweis: Deine Nachricht wurde auf " + MAX_USER_MESSAGE_CHARS + " Zeichen begrenzt, damit die Anfrage schnell bleibt."));
-        apiHistory.add(new AIChatClient.Message("user", prompt));
+                "Hinweis: Deine Nachricht wurde auf " + MAX_USER_MESSAGE_CHARS + " Zeichen begrenzt."));
         actionRoundTrips = 0;
         failedToolAttempts.clear();
         scroll = Float.MAX_VALUE;
         if (AIRealtimeVoiceClient.isActive()) {
-            AIRealtimeVoiceClient.sendText(prompt);
+            status = "Sprachsteuerung ist im lokalen Modellmodus noch nicht angeschlossen.";
+            return;
+        }
+        if (!LocalAIModelService.isReady()) {
+            history.add(new ChatLine("assistant",
+                    "Das lokale Sprachmodell ist noch nicht geladen. Klicke oben rechts auf MODELL LADEN. "
+                            + "Beim ersten Mal wird eine Modell-Datei von ungefähr 1,1 GB einmalig heruntergeladen; "
+                            + danach läuft die KI lokal ohne API-Key oder Cloud-Dienst."));
+            status = "Bitte zuerst lokales Modell laden";
             return;
         }
         requestAI();
     }
 
+    /** Uses only the embedded local model. Its response can suggest a validated plan, never execute it. */
     private void requestAI() {
-        if (waiting || apiHistory.isEmpty()) return;
-        AIConfig.Settings offlineSettings = AIConfig.current();
-        if (offlineSettings.apiKey().isBlank() || offlineSettings.baseUrl().isBlank()) {
-            apiHistory.clear();
-            history.add(new ChatLine("assistant",
-                    "Ich bin gerade im reinen Offline-Modus. Freie Sprache wird später ergänzt. "
-                            + "Nutze /nf agent help, /nf agent status oder einen Auftrag wie /nf agent gather wood minecraft:oak_log 16. "
-                            + "Die Vorschau kannst du mit /nf agent confirm bestätigen; danach prüfst du das Ergebnis mit "
-                            + "/nf agent verify success oder /nf agent verify failed."));
-            waiting = false;
-            status = "Offline-Agent bereit";
-            scroll = Float.MAX_VALUE;
-            return;
-        }
-        AIChatClient.compactHistoryInPlace(apiHistory);
-        if (apiHistory.isEmpty()) return;
-        if (actionRoundTrips >= MAX_ACTION_ROUND_TRIPS) {
-            history.add(new ChatLine("assistant",
-                    "Ich habe mehrere Aktionen nacheinander ausgeführt. Bitte gib mir den nächsten Auftrag separat."));
-            status = "Bitte nächste Aufgabe eingeben";
-            scroll = Float.MAX_VALUE;
-            return;
-        }
-
+        if (waiting || history.isEmpty() || !LocalAIModelService.isReady()) return;
+        List<LocalAIPlanner.Turn> turns = history.stream()
+                .map(line -> new LocalAIPlanner.Turn(line.role(), line.content()))
+                .toList();
+        String context = localWorldContextEnabled ? worldContext() : "";
+        String prompt = LocalAIPlanner.buildPrompt(turns, context);
+        int requestGeneration = sessionGeneration;
         int responseIndex = history.size();
-        history.add(new ChatLine("assistant", "Nightfall AI denkt …"));
+        history.add(new ChatLine("assistant", "Nightfall denkt lokal …"));
         waiting = true;
-        status = "Nightfall AI denkt …";
+        status = "Lokale Inferenz läuft auf diesem PC …";
         scroll = Float.MAX_VALUE;
 
-        AIConfig.load();
-        AIConfig.Settings settings = AIConfig.current();
-        String context = settings.shareWorldContext() ? worldContext() : "";
-        int requestGeneration = sessionGeneration;
-        AIChatClient.request(new ArrayList<>(apiHistory), context, result -> {
+        LocalAIModelService.generate(prompt, result -> {
             if (requestGeneration != sessionGeneration) return;
             waiting = false;
-            if (pendingCommandFeedbackAI) {
-                pendingCommandFeedbackAI = false;
-                actionRoundTrips = 0;
-                history.set(responseIndex, new ChatLine("assistant", "Die Servermeldung ist eingegangen. Ich ordne sie ein …"));
-                scroll = Float.MAX_VALUE;
-                requestAI();
-                return;
-            }
+            if (responseIndex >= history.size()) return;
             if (!result.success()) {
                 history.set(responseIndex, new ChatLine("assistant", result.text()));
-                status = "Verbindung fehlgeschlagen";
+                status = "Lokale KI-Anfrage fehlgeschlagen";
                 scroll = Float.MAX_VALUE;
                 return;
             }
-
-            if (result.toolCall() != null) {
-                AIChatClient.ToolCall call = result.toolCall();
-                apiHistory.add(AIChatClient.Message.assistantToolCall(result.rawAssistantMessage()));
-                try {
-                    if ("run_server_command".equals(call.name()) && waitingCommandResponse)
-                        throw new IllegalArgumentException("Ein Serverbefehl wartet noch auf eine Rückmeldung. Warte auf die Serverantwort oder den 30-Sekunden-Timeout, bevor du den nächsten Befehl sendest.");
-                    String toolSignature = call.name() + "|" + call.arguments();
-                    if (failedToolAttempts.getOrDefault(toolSignature, 0) >= 2) {
-                        String blockedResult = "Dieser identische Werkzeugschritt ist in diesem Auftrag bereits zweimal fehlgeschlagen und wird nicht erneut ausgeführt. "
-                                + "Erkläre die Blockade oder wähle einen anderen sicheren Weg.";
-                        apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), blockedResult));
-                        history.set(responseIndex, new ChatLine("assistant", blockedResult));
-                        actionRoundTrips++;
-                        scroll = Float.MAX_VALUE;
-                        requestAI();
-                        return;
+            try {
+                LocalAIResponseParser.Response response = LocalAIResponseParser.parse(result.text());
+                if (response instanceof LocalAIResponseParser.Answer answer) {
+                    history.set(responseIndex, new ChatLine("assistant", answer.text()));
+                    status = "Lokal beantwortet · keine Daten übertragen";
+                } else if (response instanceof LocalAIResponseParser.Plan plan) {
+                    MinecraftClient mc = MinecraftClient.getInstance();
+                    if (mc.player == null || mc.world == null) {
+                        throw new IllegalStateException("Für Weltaktionen musst du zuerst einer Minecraft-Welt oder einem Server beitreten.");
                     }
-                    AIActionRegistry.Action prepared = AIActionRegistry.prepare(call.name(), call.arguments());
-                    if (!AIActionRegistry.requiresConfirmation(call.name())) {
-                        String toolResult = AIActionRegistry.execute(prepared);
-                        apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), toolResult));
-                        history.set(responseIndex, new ChatLine("assistant", "Werkzeugergebnis wird ausgewertet …"));
-                        actionRoundTrips++;
-                        scroll = Float.MAX_VALUE;
-                        requestAI();
-                        return;
+                    for (OfflineAgentCore.Step step : plan.goal().steps()) {
+                        if (!dev.nightfall.ai.OfflineAgentActionBridge.supportsAction(step.action())) {
+                            throw new IllegalArgumentException("Die lokale Aktion '" + step.action()
+                                    + "' ist nicht freigegeben oder wird in diesem Planformat nicht unterstützt.");
+                        }
                     }
-                    pendingAction = prepared;
-                    pendingToolCall = call;
-                    history.set(responseIndex, new ChatLine("assistant",
-                            "Ich möchte folgende Aktion ausführen:\n" + pendingAction.preview()));
-                    status = "Aktion wartet auf deine Bestätigung";
-                    AIVoiceClient.speak("Ich möchte folgende Aktion ausführen. " + pendingAction.preview()
-                            + ". Bitte bestätige sie im Nightfall-Fenster oder brich sie ab.");
-                    scroll = Float.MAX_VALUE;
-                } catch (RuntimeException actionFailure) {
-                    String detail = actionFailure.getMessage();
-                    if (detail == null || detail.isBlank()) detail = actionFailure.getClass().getSimpleName();
-                    detail = detail.replaceAll("[\\r\\n\\t]+", " ").trim();
-                    if (detail.length() > 320) detail = detail.substring(0, 320) + "…";
-                    String signature = call.name() + "|" + call.arguments();
-                    int failures = failedToolAttempts.merge(signature, 1, Integer::sum);
-                    String failureResult = "Nightfall konnte das Werkzeug nicht ausführen: " + detail + ".";
-                    if (failures >= 2) {
-                        failureResult += " Derselbe Schritt ist bereits mehrfach fehlgeschlagen. Nicht erneut aufrufen. "
-                                + "Erkläre die Blockade oder wähle einen wesentlich anderen sicheren Schritt.";
+                    Nightfall.offlineAgentBridge().ensureReady();
+                    Nightfall.offlineAgentCore().submit(plan.goal());
+                    var prepared = Nightfall.offlineAgentBridge().prepareNext();
+                    String message = "Ich habe den Auftrag lokal geplant: " + plan.goal().description()
+                            + "\n" + plan.goal().steps().size() + " Schritt(e) · Task-ID " + plan.goal().id()
+                            + "\n";
+                    if (prepared.isPresent()) {
+                        message += "Die erste Aktionsvorschau steht im Minecraft-Chat. Prüfe sie und bestätige mit /nf agent confirm. "
+                                + "Mit /nf agent reject lehnst du sie ab; /nf agent status zeigt den Fortschritt.";
+                        status = "Lokaler Plan bereit · wartet auf deine Bestätigung";
                     } else {
-                        failureResult += " Prüfe den Zustand und wähle nur dann einen sicheren Alternativschritt.";
+                        message += "Der Plan ist eingereiht. Nightfall bereitet den nächsten Schritt vor, sobald ein anderer Auftrag beendet ist.";
+                        status = "Lokaler Plan eingereiht";
                     }
-                    apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), failureResult));
-                    history.set(responseIndex, new ChatLine("assistant", failureResult));
-                    actionRoundTrips++;
-                    scroll = Float.MAX_VALUE;
-                    requestAI();
+                    history.set(responseIndex, new ChatLine("assistant", message));
                 }
-                return;
+            } catch (RuntimeException failure) {
+                String detail = failure.getMessage();
+                if (detail == null || detail.isBlank()) detail = failure.getClass().getSimpleName();
+                history.set(responseIndex, new ChatLine("assistant",
+                        "Ich konnte daraus keinen gültigen lokalen Auftrag machen: " + detail
+                                + "\nIch habe nichts ausgeführt. Du kannst den Auftrag anders formulieren oder /nf agent help nutzen."));
+                status = "Plan lokal abgelehnt · keine Aktion ausgeführt";
             }
-
-            history.set(responseIndex, new ChatLine("assistant", result.text()));
-            apiHistory.add(new AIChatClient.Message("assistant", result.text()));
-            status = "Antwort erhalten";
-            if (MinecraftClient.getInstance().currentScreen == this) AIVoiceClient.speak(result.text());
             scroll = Float.MAX_VALUE;
         });
     }
