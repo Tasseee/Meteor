@@ -250,11 +250,12 @@ public final class OfflineAgentQueueStore {
                     return 0;
                 }
             });
-            for (Path path : files) {
-                if (files.size() <= MAX_WORLD_FILES) break;
+            var iterator = files.iterator();
+            while (files.size() > MAX_WORLD_FILES && iterator.hasNext()) {
+                Path path = iterator.next();
                 if (path.equals(keep)) continue;
                 deleteQuietly(path);
-                files.remove(path);
+                iterator.remove();
             }
         } catch (IOException ignored) {
             // Queue persistence must never interrupt the Minecraft client.
