@@ -21,6 +21,8 @@ dependencies {
     // Embedded llama.cpp CPU inference; no local server or cloud provider required.
     implementation 'de.kherud:llama:4.1.0'
     include 'de.kherud:llama:4.1.0'
+    implementation 'org.jetbrains:annotations:24.1.0'
+    include 'org.jetbrains:annotations:24.1.0'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
