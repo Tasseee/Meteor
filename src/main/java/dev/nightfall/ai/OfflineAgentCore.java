@@ -43,8 +43,10 @@ public final class OfflineAgentCore {
             requireId(action, "action");
             parameters = immutableParameters(parameters);
             dependsOn = List.copyOf(Objects.requireNonNull(dependsOn, "dependsOn"));
-            if (dependsOn.size() > MAX_STEPS_PER_GOAL || dependsOn.contains(id)
-                    || dependsOn.stream().anyMatch(value -> value == null || !value.matches("[a-zA-Z0-9_.-]{1,64}"))) {
+            if (dependsOn.size() > MAX_STEPS_PER_GOAL
+                    || new LinkedHashSet<>(dependsOn).size() != dependsOn.size()
+                    || dependsOn.contains(id)
+                    || dependsOn.stream().anyMatch(value -> !value.matches("[a-zA-Z0-9_.-]{1,64}"))) {
                 throw new IllegalArgumentException("Invalid step dependencies.");
             }
             if (maxAttempts < 1 || maxAttempts > 5) {
