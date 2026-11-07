@@ -187,6 +187,52 @@ class OfflineAgentCoreTest {
     }
 
     @Test
+    void restoreTurnsAnInterruptedStepIntoVerificationAndBlocksDependents() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        OfflineAgentCore.Step gather = step("gather", "gather_wood", List.of(), 2);
+        OfflineAgentCore.Step craft = step("craft", "craft_item", List.of("gather"), 2);
+        OfflineAgentCore.Goal goal = new OfflineAgentCore.Goal(
+                "restart", "Sammle Holz und craft Bretter.", 5, List.of(gather, craft));
+        OfflineAgentCore.GoalCheckpoint checkpoint = new OfflineAgentCore.GoalCheckpoint(
+                goal, OfflineAgentCore.GoalStatus.ACTIVE, List.of(
+                new OfflineAgentCore.StepCheckpoint(gather, OfflineAgentCore.StepStatus.SUCCEEDED, 1, "Holz gesammelt."),
+                new OfflineAgentCore.StepCheckpoint(craft, OfflineAgentCore.StepStatus.RUNNING, 1, "Crafting lief.")
+        ));
+
+        assertEquals(1, core.restoreActiveCheckpoints(List.of(checkpoint)));
+        assertEquals(OfflineAgentCore.StepStatus.SUCCEEDED, core.snapshot().get(0).steps().get(0).status());
+        assertEquals(OfflineAgentCore.StepStatus.VERIFYING, core.snapshot().get(0).steps().get(1).status());
+        assertTrue(core.nextReadyStep().isEmpty(),
+                "A dependent or retry step must not start before the interrupted action is checked.");
+
+        core.verify("restart", "craft", false, "Inventar geprüft: die Bretter fehlen noch.");
+        assertEquals("craft", core.nextReadyStep().orElseThrow().step().id());
+    }
+
+    @Test
+    void restoreRejectsMoreThanOneInterruptedMinecraftActionAtomically() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        OfflineAgentCore.Step first = step("one", "gather_wood", List.of(), 2);
+        OfflineAgentCore.Step second = step("two", "craft_item", List.of(), 2);
+        OfflineAgentCore.Goal firstGoal = new OfflineAgentCore.Goal(
+                "first", "Erster Auftrag", 1, List.of(first));
+        OfflineAgentCore.Goal secondGoal = new OfflineAgentCore.Goal(
+                "second", "Zweiter Auftrag", 1, List.of(second));
+        OfflineAgentCore.GoalCheckpoint firstCheckpoint = new OfflineAgentCore.GoalCheckpoint(
+                firstGoal, OfflineAgentCore.GoalStatus.ACTIVE,
+                List.of(new OfflineAgentCore.StepCheckpoint(first, OfflineAgentCore.StepStatus.RUNNING, 1, "Unterbrochen.")));
+        OfflineAgentCore.GoalCheckpoint secondCheckpoint = new OfflineAgentCore.GoalCheckpoint(
+                secondGoal, OfflineAgentCore.GoalStatus.ACTIVE,
+                List.of(new OfflineAgentCore.StepCheckpoint(second, OfflineAgentCore.StepStatus.VERIFYING, 1, "Unterbrochen.")));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> core.restoreActiveCheckpoints(List.of(firstCheckpoint, secondCheckpoint)));
+        assertTrue(core.snapshot().isEmpty(),
+                "An invalid multi-action restore must not partially mutate the scheduler.");
+        assertEquals(1, core.restoreActiveCheckpoints(List.of(firstCheckpoint)));
+    }
+
+    @Test
     void duplicateGoalIdsAreRejected() {
         OfflineAgentCore core = new OfflineAgentCore();
         core.submit(new OfflineAgentCore.Goal("same", "Erster Plan", 0,
