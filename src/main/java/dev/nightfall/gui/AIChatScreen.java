@@ -68,7 +68,7 @@ public final class AIChatScreen extends Screen {
     private final Map<String, List<String>> wrapCache = new HashMap<>();
     private int wrapCacheWidth = -1;
     private String input = "";
-    private String status = "Bereit · KI-Anbieter konfigurieren";
+    private String status = "Offline-Agent bereit · /nf agent help";
     private boolean waiting;
     private float scroll = Float.MAX_VALUE;
     private int panelX, panelY, panelW, panelH;
@@ -754,6 +754,8 @@ public final class AIChatScreen extends Screen {
     }
 
     private void cycleSpeechVoice() {
+        status = "Stimme ist in diesem Offline-Stand deaktiviert und wird später lokal ergänzt.";
+        return;
         List<String> voices = AIConfig.supportedSpeechVoices();
         AIConfig.Settings current = AIConfig.current();
         int currentIndex = voices.indexOf(current.speechVoice());
@@ -772,11 +774,9 @@ public final class AIChatScreen extends Screen {
     }
 
     private void toggleVoiceOutput() {
+        status = "Sprachausgabe ist in diesem Offline-Stand deaktiviert und wird später lokal ergänzt.";
+        return;
         AIConfig.Settings settings = AIConfig.current();
-        if (!settings.voiceOutputEnabled() && settings.apiKey().isBlank()) {
-            status = "Für Sprachausgabe zuerst den API-Key in config/nightfall/ai.json eintragen.";
-            return;
-        }
         boolean enabled = !settings.voiceOutputEnabled();
         AIConfig.Settings updated = AIConfig.updateVoiceSettings(settings.voiceInputEnabled(), enabled);
         if (updated.voiceOutputEnabled() != enabled) {
