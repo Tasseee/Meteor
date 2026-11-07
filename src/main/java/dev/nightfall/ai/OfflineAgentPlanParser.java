@@ -158,11 +158,15 @@ public final class OfflineAgentPlanParser {
         if (array.size() > OfflineAgentCore.MAX_STEPS_PER_GOAL)
             throw new IllegalArgumentException("Zu viele Schritt-Abhängigkeiten.");
         List<String> result = new ArrayList<>(array.size());
+        Set<String> unique = new java.util.HashSet<>();
         for (JsonElement dependency : array) {
             if (dependency == null || !dependency.isJsonPrimitive()
                     || !dependency.getAsJsonPrimitive().isString())
                 throw new IllegalArgumentException("Jede Abhängigkeit muss eine Text-ID sein.");
-            result.add(dependency.getAsString());
+            String id = dependency.getAsString();
+            if (!unique.add(id))
+                throw new IllegalArgumentException("Eine Abhängigkeit darf nicht doppelt eingetragen werden: " + id);
+            result.add(id);
         }
         return List.copyOf(result);
     }
