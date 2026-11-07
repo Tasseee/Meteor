@@ -341,6 +341,26 @@ public final class OfflineAgentActionBridge {
         setupPrompt = "";
     }
 
+    /** Cancels only a queued or running Builder step, preserving unrelated goals. */
+    public synchronized String cancelBuilderAction() {
+        if (!MinecraftClient.getInstance().isOnThread())
+            throw new IllegalStateException("Builder-Aufträge müssen auf dem Minecraft-Client-Thread gestoppt werden.");
+        if (pending != null && pendingAction != null && isBuilderAction(pendingAction.name())) {
+            cancelPending();
+            return "Die vorbereitete Builder-Aktion wurde verworfen; es wurde nichts gebaut.";
+        }
+        if (verifyingGoalId != null && verificationKind == VerificationKind.BUILDER) {
+            cancelVerifyingAction();
+            return "Der laufende Builder-Auftrag wurde abgebrochen. Andere Offline-Aufträge bleiben eingereiht.";
+        }
+        return AIBuilder.stop();
+    }
+
+    private static boolean isBuilderAction(String action) {
+        return Set.of("build_starter_shelter", "build_structure", "build_schematic",
+                "resume_saved_build").contains(action);
+    }
+
     /** Cancels every active offline goal and safely stops the active action. */
     public synchronized void cancelAll() {
         if (!MinecraftClient.getInstance().isOnThread())
