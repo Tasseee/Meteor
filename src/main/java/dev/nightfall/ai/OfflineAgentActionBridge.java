@@ -407,8 +407,8 @@ public final class OfflineAgentActionBridge {
     }
 
     private static boolean isBuilderAction(String action) {
-        return Set.of("build_starter_shelter", "build_structure", "build_schematic",
-                "resume_saved_build").contains(action);
+        return Set.of("build_starter_shelter", "build_structure", "build_custom_structure",
+                "build_schematic", "resume_saved_build").contains(action);
     }
 
     /** Cancels every active offline goal and safely stops the active action. */
