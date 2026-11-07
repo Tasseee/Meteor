@@ -57,7 +57,7 @@ public final class AIChatScreen extends Screen {
     private static AIChatScreen active;
     private static final int MAX_ACTION_ROUND_TRIPS = 10;
     private static final int MAX_VISIBLE_HISTORY_LINES = 80;
-    private static final int MAX_VISIBLE_MESSAGE_CHARS = 6_000;
+    private static final int MAX_VISIBLE_MESSAGE_CHARS = 12_000;
     private static final int MAX_USER_MESSAGE_CHARS = 8_000;
     private static final Pattern LOCATE_COORDINATES =
             Pattern.compile("(?s).*\\[\\s*(-?\\d+)\\s*,\\s*(~|-?\\d+)\\s*,\\s*(-?\\d+)\\s*\\].*");
@@ -829,7 +829,10 @@ public final class AIChatScreen extends Screen {
             status = "Sprachsteuerung ist im lokalen Modellmodus noch nicht angeschlossen.";
             return;
         }
-        if (!LocalAIModelService.isReady()) {
+        List<LocalAIPlanner.Turn> turns = history.stream()
+                .map(line -> new LocalAIPlanner.Turn(line.role(), line.content()))
+                .toList();
+        if (!LocalAIModelService.isReady() && !LocalAIToolRouter.isCapabilityQuestion(turns)) {
             history.add(new ChatLine("assistant",
                     "Das lokale Sprachmodell ist noch nicht geladen. Klicke oben rechts auf MODELL LADEN. "
                             + "Beim ersten Mal wird eine Modell-Datei von ungefähr 1,1 GB einmalig heruntergeladen; "
@@ -842,10 +845,20 @@ public final class AIChatScreen extends Screen {
 
     /** Uses only the embedded local model. Its response can suggest a validated plan, never execute it. */
     private void requestAI() {
-        if (waiting || history.isEmpty() || !LocalAIModelService.isReady()) return;
+        if (waiting || history.isEmpty()) return;
         List<LocalAIPlanner.Turn> turns = history.stream()
                 .map(line -> new LocalAIPlanner.Turn(line.role(), line.content()))
                 .toList();
+        if (LocalAIToolRouter.isCapabilityQuestion(turns)) {
+            history.add(new ChatLine("assistant",
+                    "Hier ist die vollständige Funktionsübersicht aus Nightfalls lokalem Aktionsregister. "
+                            + "Die Kennzeichnung bestätigt die Schema-/Bridge-Anbindung, nicht die Verfügbarkeit in jedem Weltzustand.\\n\\n"
+                            + LocalAIPlanner.capabilityCatalog()));
+            status = "Vollständige lokale Funktionsübersicht";
+            scroll = Float.MAX_VALUE;
+            return;
+        }
+        if (!LocalAIModelService.isReady()) return;
         boolean buildPlanningRequest = LocalAIToolRouter.selectTools(turns).contains("build_structure");
         String context = localWorldContextEnabled
                 ? worldContext(buildPlanningRequest) + "\n\n" + AILocalRuntimeContext.capture()
