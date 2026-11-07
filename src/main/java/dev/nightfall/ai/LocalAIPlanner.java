@@ -42,7 +42,6 @@ public final class LocalAIPlanner {
                 .append("Für Bauaufträge: nutze zuerst die read-only-Materialplanung im Weltkontext für starter_shelter, large_house und watchtower. Sie enthält tatsächliche Bestände, Fehlmengen und verfügbare Crafting-Alternativen aus dem lokalen Rezeptbuch. Wähle nur eine dort als ausreichend oder herstellbar ausgewiesene exakte Item-ID. Plane nötige craft_item-Schritte vor dem Bau und setze dependsOn. Wenn Zutaten oder eine sichere Beschaffungsquelle fehlen, frage nach statt ein Material oder einen Baumtyp zu raten. Die lokale Bauvorschau prüft die tatsächliche Verfügbarkeit nochmals. Für eigene Baupläne nutze die Vorschau als maßgebliche Materialprüfung. ")
                 .append("Für größere Gebäude: beschreibe Etagen und Bauabschnitte in der Zielbeschreibung, plane den Bau bottom-up und halte einzelne Bauabschnitte innerhalb der Grenzen des jeweiligen Werkzeugs. build_custom_structure ist auf 512 Blöcke und Koordinaten 0..31 begrenzt; Schematics werden in 32-Block-Abschnitten verarbeitet. Behaupte keine unbegrenzte automatische Baugröße. ")
                 .append("WELTVERSTÄNDNIS: Der Weltkontext ist eine Momentaufnahme mit klaren Sichtbarkeitsgrenzen. Nutze exakte Item-IDs und Koordinaten nur, wenn sie dort tatsächlich stehen. Fehlende/unbekannte Daten bleiben unbekannt. Bei deaktiviertem Kontext oder nicht geladenen Chunks frage nach, statt zu raten. ")
-                .append("CLIENT-MODULE: Nightfall kann alle in ModuleManager registrierten Module dieses Clients auflisten und verwalten, nicht nur Nightfall-eigene Module. Nutze list_client_modules für die vollständige kompakte Modulliste und get_module_settings für die tatsächlichen Einstellungen eines exakten Modulnamens. Rate niemals Modul- oder Einstellungsnamen. Änderungen laufen ausschließlich über set_module_state oder set_module_setting und benötigen eine lokale Vorschau plus Spielerbestätigung. ")
                 .append("FEHLER UND FORTSETZUNG: maxAttempts höchstens 2 für Weltänderungen; erhöhe Wiederholungen nicht, wenn ein Ergebnis unklar ist. Nach UNCERTAIN/VERIFYING muss erst geprüft werden. Nach Neustart werden unterbrochene Schritte nicht blind wiederholt. Pausiere/stoppe bei Gefahr, fehlenden Voraussetzungen oder widersprüchlichen Beobachtungen. ")
                 .append("BAUEN UND SCHEMATICS: Wenn der Spieler eine neue eigene Struktur in natürlicher Sprache entwerfen und bauen lassen will, nutze build_custom_structure. Erzeuge einen kompakten, zusammenhängenden Blockplan mit x/y/z-Offsets von 0 bis 31 und höchstens 512 Blöcken; jeder Block muss face-to-face mit dem Boden oder einem bereits gesetzten Block verbunden sein. Frage nach, wenn Größe, Stil oder Material für einen sinnvollen Plan fehlen. Behaupte nicht, dadurch eine .schem-Datei exportiert zu haben. ")
                 .append("FÄHIGKEITEN: Wenn der Spieler fragt, was du kannst oder welche Funktionen vorhanden sind, gib eine vollständige Übersicht anhand des folgenden Katalogs. Nenne nur als lokal an die Offline-Agent-Brücke angebunden markierte Aktionen als dort schema-seitig unterstützt; das ist noch keine Garantie für erfolgreiche Ausführung in jeder Welt. Erkläre Voraussetzungen und Grenzen aus den Beschreibungen. Erfinde keine weiteren Funktionen. In diesem Fall antworte im answer-Modus und starte keine Aktion. ")
@@ -53,9 +52,6 @@ public final class LocalAIPlanner {
                         ? "AUSGEWÄHLTE WERKZEUGSCHEMAS (nur zur Orientierung):\n"
                         : "VERFÜGBARE LOKALE AKTIONEN FÜR DIESE ANFRAGE (nicht aufgeführte Aktionen sind nicht verfügbar):\n")
                 .append(compactActionSchemas(LocalAIToolRouter.selectTools(history)).toString())
-                .append("\n")
-                .append("VOLLSTÄNDIGER FUNKTIONSINDEX (Kurzbeschreibungen; genaue Parameter stehen bei den ausgewählten Aktionsschemas):\n")
-                .append(compactCapabilityIndex())
                 .append("\n");
         if (LocalAIToolRouter.isCapabilityQuestion(history)) {
             prompt.append("VOLLSTÄNDIGER FÄHIGKEITSKATALOG (alle registrierten Aktionen):\n")
@@ -165,36 +161,6 @@ public final class LocalAIPlanner {
         return catalog.toString();
     }
 
-    /**
-     * Small always-present index so the local model knows the complete client
-     * feature surface without loading every detailed JSON schema into context.
-     */
-    private static String compactCapabilityIndex() {
-        Map<String, List<String>> groups = new java.util.LinkedHashMap<>();
-        for (JsonElement element : AIActionRegistry.toolDefinitions()) {
-            if (element == null || !element.isJsonObject()) continue;
-            JsonElement functionElement = element.getAsJsonObject().get("function");
-            if (functionElement == null || !functionElement.isJsonObject()) continue;
-            JsonObject function = functionElement.getAsJsonObject();
-            JsonElement nameElement = function.get("name");
-            if (nameElement == null || !nameElement.isJsonPrimitive()
-                    || !nameElement.getAsJsonPrimitive().isString()) continue;
-            String name = nameElement.getAsString();
-            String description = function.has("description") && function.get("description").isJsonPrimitive()
-                    ? function.get("description").getAsString().replaceAll("[\\r\\n]+", " ").trim() : "";
-            if (description.length() > 62) description = description.substring(0, 59) + "...";
-            groups.computeIfAbsent(capabilityCategory(name), ignored -> new java.util.ArrayList<>())
-                    .add("- " + name + ": " + description);
-        }
-
-        StringBuilder index = new StringBuilder(4_000);
-        for (Map.Entry<String, List<String>> group : groups.entrySet()) {
-            index.append(group.getKey()).append('\n');
-            for (String item : group.getValue()) index.append(item).append('\n');
-        }
-        return index.length() > 6_000 ? index.substring(0, 5_997) + "..." : index.toString();
-    }
-
     private static String capabilityCategory(String action) {
         return switch (action) {
             case "search_structures", "locate_structure", "locate_biome", "add_waypoint",
@@ -204,9 +170,9 @@ public final class LocalAIPlanner {
             case "search_bases", "get_base_findings", "get_module_observations",
                     "mark_fake_base", "list_fake_base_templates" ->
                     "Scanner und lokale Weltbeobachtungen";
-            case "list_client_modules", "set_module_state", "get_module_settings",
-                    "set_module_setting", "open_nightfall_menu" ->
-                    "Client-Module und Einstellungen";
+            case "set_module_state", "get_module_settings", "set_module_setting",
+                    "open_nightfall_menu" ->
+                    "Nightfall-Module und Einstellungen";
             case "get_inventory", "sort_inventory", "get_player_status", "mine_block",
                     "mine_looked_block", "gather_wood", "gather_block", "gather_ore",
                     "smelt_item", "craft_item", "eat_food", "get_player_action_status",
