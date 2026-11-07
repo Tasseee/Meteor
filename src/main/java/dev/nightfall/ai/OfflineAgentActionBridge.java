@@ -47,7 +47,7 @@ public final class OfflineAgentActionBridge {
     private long builderSequenceAtStart;
     private long combatSequenceAtStart;
 
-    private enum VerificationKind { NONE, PLAYER_CONTROLLER, BUILDER, COMBAT, EXTERNAL, RECOVERED }
+    enum VerificationKind { NONE, PLAYER_CONTROLLER, BUILDER, COMBAT, EXTERNAL, RECOVERED }
 
     public OfflineAgentActionBridge(OfflineAgentCore core) {
         this.core = Objects.requireNonNull(core, "core");
@@ -305,14 +305,14 @@ public final class OfflineAgentActionBridge {
         };
     }
 
-    private static VerificationKind verificationKindFor(String action) {
+    static VerificationKind verificationKindFor(String action) {
         return switch (action) {
             case "walk_forward", "search_structures", "navigate_to", "mine_block",
                     "mine_looked_block", "gather_wood", "gather_block", "gather_ore",
                     "smelt_item", "craft_item", "eat_food", "sort_inventory",
                     "resume_saved_task" -> VerificationKind.PLAYER_CONTROLLER;
-            case "build_starter_shelter", "build_structure", "build_schematic",
-                    "resume_saved_build" -> VerificationKind.BUILDER;
+            case "build_starter_shelter", "build_structure", "build_custom_structure",
+                    "build_schematic", "resume_saved_build", "resume_build" -> VerificationKind.BUILDER;
             case "attack_nearest_hostile", "guard_nearby_hostiles" -> VerificationKind.COMBAT;
             case "locate_structure", "locate_biome", "random_teleport", "run_server_command",
                     "search_bases" -> VerificationKind.EXTERNAL;
@@ -408,7 +408,7 @@ public final class OfflineAgentActionBridge {
 
     private static boolean isBuilderAction(String action) {
         return Set.of("build_starter_shelter", "build_structure", "build_custom_structure",
-                "build_schematic", "resume_saved_build").contains(action);
+                "build_schematic", "resume_saved_build", "resume_build").contains(action);
     }
 
     /** Cancels every active offline goal and safely stops the active action. */
