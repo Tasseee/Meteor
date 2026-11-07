@@ -1,0 +1,27 @@
+{
+  "description": "Sammle Eichenstämme und stelle daraus Bretter her",
+  "priority": 5,
+  "steps": [
+    {
+      "id": "gather_logs",
+      "action": "gather_wood",
+      "parameters": {
+        "item": "minecraft:oak_log",
+        "count": 8
+      },
+      "maxAttempts": 2
+    },
+    {
+      "id": "craft_planks",
+      "action": "craft_item",
+      "parameters": {
+        "item": "minecraft:oak_planks",
+        "count": 32
+      },
+      "dependsOn": [
+        "gather_logs"
+      ],
+      "maxAttempts": 2
+    }
+  ]
+}

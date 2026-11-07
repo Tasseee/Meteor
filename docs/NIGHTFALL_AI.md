@@ -1,6 +1,117 @@
+# Nightfall – Offline-Agent und lokale Aktionen
+
+**Offline-Modus auf dem Branch `nightfall/offline-agent-core`:** Nightfall verwendet ein eingebettetes lokales Sprachmodell über Java-Bindings für `llama.cpp`. Chat, Planung und Minecraft-Kontext laufen auf dem PC; Nightfall sendet keine Prompts, Inventardaten, Koordinaten oder Weltbeobachtungen an einen KI-Anbieter. Es gibt keinen Ollama-Dienst, keinen API-Key, kein Konto und kein Abo. Beim ersten Klick auf **MODELL LADEN** lädt Nightfall einmalig die GGUF-Datei `Qwen2.5-1.5B-Instruct Q4_K_M` (1.117.320.736 Bytes) von einer fest gepinnten Hugging-Face-Revision nach `config/nightfall/models/`. Größe und SHA-256 werden nach dem Download und vor späteren Ladevorgängen geprüft; beschädigte oder veränderte Dateien werden abgelehnt. Das Modell wird nicht in das Mod-JAR gepackt.
+
+Die lokale KI erhält zusätzlich einen begrenzten Runtime-Snapshot mit aktivierten Nightfall-Modulen, Controller-Zuständen, offenen Agent-Aufträgen, Vorschau-/Prüfstatus und Modulfehlerzähler. Ein anfragebezogener Tool-Router reduziert die Aktionsschemas auf die für die letzten Spieleranfragen passenden Fähigkeiten. Nicht verfügbare oder nicht freigegebene Aktionen können weiterhin nicht ausgeführt werden. KI-generierte Pläne sind auf 12 Schritte begrenzt; der separate Spielerplan-Befehl kann weiterhin die größere Scheduler-Grenze nutzen.
+
+Die Sprachbedienung verwendet Vosk für lokale deutsche Spracherkennung und die installierte Betriebssystem-Stimme für lokale Sprachausgabe. Das Mikrofon läuft nur nach bewusster Aktivierung über die Mikrofontaste oder F8/F9. PCM-Audio wird direkt an den lokalen Erkenner übergeben, nicht als Audiodatei gespeichert und nicht an einen Server oder KI-Anbieter übertragen. Erst ein fertiges Erkennungsergebnis wird als normale Chatnachricht verarbeitet. Es bestätigt niemals automatisch eine ausstehende Aktion. Die Sprachausgabe ist standardmäßig ausgeschaltet und muss separat aktiviert werden. Sie nutzt Windows System.Speech, macOS `say` oder Linux `espeak-ng`/`espeak`, sofern lokal vorhanden.
+
+Das 1,5B-Modell ist ein kleiner CPU-freundlicher Einstieg und kann bei komplexen Plänen Fehler machen. Nightfalls lokale Aktions-Allowlist, Parameterprüfung, Vorschau und Spielerbestätigung bleiben deshalb zwingend. Vosk bringt in seinem Java-Paket native Windows-Bibliotheken mit; auf Linux/macOS muss die native Vosk-Bibliothek zusätzlich lokal verfügbar sein, sonst bleibt die Mikrofonfunktion deaktiviert. Voice-Ausgabe hängt ebenfalls von installierten Systemstimmen bzw. lokalen TTS-Programmen ab.
+
+
+## Adaptive offline-agent replanning · 2026-11-07
+
+- A failed goal can now be reopened with a replacement plan. Confirmed successful steps are retained as immutable history; only unfinished, failed or blocked steps are replaced.
+- The local repair prompt receives the failed goal, per-step status and bounded result details, plus the current local world/inventory snapshot. It asks the local model to plan only the remaining work and routes the original goal's relevant local action schemas into the prompt.
+- After a controller or preparation failure is conclusively marked as failed, Nightfall automatically asks the loaded local model for a replacement plan. It attempts at most two automatic repairs per goal in one client session. If the model is unavailable or a repair is rejected, the player can still ask **„Plane weiter“**, **„Plane neu“** or **„Auftrag neu planen“**.
+- Nightfall validates every proposed action against the local offline allowlist and prepares a fresh preview; world-changing actions still require player confirmation. Replanning is rejected while any Minecraft action is running, awaiting verification or awaiting stop acknowledgement. A failed goal cannot be resumed by blindly retrying an uncertain action.
+- The failed-goal repair flow currently targets failed goals available in the current world's in-memory/loaded task queue. Failed goals are not restored as active tasks after a client restart.
+- Automated tests cover failed-goal reopening, preservation of successful steps, invalid replacement dependencies, in-flight safety and repair-prompt tool routing. Live Minecraft behavior still needs in-game validation.
+
+## Offline-Agent im Spiel
+
+Alle Aufträge laufen über den deterministischen `OfflineAgentCore` und bestehende lokale Minecraft-Controller. Die `/nf agent`-Befehle funktionieren auch ohne geladenes Sprachmodell; der natürlichsprachliche Chat und die Planung verwenden das eingebettete lokale Qwen-Modell. Externe KI-Endpunkte werden nicht verwendet. Der Agent kann mehrere Aufträge in eine begrenzte Warteschlange aufnehmen, führt aber nur eine Minecraft-Aktion gleichzeitig aus. Abhängige Schritte werden erst freigeschaltet, wenn ihr Vorgänger nach einem Controller-Abschluss anhand des eindeutigen Abschlussstatus automatisch als erfolgreich erkannt wurde. Externe Serverbefehle warten weiterhin auf eine manuelle Rückmeldung.
+
+**Jeder verändernde Schritt benötigt eine Vorschau und Bestätigung.** Nach dem Einreihen zeigt Nightfall die Vorschau im Chat und – wenn die Nightfall-KI-Oberfläche offen ist – auch direkt dort mit den Schaltflächen **AKTION AUSFÜHREN** und **ABBRECHEN**. Du kannst alternativ `/nf agent confirm` oder `/nf agent reject` verwenden. Bei Aktionen, deren Abschluss vom Server abhängt und die Nightfall nicht lokal beobachten kann, bleibt das Ergebnis ungeprüft; prüfe die Serverantwort und melde danach `/nf agent verify success` oder `/nf agent verify failed`. `/nf agent cancel` stoppt die aktive Offline-Aufgabe und verwirft wartende Schritte.
+
+Controller-Aktionen werden im Client-Tick überwacht: eindeutige Erfolgsmeldungen wie „Materialsammlung abgeschlossen“ und „Crafting vollständig abgeschlossen“ werden automatisch verbucht. Teil-Ergebnisse, Zeitlimits und Sicherheitsstopps gelten nicht als Erfolg und lösen – soweit noch erlaubt – eine neue Vorschau aus. Externe Serverbefehle wie `/locate` bleiben manuell zu bestätigen, weil Nightfall deren Serverantwort noch nicht zuverlässig mit dem Agenten verknüpft.
+
+Wichtige Befehle:
+
+- `/nf agent status` – Auftragswarteschlange, Vorschau und Prüfergebnis ansehen.
+- `/nf agent actions` – zeigt die lokal freigegebenen Aktionen mit ihren Parametertypen; die Details eines konkreten Auftrags stehen weiterhin in der Vorschau.
+- `/nf agent plan <json>` – einen eigenen Mehrschrittplan direkt einreichen; `/nf agent plan_file name.json` liest eine Datei aus `config/nightfall/agent_plans/`.
+- `/nf agent memory` – den lokal gespeicherten Verlauf der letzten 64 abgeschlossenen/abgebrochenen Agenten-Aufträge ansehen; `/nf agent memory clear` löscht diesen Verlauf.
+- `/nf agent prepare` – den nächsten bereiten Schritt erneut vorbereiten; bei einem Schmelzschritt zeigt Nightfall an, wenn das Ofenfenster geschlossen und ein leerer Ofen/Hochofen anvisiert werden muss.
+- `/nf agent action <name> <json>` – vorhandene lokale Aktionen aus dem Nightfall-Aktionsregister mit einfachen oder begrenzten strukturierten JSON-Parametern einreihen. Auch Modul-, Wegpunkt-, Scanner-, Status- und Serverbefehlsaktionen werden lokal validiert. Arrays/Objekte sind auf 32 KiB pro Auftragsschritt begrenzt; `build_custom_structure` prüft zusätzlich höchstens 512 Blöcke und deren Verbindung, Koordinaten und Materialien.
+- `/nf agent resume_task` und `/nf agent clear_task` – vorhandenen, server-/dimensionsgebundenen Sammel- oder Navigations-Checkpoint fortsetzen bzw. nach Vorschau löschen.
+- `/nf agent gather wood minecraft:oak_log 16`, `/nf agent gather block minecraft:cobblestone 32`, `/nf agent gather ore minecraft:raw_iron 8` – lokale Sammelaufträge.
+- `/nf agent craft minecraft:oak_planks 32`, `/nf agent smelt minecraft:raw_iron 8`, `/nf agent eat`, `/nf agent sort` – Crafting, Schmelzen, Essen und Inventarsortierung.
+- `/nf agent wood 32` – mehrstufig: prüft zuerst den Eichenstamm-Bestand, sammelt nur bis zur nötigen Rezeptmenge auf und craftet anschließend 32 zusätzliche Bretter.
+- `/nf agent shelter` – mehrstufiger Starter-Bau: prüft Eichenbretter und Stämme, sammelt/craftet nur die Fehlmenge und bereitet danach ein 4×4-Starter-Schutzhaus vor.
+- `/nf agent iron 64` – mehrstufig: prüft vorhandenes Roheisen und Brennstoff, sammelt Fehlmengen (bei Bedarf auch Kohle) und schmilzt danach in bestätigten Ofen-Chargen von höchstens 16 Stück.
+- `/nf agent build starter`, `/nf agent build large_house`, `/nf agent build watchtower` – vorhandene Bauvorlagen vorbereiten und bauen.
+- `/nf agent build resume` – einen vom vorhandenen Builder gespeicherten und server-/dimensionsgebundenen Bau-Checkpoint fortsetzen.
+- `/nf agent build pause`, `/nf agent build continue`, `/nf agent build stop` – einen laufenden Bau pausieren, fortsetzen oder bewusst stoppen. Bereits gesetzte Blöcke bleiben beim Stoppen bestehen.
+- `/nf agent schematic datei.schem` – ersten Abschnitt einer lokalen Schematic vorbereiten.
+- `/nf agent navigate X Y Z`, `/nf agent mine X Y Z`, `/nf agent walk 20` – begrenzte Navigation, Abbau und Bewegung.
+- `/nf agent search ancient_city`, `/nf agent attack`, `/nf agent guard` – Strukturhinweise suchen oder nahe feindliche Mobs abwehren.
+
+### Eigene Mehrschrittpläne
+
+Ein Plan ist eine JSON-Datei bzw. ein JSON-Objekt mit `description`, optionaler `priority` (−100 bis 100) und `steps`. Jeder Schritt braucht eine eindeutige `id` und einen lokal freigegebenen `action`-Namen. `parameters` enthält die Aktionsargumente; `dependsOn` nennt Schritt-IDs, die zuvor erfolgreich abgeschlossen sein müssen. `maxAttempts` ist optional (1 bis 5, Standard 2). Zyklen, unbekannte Abhängigkeiten und doppelte Abhängigkeiten werden zurückgewiesen. Ein Plan darf höchstens 64 Schritte enthalten.
+
+Beispiel: erst acht Eichenstämme sammeln, danach daraus Bretter craften:
+
+```json
+{
+  "description": "Holz sammeln und Bretter craften",
+  "priority": 10,
+  "steps": [
+    {
+      "id": "gather",
+      "action": "gather_wood",
+      "parameters": {
+        "item": "minecraft:oak_log",
+        "count": 8
+      },
+      "maxAttempts": 2
+    },
+    {
+      "id": "craft",
+      "action": "craft_item",
+      "parameters": {
+        "item": "minecraft:oak_planks",
+        "count": 32
+      },
+      "dependsOn": ["gather"],
+      "maxAttempts": 2
+    }
+  ]
+}
+```
+
+Direkt im Chat einreichen: `/nf agent plan {"description":"Holz und Bretter","steps":[...]}`. Ein fertiges Beispiel liegt im Repository unter [`docs/examples/offline-agent-wood-plan.json`](examples/offline-agent-wood-plan.json). Kopiere die Datei nach `config/nightfall/agent_plans/` und rufe `/nf agent plan_file offline-agent-wood-plan.json` auf. Alternativ kannst du eigene JSON-Dateien in diesem Ordner ablegen. Plan-Dateien sind auf 256 KiB begrenzt; der Dateiname darf keine Pfadangabe enthalten und symbolische Links werden abgewiesen. Es wird kein Code ausgeführt: jeder `action`-Name und jeder Parameter wird erneut gegen das lokale Nightfall-Aktionsregister validiert. Jeder Schritt erhält eine eigene Vorschau und Bestätigung; abhängige Schritte starten erst nach bestätigtem Erfolg.
+
+Beispiele für das generische Aktionsformat:
+
+```
+/nf agent action get_inventory {}
+/nf agent action get_module_settings {}
+/nf agent action set_module_state {"module":"PlayerESP","enabled":true}
+/nf agent action list_schematics {}
+/nf agent action build_custom_structure {"name":"mini_podest","blocks":[{"x":0,"y":0,"z":0,"material":"minecraft:stone"},{"x":1,"y":0,"z":0,"material":"minecraft:stone"}]}
+```
+
+Der eigene Bauplan muss mit einer sicheren Standfläche oder einem vorhandenen festen Block verbunden sein; Nightfall zeigt vor dem Bau eine Vorschau. Nutze nur Baupläne, deren Form und Material du geprüft hast.
+
+Die JSON-Argumente müssen ein Objekt sein. Einfache Text-, Zahlen- und Wahrheitswerte sowie begrenzte Arrays/Objekte werden unterstützt. Nightfalls bestehender Aktionskatalog bleibt die Quelle der erlaubten Namen und Parametertypen; ungültige, zu große oder nicht freigegebene Parameter werden zurückgewiesen. Auch diese Aufträge erhalten vor einer Ausführung eine lokale Vorschau und müssen bestätigt werden.
+
+Die Sammel-, Crafting-, Schmelz-, Bau- und Kampfaktionen verwenden bestehende Client-Controller und deren lokale Validierung. Kampfziele sind ausschließlich feindliche Minecraft-Mobs; Spieler und neutrale/passive Tiere werden nicht ausgewählt. Die Grenzen der vorhandenen Controller gelten weiterhin (z. B. geladene Chunks, sichere Wege, begrenzte Laufzeiten und Aktionslimits). Die manuelle Ergebnisprüfung ist absichtlich konservativ: Ein zurückgegebener Starttext ist kein Beweis, dass ein mehrtaktiger Vorgang bereits fertig ist.
+
+**Lokales Gedächtnis:** Nightfall speichert bis zu 64 kurze Auftragszusammenfassungen unter `config/nightfall/agent_memory.json`. Es speichert Status, Aktionen und Versuchszähler – keine Inventar-Snapshots, Koordinaten, Serveradressen, Zugangsdaten oder Chatverläufe. Das ist ein lokales Verlaufs-Gedächtnis, kein automatisches Lernen.
+
+**Dauerhafte Offline-Warteschlange:** Bis zu 16 aktive Ziele werden pro Server-/Einzelspielerwelt und Dimension lokal unter `config/nightfall/agent_queues/` gespeichert. Die Dateinamen enthalten nur einen Hash; Serveradresse und Einzelspieler-Speicherpfad stehen nicht im Klartext in der Queue. Checkpoints sind auf 1 MiB pro Welt begrenzt und laufen nach 24 Stunden ab. Wartende Schritte erhalten nach dem Wiederverbinden erneut eine Vorschau. War beim Schließen eine Aktion bereits gestartet, wird sie als „Prüfung erforderlich“ wiederhergestellt. Nightfall wiederholt sie nicht automatisch: Prüfe Welt und Inventar und nutze danach `/nf agent verify success` oder `/nf agent verify failed`. Bei einem zu großen oder nicht sicher schreibbaren Checkpoint wird eine ältere Datei verworfen, damit keine veraltete Aktion später versehentlich wiederholt wird. Der Queue-Ordner und seine Dateien werden ohne Durchfolgen symbolischer Links geöffnet; temporäre Dateien werden exklusiv angelegt. Die gespeicherten Pläne enthalten die vom Spieler eingereichten Aktionsparameter (z. B. Item-IDs und Zielkoordinaten) und bleiben lokal auf dem Client.
+
+**Noch nicht enthalten:** freie Spracheingabe/NLP, lokale Sprachmodelle, Stimme, automatische Auswertung beliebiger Weltbeobachtungen, automatische Verknüpfung beliebiger Serverantworten, vollautomatisches Farming und selbstständiges Lernen. Die Queue-Wiederaufnahme schützt nur vor blinder Wiederholung; sie beweist nicht automatisch, was eine unterbrochene Minecraft-Aktion vor dem Client-Stopp bereits verändert hat. Ein beim Dimensionswechsel laufender Builder wird angehalten; sein zuletzt an die ursprüngliche Dimension gebundener Checkpoint wird nicht mit der neuen Dimension überschrieben.
+
+Die folgenden älteren Abschnitte dokumentieren die vorhandenen Minecraft-Aktionen und deren lokale Grenzen. Hinweise auf einen konfigurierten KI-Anbieter beschreiben den früheren Provider-Betrieb; dieser ist auf diesem Branch deaktiviert.
+
+---
+
 # Nightfall AI – Extensible Skills and Actions
 
-Nightfall AI is an in-game Minecraft companion with an extensible, allow-listed tool system. The AI model may choose from the tools exposed by the client, but **the client validates every argument and controls every execution**.
+Nightfall is an in-game Minecraft companion. This branch uses a local language model only to understand requests and propose structured plans. The deterministic task agent reuses the action catalog as an allow-list. **The client validates every argument and controls every execution; a model response never directly runs a Minecraft action.**
 
 ## Struktur finden
 
@@ -18,42 +129,30 @@ gefunden wurde.
 
 ## Setup
 
-1. Start Nightfall once. It creates `config/nightfall/ai.json`.
-2. Set `apiKey` to an API key from your chosen provider.
-3. Keep `baseUrl` and `model` aligned with that provider. The default points to an OpenAI-compatible Chat Completions endpoint.
-4. The model/provider must support Chat Completions function/tool calling.
-5. Restart Minecraft or reopen the chat and send a message.
+Nightfall benötigt keinen API-Key und keine Netzwerkverbindung zu einem KI-Anbieter. Nightfall erstellt bzw. ersetzt `config/nightfall/ai.json` beim Laden mit Offline-Defaults. Alte API-Keys und Remote-Endpunkte aus der früheren Provider-Konfiguration werden dabei entfernt.
 
-Example:
+**Ersteinrichtung:** Starte Minecraft mit dem Mod, öffne mit `J` das Nightfall-AI-Fenster und klicke oben rechts auf **MODELL LADEN**. Beim ersten Mal wird die Qwen-GGUF-Datei einmalig heruntergeladen und anschließend im Hintergrund geladen. Die Datei liegt unter `config/nightfall/models/qwen2.5-1.5b-instruct-q4_k_m.gguf`. Der Download erfolgt nur nach deinem Klick; die feste Revision, exakte Größe und SHA-256 werden geprüft. Sobald der Status `MODELL BEREIT` zeigt, kannst du natürlichsprachliche Fragen und Weltaufträge eingeben. Bei späteren Starts wird nur das lokal vorhandene Modell geladen.
 
-```json
-{
-  "baseUrl": "https://api.openai.com/v1/chat/completions",
-  "model": "gpt-4o-mini",
-  "apiKey": "YOUR_API_KEY",
-  "shareWorldContext": true,
-  "audioBaseUrl": "https://api.openai.com/v1",
-  "transcriptionModel": "gpt-4o-mini-transcribe",
-  "speechModel": "gpt-4o-mini-tts",
-  "speechVoice": "alloy",
-  "voiceInputEnabled": false,
-  "voiceOutputEnabled": false
-}
-```
+Das Sprachmodell braucht Arbeitsspeicher zusätzlich zu Minecraft. Die erste Inferenz kann länger dauern; die Berechnung läuft auf einem eigenen Hintergrundthread und blockiert nicht den Minecraft-Tick. Die eingebettete `llama.cpp`-Bibliothek enthält CPU-Unterstützung für ihre veröffentlichten Plattformen. Andere Plattformen oder fehlende native Bibliotheken können einen Ladefehler erzeugen. Derzeit gibt es keine GPU-Beschleunigungskonfiguration.
 
-The key is stored locally as plain text in the Minecraft config folder. Do not upload or share this file, include it in a bug report, or commit it to a repository. Nightfall does not log the key.
+**Spracherkennung:** Beim ersten Aktivieren des Mikrofons lädt Nightfall einmalig das deutsche Vosk-Modell `vosk-model-small-de-0.15` (rund 44 MB) nach `config/nightfall/voice/` und prüft den Archiv-SHA-256, bevor es entpackt wird. Danach wird es lokal geladen. F8 oder F9 sowie die Mikrofontaste schalten die lokale Mikrofonaufnahme ein bzw. aus. Schließen des AI-Fensters, Disconnect und Client-Ende stoppen die Aufnahme. Teiltranskripte werden nicht als Befehle verwendet. Auf Linux/macOS ist zusätzlich eine lokal installierte Vosk-Nativbibliothek erforderlich.
 
-## In-game use
+**Sprachausgabe:** Sie ist standardmäßig aus. Der Button `AUDIO AUS` aktiviert die lokale Systemstimme. Unter Windows wird eine installierte deutsche System.Speech-Stimme verwendet, macOS nutzt `say`, Linux versucht `espeak-ng` und danach `espeak`. Fehlt die lokale Stimme bzw. das Programm, deaktiviert Nightfall die Funktion wieder und zeigt einen Status an.
 
-- Press **J** to open Nightfall AI (default; configurable as `aiKey` in `config/nightfall.json`).
-- Press **Enter** or click **SEND** to send a message.
-- Press **F8** or click **CALL** to start the persistent voice call; press F8 or **STOP** again to end it. Press **F9** to mute/unmute the microphone without ending the call. While muted, microphone audio is not sent to the provider; the audio input device remains open until the call is stopped with F8.
-- Spoken messages are handled directly by the live voice agent; typed messages sent while the call is active join the same conversation.
-- The call remains active when the chat screen closes and is shown by a small HUD indicator that also shows whether the microphone is muted or Nightfall is speaking. F9 works outside the chat screen too. Disconnecting or exiting Minecraft stops the microphone and speaker.
-- Press **Escape** to close the chat.
-- Use the mouse wheel to scroll through the current conversation.
+## In-game use · Offline
 
-When `shareWorldContext` is enabled, each request can include a bounded client-side snapshot: dimension, biome, position, time/weather, local light level, health/hunger, movement state, armor and hand items with remaining durability, a targeted-block tool comparison, armor and utility-tool enchantments, compatible enchanted-book candidates, up to twelve inventory item summaries, nearby client-visible mobs and dropped items, plus local risk and survival-readiness assessments. The readiness check covers equipped armor coverage/durability, the main-hand item's durability, food and torch counts, shield presence, and limited Nether/End preparation hints. The equipment advisor is limited to player armor plus pickaxes, shovels and hoes in the normal inventory/hotbar. It compares same-slot armor using additive base attributes, reports enchantments separately, and checks individual book candidates for item applicability and known incompatibilities. It does not estimate anvil costs, calculate complete damage reduction, inspect every item type, or apply anything. This is a suggestion based on currently available data, not a complete assessment of the world or a guarantee of safety. Chat text and enabled context are sent to the configured provider.
+- Press **J** to open Nightfall's companion screen.
+- The text field uses the embedded local Qwen model for ordinary chat and structured world/build plans. Click `MODELL LADEN` once to download/load the model. No conversation or Minecraft context is sent to a provider.
+- The local context also includes a bounded snapshot of active Nightfall modules, controller states, active agent goals and pending verification state. Turn the context toggle off to exclude both world and module/task snapshots.
+- `LocalAIToolRouter` exposes only the action schemas relevant to the latest user requests. Server-command tools are exposed only for an explicit server-command request. Model-generated plans are limited to 12 steps.
+- Use `/nf agent status` to inspect queued goals, previews and controller progress.
+- Each world-changing action gets a preview in Minecraft chat. Confirm with `/nf agent confirm` or reject with `/nf agent reject`.
+- Local controller completions are checked automatically against explicit success messages. Partial results and safety stops do not count as success. External server commands still require `/nf agent verify success|failed` after the server response.
+- **F8/F9** and the microphone button toggle local German Vosk recognition. The audio button toggles local operating-system speech output. Microphone audio is processed in memory only; no audio or chat is sent to a remote AI service.
+- Press **Escape** to close the companion screen and use the mouse wheel to scroll through the session transcript.
+
+Weltkontext-Freigabe und Provider-Übertragung sind auf diesem Branch deaktiviert. Inventar-, Positions- und Modulabfragen werden ausschließlich lokal im Minecraft-Client verarbeitet.
+
 
 ## Lokale Survival-Bereitschaft
 
@@ -71,27 +170,27 @@ Nightfall untersucht bis zu 24 gefundene verzauberte Bücher und zeigt höchsten
 
 ## Available tools
 
-The AI model can select from a fixed client-side allow-list:
+Nightfall's offline agent queues scalar-parameter actions from the existing client-side action registry. The same client-side validators check action names, parameter types, ranges, enums and blocked server commands:
 
 | Tool | What it does | Confirmation |
 |---|---|---|
 | `locate_biome` | Sends the standard `/locate biome <id>` command for a supported biome | Required |
 | `add_waypoint` | Saves a waypoint at the current player position | Required |
 | `set_module_state` | Enables or disables one existing Nightfall module by exact name | Required |
-| `get_inventory` | Reads item names, exact Minecraft item IDs, and counts; separates the 9-slot hotbar from the remaining inventory | Required; inventory data is sent to the AI provider |
+| `get_inventory` | Reads item names, exact Minecraft item IDs, and counts; separates the 9-slot hotbar from the remaining inventory | Local-only; no external data transfer |
 | `sort_inventory` | Sorts ordinary carried stacks in the 36 normal inventory/hotbar slots; preserves stack counts and item components while keeping protected combat-related items in place | Required |
-| `get_player_status` | Reads current dimension, coordinates, and health | Required; player state is sent to the AI provider |
+| `get_player_status` | Reads current dimension, coordinates, and health | Local-only; no external data transfer |
 | `random_teleport` | Sends the common `/rtp` request to the server | Required; server must support it |
 | `run_server_command` | Sends one ordinary player-requested Minecraft or plugin command and watches briefly for a related server chat response | Required; dangerous server administration and world-edit command roots are blocked |
 | `build_structure` | Builds one of three validated templates and accepts an optional material ID/name | Required |
-| `build_custom_structure` | Builds an AI-generated connected plan of up to 512 blocks in a bounded 32x32x32 grid; supports an optional per-block material palette | Required; validates connectivity, per-material inventory counts, height, and replaceable targets |
+| `build_custom_structure` | Builds a player-supplied connected plan of up to 512 blocks in a bounded 32x32x32 grid; supports an optional per-block material palette through `/nf agent action` | Required; validates connectivity, per-material inventory counts, height, and replaceable targets |
 | `build_starter_shelter` | Backward-compatible alias for the 4x4 starter shelter | Required |
 | `get_build_status` | Reads confirmed builder progress, current phase, pause reason, blueprint and material palette | Read-only; no confirmation |
 | `pause_build` | Pauses after any in-flight placement has been confirmed | No; safe control action |
 | `resume_build` | Resumes a manually paused build | Required |
 | `stop_build` | Stops the active builder queue; already placed blocks remain | No; safe control action |
 
-After a tool call, Nightfall displays a preview. The tool is executed only after the player clicks **AKTION AUSFÜHREN**. Cancelling returns a cancellation result to the model and does not execute the action.
+Before a world-changing offline action, Nightfall displays a preview in Minecraft chat. Execute it with `/nf agent confirm`; reject it with `/nf agent reject`. The deterministic scheduler handles dependencies and bounded retries. No model response or cloud round-trip is involved.
 
 ## Safety and current limitations
 
@@ -100,16 +199,16 @@ After a tool call, Nightfall displays a preview. The tool is executed only after
 - Server-command feedback is matched at word boundaries to the actual command root, so short commands such as `tp` do not accidentally match unrelated words. The ordinary command tool accepts a single command with no command chaining. It blocks server administration roots (for example `op`, `ban`, `stop`, `whitelist`, common permission-management aliases) and high-impact world-edit roots/aliases (for example `execute`, `fill`, `clone`, `setblock`, `worldedit`, `we`, `fawe`, `//set`, `//paste`, `//undo`). Every command is shown exactly as it will be sent and needs confirmation. The server still decides whether the user has permission.
 - Server permissions remain authoritative. The biome search command can fail on servers that do not permit `/locate`; Nightfall does not bypass permissions or teleport the player.
 - For ordinary commands, Nightfall watches game/system chat and player chat for up to 30 seconds, including while the AI screen is closed; only one command response may be pending at a time to avoid mixing replies. It can surface a likely related response or explicit permission/unknown-command rejection, then passes that server message back to the AI for explanation without repeating the command. If no unique response arrives or the connection drops, it reports execution as unconfirmed. Generic plugin messages cannot always be correlated reliably. A sent command is never reported as successfully executed without a clear server response.
-- Tool-capable OpenAI-compatible models are required. Some endpoints may reject function calling.
-- A short follow-up tool loop is supported, with one tool call at a time and a bounded number of consecutive actions.
+- The local Qwen GGUF model is stored under `config/nightfall/models/`; inference runs in-process through `llama.cpp`. No API key, account, cloud endpoint, Ollama server or subscription is used. A one-time model download requires an internet connection.
+- Offline goals support bounded dependency graphs and retries; only one Minecraft action is in flight at a time. Controller completion is automatically classified only for explicit successful terminal messages.
 - The in-memory chat session is reused when the AI screen is closed and reopened. The visible transcript remains available during the client session; on server disconnect, pending actions are cancelled and the AI context is cleared so old world/inventory data cannot leak into a different server.
-- The builder offers three deterministic templates: a 4x4 starter shelter (54 blocks), a 6x6 house with three-block-high walls (130 blocks), and a 5x5 watchtower with four six-block-high corner pillars (74 blocks). For other user-requested structures, `build_custom_structure` accepts an AI-generated plan of up to 512 blocks in a 32x32x32 grid.
+- The builder offers three deterministic templates: a 4x4 starter shelter (54 blocks), a 6x6 house with three-block-high walls (130 blocks), and a 5x5 watchtower with four six-block-high corner pillars (74 blocks). Other structures can be supplied as a bounded JSON block list through `/nf agent action build_custom_structure`, up to 512 blocks in a 32x32x32 grid.
 - The fixed templates require a level, continuously solid ground surface. Within their planned block positions, Nightfall can now excavate ordinary removable obstacles after preview; it refuses block entities, fluids, falling blocks and unbreakable blocks. The preview reports the excavation count and up to eight obstacle block IDs (plus any remaining block-type count); each mined block is checked against its previously observed block ID.
 - The read-only `get_build_status` tool lets the player ask for confirmed progress, current building phase, pause reason and active materials without approving another action.
 - The builder chooses block items from all 36 main inventory slots (not only the hotbar), or honors exact material item IDs/localized names supplied globally or for individual custom-plan blocks. Before placement, it swaps a needed stack from the main inventory into an empty hotbar slot; if the hotbar is full it uses the selected slot and moves the displaced stack back into the source inventory slot. In Survival it checks the full required count per material across the entire inventory; in Creative it only requires one matching inventory stack because placements do not consume blocks. Ambiguous partial names are rejected consistently for both preset and custom builds. It verifies the required count for each material and all safe target positions, then sends genuine block-placement interactions one at a time. Ambiguous localized material names are rejected instead of selecting an arbitrary matching item. Custom plans reject duplicates, out-of-range coordinates, occupied targets, and disconnected/floating components; every component must anchor to an existing solid block. It waits for the corresponding world block state before counting a placement, retries up to two times after a timeout, and stops safely when the server rejects a placement. If a block is out of reach, the queue pauses until the player moves closer. The originally selected hotbar slot is restored when the build finishes or stops. Every builder confirmation shows a top-down ASCII footprint for the y=0 layer, counts blocks per vertical layer, and lists the material-symbol legend; the chat renderer preserves these line breaks.
 - Combat against nearby hostile vanilla mobs and bounded A* navigation through already-loaded chunks are implemented. Navigation uses safe stand positions and re-plans in segments; camera rotation is smoothed, but this is not perfect obstacle handling and may stop at unloaded terrain, fluids or unavailable paths. Building places approved blocks automatically, but the player must stay within reach and confirm each plan. Complex farms requiring full entity, fluid, container or redstone state reconstruction are not guaranteed.
-- Voice input/output is available as an opt-in feature (see below). Arbitrary code execution remains out of scope.
-- When the inventory tool is approved, its result is sent back to the configured AI provider. It includes exact item IDs and distinguishes the hotbar from the rest of the inventory. The builder can use both areas and brings a required stack into the hotbar with a normal SWAP interaction when needed. Do not approve it if you do not want to share that inventory snapshot.
+- Voice input, voice calls and spoken output are disabled in this build. Arbitrary code execution remains out of scope.
+- Inventory and player-status results stay on the Minecraft client in offline mode. The builder can use both inventory areas and brings a required stack into the hotbar with a normal SWAP interaction when needed.
 
 Future skills should stay narrowly scoped, validated, previewed, and explicitly confirmed before world changes or data disclosure.
 
@@ -135,46 +234,16 @@ Wartungszugang und Hinweisen zu Wasserführung, Wachstum und Ernte. Es ist derze
 Technik-/Bauleitfaden, kein getestetes Schematic und keine behauptete vollautomatische Farm.
 Die Ernteschaltung muss auf der konkreten Welt/Serverversion separat validiert werden.
 
-**Read-only Baumaterial- und Rezeptplanung:** Das bestätigungspflichtige Tool `plan_build_materials` analysiert die drei festen Bauvorlagen (54, 130 oder 74 Blöcke) anhand der 36 normalen Inventar-/Hotbar-Slots. Neben vorhandenen Full-Block-Materialien zeigt es bis zu fünf herstellbare Vanilla-Blockalternativen aus dem synchronisierten Rezeptbuch. Die Suche ist auf 256 Rezepteinträge und 16 mögliche Blockmaterialien begrenzt. Für jede vollständige Rezeptkette werden Bestand, Fehlmenge, Rezeptschritte, Chargen, 2×2- oder 3×3-Crafting-Bedarf und die konkret ausgewählten Zutaten mit ihrem Gesamtverbrauch je Rezeptstufe angezeigt. Die Rangfolge bevorzugt weniger Chargen und Schritte, danach eine kleinere Fehlmenge und bei ansonsten gleichen Werten Rezepte ohne Crafting-Table. Für nicht vollständig auflösbare Ketten zeigt Nightfall zusätzlich bis zu fünf Diagnosekandidaten mit konkreten fehlenden Zutaten und Mengen sowie der untersuchten Rezeptvariante. Die Diagnose untersucht höchstens sechs Varianten je Rezeptstufe und verwendet insgesamt höchstens 128 rekursive Prüfschritte. Sie folgt damit nur begrenzt vielen Rezeptzweigen und darf nicht als Beweis verstanden werden, dass keine andere Rezeptvariante existiert; sie kennzeichnet die geprüfte Variante ausdrücklich als unvollständig. Die Prüfung ist lesend: Sie sammelt und craftet nichts, verändert keine Slots oder Weltblöcke und legt keinen Bau-Checkpoint an. Die Inventardaten werden erst nach Bestätigung an den konfigurierten KI-Anbieter übermittelt. `craft_item` und der eigentliche Bau besitzen weiterhin jeweils eine eigene Vorschau und Bestätigung.
+**Read-only Baumaterial- und Rezeptplanung:** Das bestätigungspflichtige Tool `plan_build_materials` analysiert die drei festen Bauvorlagen (54, 130 oder 74 Blöcke) anhand der 36 normalen Inventar-/Hotbar-Slots. Neben vorhandenen Full-Block-Materialien zeigt es bis zu fünf herstellbare Vanilla-Blockalternativen aus dem synchronisierten Rezeptbuch. Die Suche ist auf 256 Rezepteinträge und 16 mögliche Blockmaterialien begrenzt. Für jede vollständige Rezeptkette werden Bestand, Fehlmenge, Rezeptschritte, Chargen, 2×2- oder 3×3-Crafting-Bedarf und die konkret ausgewählten Zutaten mit ihrem Gesamtverbrauch je Rezeptstufe angezeigt. Die Rangfolge bevorzugt weniger Chargen und Schritte, danach eine kleinere Fehlmenge und bei ansonsten gleichen Werten Rezepte ohne Crafting-Table. Für nicht vollständig auflösbare Ketten zeigt Nightfall zusätzlich bis zu fünf Diagnosekandidaten mit konkreten fehlenden Zutaten und Mengen sowie der untersuchten Rezeptvariante. Die Diagnose untersucht höchstens sechs Varianten je Rezeptstufe und verwendet insgesamt höchstens 128 rekursive Prüfschritte. Sie folgt damit nur begrenzt vielen Rezeptzweigen und darf nicht als Beweis verstanden werden, dass keine andere Rezeptvariante existiert; sie kennzeichnet die geprüfte Variante ausdrücklich als unvollständig. Die Prüfung ist lesend: Sie sammelt und craftet nichts, verändert keine Slots oder Weltblöcke und legt keinen Bau-Checkpoint an. Inventardaten bleiben im Offline-Modus auf dem Minecraft-Client. `craft_item` und der eigentliche Bau besitzen weiterhin jeweils eine eigene Vorschau und Bestätigung.
 
 **Materialversorgung:** Der Builder zählt Materialien aus der gesamten Hotbar und dem 27-Slot-Hauptinventar. Fehlt der benötigte Block in der Hotbar, verschiebt Nightfall den Stack mit einem normalen Inventar-SWAP; vorhandene Items bleiben erhalten. Beim Ausgraben wählt Nightfall ein geeignetes Werkzeug aus dem gesamten Inventar, bevorzugt korrekte Drop-Werkzeuge und stellt die vorherige Hotbar-Belegung nach dem Abbau wieder her, wenn der verdrängte Stack unverändert ist. Für fehlende Baumaterialien kann die KI unterstützte Ressourcen mit eigenen, jeweils bestätigungspflichtigen Sammelschritten beschaffen und danach eine frische Bauvorschau anfordern. `gather_wood` sammelt ausgewählte Vanilla-Stämme/Holzblöcke in geladenen Chunks nahe dem Spieler; `gather_block` unterstützt eine begrenzte Allowlist selbst-droppender Vanilla-Blöcke wie Erde, Bruchstein, ausgewählte Gesteine, Tuff, Sandstein und Nether-/Steinziegelblöcke. Das Ziel im Inventar kann 1–1.024 Stück für Holz/Blöcke und 1–256 Stück für Erze betragen. Langaufträge können bis zu 20 Minuten laufen, maximal 2.048 Zielblöcke abbauen und bis zu 64 sichere Erkundungswege nutzen; sie enden früher bei erreichter Zielmenge, vollem Inventar oder fehlenden sicheren Zielen. Ein optionales `target_y` bei Erz führt nur zu einer bereits sicher begehbaren Fußhöhe in geladenen Chunks. `gather_ore` unterstützt ausgewählte Erz-Drops (Kohle, Roh-Eisen/-Kupfer/-Gold, Redstone, Lapislazuli, Diamant, Smaragd, Quarz, Nethergold-Nuggets und Ancient Debris) im Nahbereich geladener Chunks. Stein wird ohne Silk Touch nicht als Stein gesammelt; Sand, Kies und nicht unterstützte Materialien müssen manuell beschafft werden. `craft_item` plant begrenzte mehrstufige Rezeptketten aus dem freigeschalteten Server-Rezeptbuch, inklusive 2×2- und 3×3-Rezepten. Wenn ein 3×3-Rezept benötigt wird, muss eine Crafting-Table geöffnet sein. Zwischenprodukte werden einzeln hergestellt und serverbestätigt; Grenzen: 32 Rezeptschritte, Tiefe 8, 256 Chargen, fünf Minuten. `smelt_item` kann begrenzte Chargen Roh-Eisen, Roh-Gold, Roh-Kupfer oder Ancient Debris in einem leeren Ofen/Hochofen unter dem Fadenkreuz schmelzen, sofern Kohle/Holzkohle bereits im Inventar liegt. Jede Sammel-, Crafting-, Schmelz-, Sortier- und Bauaktion erfordert eine eigene Spielerbestätigung.
 Er kann noch keine Wasserquellen, spitzen Tropfsteine, Dorfbewohner, Hopper, Kolben, Beobachter
 oder Redstone-Schaltungen als funktionierende Farmmechanik zuverlässig aufbauen. Farm-Einträge
 mit `GUIDE_ONLY` dürfen deshalb nicht automatisch in Blockpläne umgewandelt werden.
 
-## Voice-Call: mit Nightfall sprechen
+## Voice and natural-language input
 
-Nightfall hat einen dauerhaften, ausdrücklich gestarteten Sprach-Call. Trage zuerst deinen API-Key
-in `config/nightfall/ai.json` ein. Drücke **F8** oder öffne mit **J** den KI-Chat und klicke auf
-**CALL**. Nightfall öffnet das Mikrofon und verbindet sich über die Realtime-WebSocket-Schnittstelle
-mit dem unter `audioBaseUrl` konfigurierten Anbieter. Die Sprachaufnahme wird live übertragen;
-sie wird nicht als Audiodatei auf der Festplatte gespeichert. Die automatische Spracherkennung
-erkennt Gesprächsenden und sendet den erkannten Text in derselben Realtime-Konversation an Nightfall.
-
-Nightfall antwortet mit gestreamter Stimme. Die kleine Anzeige **NIGHTFALL CALL · F8 STOP** bleibt
-auch sichtbar, wenn du das Chatfenster schließt und wieder Minecraft spielst. **F8** oder **STOP**
-beendet den Call; Trennen vom Server und Schließen von Minecraft beenden ihn ebenfalls. Während
-Nightfall spricht, pausiert der Mikrofon-Uplink lokal, damit die Lautsprecherausgabe nicht als neue
-Spracheingabe zurückkommt. Deshalb ist diese erste Call-Version halbduplex: Sprich erst weiter,
-wenn Nightfall fertig gesprochen hat; Unterbrechen während der Ausgabe ist noch nicht aktiviert.
-
-Wenn Nightfall eine Weltaktion vorschlägt, zeigt es wie im Textchat eine Vorschau an. Du kannst sie
-im Chatfenster bestätigen/abbrechen oder im Call klar **„Ja“** bzw. **„Nein“** sagen. Ein mehrdeutiges
-Wort löst keine Aktion aus. Der Call verwendet dieselbe freigegebene Werkzeugliste wie Nightfalls
-normaler Chat; Weltänderungen werden nicht allein durch das Hören eines Sprachbefehls ausgeführt.
-
-Die Stimmeingabe/-ausgabe wird beim Start des Calls in `ai.json` aktiviert. **TTS ON/OFF** im
-Chatfenster schaltet die gesprochene Ausgabe während des Calls um. Der Call verwendet das Realtime-
-Modell `gpt-realtime-2.1-mini` mit deutscher Transkription und der eingestellten Stimme
-`speechVoice`. Die Verbindung benötigt einen kompatiblen Realtime-WebSocket-Endpunkt; der
-Standard ist OpenAI API v1. Andere Anbieter müssen das Realtime-WebSocket-Protokoll und die
-konfigurierten Modelle unterstützen.
-
-Mikrofon-Audio, erkannter Text, Gesprächsinhalte und gegebenenfalls freigegebene Werkzeugdaten
-werden an den eingestellten KI-Anbieter übertragen. Es gelten dessen Nutzungs- und Abrechnungsregeln;
-Realtime-Audio kann zusätzliche API-Kosten verursachen. Aktiviere den Call nur, wenn du mit dieser
-Übertragung einverstanden bist. Der API-Key liegt lokal in `config/nightfall/ai.json` und gehört
-nicht in Screenshots, Bugreports oder Commits.
+Both are deliberately postponed. F8/F9, microphone capture, realtime calls, transcription and TTS are disabled in this offline branch. `config/nightfall/ai.json` is reset to local-only defaults when loaded; legacy API keys and remote endpoints are not used. The companion currently accepts structured `/nf agent` commands, not free-form chat or speech instructions. A future local language and speech layer must work without a remote AI service before these controls are enabled again.
 
 
 ## Core companion actions · navigation, combat, mining, wood gathering, crafting and eating
@@ -334,17 +403,17 @@ bleiben Einschränkungen.
 
 Das read-only Werkzeug `list_waypoints` zeigt die lokal gespeicherten Wegpunkte des aktuellen Servers
 mit Name, Kategorie, Dimension und Blockkoordinaten an (maximal 30 Einträge pro Antwort).
-Die Wegpunkte bleiben lokal im serverbezogenen Dateisatz gespeichert. Beim Abfragen werden Namen,
-Dimensionen und Koordinaten an den konfigurierten KI-Anbieter übermittelt; deshalb zeigt Nightfall
-vorher eine Vorschau und verlangt eine Bestätigung. Die Abfrage verändert keine Wegpunkte.
+Die Wegpunkte bleiben lokal im serverbezogenen Dateisatz gespeichert. Beim Abfragen bleiben Namen,
+Dimensionen und Koordinaten im Offline-Modus auf dem Minecraft-Client. Die Abfrage verändert keine Wegpunkte.
 Ein angezeigter Wegpunkt startet keine Bewegung: Für eine Navigation muss der Spieler diese
 ausdrücklich anfordern; erst dann wird `navigate_to` mit den gespeicherten Koordinaten verwendet.
 Nightfall übernimmt Dimension und Koordinaten unverändert und behauptet nicht, dass ein Wegpunkt
 in einer anderen Dimension erreichbar ist.
 
-## Gespeicherte Aufgaben fortsetzen oder löschen
+## Gespeicherte Aufgaben fortsetzen oder löschen · älterer Controller-Checkpoint
 
-Nightfall speichert beim Verbindungsabbruch höchstens einen lokalen Aufgaben-Checkpoint für einen ausdrücklich gestarteten Sammelauftrag oder ein ausdrücklich gesetztes Navigationsziel. Gespeichert werden nur die Absicht und Server-/Dimensionskennung, keine alten Blockziele, Pfade, Inventar-Snapshots oder Zugangsdaten. Der Checkpoint läuft nach 24 Stunden ab und wird bei Fortsetzung neu validiert. `resume_saved_task` zeigt eine Vorschau und startet die Aufgabe erst nach ausdrücklicher Bestätigung. `clear_saved_task` löscht nach separater Vorschau und Bestätigung ausschließlich den passenden Aufgaben-Checkpoint der aktuellen Server-/Dimensionskombination. Checkpoints anderer Welten bleiben erhalten; laufende Aktionen und Baufortschritt bleiben unverändert.
+Dieser Abschnitt beschreibt den älteren, separaten `task_resume.json`-Checkpoint der Bewegungs-/Sammelcontroller – nicht die neue Mehrziel-Warteschlange des Offline-Agenten. Das ältere Format speichert höchstens einen lokalen Auftrag für Sammeln oder Navigation, sofern der Controller ihn unterstützt. Gespeichert werden Absicht und Server-/Dimensionskennung, keine alten Blockziele, Pfade, Inventar-Snapshots oder Zugangsdaten. Der Checkpoint läuft nach 24 Stunden ab und wird bei Fortsetzung neu validiert. `resume_saved_task` zeigt eine Vorschau und startet die Aufgabe erst nach ausdrücklicher Bestätigung. `clear_saved_task` löscht nach separater Vorschau und Bestätigung ausschließlich diesen älteren Controller-Checkpoint. Die neue Offline-Agenten-Warteschlange liegt unabhängig davon unter `config/nightfall/agent_queues/` und kann mehrere abhängige Ziele pro Welt speichern.
+
 
 ## Nightfall AI: Basissuche und Fake-Base-Werkzeuge
 
@@ -400,3 +469,17 @@ Die KI-Anfragen und die Chat-Oberfläche begrenzen unnötige Arbeit und behalten
 - `ai.json` wird vor einer neuen Chat-Anfrage nur einmal eingelesen; doppelte synchrone Dateizugriffe im HTTP-Client und beim Start der TTS-Wiedergabe entfallen.
 
 Die Grenzen für Verlauf und Audio dienen der Reaktionsfähigkeit; bei sehr langen Gesprächen können ältere Chat-Details aus dem KI-Kontext herausfallen. Die sichtbare Unterhaltung wird davon getrennt verwaltet. Diese Änderungen wurden durch den CI-Build geprüft, sind aber nicht als Minecraft-Laufzeittest oder Mikrofon-/Lautsprechertest zu verstehen.
+
+
+## Lokales Erfahrungs-Gedächtnis für die KI · 2026-11-07
+
+Der Offline-Planer erhält bei aktiviertem **KONTEXT AN** zusätzlich höchstens vier
+abgeschlossene lokale Aufträge als knappe Erfahrungsübersicht. Sie enthält ausschließlich
+die frühere Zielbeschreibung, das Endergebnis sowie Aktionsnamen und Schrittstatus.
+Aktuelle Inventarstände, Koordinaten, Serverkennungen, Chatverläufe und Aktionsparameter
+werden daraus nicht übernommen. Die KI muss alle Voraussetzungen anhand des aktuellen
+Weltkontexts erneut prüfen; ein früherer Erfolg ist kein Beleg für die aktuelle Situation.
+Fehlgeschlagene Aktionen dienen als Warnhinweis, nicht als automatische Sperre oder
+Wiederholungsanweisung. Bei **KONTEXT AUS** wird auch diese Erfahrungsübersicht nicht
+an den Planer übergeben. Das Gedächtnis bleibt lokal in
+`config/nightfall/agent_memory.json`; es ist keine Modell-Nachtrainierung.

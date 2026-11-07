@@ -10,7 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-/** Local settings for the optional OpenAI-compatible Nightfall AI endpoint. */
+/** Offline-only settings; remote AI and voice provider configuration is intentionally disabled. */
 public final class AIConfig {
     private static final Path FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("nightfall").resolve("ai.json");
@@ -26,9 +26,9 @@ public final class AIConfig {
                            String audioBaseUrl, String transcriptionModel, String speechModel,
                            String speechVoice, boolean voiceInputEnabled, boolean voiceOutputEnabled) {
         static Settings defaults() {
-            return new Settings("https://api.openai.com/v1/chat/completions",
-                    "gpt-4o-mini", "", false,
-                    "https://api.openai.com/v1", "gpt-4o-mini-transcribe", "gpt-4o-mini-tts", "alloy", false, false);
+            // Nightfall is local-only: no remote AI provider, API key, or cloud voice endpoint.
+            return new Settings("", "offline", "", false,
+                    "", "disabled", "disabled", "alloy", false, false);
         }
     }
 
@@ -40,42 +40,17 @@ public final class AIConfig {
         return settings;
     }
 
-    /** Loads settings and creates a safe, empty template on first launch. */
+    /** Enforces offline defaults and removes legacy remote provider credentials/endpoints. */
     public static synchronized void load() {
+        // Intentionally overwrite legacy provider settings. Old API keys and remote
+        // endpoints are removed from ai.json so the retired cloud clients cannot send data.
+        settings = Settings.defaults();
         try {
             Files.createDirectories(FILE.getParent());
-            if (!Files.exists(FILE)) {
-                writeTemplate();
-                settings = Settings.defaults();
-                return;
-            }
-
-            JsonObject root = JsonParser.parseString(Files.readString(FILE)).getAsJsonObject();
-            Settings defaults = Settings.defaults();
-            String baseUrl = readString(root, "baseUrl", defaults.baseUrl()).trim();
-            String model = readString(root, "model", defaults.model()).trim();
-            String apiKey = readString(root, "apiKey", "").trim();
-            boolean shareContext = readBoolean(root, "shareWorldContext", defaults.shareWorldContext());
-            String audioBaseUrl = readString(root, "audioBaseUrl", defaults.audioBaseUrl()).trim();
-            String transcriptionModel = readString(root, "transcriptionModel", defaults.transcriptionModel()).trim();
-            String speechModel = readString(root, "speechModel", defaults.speechModel()).trim();
-            String speechVoice = readString(root, "speechVoice", defaults.speechVoice()).trim();
-            boolean voiceInput = readBoolean(root, "voiceInputEnabled", defaults.voiceInputEnabled());
-            boolean voiceOutput = readBoolean(root, "voiceOutputEnabled", defaults.voiceOutputEnabled());
-
-            if (baseUrl.length() > 512) baseUrl = defaults.baseUrl();
-            if (model.isBlank() || model.length() > 128) model = defaults.model();
-            if (apiKey.length() > 4096) apiKey = "";
-            if (audioBaseUrl.isBlank() || audioBaseUrl.length() > 512) audioBaseUrl = defaults.audioBaseUrl();
-            if (transcriptionModel.isBlank() || transcriptionModel.length() > 128) transcriptionModel = defaults.transcriptionModel();
-            if (speechModel.isBlank() || speechModel.length() > 128) speechModel = defaults.speechModel();
-            if (!speechVoice.matches("[A-Za-z0-9_-]{1,32}")) speechVoice = defaults.speechVoice();
-            settings = new Settings(baseUrl, model, apiKey, shareContext, audioBaseUrl,
-                    transcriptionModel, speechModel, speechVoice, voiceInput, voiceOutput);
-        } catch (Exception e) {
-            settings = Settings.defaults();
-            Nightfall.LOGGER.warn("Nightfall AI-Konfiguration konnte nicht gelesen werden. Defaults werden verwendet: {}",
-                    e.getClass().getSimpleName());
+            writeSettings(settings);
+        } catch (IOException failure) {
+            Nightfall.LOGGER.warn("Lokale Nightfall-AI-Konfiguration konnte nicht gespeichert werden: {}",
+                    failure.getClass().getSimpleName());
         }
     }
 

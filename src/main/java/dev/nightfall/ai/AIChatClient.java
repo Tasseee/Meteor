@@ -19,7 +19,7 @@ import java.util.Set;
 import java.util.concurrent.CompletionException;
 import java.util.function.Consumer;
 
-/** OpenAI-compatible chat client with a restricted function/tool interface. */
+/** Retired remote chat transport. Offline mode rejects requests before any HTTP call. */
 public final class AIChatClient {
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(12))
@@ -524,6 +524,16 @@ public final class AIChatClient {
         MinecraftClient client = MinecraftClient.getInstance();
         // AIChatScreen refreshes the on-disk config once before building this request.
         AIConfig.Settings settings = AIConfig.current();
+
+        // Natural-language interpretation is intentionally postponed. Do not try a
+        // remote endpoint here: the offline task commands are the current control path.
+        if (settings.apiKey().isBlank() || settings.baseUrl().isBlank()) {
+            complete(client, callback, new Result(false,
+                    "Offline-Modus aktiv. Sprachverarbeitung kommt später; nutze vorerst /nf agent "
+                            + "(status, gather, craft, smelt, iron, build, attack, guard).",
+                    null, null));
+            return;
+        }
 
         try {
             URI endpoint = URI.create(settings.baseUrl());

@@ -1,6 +1,16 @@
 package dev.nightfall.gui;
 
+import dev.nightfall.Nightfall;
 import dev.nightfall.ai.AIChatClient;
+import dev.nightfall.ai.LocalAIModelService;
+import dev.nightfall.ai.LocalVoiceClient;
+import dev.nightfall.ai.LocalSpeechOutput;
+import dev.nightfall.ai.LocalAIPlanner;
+import dev.nightfall.ai.LocalAIToolRouter;
+import dev.nightfall.ai.LocalAIResponseParser;
+import dev.nightfall.ai.AILocalRuntimeContext;
+import dev.nightfall.ai.OfflineAgentCore;
+import dev.nightfall.ai.OfflineAgentMemory;
 import dev.nightfall.ai.AIConfig;
 import dev.nightfall.ai.AIVoiceClient;
 import dev.nightfall.ai.AIRealtimeVoiceClient;
@@ -49,7 +59,7 @@ public final class AIChatScreen extends Screen {
     private static AIChatScreen active;
     private static final int MAX_ACTION_ROUND_TRIPS = 10;
     private static final int MAX_VISIBLE_HISTORY_LINES = 80;
-    private static final int MAX_VISIBLE_MESSAGE_CHARS = 6_000;
+    private static final int MAX_VISIBLE_MESSAGE_CHARS = 12_000;
     private static final int MAX_USER_MESSAGE_CHARS = 8_000;
     private static final Pattern LOCATE_COORDINATES =
             Pattern.compile("(?s).*\\[\\s*(-?\\d+)\\s*,\\s*(~|-?\\d+)\\s*,\\s*(-?\\d+)\\s*\\].*");
@@ -68,7 +78,7 @@ public final class AIChatScreen extends Screen {
     private final Map<String, List<String>> wrapCache = new HashMap<>();
     private int wrapCacheWidth = -1;
     private String input = "";
-    private String status = "Bereit · KI-Anbieter konfigurieren";
+    private String status = "Offline-Agent bereit · /nf agent help";
     private boolean waiting;
     private float scroll = Float.MAX_VALUE;
     private int panelX, panelY, panelW, panelH;
@@ -77,6 +87,8 @@ public final class AIChatScreen extends Screen {
     private int ttsX, ttsY, ttsW, ttsH;
     private int voiceX, voiceY, voiceW, voiceH;
     private int contextToggleX, contextToggleY, contextToggleW, contextToggleH;
+    private int modelButtonX, modelButtonY, modelButtonW, modelButtonH;
+    private boolean localWorldContextEnabled = true;
     private final int[] suggestionX = new int[3];
     private final int[] suggestionW = new int[3];
     private int suggestionY;
@@ -109,6 +121,7 @@ public final class AIChatScreen extends Screen {
     private final List<AIChatClient.Message> apiHistory = new ArrayList<>();
     private int actionRoundTrips;
     private final Map<String, Integer> failedToolAttempts = new HashMap<>();
+    private final Map<String, Integer> automaticRepairAttempts = new HashMap<>();
     private int confirmX, confirmY, confirmW, confirmH;
     private int cancelX, cancelY, cancelW;
     private boolean waitingLocate;
@@ -126,7 +139,7 @@ public final class AIChatScreen extends Screen {
         AIConfig.load();
         active = this;
         history.add(new ChatLine("assistant",
-                "Hey! Ich bin Nightfall AI. Ich kann dir beim Spielen helfen und auch Nightfall-Module und Menü-Einstellungen für dich ändern. Änderungen frage ich vorher bei dir an."));
+                "Hey! Ich bin Nightfall. Die lokale KI läuft direkt auf deinem PC. Lade zuerst über MODELL LADEN das Qwen-Modell (einmalig ca. 1,1 GB). Danach kannst du mich normal fragen oder mir Welt- und Bauaufträge geben. Jede Aktion wird lokal geprüft und vor der Ausführung als Vorschau gezeigt."));
     }
 
     private static SuggestionSet suggestionsForCurrentDimension(MinecraftClient mc) {
@@ -152,7 +165,9 @@ public final class AIChatScreen extends Screen {
 
     @Override
     public void removed() {
-        // A realtime call is independent of this screen and stays active while the player explores.
+        // Local microphone capture is strictly scoped to the visible chat session.
+        LocalVoiceClient.stopListening();
+        LocalSpeechOutput.stopSpeaking();
         AIVoiceClient.stopRecording();
         AIVoiceClient.stopSpeaking();
     }
@@ -160,82 +175,65 @@ public final class AIChatScreen extends Screen {
     /** Stops all local audio resources when Minecraft itself is shutting down. */
     public static void onClientStopping() {
         AIRealtimeVoiceClient.stop();
+        LocalVoiceClient.shutdown();
+        LocalSpeechOutput.shutdown();
         AIVoiceClient.stopRecording();
         AIVoiceClient.stopSpeaking();
+        LocalAIModelService.shutdown();
     }
 
-    /** Toggle the persistent voice call. Can be invoked from F8 while the chat screen is closed. */
+    /** F8 toggles local German speech recognition; audio never leaves this client. */
     public static void toggleVoiceCall() {
-        AIChatScreen session = getOrCreate();
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (AIRealtimeVoiceClient.isActive()) {
-            AIRealtimeVoiceClient.stop();
-            session.status = "Nightfall-Sprachanruf beendet.";
-            return;
-        }
-        if (mc.player == null || mc.world == null) {
-            session.status = "Starte den Sprachanruf in einer Minecraft-Welt.";
-            return;
-        }
-        AIConfig.Settings settings = AIConfig.current();
-        if (settings.apiKey().isBlank()) {
-            session.status = "Für den Sprachanruf zuerst den API-Key in config/nightfall/ai.json eintragen.";
-            return;
-        }
-        AIConfig.Settings updated = AIConfig.updateVoiceSettings(true, true);
-        if (!updated.voiceInputEnabled() || !updated.voiceOutputEnabled()) {
-            session.status = "Die Stimmeinstellungen konnten nicht gespeichert werden.";
-            return;
-        }
-        AIRealtimeVoiceClient.start(new AIRealtimeVoiceClient.Listener() {
-            @Override public void onStatus(String message) {
-                if (active != null) active.status = message;
-            }
-
-            @Override public void onTranscript(String transcript) {
-                AIChatScreen current = active == null ? new AIChatScreen() : active;
-                current.handleRealtimeTranscript(transcript);
-            }
-
-            @Override public void onAssistantText(String text) {
-                AIChatScreen current = active == null ? new AIChatScreen() : active;
-                current.history.add(new ChatLine("assistant", text));
-                current.status = "Nightfall hat geantwortet";
-                current.scroll = Float.MAX_VALUE;
-            }
-
-            @Override public void onToolCall(AIChatClient.ToolCall call) {
-                AIChatScreen current = active == null ? new AIChatScreen() : active;
-                current.handleRealtimeToolCall(call);
-            }
-        });
+        toggleVoiceMicrophone();
     }
 
-    /** Toggle microphone uplink while keeping the voice conversation connected. */
+    /** F9 and the microphone button toggle the same local push-to-talk session. */
     public static void toggleVoiceMicrophone() {
-        AIRealtimeVoiceClient.toggleMicrophone();
-        if (active != null && AIRealtimeVoiceClient.isActive()) {
-            active.status = AIRealtimeVoiceClient.isMicrophoneMuted()
-                    ? "Mikrofon stumm · F9 aktiviert es wieder."
-                    : "Mikrofon aktiv · F9 schaltet stumm.";
+        AIChatScreen session = getOrCreate();
+        if (AIRealtimeVoiceClient.isActive()) AIRealtimeVoiceClient.stop();
+        LocalVoiceClient.toggleListening(
+                session::handleLocalTranscript,
+                message -> {
+                    AIChatScreen current = active;
+                    if (current != null) current.status = message;
+                });
+        session.status = LocalVoiceClient.status();
+    }
+
+    private void handleLocalTranscript(String transcript) {
+        if (transcript == null || transcript.isBlank()) return;
+        if (waiting || hasPendingActionPreview()) {
+            status = "Sprachtext erkannt, aber Nightfall wartet noch auf die laufende Aktion.";
+            history.add(new ChatLine("assistant", status));
+            scroll = Float.MAX_VALUE;
+            return;
         }
+        input = transcript;
+        status = "Sprache erkannt · wird lokal verarbeitet";
+        if (MinecraftClient.getInstance().currentScreen == null) {
+            MinecraftClient.getInstance().setScreen(this);
+        }
+        sendMessage();
     }
 
     /** Small persistent HUD chip makes call, microphone and speaking state visible. */
     public static void renderVoiceIndicator(DrawContext ctx) {
-        if (!AIRealtimeVoiceClient.isActive()) return;
+        boolean localListening = LocalVoiceClient.isListening();
+        boolean realtimeActive = AIRealtimeVoiceClient.isActive();
+        if (!localListening && !realtimeActive) return;
         MinecraftClient mc = MinecraftClient.getInstance();
-        int right = 248;
+        int right = localListening ? 274 : 248;
         ctx.fill(10, 10, right, 31, 0xD91A202B);
         ctx.fill(10, 10, 13, 31, Theme.ACCENT);
-        String label = AIRealtimeVoiceClient.isMicrophoneMuted()
+        String label = localListening ? "LOKALES MIKRO AKTIV · F9 STOP"
+                : AIRealtimeVoiceClient.isMicrophoneMuted()
                 ? "MIKRO STUMM · F9 AN"
                 : AIRealtimeVoiceClient.isSpeaking() ? "NIGHTFALL SPRICHT · F9 STUMM"
                 : AIRealtimeVoiceClient.isReady() ? "NIGHTFALL CALL · F9 STUMM · F8 STOP"
                 : "NIGHTFALL VERBINDET …";
         ctx.drawText(mc.textRenderer, label, 20, 17,
-                AIRealtimeVoiceClient.isMicrophoneMuted() ? 0xFFFFD27A
-                        : AIRealtimeVoiceClient.isSpeaking() ? 0xFFFFD27A : Theme.ACCENT, true);
+                localListening || AIRealtimeVoiceClient.isMicrophoneMuted()
+                        ? 0xFFFFD27A : Theme.ACCENT, true);
     }
 
     /** Called from the client tick so command/locate deadlines continue while this screen is hidden. */
@@ -256,6 +254,8 @@ public final class AIChatScreen extends Screen {
 
     public static void onDisconnect() {
         AIRealtimeVoiceClient.stop();
+        LocalVoiceClient.stopListening();
+        LocalSpeechOutput.stopSpeaking();
         AIVoiceClient.stopRecording();
         AIVoiceClient.stopSpeaking();
         AIBuilder.onDisconnect();
@@ -331,22 +331,36 @@ public final class AIChatScreen extends Screen {
         drawHologram(ctx, panelX + 29, panelY + 15, waiting || AIRealtimeVoiceClient.isSpeaking());
         ctx.drawText(mc.textRenderer, "NIGHTFALL", panelX + 54, panelY + 10, Theme.TEXT, true);
         ctx.drawText(mc.textRenderer, "DEIN KI-COMPANION", panelX + 54, panelY + 23, Theme.ACCENT, false);
-        String modeLabel = AIRealtimeVoiceClient.isActive() ? "VOICE LINK" : "HOLO INTERFACE";
-        ctx.drawText(mc.textRenderer, modeLabel, panelX + panelW - mc.textRenderer.getWidth(modeLabel) - 16,
-                panelY + 14, Theme.TEXT_DIM, false);
+        modelButtonW = Math.min(142, Math.max(96, panelW / 3));
+        modelButtonH = 21;
+        modelButtonX = panelX + panelW - modelButtonW - 14;
+        modelButtonY = panelY + 9;
+        String modelLabel = switch (LocalAIModelService.state()) {
+            case READY, GENERATING -> "MODELL BEREIT";
+            case DOWNLOADING -> LocalAIModelService.status().toUpperCase(Locale.ROOT);
+            case LOADING -> "MODELL LÄDT …";
+            case ERROR -> "ERNEUT VERSUCHEN";
+            case STOPPED -> "MODELL BEENDET";
+            case MISSING -> "MODELL LADEN";
+        };
+        ctx.fill(modelButtonX, modelButtonY, modelButtonX + modelButtonW, modelButtonY + modelButtonH,
+                LocalAIModelService.isReady() ? 0xFF245D53 : 0xFF293342);
+        ctx.fill(modelButtonX, modelButtonY, modelButtonX + modelButtonW, modelButtonY + 1, Theme.ACCENT);
+        while (mc.textRenderer.getWidth(modelLabel) > modelButtonW - 10 && modelLabel.length() > 8)
+            modelLabel = modelLabel.substring(0, modelLabel.length() - 2) + "…";
+        ctx.drawText(mc.textRenderer, modelLabel,
+                modelButtonX + (modelButtonW - mc.textRenderer.getWidth(modelLabel)) / 2,
+                modelButtonY + 7, Theme.TEXT, true);
 
-        AIConfig.Settings settings = AIConfig.current();
-        String contextState = "Kontext:";
-        ctx.drawText(mc.textRenderer, contextState, panelX + 16, panelY + 34,
-                settings.shareWorldContext() ? Theme.ACCENT : Theme.TEXT_DIM, false);
+        ctx.drawText(mc.textRenderer, "Daten:", panelX + 16, panelY + 34, Theme.TEXT_DIM, false);
         contextToggleW = 112;
         contextToggleH = 18;
         contextToggleX = panelX + panelW - contextToggleW - 14;
         contextToggleY = panelY + 30;
-        int contextButtonColor = settings.shareWorldContext() ? 0xFF267B69 : 0xFF343848;
+        int contextButtonColor = 0xFF343848;
         ctx.fill(contextToggleX, contextToggleY, contextToggleX + contextToggleW,
                 contextToggleY + contextToggleH, contextButtonColor);
-        String contextToggleLabel = settings.shareWorldContext() ? "WELTKONTEXT: AN" : "WELTKONTEXT: AUS";
+        String contextToggleLabel = localWorldContextEnabled ? "KONTEXT AN" : "KONTEXT AUS";
         int contextLabelX = contextToggleX + (contextToggleW - mc.textRenderer.getWidth(contextToggleLabel)) / 2;
         ctx.drawText(mc.textRenderer, contextToggleLabel, contextLabelX, contextToggleY + 5,
                 Theme.TEXT, true);
@@ -376,7 +390,7 @@ public final class AIChatScreen extends Screen {
         }
 
         int contentTop = panelY + 101;
-        int contentBottom = panelY + panelH - (pendingAction == null ? 53 : 80);
+        int contentBottom = panelY + panelH - (hasPendingActionPreview() ? 80 : 53);
         int contentHeight = Math.max(30, contentBottom - contentTop);
         int left = panelX + 14;
         int right = panelX + panelW - 14;
@@ -418,7 +432,7 @@ public final class AIChatScreen extends Screen {
         }
         ctx.disableScissor();
 
-        if (pendingAction != null) {
+        if (hasPendingActionPreview()) {
             confirmY = panelY + panelH - 65;
             confirmH = 20;
             confirmX = panelX + 14;
@@ -478,22 +492,23 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, shownInput, inputX + 7, sendY + 7,
                 input.isEmpty() ? Theme.TEXT_DIM : Theme.TEXT, false);
 
-        int micColor = AIRealtimeVoiceClient.isActive() ? 0xFF267B69 : 0xFF343848;
+        boolean localMicActive = LocalVoiceClient.isListening();
+        int micColor = localMicActive ? 0xFF267B69 : 0xFF343848;
         ctx.fill(micX, micY, micX + micW, micY + micH, micColor);
-        String micLabel = AIRealtimeVoiceClient.isActive() ? "STOP" : "CALL";
+        String micLabel = localMicActive ? "MIKRO AN" : "MIKRO AUS";
         ctx.drawText(mc.textRenderer, micLabel,
                 micX + (micW - mc.textRenderer.getWidth(micLabel)) / 2,
                 micY + 7, Theme.TEXT, true);
 
-        boolean ttsEnabled = AIConfig.current().voiceOutputEnabled();
+        boolean ttsEnabled = LocalSpeechOutput.isEnabled();
         int ttsColor = ttsEnabled ? 0xFF267B69 : 0xFF343848;
         ctx.fill(ttsX, ttsY, ttsX + ttsW, ttsY + ttsH, ttsColor);
-        String ttsLabel = ttsEnabled ? "TTS ON" : "TTS OFF";
+        String ttsLabel = ttsEnabled ? "AUDIO AN" : "AUDIO AUS";
         ctx.drawText(mc.textRenderer, ttsLabel,
                 ttsX + (ttsW - mc.textRenderer.getWidth(ttsLabel)) / 2,
                 ttsY + 7, Theme.TEXT, true);
 
-        String voiceLabel = AIConfig.current().speechVoice().toUpperCase(Locale.ROOT);
+        String voiceLabel = "DEUTSCH";
         ctx.fill(voiceX, voiceY, voiceX + voiceW, voiceY + voiceH, 0xFF293342);
         ctx.fill(voiceX, voiceY, voiceX + voiceW, voiceY + 1, Theme.ACCENT);
         ctx.drawText(mc.textRenderer, voiceLabel,
@@ -507,7 +522,7 @@ public final class AIChatScreen extends Screen {
         ctx.drawText(mc.textRenderer, sendLabel, sendLabelX, sendY + 7,
                 waiting || input.isBlank() ? Theme.TEXT_DIM : 0xFF081014, true);
 
-        ctx.drawText(mc.textRenderer, "ENTER: senden · F8: Call an/aus · F9: Mikro stumm/an · TTS: Sprachausgabe · Stimmenfeld: wechseln · ESC: schließen",
+        ctx.drawText(mc.textRenderer, "ENTER: lokal fragen · /nf agent help: Befehle · ESC: schließen",
                 panelX + 16, panelY + panelH - 10, Theme.TEXT_DIM, false);
     }
 
@@ -612,13 +627,13 @@ public final class AIChatScreen extends Screen {
 
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
-        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && pendingAction != null
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && hasPendingActionPreview()
                 && click.x() >= confirmX && click.x() <= confirmX + confirmW
                 && click.y() >= confirmY && click.y() <= confirmY + confirmH) {
             confirmPendingAction();
             return true;
         }
-        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && pendingAction != null
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && hasPendingActionPreview()
                 && click.x() >= cancelX && click.x() <= cancelX + cancelW
                 && click.y() >= cancelY && click.y() <= cancelY + confirmH) {
             cancelPendingAction();
@@ -633,6 +648,12 @@ public final class AIChatScreen extends Screen {
                     return true;
                 }
             }
+        }
+        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && click.x() >= modelButtonX && click.x() <= modelButtonX + modelButtonW
+                && click.y() >= modelButtonY && click.y() <= modelButtonY + modelButtonH) {
+            setupLocalModel();
+            return true;
         }
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
                 && click.x() >= contextToggleX && click.x() <= contextToggleX + contextToggleW
@@ -739,54 +760,34 @@ public final class AIChatScreen extends Screen {
     }
 
     private void toggleWorldContextSharing() {
-        AIConfig.Settings settings = AIConfig.current();
-        boolean enabled = !settings.shareWorldContext();
-        AIConfig.Settings updated = AIConfig.updateWorldContextSharing(enabled);
-        if (updated.shareWorldContext() != enabled) {
-            status = "Weltkontext-Einstellung konnte nicht gespeichert werden.";
+        localWorldContextEnabled = !localWorldContextEnabled;
+        status = localWorldContextEnabled
+                ? "Lokaler Weltkontext ist für die nächste Anfrage aktiviert. Die Daten verlassen diesen PC nicht."
+                : "Lokaler Weltkontext ist deaktiviert. Nightfall beantwortet Fragen ohne aktuellen Welt-Snapshot.";
+    }
+
+    private void setupLocalModel() {
+        if (LocalAIModelService.isReady()) {
+            status = "Das lokale Modell ist bereits geladen.";
             return;
         }
-        status = enabled
-                ? "Weltkontext aktiviert · Position, Dimension und Hand werden mit KI-Anfragen geteilt"
-                : "Weltkontext deaktiviert · keine Weltinformationen werden automatisch angehängt";
-        history.add(new ChatLine("assistant", status));
-        scroll = Float.MAX_VALUE;
+        status = "Lokales Modell wird vorbereitet. Der erste Download ist ungefähr 1,1 GB groß.";
+        LocalAIModelService.setup(result -> {
+            status = result.text();
+            history.add(new ChatLine("assistant", result.text()));
+            scroll = Float.MAX_VALUE;
+        });
     }
 
     private void cycleSpeechVoice() {
-        List<String> voices = AIConfig.supportedSpeechVoices();
-        AIConfig.Settings current = AIConfig.current();
-        int currentIndex = voices.indexOf(current.speechVoice());
-        String nextVoice = voices.get((currentIndex + 1 + voices.size()) % voices.size());
-        AIConfig.Settings updated = AIConfig.updateSpeechVoice(nextVoice);
-        if (!nextVoice.equals(updated.speechVoice())) {
-            status = "Die neue Stimme konnte nicht gespeichert werden.";
-            return;
-        }
-        AIVoiceClient.stopSpeaking();
-        AIRealtimeVoiceClient.updateVoice(updated);
-        String displayName = nextVoice.substring(0, 1).toUpperCase(Locale.ROOT) + nextVoice.substring(1);
-        status = "Nightfall-Stimme geändert: " + displayName;
-        history.add(new ChatLine("assistant", status));
-        scroll = Float.MAX_VALUE;
+        status = "Nightfall verwendet die lokal installierte deutsche Systemstimme. Stimme und Audio verlassen diesen PC nicht.";
     }
 
     private void toggleVoiceOutput() {
-        AIConfig.Settings settings = AIConfig.current();
-        if (!settings.voiceOutputEnabled() && settings.apiKey().isBlank()) {
-            status = "Für Sprachausgabe zuerst den API-Key in config/nightfall/ai.json eintragen.";
-            return;
-        }
-        boolean enabled = !settings.voiceOutputEnabled();
-        AIConfig.Settings updated = AIConfig.updateVoiceSettings(settings.voiceInputEnabled(), enabled);
-        if (updated.voiceOutputEnabled() != enabled) {
-            status = "TTS-Einstellung konnte nicht gespeichert werden.";
-            return;
-        }
-        if (!enabled) AIVoiceClient.stopSpeaking();
-        AIRealtimeVoiceClient.setSpeechEnabled(enabled);
-        status = enabled ? "Sprachausgabe aktiviert · Nightfall spricht fertige Antworten."
-                : "Sprachausgabe ausgeschaltet.";
+        boolean enabled = LocalSpeechOutput.toggleEnabled();
+        status = enabled
+                ? "Lokale Sprachausgabe aktiviert · nutzt die installierte Systemstimme."
+                : "Lokale Sprachausgabe deaktiviert.";
     }
 
     private void trimVisibleHistory() {
@@ -803,134 +804,241 @@ public final class AIChatScreen extends Screen {
         }
     }
 
+    private java.util.Optional<dev.nightfall.ai.OfflineAgentActionBridge.PreparedStep> pendingOfflineAgentPreview() {
+        try {
+            return Nightfall.offlineAgentBridge().pendingPreview();
+        } catch (RuntimeException unavailable) {
+            return java.util.Optional.empty();
+        }
+    }
+
+    private boolean hasPendingActionPreview() {
+        return pendingAction != null || pendingOfflineAgentPreview().isPresent();
+    }
+
     private void sendMessage() {
-        if (waiting || pendingAction != null || input.isBlank()) return;
+        if (waiting || hasPendingActionPreview() || input.isBlank()) return;
         String prompt = input.trim();
         input = "";
         boolean truncated = prompt.length() > MAX_USER_MESSAGE_CHARS;
         if (truncated) prompt = prompt.substring(0, MAX_USER_MESSAGE_CHARS);
         history.add(new ChatLine("user", prompt));
         if (truncated) history.add(new ChatLine("assistant",
-                "Hinweis: Deine Nachricht wurde auf " + MAX_USER_MESSAGE_CHARS + " Zeichen begrenzt, damit die Anfrage schnell bleibt."));
-        apiHistory.add(new AIChatClient.Message("user", prompt));
+                "Hinweis: Deine Nachricht wurde auf " + MAX_USER_MESSAGE_CHARS + " Zeichen begrenzt."));
         actionRoundTrips = 0;
         failedToolAttempts.clear();
         scroll = Float.MAX_VALUE;
         if (AIRealtimeVoiceClient.isActive()) {
-            AIRealtimeVoiceClient.sendText(prompt);
+            status = "Sprachsteuerung ist im lokalen Modellmodus noch nicht angeschlossen.";
+            return;
+        }
+        List<LocalAIPlanner.Turn> turns = history.stream()
+                .map(line -> new LocalAIPlanner.Turn(line.role(), line.content()))
+                .toList();
+        if (!LocalAIModelService.isReady() && !LocalAIToolRouter.isCapabilityQuestion(turns)) {
+            history.add(new ChatLine("assistant",
+                    "Das lokale Sprachmodell ist noch nicht geladen. Klicke oben rechts auf MODELL LADEN. "
+                            + "Beim ersten Mal wird eine Modell-Datei von ungefähr 1,1 GB einmalig heruntergeladen; "
+                            + "danach läuft die KI lokal ohne API-Key oder Cloud-Dienst."));
+            status = "Bitte zuerst lokales Modell laden";
             return;
         }
         requestAI();
     }
 
+    /** Uses only the embedded local model. Its response can suggest a validated plan, never execute it. */
     private void requestAI() {
-        if (waiting || apiHistory.isEmpty()) return;
-        AIChatClient.compactHistoryInPlace(apiHistory);
-        if (apiHistory.isEmpty()) return;
-        if (actionRoundTrips >= MAX_ACTION_ROUND_TRIPS) {
+        requestAI(null, false);
+    }
+
+    private void requestAI(OfflineAgentCore.GoalView forcedReplanTarget, boolean automaticRepair) {
+        if (waiting || history.isEmpty()) return;
+        List<LocalAIPlanner.Turn> turns = history.stream()
+                .map(line -> new LocalAIPlanner.Turn(line.role(), line.content()))
+                .toList();
+        if (forcedReplanTarget == null && LocalAIToolRouter.isCapabilityQuestion(turns)) {
             history.add(new ChatLine("assistant",
-                    "Ich habe mehrere Aktionen nacheinander ausgeführt. Bitte gib mir den nächsten Auftrag separat."));
-            status = "Bitte nächste Aufgabe eingeben";
+                    "Hier ist die vollständige Funktionsübersicht aus Nightfalls lokalem Aktionsregister. "
+                            + "Die Kennzeichnung bestätigt die Schema-/Bridge-Anbindung, nicht die Verfügbarkeit in jedem Weltzustand.\n\n"
+                            + LocalAIPlanner.capabilityCatalog()));
+            status = "Vollständige lokale Funktionsübersicht";
             scroll = Float.MAX_VALUE;
             return;
         }
+        if (!LocalAIModelService.isReady()) return;
 
+        boolean replanRequested = forcedReplanTarget != null || requestedReplan(turns);
+        if (replanRequested) Nightfall.offlineAgentBridge().ensureReady();
+        OfflineAgentCore.GoalView replanTarget = forcedReplanTarget != null
+                ? forcedReplanTarget : replanRequested ? latestFailedGoal() : null;
+        if (replanRequested && replanTarget == null) {
+            history.add(new ChatLine("assistant",
+                    "Ich finde in der aktuellen Welt-Warteschlange keinen fehlgeschlagenen Auftrag, den ich neu planen kann. "
+                            + "Starte zuerst einen Auftrag oder beschreibe ein neues Ziel."));
+            status = "Kein fehlgeschlagener Auftrag zur Neuplanung vorhanden";
+            scroll = Float.MAX_VALUE;
+            return;
+        }
+        boolean buildPlanningRequest = LocalAIToolRouter.selectTools(turns).contains("build_structure")
+                || (replanTarget != null && replanTarget.description().toLowerCase(Locale.ROOT)
+                .matches("(?s).*(haus|hütte|gebäude|burg|turm|farm|bau|bauen|house|castle|tower|build).*"));
+        String context = localWorldContextEnabled
+                ? worldContext(buildPlanningRequest) + "\n\n" + AILocalRuntimeContext.capture()
+                : "";
+        if (localWorldContextEnabled) {
+            String learnedHistory = OfflineAgentMemory.promptSummary(OfflineAgentMemory.recent(4), 4);
+            if (!learnedHistory.isBlank()) context += "\n\n" + learnedHistory;
+        }
+        String prompt = replanTarget == null
+                ? LocalAIPlanner.buildPrompt(turns, context)
+                : LocalAIPlanner.buildReplanPrompt(turns, context, replanTarget);
+        int requestGeneration = sessionGeneration;
         int responseIndex = history.size();
-        history.add(new ChatLine("assistant", "Nightfall AI denkt …"));
+        history.add(new ChatLine("assistant", replanTarget == null
+                ? "Nightfall denkt lokal …"
+                : automaticRepair
+                ? "Nightfall hat einen Fehlschlag erkannt und plant den offenen Teil automatisch neu …"
+                : "Nightfall prüft den fehlgeschlagenen Auftrag und plant den offenen Teil neu …"));
         waiting = true;
-        status = "Verbinde mit dem KI-Anbieter …";
+        status = "Lokale Inferenz läuft auf diesem PC …";
         scroll = Float.MAX_VALUE;
 
-        AIConfig.load();
-        AIConfig.Settings settings = AIConfig.current();
-        String context = settings.shareWorldContext() ? worldContext() : "";
-        int requestGeneration = sessionGeneration;
-        AIChatClient.request(new ArrayList<>(apiHistory), context, result -> {
+        LocalAIModelService.generate(prompt, result -> {
             if (requestGeneration != sessionGeneration) return;
             waiting = false;
-            if (pendingCommandFeedbackAI) {
-                pendingCommandFeedbackAI = false;
-                actionRoundTrips = 0;
-                history.set(responseIndex, new ChatLine("assistant", "Die Servermeldung ist eingegangen. Ich ordne sie ein …"));
-                scroll = Float.MAX_VALUE;
-                requestAI();
-                return;
-            }
+            if (responseIndex >= history.size()) return;
             if (!result.success()) {
                 history.set(responseIndex, new ChatLine("assistant", result.text()));
-                status = "Verbindung fehlgeschlagen";
+                status = "Lokale KI-Anfrage fehlgeschlagen";
                 scroll = Float.MAX_VALUE;
                 return;
             }
-
-            if (result.toolCall() != null) {
-                AIChatClient.ToolCall call = result.toolCall();
-                apiHistory.add(AIChatClient.Message.assistantToolCall(result.rawAssistantMessage()));
-                try {
-                    if ("run_server_command".equals(call.name()) && waitingCommandResponse)
-                        throw new IllegalArgumentException("Ein Serverbefehl wartet noch auf eine Rückmeldung. Warte auf die Serverantwort oder den 30-Sekunden-Timeout, bevor du den nächsten Befehl sendest.");
-                    String toolSignature = call.name() + "|" + call.arguments();
-                    if (failedToolAttempts.getOrDefault(toolSignature, 0) >= 2) {
-                        String blockedResult = "Dieser identische Werkzeugschritt ist in diesem Auftrag bereits zweimal fehlgeschlagen und wird nicht erneut ausgeführt. "
-                                + "Erkläre die Blockade oder wähle einen anderen sicheren Weg.";
-                        apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), blockedResult));
-                        history.set(responseIndex, new ChatLine("assistant", blockedResult));
-                        actionRoundTrips++;
-                        scroll = Float.MAX_VALUE;
-                        requestAI();
-                        return;
+            try {
+                LocalAIResponseParser.Response response = LocalAIResponseParser.parse(result.text());
+                if (response instanceof LocalAIResponseParser.Answer answer) {
+                    history.set(responseIndex, new ChatLine("assistant", answer.text()));
+                    status = "Lokal beantwortet · keine Daten übertragen";
+                    if (LocalSpeechOutput.isEnabled()) LocalSpeechOutput.speak(answer.text());
+                } else if (response instanceof LocalAIResponseParser.Plan plan) {
+                    MinecraftClient mc = MinecraftClient.getInstance();
+                    if (mc.player == null || mc.world == null) {
+                        throw new IllegalStateException("Für Weltaktionen musst du zuerst einer Minecraft-Welt oder einem Server beitreten.");
                     }
-                    AIActionRegistry.Action prepared = AIActionRegistry.prepare(call.name(), call.arguments());
-                    if (!AIActionRegistry.requiresConfirmation(call.name())) {
-                        String toolResult = AIActionRegistry.execute(prepared);
-                        apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), toolResult));
-                        history.set(responseIndex, new ChatLine("assistant", "Werkzeugergebnis wird ausgewertet …"));
-                        actionRoundTrips++;
-                        scroll = Float.MAX_VALUE;
-                        requestAI();
-                        return;
+                    for (OfflineAgentCore.Step step : plan.goal().steps()) {
+                        if (!dev.nightfall.ai.OfflineAgentActionBridge.supportsAction(step.action())) {
+                            throw new IllegalArgumentException("Die lokale Aktion '" + step.action()
+                                    + "' ist nicht freigegeben oder wird in diesem Planformat nicht unterstützt.");
+                        }
                     }
-                    pendingAction = prepared;
-                    pendingToolCall = call;
-                    history.set(responseIndex, new ChatLine("assistant",
-                            "Ich möchte folgende Aktion ausführen:\n" + pendingAction.preview()));
-                    status = "Aktion wartet auf deine Bestätigung";
-                    AIVoiceClient.speak("Ich möchte folgende Aktion ausführen. " + pendingAction.preview()
-                            + ". Bitte bestätige sie im Nightfall-Fenster oder brich sie ab.");
-                    scroll = Float.MAX_VALUE;
-                } catch (RuntimeException actionFailure) {
-                    String detail = actionFailure.getMessage();
-                    if (detail == null || detail.isBlank()) detail = actionFailure.getClass().getSimpleName();
-                    detail = detail.replaceAll("[\\r\\n\\t]+", " ").trim();
-                    if (detail.length() > 320) detail = detail.substring(0, 320) + "…";
-                    String signature = call.name() + "|" + call.arguments();
-                    int failures = failedToolAttempts.merge(signature, 1, Integer::sum);
-                    String failureResult = "Nightfall konnte das Werkzeug nicht ausführen: " + detail + ".";
-                    if (failures >= 2) {
-                        failureResult += " Derselbe Schritt ist bereits mehrfach fehlgeschlagen. Nicht erneut aufrufen. "
-                                + "Erkläre die Blockade oder wähle einen wesentlich anderen sicheren Schritt.";
+                    Nightfall.offlineAgentBridge().ensureReady();
+                    if (replanTarget != null) {
+                        Nightfall.offlineAgentCore().replanRemaining(replanTarget.id(), plan.goal().steps());
                     } else {
-                        failureResult += " Prüfe den Zustand und wähle nur dann einen sicheren Alternativschritt.";
+                        Nightfall.offlineAgentCore().submit(plan.goal());
                     }
-                    apiHistory.add(AIChatClient.Message.toolResult(call.id(), call.name(), failureResult));
-                    history.set(responseIndex, new ChatLine("assistant", failureResult));
-                    actionRoundTrips++;
-                    scroll = Float.MAX_VALUE;
-                    requestAI();
+                    var prepared = Nightfall.offlineAgentBridge().prepareNext();
+                    String message = replanTarget == null
+                            ? "Ich habe den Auftrag lokal geplant: " + plan.goal().description()
+                            : "Ich habe den fehlgeschlagenen Auftrag neu geplant: " + replanTarget.description()
+                                    + "\nBestätigte Schritte bleiben erhalten; nur der offene Teil wurde ersetzt.";
+                    message += "\n" + plan.goal().steps().size() + " neue Schritt(e)"
+                            + (replanTarget == null ? " · Task-ID " + plan.goal().id() : " · bestehende Task-ID " + replanTarget.id())
+                            + "\n";
+                    if (prepared.isPresent()) {
+                        message += "Vorschau für den nächsten Schritt:\n" + prepared.get().preview()
+                                + "\n\nPrüfe die Aktion und klicke unten auf AKTION AUSFÜHREN oder ABBRECHEN. "
+                                + "Alternativ funktionieren /nf agent confirm und /nf agent reject. "
+                                + "/nf agent status zeigt den Fortschritt.";
+                        status = "Neuer lokaler Plan bereit · wartet auf deine Bestätigung";
+                    } else {
+                        message += "Der Plan ist eingereiht. Nightfall bereitet den nächsten Schritt vor, sobald es sicher möglich ist.";
+                        status = "Lokaler Plan eingereiht";
+                    }
+                    history.set(responseIndex, new ChatLine("assistant", message));
                 }
-                return;
+            } catch (RuntimeException failure) {
+                String detail = failure.getMessage();
+                if (detail == null || detail.isBlank()) detail = failure.getClass().getSimpleName();
+                history.set(responseIndex, new ChatLine("assistant",
+                        "Ich konnte daraus keinen gültigen lokalen Auftrag machen: " + detail
+                                + "\nIch habe nichts ausgeführt. Du kannst den Auftrag anders formulieren oder /nf agent help nutzen."));
+                status = "Plan lokal abgelehnt · keine Aktion ausgeführt";
             }
-
-            history.set(responseIndex, new ChatLine("assistant", result.text()));
-            apiHistory.add(new AIChatClient.Message("assistant", result.text()));
-            status = "Antwort erhalten";
-            if (MinecraftClient.getInstance().currentScreen == this) AIVoiceClient.speak(result.text());
             scroll = Float.MAX_VALUE;
         });
     }
 
+    /**
+     * Called by the offline action bridge only after a goal has conclusively failed.
+     * At most two automatic repairs are attempted per goal in one client session;
+     * every replacement still stops at the normal player-confirmed action preview.
+     */
+    public static void requestAutomaticRepair(String goalId) {
+        AIChatScreen session = active == null ? getOrCreate() : active;
+        if (session.waiting) return;
+        if (!LocalAIModelService.isReady()) {
+            session.history.add(new ChatLine("assistant",
+                    "Ein Auftrag ist fehlgeschlagen. Lade das lokale Modell über MODELL LADEN, damit ich den offenen Teil neu planen kann."));
+            session.status = "Neuplanung wartet auf das lokale KI-Modell";
+            session.scroll = Float.MAX_VALUE;
+            return;
+        }
+        OfflineAgentCore.GoalView failed = Nightfall.offlineAgentCore().snapshot().stream()
+                .filter(goal -> goal.id().equals(goalId)
+                        && goal.status() == OfflineAgentCore.GoalStatus.FAILED)
+                .findFirst().orElse(null);
+        if (failed == null) return;
+        int attempts = session.automaticRepairAttempts.getOrDefault(goalId, 0);
+        if (attempts >= 2) {
+            session.history.add(new ChatLine("assistant",
+                    "Der Auftrag ist erneut fehlgeschlagen. Ich stoppe die automatische Neuplanung nach zwei Versuchen. "
+                            + "Du kannst den Auftrag prüfen und mich mit „Plane weiter“ erneut beauftragen."));
+            session.scroll = Float.MAX_VALUE;
+            return;
+        }
+        session.automaticRepairAttempts.put(goalId, attempts + 1);
+        session.requestAI(failed, true);
+    }
+
+    private static OfflineAgentCore.GoalView latestFailedGoal() {
+        List<OfflineAgentCore.GoalView> goals = Nightfall.offlineAgentCore().snapshot();
+        for (int i = goals.size() - 1; i >= 0; i--) {
+            OfflineAgentCore.GoalView goal = goals.get(i);
+            if (goal.status() == OfflineAgentCore.GoalStatus.FAILED) return goal;
+        }
+        return null;
+    }
+
+    private static boolean requestedReplan(List<LocalAIPlanner.Turn> turns) {
+        if (turns == null || turns.isEmpty()) return false;
+        String lastUser = "";
+        for (int i = turns.size() - 1; i >= 0; i--) {
+            if ("user".equals(turns.get(i).role())) {
+                lastUser = turns.get(i).content() == null ? "" : turns.get(i).content();
+                break;
+            }
+        }
+        String normalized = lastUser.toLowerCase(Locale.ROOT);
+        return normalized.matches("(?s).*(plane (?:weiter|neu)|weiter planen|neu planen|plan(?:e|ung) anpassen|versuch(?:e)? es anders|auftrag (?:neu|anders) planen|mach (?:bitte )?weiter|setz(?:e)? (?:den )?auftrag fort|mach einen neuen plan).*");
+    }
+
     private void confirmPendingAction() {
-        if (pendingAction == null || pendingToolCall == null) return;
+        if (pendingAction == null) {
+            var preview = pendingOfflineAgentPreview();
+            if (preview.isEmpty()) return;
+            try {
+                String result = Nightfall.offlineAgentBridge().confirm(preview.get());
+                history.add(new ChatLine("assistant", "Nightfall: " + result));
+                status = "Offline-Agent-Aktion bestätigt · Abschluss wird geprüft";
+            } catch (RuntimeException failure) {
+                String detail = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+                history.add(new ChatLine("assistant", "Die Offline-Agent-Aktion konnte nicht gestartet werden: " + detail));
+                status = "Offline-Agent-Aktion fehlgeschlagen";
+            }
+            scroll = Float.MAX_VALUE;
+            return;
+        }
+        if (pendingToolCall == null) return;
         AIActionRegistry.Action action = pendingAction;
         AIChatClient.ToolCall call = pendingToolCall;
         pendingAction = null;
@@ -988,7 +1096,22 @@ public final class AIChatScreen extends Screen {
     }
 
     private void cancelPendingAction() {
-        if (pendingAction == null || pendingToolCall == null) return;
+        if (pendingAction == null) {
+            var preview = pendingOfflineAgentPreview();
+            if (preview.isEmpty()) return;
+            try {
+                Nightfall.offlineAgentBridge().cancelPending();
+                history.add(new ChatLine("assistant", "Der vorbereitete Offline-Agent-Auftrag wurde abgebrochen. Es wurde nichts ausgeführt."));
+                status = "Offline-Agent-Auftrag abgebrochen";
+            } catch (RuntimeException failure) {
+                String detail = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+                history.add(new ChatLine("assistant", "Der Offline-Agent-Auftrag konnte nicht abgebrochen werden: " + detail));
+                status = "Abbruch fehlgeschlagen";
+            }
+            scroll = Float.MAX_VALUE;
+            return;
+        }
+        if (pendingToolCall == null) return;
         AIChatClient.ToolCall call = pendingToolCall;
         AIActionRegistry.cancel(pendingAction);
         pendingAction = null;
@@ -1173,7 +1296,7 @@ public final class AIChatScreen extends Screen {
      * Builds a bounded snapshot from data already available to the local client.
      * This method is called only when the player has enabled world-context sharing.
      */
-    private String worldContext() {
+    private String worldContext(boolean includeMaterialPlanning) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null) return "";
 
@@ -1334,9 +1457,9 @@ public final class AIChatScreen extends Screen {
         for (int slot = 0; slot < 36; slot++) {
             ItemStack stack = player.getInventory().getStack(slot);
             if (stack.isEmpty()) continue;
-            inventoryCounts.merge(stack.getName().getString(), stack.getCount(), Integer::sum);
-            if (stack.contains(DataComponentTypes.FOOD)) foodUnits += stack.getCount();
             String itemId = Registries.ITEM.getId(stack.getItem()).toString();
+            inventoryCounts.merge(itemId, stack.getCount(), Integer::sum);
+            if (stack.contains(DataComponentTypes.FOOD)) foodUnits += stack.getCount();
             if ("minecraft:torch".equals(itemId) || "minecraft:soul_torch".equals(itemId))
                 torchUnits += stack.getCount();
             if ("minecraft:shield".equals(itemId)) hasShield = true;
@@ -1362,10 +1485,27 @@ public final class AIChatScreen extends Screen {
         String equipmentAdvisorSummary = equipmentAdvisorSummary(player);
         String inventorySummary = inventoryCounts.entrySet().stream()
                 .sorted((left, right) -> Integer.compare(right.getValue(), left.getValue()))
-                .limit(12)
+                .limit(36)
                 .map(entry -> entry.getKey() + " x" + entry.getValue())
                 .collect(Collectors.joining(", "));
         if (inventorySummary.isBlank()) inventorySummary = "leer";
+
+        StringBuilder presetMaterialPlanning = new StringBuilder();
+        if (includeMaterialPlanning) {
+            for (String structure : List.of("starter_shelter", "large_house", "watchtower")) {
+                try {
+                    presetMaterialPlanning.append(AIBuilder.analyzeStructureMaterials(structure, null)).append("\n");
+                } catch (RuntimeException unavailable) {
+                    String detail = unavailable.getMessage() == null
+                            ? "Materialanalyse momentan nicht verfügbar."
+                            : unavailable.getMessage().replaceAll("[\\r\\n\\t]+", " ").trim();
+                    presetMaterialPlanning.append("Materialplanung ").append(structure)
+                            .append(": nicht verfügbar (").append(detail).append(").\n");
+                }
+            }
+        } else {
+            presetMaterialPlanning.append("Für diese Anfrage nicht berechnet.\n");
+        }
 
         return "Lokaler Minecraft-Weltkontext (Momentaufnahme):\n"
                 + "Dimension: " + dimension + "\n"
@@ -1391,8 +1531,10 @@ public final class AIChatScreen extends Screen {
                 + "Haupthand: " + describeStack(player.getMainHandStack()) + "\n"
                 + "Nebenhand: " + describeStack(player.getOffHandStack()) + "\n"
                 + "Rüstung: " + armorSummary + "\n"
-                + "Inventar (36 Haupt-/Hotbar-Slots, nach Itemnamen zusammengefasst; höchstens 12 Einträge): "
+                + "Inventar (36 Haupt-/Hotbar-Slots, nach exakten Minecraft-Item-IDs zusammengefasst): "
                 + inventorySummary + "\n"
+                + "Read-only-Materialplanung der drei Nightfall-Bauvorlagen:\n"
+                + presetMaterialPlanning
                 + "Grenze: Das sind nur aktuell clientseitig verfügbare Werte, keine Karte der Umgebung. "
                 + "Ungeladene Chunks, versteckte Entities und serverseitig nicht gesendete Daten sind nicht enthalten.";
     }

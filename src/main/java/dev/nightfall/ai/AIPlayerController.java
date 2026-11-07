@@ -213,6 +213,7 @@ public final class AIPlayerController {
     private static int smeltOutputCountBeforeClick;
     private static int smeltOutputWaitTicks;
     private static String lastActionSummary = "";
+    private static long actionCompletionSequence;
 
     private AIPlayerController() {}
 
@@ -351,10 +352,9 @@ public final class AIPlayerController {
                     : counts.getOrDefault(type, 0) >= thresholds[i];
             if (supportedPattern) {
                 BlockPos found = center.toImmutable();
-                stop(null);
-                notifyPlayer(mc, "Möglicher Strukturhinweis: " + type + " nahe X=" + found.getX()
+                stop("Strukturhinweis erkannt: " + type + " nahe X=" + found.getX()
                         + ", Y=" + found.getY() + ", Z=" + found.getZ()
-                        + " (Blockmuster erkannt). Bitte vor Ort prüfen; keine sichere Bestätigung.");
+                        + " (Blockmuster erkannt; vor Ort prüfen, keine sichere Bestätigung).");
                 return;
             }
         }
@@ -1416,6 +1416,16 @@ public final class AIPlayerController {
         gatherTunnelOreTarget = null;
     }
 
+
+    /** True only when a closed, supported furnace is targeted and the player inventory is active. */
+    public static boolean isReadyToPreviewSmelting() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null
+                || mc.player.currentScreenHandler != mc.player.playerScreenHandler) return false;
+        if (!(mc.crosshairTarget instanceof BlockHitResult hit)) return false;
+        BlockState state = mc.world.getBlockState(hit.getBlockPos());
+        return state.getBlock() instanceof AbstractFurnaceBlock && !state.isOf(Blocks.SMOKER);
+    }
 
     /** Preview a bounded raw-metal/ancient-debris smelt in the furnace under the crosshair. */
     public static String previewSmeltItem(String requestedItem, int inputCount) {
@@ -2930,6 +2940,7 @@ public final class AIPlayerController {
         Mode previous = mode;
         if (previous != Mode.NONE && reason != null && !reason.isBlank()) {
             lastActionSummary = reason.length() > 240 ? reason.substring(0, 237) + "..." : reason;
+            actionCompletionSequence++;
         }
         releaseKeys(mc);
         if ((previous == Mode.MINE || previous == Mode.GATHER_MINE || previous == Mode.GATHER_TUNNEL_MINE)
@@ -3085,6 +3096,8 @@ public final class AIPlayerController {
     public static boolean isWalking() { return mode == Mode.WALK; }
     public static boolean isNavigating() { return mode == Mode.NAVIGATE; }
     public static boolean isBusy() { return mode != Mode.NONE; }
+    public static long actionCompletionSequence() { return actionCompletionSequence; }
+    public static String lastActionSummary() { return lastActionSummary; }
     public static String status() {
         String current = switch (mode) {
             case NONE -> "Keine KI-Aktion aktiv";

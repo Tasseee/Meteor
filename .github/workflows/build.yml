@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, master]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, nightfall-2.0-intelligence]
   workflow_dispatch:
 
 permissions:
@@ -45,8 +45,35 @@ jobs:
       - name: Validate bundled community schematic index
         run: python3 -m json.tool src/main/resources/nightfall/community_schematics.json > /dev/null
 
+      - name: Verify embedded local model configuration
+        run: |
+          grep -q 'setThreads(inferenceThreads)' src/main/java/dev/nightfall/ai/LocalAIModelService.java
+          grep -q 'setCtxSize(8_192)' src/main/java/dev/nightfall/ai/LocalAIModelService.java
+          grep -q 'LocalAIModelService.generate(prompt' src/main/java/dev/nightfall/gui/AIChatScreen.java
+          ! grep -q 'AIChatClient.request(' src/main/java/dev/nightfall/gui/AIChatScreen.java
+          grep -q 'LocalVoiceClient.toggleListening' src/main/java/dev/nightfall/gui/AIChatScreen.java
+          grep -q 'LocalSpeechOutput.speak(answer.text())' src/main/java/dev/nightfall/gui/AIChatScreen.java
+          grep -q 'MODEL_SHA256' src/main/java/dev/nightfall/ai/LocalVoiceClient.java
+
       - name: Build Nightfall
         run: gradle build --no-daemon
+
+      - name: Print unit test failure details
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob
+          import xml.etree.ElementTree as ET
+
+          for path in glob.glob("build/test-results/test/TEST-*.xml"):
+              root = ET.parse(path).getroot()
+              for case in root.iter("testcase"):
+                  for failure in list(case):
+                      if failure.tag in ("failure", "error"):
+                          print(f"FAILED: {case.attrib.get('classname')}.{case.attrib.get('name')}")
+                          print(failure.attrib.get("message", ""))
+                          print(failure.text or "")
+          PY
 
       - name: Verify Fabric JAR metadata
         run: |
@@ -74,6 +101,62 @@ jobs:
                       if resource not in names:
                           raise SystemExit(f"{path} is missing bundled resource {resource}")
                   metadata = json.loads(jar.read("fabric.mod.json"))
+                  for class_file in (
+                      "dev/nightfall/ai/LocalAIModelService.class",
+                      "dev/nightfall/ai/LocalAIPlanner.class",
+                      "dev/nightfall/ai/LocalAIResponseParser.class",
+                      "dev/nightfall/ai/LocalAIToolRouter.class",
+                      "dev/nightfall/ai/AILocalRuntimeContext.class",
+                      "dev/nightfall/ai/LocalVoiceClient.class",
+                      "dev/nightfall/ai/LocalSpeechOutput.class",
+                  ):
+                      if class_file not in names:
+                          raise SystemExit(f"{path} is missing the local AI runtime class {class_file}")
+
+                  nested_llama = [name for name in names
+                                  if name.startswith("META-INF/jars/") and "llama" in name.lower() and name.endswith(".jar")]
+                  if not nested_llama:
+                      raise SystemExit(f"{path} is missing the embedded llama.cpp runtime JAR")
+                  import io
+                  llama_runtime_verified = False
+                  for nested in nested_llama:
+                      with zipfile.ZipFile(io.BytesIO(jar.read(nested))) as runtime:
+                          runtime_names = set(runtime.namelist())
+                          has_api = "de/kherud/llama/LlamaModel.class" in runtime_names
+                          has_native = any(name.endswith(("jllama.dll", "jllama.so", "jllama.dylib"))
+                                           for name in runtime_names)
+                          if has_api and has_native:
+                              llama_runtime_verified = True
+                              break
+                  if not llama_runtime_verified:
+                      raise SystemExit(f"{path} has no usable embedded llama.cpp API/native runtime")
+
+                  nested_vosk = [name for name in names
+                                 if name.startswith("META-INF/jars/") and "vosk" in name.lower() and name.endswith(".jar")]
+                  nested_jna = [name for name in names
+                                if name.startswith("META-INF/jars/") and "jna-" in name.lower() and name.endswith(".jar")]
+                  if not nested_vosk or not nested_jna:
+                      raise SystemExit(f"{path} is missing the bundled Vosk or JNA runtime")
+                  vosk_runtime_verified = False
+                  jna_runtime_verified = False
+                  for nested in nested_vosk:
+                      with zipfile.ZipFile(io.BytesIO(jar.read(nested))) as runtime:
+                          runtime_names = set(runtime.namelist())
+                          has_api = "org/vosk/Model.class" in runtime_names and "org/vosk/Recognizer.class" in runtime_names
+                          has_windows_native = any(name.startswith("win32-x86-64/") and name.endswith("libvosk.dll")
+                                                   for name in runtime_names)
+                          if has_api and has_windows_native:
+                              vosk_runtime_verified = True
+                              break
+                  for nested in nested_jna:
+                      with zipfile.ZipFile(io.BytesIO(jar.read(nested))) as runtime:
+                          if "com/sun/jna/Native.class" in set(runtime.namelist()):
+                              jna_runtime_verified = True
+                              break
+                  if not vosk_runtime_verified:
+                      raise SystemExit(f"{path} has no Vosk Java API and bundled Windows native library")
+                  if not jna_runtime_verified:
+                      raise SystemExit(f"{path} has no bundled JNA runtime")
                   if "dev/nightfall/ai/AIVoiceClient.class" not in names:
                       raise SystemExit(f"{path} is missing the Nightfall voice client")
                   if "dev/nightfall/ai/SchematicManager.class" not in names:
