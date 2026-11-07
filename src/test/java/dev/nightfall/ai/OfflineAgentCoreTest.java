@@ -64,6 +64,21 @@ class OfflineAgentCoreTest {
     }
 
     @Test
+    void structuredJsonParametersCanUseTheBoundedStepPayloadBudget() {
+        String blocksJson = "[" + "x".repeat(20_000) + "]";
+        OfflineAgentCore.Step step = new OfflineAgentCore.Step(
+                "custom", "build_custom_structure", Map.of("blocks", blocksJson), List.of(), 1);
+        assertEquals(blocksJson, step.parameters().get("blocks"));
+    }
+
+    @Test
+    void structuredJsonParametersCannotExceedTheStepPayloadBudget() {
+        String oversized = "x".repeat(32_769);
+        assertThrows(IllegalArgumentException.class, () -> new OfflineAgentCore.Step(
+                "custom", "build_custom_structure", Map.of("blocks", oversized), List.of(), 1));
+    }
+
+    @Test
     void invalidDependencyCyclesAreRejected() {
         assertThrows(IllegalArgumentException.class, () -> new OfflineAgentCore.Goal(
                 "cycle", "Ungültiger Plan", 0, List.of(
