@@ -343,7 +343,8 @@ class OfflineAgentCoreTest {
     void invalidReplacementPlanDoesNotMutateExistingGoal() {
         OfflineAgentCore core = new OfflineAgentCore();
         core.submit(new OfflineAgentCore.Goal("invalid-replan", "Sammle Holz", 0,
-                List.of(step("gather", "gather_wood", List.of(), 2))));
+                List.of(step("gather", "gather_wood", List.of(), 2),
+                        step("old-craft", "craft_item", List.of("gather"), 1))));
         core.markStarted("invalid-replan", "gather");
         core.report("invalid-replan", "gather", OfflineAgentCore.ActionResult.SUCCESS, "Holz bestätigt");
 
@@ -351,7 +352,7 @@ class OfflineAgentCoreTest {
                 "invalid-replan", List.of(step("missing-dependency", "craft_item", List.of("unknown"), 1))));
         assertEquals(OfflineAgentCore.StepStatus.SUCCEEDED,
                 core.snapshot().get(0).steps().get(0).status());
-        assertEquals(1, core.snapshot().get(0).steps().size());
+        assertEquals(2, core.snapshot().get(0).steps().size());
     }
 
 
