@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -106,7 +107,14 @@ public final class OfflineAgentQueueStore {
 
             Path temporary = target.resolveSibling(target.getFileName() + ".tmp");
             try {
-                Files.write(temporary, bytes);
+                // Remove only an old in-directory temp entry, then create a fresh
+                // file exclusively. CREATE_NEW + NOFOLLOW_LINKS never writes
+                // through a pre-existing temporary-file symlink.
+                Files.deleteIfExists(temporary);
+                try (var output = Files.newOutputStream(temporary,
+                        StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS)) {
+                    output.write(bytes);
+                }
                 try {
                     Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING,
                             StandardCopyOption.ATOMIC_MOVE);
