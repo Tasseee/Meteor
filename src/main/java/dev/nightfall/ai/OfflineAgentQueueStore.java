@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
@@ -40,7 +41,7 @@ public final class OfflineAgentQueueStore {
     private final Path directory;
 
     public OfflineAgentQueueStore(Path directory) {
-        this.directory = directory;
+        this.directory = directory.toAbsolutePath().normalize();
     }
 
     public static OfflineAgentQueueStore inConfigDirectory() {
@@ -69,7 +70,13 @@ public final class OfflineAgentQueueStore {
     /** Save active goals atomically. An empty queue removes only this world's file. */
     public synchronized boolean save(String worldKey, List<OfflineAgentCore.GoalCheckpoint> goals) {
         if (!validWorldKey(worldKey) || goals == null || goals.size() > MAX_ACTIVE_GOALS) return false;
-        Path target = fileFor(worldKey);
+        final Path safeDirectory;
+        try {
+            safeDirectory = checkedDirectory(true);
+        } catch (IOException | RuntimeException unsafePath) {
+            return false;
+        }
+        Path target = fileFor(safeDirectory, worldKey);
         if (goals.isEmpty()) {
             try {
                 Files.deleteIfExists(target);
@@ -97,7 +104,6 @@ public final class OfflineAgentQueueStore {
                 return false;
             }
 
-            Files.createDirectories(directory);
             Path temporary = target.resolveSibling(target.getFileName() + ".tmp");
             try {
                 Files.write(temporary, bytes);
@@ -123,9 +129,20 @@ public final class OfflineAgentQueueStore {
     /** Load only the matching world; a different server/dimension has a different filename. */
     public synchronized List<OfflineAgentCore.GoalCheckpoint> load(String worldKey) {
         if (!validWorldKey(worldKey)) return List.of();
-        Path file = fileFor(worldKey);
+        final Path safeDirectory;
         try {
-            if (!Files.isRegularFile(file)) return List.of();
+            safeDirectory = checkedDirectory(false);
+        } catch (IOException | RuntimeException unsafePath) {
+            return List.of();
+        }
+        if (!Files.isDirectory(safeDirectory, LinkOption.NOFOLLOW_LINKS)) return List.of();
+        Path file = fileFor(safeDirectory, worldKey);
+        try {
+            if (Files.isSymbolicLink(file)) {
+                deleteQuietly(file);
+                return List.of();
+            }
+            if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) return List.of();
             long fileSize = Files.size(file);
             if (fileSize <= 0 || fileSize > MAX_FILE_BYTES) {
                 deleteQuietly(file);
@@ -163,7 +180,13 @@ public final class OfflineAgentQueueStore {
 
     public synchronized void clear(String worldKey) {
         if (!validWorldKey(worldKey)) return;
-        deleteQuietly(fileFor(worldKey));
+        try {
+            Path safeDirectory = checkedDirectory(false);
+            if (Files.isDirectory(safeDirectory, LinkOption.NOFOLLOW_LINKS))
+                deleteQuietly(fileFor(safeDirectory, worldKey));
+        } catch (IOException | RuntimeException ignored) {
+            // Do not traverse or delete through a redirected queue directory.
+        }
     }
 
     private static JsonObject encodeGoal(OfflineAgentCore.GoalCheckpoint checkpoint) {
@@ -274,8 +297,31 @@ public final class OfflineAgentQueueStore {
         }
     }
 
-    private Path fileFor(String worldKey) {
-        return directory.resolve(worldKey + ".json");
+    private Path fileFor(Path safeDirectory, String worldKey) {
+        return safeDirectory.resolve(worldKey + ".json");
+    }
+
+    /**
+     * The queue may be redirected only by normal paths inside the configured
+     * Nightfall folder. Refuse symlinked parent/queue directories and never
+     * create, read or delete queue files through them.
+     */
+    private Path checkedDirectory(boolean create) throws IOException {
+        Path normalized = directory.toAbsolutePath().normalize();
+        Path parent = normalized.getParent();
+        if (Files.isSymbolicLink(normalized)
+                || (parent != null && Files.isSymbolicLink(parent))) {
+            throw new IOException("Symlinked offline-agent queue directory is not allowed.");
+        }
+        if (create) Files.createDirectories(normalized);
+        if (Files.isSymbolicLink(normalized)
+                || (parent != null && Files.exists(parent, LinkOption.NOFOLLOW_LINKS)
+                && !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS))
+                || (Files.exists(normalized, LinkOption.NOFOLLOW_LINKS)
+                && !Files.isDirectory(normalized, LinkOption.NOFOLLOW_LINKS))) {
+            throw new IOException("Offline-agent queue path is not a normal directory.");
+        }
+        return normalized;
     }
 
     private static boolean validWorldKey(String worldKey) {
