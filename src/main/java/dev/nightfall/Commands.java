@@ -422,17 +422,22 @@ public final class Commands {
         try {
             if (!OfflineAgentActionBridge.supportsAction(actionName))
                 throw new IllegalArgumentException("Diese Aktion ist nicht für das skalare Offline-Auftragsformat freigegeben oder benötigt komplexe Parameter.");
-            if (rawParameters == null || rawParameters.length() > 4_096)
-                throw new IllegalArgumentException("Aktionsargumente dürfen höchstens 4.096 Zeichen lang sein.");
+            if (rawParameters == null || rawParameters.length() > 40_000)
+                throw new IllegalArgumentException("Aktionsargumente dürfen höchstens 40.000 Zeichen lang sein.");
             JsonElement parsed = JsonParser.parseString(rawParameters);
             if (!parsed.isJsonObject()) throw new IllegalArgumentException("Aktionen benötigen ein JSON-Objekt als Argumente.");
             JsonObject json = parsed.getAsJsonObject();
             if (json.size() > 16) throw new IllegalArgumentException("Zu viele Aktionsparameter.");
             Map<String, String> parameters = new LinkedHashMap<>();
             for (Map.Entry<String, JsonElement> entry : json.entrySet()) {
-                if (!entry.getValue().isJsonPrimitive())
-                    throw new IllegalArgumentException("Der Offline-Agent unterstützt hier nur einzelne Text-, Zahlen- und Wahrheitswerte; komplexe JSON-Arrays sind ausgenommen.");
-                parameters.put(entry.getKey(), entry.getValue().getAsString());
+                JsonElement value = entry.getValue();
+                if (value == null || value.isJsonNull())
+                    throw new IllegalArgumentException("Null-Werte sind für Offline-Aktionsparameter nicht erlaubt.");
+                String encoded = value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()
+                        ? value.getAsString() : value.toString();
+                if (encoded.length() > 32_768)
+                    throw new IllegalArgumentException("Ein Aktionsparameter überschreitet das 32-KiB-Limit.");
+                parameters.put(entry.getKey(), encoded);
             }
             return submitOfflineAgentGoal(c, "Lokale Nightfall-Aktion: " + actionName,
                     actionName, parameters, 1);
