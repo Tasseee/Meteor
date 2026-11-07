@@ -35,26 +35,38 @@ public final class LocalAIToolRouter {
 
         boolean inventory = containsAny(request, "inventar", "material", "bestand", "rüstung",
                 "ruestung", "werkzeug", "gegenstand", "item", "sortier", "sortiere",
-                "inventory", "armour", "armor", "gear", "sort inventory");
+                "inventory", "armour", "armor", "gear", "sort inventory", "vorräte", "vorrat",
+                "ressourcen", "materialbedarf", "materialien prüfen", "materialien prüfen",
+                "bestände", "bestand prüfen", "wie viele blöcke", "how many blocks");
         boolean building = containsAny(request, "bau", "baue", "bauen", "haus", "hausbau",
                 "schutzhaus", "wachturm", "bauplan", "blueprint", "schematic", "sorgt für",
-                "build", "house", "tower", "structure");
+                "build", "house", "tower", "structure", "etage", "stockwerk", "geschoss", "mehrstöckig",
+                "mehrstoeckig", "burg", "schloss", "mauer", "brücke", "bruecke", "farmhaus",
+                "gebäude", "gebaeude", "bauabschnitt", "baufortschritt", "materialliste",
+                "materialien", "baustufe", "bauetappe");
         boolean gathering = containsAny(request, "sammel", "sammle", "farm", "farmen", "holz",
                 "stamm", "erz", "kohle", "eisen", "stein", "abbau", "mine", "craft",
                 "crafting", "herstell", "schmelz", "ofen", "essen", "hunger",
                 "gather", "collect", "wood", "log", "ore", "coal", "iron", "stone",
-                "mine", "craft", "smelt", "furnace", "eat", "food");
+                "mine", "craft", "smelt", "furnace", "eat", "food", "abbauen", "sammeln",
+                "beschaffe", "beschaffen", "herstellen", "herstelle", "schmelzen",
+                "nahrung", "verpflegung", "werkbank", "rohstoffe", "ressourcen sammeln");
         boolean navigation = containsAny(request, "navig", "geh zu", "gehe zu", "lauf", "laufe",
                 "beweg", "wegpunkt", "waypoint", "route", "struktur", "dorf", "festung",
                 "biom", "dschungel", "wüste", "wueste", "tempel", "antike stadt", "stronghold",
-                "bastion", "trial chamber", "navigate", "go to", "walk", "waypoint",
+                "bastion", "trial chamber", "navigate", "go to", "walk", "waypoint", "wegpunkt", "markiere", "markierung",
                 "route", "locate", "biome", "jungle", "desert", "temple", "village",
-                "fortress", "stronghold");
+                "fortress", "stronghold", "koordinaten", "wo ist", "finde", "suche nach",
+                "entfernung", "position", "erkunde", "erkunden", "entdecken");
         boolean scanning = containsAny(request, "base", "basis", "scanner", "scan", "chunk",
-                "fund", "finden", "suche", "such", "heatmap", "analyse", "analysiere");
+                "fund", "finden", "suche", "such", "heatmap", "analyse", "analysiere",
+                "spielerbasis", "versteckte basis", "truhen", "kisten", "blockentities",
+                "beobachtungen", "scanergebnis", "scannergebnisse");
         boolean modules = containsAny(request, "modul", "module", "esp", "clickgui", "einstellung",
                 "setting", "aktiviere", "deaktiviere", "schalte", "theme", "hud",
-                "enable", "disable", "toggle", "settings", "turn on", "turn off");
+                "enable", "disable", "toggle", "settings", "turn on", "turn off",
+                "einstellung ändern", "einstellung aendern", "wert ändern", "wert aendern",
+                "menü öffnen", "menue oeffnen", "menü", "menue");
         boolean schematics = containsAny(request, "schematic", "schematics", "bauplan",
                 "blueprint", "struktur vergleichen", "reparier", "repariere");
         boolean combat = containsAny(request, "feindliche mobs", "feindlicher mob", "monster",
@@ -65,14 +77,16 @@ public final class LocalAIToolRouter {
                 || request.contains("serverbefehl") || request.contains("server command");
 
         if (inventory) {
-            add(selected, "sort_inventory", "plan_build_materials", "get_module_settings");
+            add(selected, "get_inventory", "get_player_status", "sort_inventory",
+                    "plan_build_materials", "get_module_settings");
         }
         if (building) {
-            add(selected, "plan_build_materials", "search_blueprints", "build_structure",
-                    "build_starter_shelter", "build_custom_structure", "inspect_schematic",
-                    "list_schematics", "build_schematic", "get_schematic_progress",
-                    "verify_schematic_section", "resume_saved_build", "pause_build",
-                    "resume_build", "stop_build");
+            add(selected, "get_inventory", "get_player_status", "plan_build_materials",
+                    "search_blueprints", "build_structure", "build_starter_shelter",
+                    "build_custom_structure", "inspect_schematic", "list_schematics",
+                    "build_schematic", "get_schematic_progress", "verify_schematic_section",
+                    "resume_saved_build", "pause_build", "resume_build", "stop_build",
+                    "gather_wood", "gather_block", "gather_ore", "craft_item", "smelt_item");
         }
         if (schematics) {
             add(selected, "search_blueprints", "list_schematics", "inspect_schematic",
@@ -87,6 +101,9 @@ public final class LocalAIToolRouter {
             add(selected, "locate_structure", "locate_biome", "search_structures",
                     "navigate_to", "walk_forward", "add_waypoint", "list_waypoints",
                     "resume_saved_task", "clear_saved_task");
+        }
+        if (containsAny(request, "wegpunkt", "waypoint", "markierung", "markiere")) {
+            add(selected, "add_waypoint", "list_waypoints");
         }
         if (scanning) {
             add(selected, "search_bases", "get_base_findings", "get_module_observations",
