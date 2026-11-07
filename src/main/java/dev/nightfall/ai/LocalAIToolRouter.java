@@ -113,6 +113,13 @@ public final class LocalAIToolRouter {
         return Set.copyOf(selected);
     }
 
+    public static boolean isCapabilityQuestion(List<LocalAIPlanner.Turn> history) {
+        String request = lastUserTurns(history).toLowerCase(Locale.ROOT);
+        return containsAny(request, "was kannst du", "was kannst du alles", "welche funktionen",
+                "welche skills", "was ist möglich", "was ist moeglich", "hilfe", "help",
+                "zeige deine funktionen", "liste deine funktionen", "fähigkeiten", "faehigkeiten");
+    }
+
     private static String lastUserTurns(List<LocalAIPlanner.Turn> history) {
         if (history == null || history.isEmpty()) return "";
         StringBuilder text = new StringBuilder();
