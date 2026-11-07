@@ -20,6 +20,7 @@ import java.util.Set;
 public final class OfflineAgentCore {
     public static final int MAX_STEPS_PER_GOAL = 64;
     public static final int MAX_ACTIVE_GOALS = 16;
+    public static final int MAX_RETAINED_GOALS = 128;
     private static final int MAX_PARAMETERS = 16;
 
     public enum StepStatus {
@@ -102,6 +103,13 @@ public final class OfflineAgentCore {
         if (goals.containsKey(goal.id())) throw new IllegalArgumentException("Goal ID already exists.");
         long active = goals.values().stream().filter(state -> state.status == GoalStatus.ACTIVE).count();
         if (active >= MAX_ACTIVE_GOALS) throw new IllegalStateException("Too many active goals.");
+        while (goals.size() >= MAX_RETAINED_GOALS) {
+            String oldestFinished = goals.entrySet().stream()
+                    .filter(entry -> entry.getValue().status != GoalStatus.ACTIVE)
+                    .map(Map.Entry::getKey).findFirst().orElse(null);
+            if (oldestFinished == null) throw new IllegalStateException("Goal history is full.");
+            goals.remove(oldestFinished);
+        }
         goals.put(goal.id(), new GoalState(goal));
     }
 
