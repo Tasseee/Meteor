@@ -19,9 +19,9 @@ import java.util.Set;
  * existing, locally validated Minecraft actions.
  *
  * Preparing a step never executes it. A caller must present the preview and
- * explicitly confirm it. Execution results remain VERIFYING until the caller
- * supplies a fresh game observation; a returned status string is not proof that
- * an asynchronous Minecraft action completed successfully.
+ * explicitly confirm it. Local asynchronous controllers are checked against
+ * explicit terminal status signals; server-side actions remain pending until
+ * the player supplies a manual outcome.
  */
 public final class OfflineAgentActionBridge {
     private static volatile Map<String, Map<String, String>> ACTION_SCHEMAS;
