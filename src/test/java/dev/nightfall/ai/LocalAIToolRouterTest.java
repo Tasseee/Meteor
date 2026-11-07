@@ -25,6 +25,26 @@ class LocalAIToolRouterTest {
     }
 
     @Test
+    void customBuildRequestGetsCustomStructureTool() {
+        Set<String> tools = LocalAIToolRouter.selectTools(
+                request("Entwirf und baue mir eine kleine eigene Burg."));
+
+        assertTrue(tools.contains("build_custom_structure"));
+        assertTrue(tools.contains("build_schematic"));
+        assertTrue(tools.contains("inspect_schematic"));
+    }
+
+    @Test
+    void customBuildPromptKeepsCoordinateAndConnectivityGuidance() {
+        String prompt = LocalAIPlanner.buildPrompt(
+                request("Entwirf und baue mir eine kleine eigene Burg."), null);
+
+        assertTrue(prompt.contains("connected face-to-face"));
+        assertTrue(prompt.contains("\"maximum\":31"));
+        assertTrue(prompt.contains("höchstens 512 Blöcken"));
+    }
+
+    @Test
     void navigationRequestGetsNavigationTools() {
         Set<String> tools = LocalAIToolRouter.selectTools(
                 request("Finde das nächste Dschungel-Biom und setze danach einen Wegpunkt."));
