@@ -7,6 +7,7 @@ import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.nightfall.config.Config;
 import dev.nightfall.ai.OfflineAgentCore;
+import dev.nightfall.ai.OfflineAgentActionBridge;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -411,6 +412,8 @@ public final class Commands {
             com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c,
             String actionName, String rawParameters) {
         try {
+            if (!OfflineAgentActionBridge.supportsAction(actionName))
+                throw new IllegalArgumentException("Diese Aktion ist nicht für das skalare Offline-Auftragsformat freigegeben oder benötigt komplexe Parameter.");
             if (rawParameters == null || rawParameters.length() > 4_096)
                 throw new IllegalArgumentException("Aktionsargumente dürfen höchstens 4.096 Zeichen lang sein.");
             JsonElement parsed = JsonParser.parseString(rawParameters);
