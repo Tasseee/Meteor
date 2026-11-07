@@ -304,9 +304,7 @@ public final class OfflineAgentActionBridge {
         if (AICombatController.isActive()) AICombatController.stop("Offline-Agentenaktion abgebrochen.");
         if (AIBuilder.isRunning()) AIBuilder.stop();
         String goalId = verifyingGoalId;
-        String stepId = verifyingStepId;
         core.cancel(goalId);
-        core.acknowledgeStopped(goalId, stepId);
         verifyingGoalId = null;
         verifyingStepId = null;
         verificationKind = VerificationKind.NONE;
