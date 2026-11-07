@@ -17,8 +17,8 @@ Wichtige Befehle:
 - `/nf agent resume_task` und `/nf agent clear_task` – vorhandenen, server-/dimensionsgebundenen Sammel- oder Navigations-Checkpoint fortsetzen bzw. nach Vorschau löschen.
 - `/nf agent gather wood minecraft:oak_log 16`, `/nf agent gather block minecraft:cobblestone 32`, `/nf agent gather ore minecraft:raw_iron 8` – lokale Sammelaufträge.
 - `/nf agent craft minecraft:oak_planks 32`, `/nf agent smelt minecraft:raw_iron 8`, `/nf agent eat`, `/nf agent sort` – Crafting, Schmelzen, Essen und Inventarsortierung.
-- `/nf agent wood 32` – mehrstufig: Eichenstämme sammeln, danach Eichenbretter herstellen.
-- `/nf agent iron 8` – mehrstufig: rohes Eisen sammeln, danach in einem erreichbaren Ofen schmelzen.
+- `/nf agent wood 32` – mehrstufig: prüft zuerst den Eichenstamm-Bestand, sammelt nur bis zur nötigen Rezeptmenge auf und craftet anschließend 32 zusätzliche Bretter.
+- `/nf agent iron 64` – mehrstufig: prüft vorhandenes Roheisen und Brennstoff, sammelt Fehlmengen (bei Bedarf auch Kohle) und schmilzt danach in bestätigten Ofen-Chargen von höchstens 16 Stück.
 - `/nf agent build starter`, `/nf agent build large_house`, `/nf agent build watchtower` – vorhandene Bauvorlagen vorbereiten und bauen.
 - `/nf agent build resume` – einen vom vorhandenen Builder gespeicherten und server-/dimensionsgebundenen Bau-Checkpoint fortsetzen.
 - `/nf agent schematic datei.schem` – ersten Abschnitt einer lokalen Schematic vorbereiten.
