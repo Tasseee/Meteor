@@ -440,7 +440,7 @@ public final class OfflineAgentActionBridge {
             // An agent action must never continue using the previous dimension/world.
             if (AIPlayerController.isBusy()) AIPlayerController.stop("Offline-Agent: Weltwechsel erkannt; Aktion sicher gestoppt.");
             if (AICombatController.isActive()) AICombatController.stop("Offline-Agent: Weltwechsel erkannt; Kampf beendet.");
-            if (AIBuilder.isRunning()) AIBuilder.onDisconnect();
+            if (AIBuilder.isRunning()) AIBuilder.onWorldChanged();
             if (pendingAction != null) AIActionRegistry.cancel(pendingAction);
             pending = null;
             pendingAction = null;
