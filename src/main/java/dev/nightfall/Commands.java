@@ -42,7 +42,6 @@ import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.lit
 
 /** /nf wp | /nf tpa | /nf profile | /nf scan */
 public final class Commands {
-    private static long offlineAgentSequence;
     private Commands() {}
 
     private static int say(com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c, String s) {
@@ -826,7 +825,8 @@ public final class Commands {
     }
 
     private static String nextOfflineGoalId() {
-        return "manual-" + (++offlineAgentSequence);
+        // IDs must remain unique when an older persistent queue is restored after restart.
+        return "manual-" + java.util.UUID.randomUUID();
     }
 
     private static String safeAgentMessage(RuntimeException failure) {
