@@ -352,10 +352,9 @@ public final class AIPlayerController {
                     : counts.getOrDefault(type, 0) >= thresholds[i];
             if (supportedPattern) {
                 BlockPos found = center.toImmutable();
-                stop(null);
-                notifyPlayer(mc, "Möglicher Strukturhinweis: " + type + " nahe X=" + found.getX()
+                stop("Strukturhinweis erkannt: " + type + " nahe X=" + found.getX()
                         + ", Y=" + found.getY() + ", Z=" + found.getZ()
-                        + " (Blockmuster erkannt). Bitte vor Ort prüfen; keine sichere Bestätigung.");
+                        + " (Blockmuster erkannt; vor Ort prüfen, keine sichere Bestätigung).");
                 return;
             }
         }
