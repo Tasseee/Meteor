@@ -391,7 +391,10 @@ public final class Commands {
                 "Setze einen lokal gespeicherten Bauplan fort.", "resume_saved_build", Map.of())));
         build.then(literal("pause").executes(c -> say(c, AIBuilder.pause())));
         build.then(literal("continue").executes(c -> say(c, AIBuilder.resume())));
-        build.then(literal("stop").executes(c -> say(c, AIBuilder.stop())));
+        build.then(literal("stop").executes(c -> {
+            try { return say(c, Nightfall.offlineAgentBridge().cancelBuilderAction()); }
+            catch (RuntimeException failure) { return say(c, "Builder-Stopp fehlgeschlagen: " + safeAgentMessage(failure)); }
+        }));
         root.then(build);
 
         LiteralArgumentBuilder<FabricClientCommandSource> schematic = literal("schematic");
