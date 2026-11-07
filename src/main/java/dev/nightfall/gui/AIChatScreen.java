@@ -1349,9 +1349,9 @@ public final class AIChatScreen extends Screen {
         for (int slot = 0; slot < 36; slot++) {
             ItemStack stack = player.getInventory().getStack(slot);
             if (stack.isEmpty()) continue;
-            inventoryCounts.merge(stack.getName().getString(), stack.getCount(), Integer::sum);
-            if (stack.contains(DataComponentTypes.FOOD)) foodUnits += stack.getCount();
             String itemId = Registries.ITEM.getId(stack.getItem()).toString();
+            inventoryCounts.merge(itemId, stack.getCount(), Integer::sum);
+            if (stack.contains(DataComponentTypes.FOOD)) foodUnits += stack.getCount();
             if ("minecraft:torch".equals(itemId) || "minecraft:soul_torch".equals(itemId))
                 torchUnits += stack.getCount();
             if ("minecraft:shield".equals(itemId)) hasShield = true;
@@ -1377,7 +1377,7 @@ public final class AIChatScreen extends Screen {
         String equipmentAdvisorSummary = equipmentAdvisorSummary(player);
         String inventorySummary = inventoryCounts.entrySet().stream()
                 .sorted((left, right) -> Integer.compare(right.getValue(), left.getValue()))
-                .limit(12)
+                .limit(36)
                 .map(entry -> entry.getKey() + " x" + entry.getValue())
                 .collect(Collectors.joining(", "));
         if (inventorySummary.isBlank()) inventorySummary = "leer";
