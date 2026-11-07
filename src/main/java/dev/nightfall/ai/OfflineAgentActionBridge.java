@@ -58,6 +58,11 @@ public final class OfflineAgentActionBridge {
         return actionName != null && actionSchemas().containsKey(actionName);
     }
 
+    /** Exact locally supported actions and their scalar/structured JSON parameter types. */
+    public static Map<String, Map<String, String>> supportedActions() {
+        return actionSchemas();
+    }
+
     /**
      * Prepares the next ready step using the existing local action validator.
      * Must be called on the Minecraft client thread because previews may inspect
