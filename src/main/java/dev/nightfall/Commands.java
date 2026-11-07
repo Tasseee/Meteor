@@ -640,8 +640,10 @@ public final class Commands {
             var preview = bridge.pendingPreview().get();
             out.append("\nVorschau wartet auf Bestätigung: ").append(preview.goalId())
                     .append("/").append(preview.stepId());
-        } else if (bridge.awaitingVerification()) {
-            out.append("\nEine ausgeführte Aktion wartet auf ihre Ergebnisprüfung. Externe Aktionen: /nf agent verify success|failed");
+        } else if (bridge.awaitingManualVerification()) {
+            out.append("\nEine externe Serveraktion wartet auf deine Rückmeldung: /nf agent verify success|failed");
+        } else if (bridge.controllerActionInProgress()) {
+            out.append("\nLokale Minecraft-Aktion läuft; Nightfall prüft ihren Abschluss automatisch.");
         } else if (bridge.waitingForSetup()) {
             out.append("\nDer nächste Schritt wartet auf deine Vorbereitung: ").append(bridge.preparationPrompt());
         } else {
