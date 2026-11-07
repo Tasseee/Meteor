@@ -7,7 +7,6 @@ import net.minecraft.client.MinecraftClient;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * Compact local snapshot of Nightfall's own runtime: enabled modules,
@@ -20,11 +19,25 @@ public final class AILocalRuntimeContext {
     private static final int MAX_STEPS_PER_GOAL = 5;
     private static final int MAX_DESCRIPTION_CHARS = 120;
 
-    public record ModuleInfo(String name, String category) {}
-    public record StepInfo(String id, String action, String status, int attempts) {}
+    public record ModuleInfo(String name, String category) {
+        public ModuleInfo {
+            name = safe(name, 48);
+            category = safe(category, 32);
+        }
+    }
+    public record StepInfo(String id, String action, String status, int attempts) {
+        public StepInfo {
+            id = safe(id, 48);
+            action = safe(action, 64);
+            status = safe(status, 32);
+        }
+    }
     public record GoalInfo(String id, String description, String status, List<StepInfo> steps) {
         public GoalInfo {
-            steps = List.copyOf(steps);
+            id = safe(id, 64);
+            description = safe(description, MAX_DESCRIPTION_CHARS);
+            status = safe(status, 32);
+            steps = steps == null ? List.of() : List.copyOf(steps);
         }
     }
 
