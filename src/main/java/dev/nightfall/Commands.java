@@ -421,7 +421,7 @@ public final class Commands {
             String actionName, String rawParameters) {
         try {
             if (!OfflineAgentActionBridge.supportsAction(actionName))
-                throw new IllegalArgumentException("Diese Aktion ist nicht für das skalare Offline-Auftragsformat freigegeben oder benötigt komplexe Parameter.");
+                throw new IllegalArgumentException("Diese Aktion ist nicht für das begrenzte Offline-Auftragsformat freigegeben oder ihre Parameter sind nicht unterstützt.");
             if (rawParameters == null || rawParameters.length() > 40_000)
                 throw new IllegalArgumentException("Aktionsargumente dürfen höchstens 40.000 Zeichen lang sein.");
             JsonElement parsed = JsonParser.parseString(rawParameters);
