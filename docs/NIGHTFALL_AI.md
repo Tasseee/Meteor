@@ -11,6 +11,7 @@ Alle Aufträge laufen über den deterministischen `OfflineAgentCore` und bestehe
 Wichtige Befehle:
 
 - `/nf agent status` – Auftragswarteschlange, Vorschau und Prüfergebnis ansehen.
+- `/nf agent action <name> <json>` – vorhandene lokale Aktionen aus dem Nightfall-Aktionsregister mit skalaren JSON-Parametern einreihen; auch Modul-, Wegpunkt-, Scanner-, Status- und Serverbefehlsaktionen werden vor dem Ausführen lokal validiert und angezeigt. Komplexe Array-Aktionen wie eigene Blocklisten sind in diesem generischen Auftragsformat noch ausgenommen.
 - `/nf agent resume_task` und `/nf agent clear_task` – vorhandenen, server-/dimensionsgebundenen Sammel- oder Navigations-Checkpoint fortsetzen bzw. nach Vorschau löschen.
 - `/nf agent gather wood minecraft:oak_log 16`, `/nf agent gather block minecraft:cobblestone 32`, `/nf agent gather ore minecraft:raw_iron 8` – lokale Sammelaufträge.
 - `/nf agent craft minecraft:oak_planks 32`, `/nf agent smelt minecraft:raw_iron 8`, `/nf agent eat`, `/nf agent sort` – Crafting, Schmelzen, Essen und Inventarsortierung.
@@ -21,6 +22,17 @@ Wichtige Befehle:
 - `/nf agent schematic datei.schem` – ersten Abschnitt einer lokalen Schematic vorbereiten.
 - `/nf agent navigate X Y Z`, `/nf agent mine X Y Z`, `/nf agent walk 20` – begrenzte Navigation, Abbau und Bewegung.
 - `/nf agent search ancient_city`, `/nf agent attack`, `/nf agent guard` – Strukturhinweise suchen oder nahe feindliche Mobs abwehren.
+
+Beispiele für das generische Aktionsformat:
+
+```
+/nf agent action get_inventory {}
+/nf agent action get_module_settings {}
+/nf agent action set_module_state {"module":"PlayerESP","enabled":true}
+/nf agent action list_schematics {}
+```
+
+Die JSON-Argumente müssen ein Objekt aus einfachen Text-, Zahlen- oder Wahrheitswerten sein. Nightfalls bestehender Aktionskatalog bleibt die Quelle der erlaubten Namen und Parametertypen; ungültige oder komplexe Parameter werden zurückgewiesen. Auch diese Aufträge erhalten vor einer Ausführung eine lokale Vorschau und müssen bestätigt werden.
 
 Die Sammel-, Crafting-, Schmelz-, Bau- und Kampfaktionen verwenden bestehende Client-Controller und deren lokale Validierung. Kampfziele sind ausschließlich feindliche Minecraft-Mobs; Spieler und neutrale/passive Tiere werden nicht ausgewählt. Die Grenzen der vorhandenen Controller gelten weiterhin (z. B. geladene Chunks, sichere Wege, begrenzte Laufzeiten und Aktionslimits). Die manuelle Ergebnisprüfung ist absichtlich konservativ: Ein zurückgegebener Starttext ist kein Beweis, dass ein mehrtaktiger Vorgang bereits fertig ist.
 
