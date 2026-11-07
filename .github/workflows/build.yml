@@ -74,6 +74,31 @@ jobs:
                       if resource not in names:
                           raise SystemExit(f"{path} is missing bundled resource {resource}")
                   metadata = json.loads(jar.read("fabric.mod.json"))
+                  for class_file in (
+                      "dev/nightfall/ai/LocalAIModelService.class",
+                      "dev/nightfall/ai/LocalAIPlanner.class",
+                      "dev/nightfall/ai/LocalAIResponseParser.class",
+                  ):
+                      if class_file not in names:
+                          raise SystemExit(f"{path} is missing the local AI runtime class {class_file}")
+
+                  nested_llama = [name for name in names
+                                  if name.startswith("META-INF/jars/") and "llama" in name.lower() and name.endswith(".jar")]
+                  if not nested_llama:
+                      raise SystemExit(f"{path} is missing the embedded llama.cpp runtime JAR")
+                  import io
+                  llama_runtime_verified = False
+                  for nested in nested_llama:
+                      with zipfile.ZipFile(io.BytesIO(jar.read(nested))) as runtime:
+                          runtime_names = set(runtime.namelist())
+                          has_api = "de/kherud/llama/LlamaModel.class" in runtime_names
+                          has_native = any(name.endswith(("jllama.dll", "jllama.so", "jllama.dylib"))
+                                           for name in runtime_names)
+                          if has_api and has_native:
+                              llama_runtime_verified = True
+                              break
+                  if not llama_runtime_verified:
+                      raise SystemExit(f"{path} has no usable embedded llama.cpp API/native runtime")
                   if "dev/nightfall/ai/AIVoiceClient.class" not in names:
                       raise SystemExit(f"{path} is missing the Nightfall voice client")
                   if "dev/nightfall/ai/SchematicManager.class" not in names:
