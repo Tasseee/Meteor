@@ -263,7 +263,7 @@ public final class Commands {
         LiteralArgumentBuilder<FabricClientCommandSource> root = literal("agent");
         root.then(literal("status").executes(c -> offlineAgentStatus(c)));
         LiteralArgumentBuilder<FabricClientCommandSource> action = literal("action");
-        LiteralArgumentBuilder<FabricClientCommandSource> actionName = argument("name", StringArgumentType.word());
+        var actionName = argument("name", StringArgumentType.word());
         actionName.executes(c -> submitRegistryAction(c, str(c, "name"), "{}"));
         actionName.then(argument("parameters", StringArgumentType.greedyString())
                 .executes(c -> submitRegistryAction(c, str(c, "name"), str(c, "parameters"))));
