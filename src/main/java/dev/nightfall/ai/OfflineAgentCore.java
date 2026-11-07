@@ -22,6 +22,7 @@ public final class OfflineAgentCore {
     public static final int MAX_ACTIVE_GOALS = 16;
     public static final int MAX_RETAINED_GOALS = 128;
     private static final int MAX_PARAMETERS = 16;
+    private static final int MAX_STEP_PARAMETER_CHARS = 32_768;
 
     public enum StepStatus {
         PENDING, RUNNING, VERIFYING, SUCCEEDED, FAILED, BLOCKED, CANCEL_REQUESTED, CANCELLED
@@ -286,13 +287,19 @@ public final class OfflineAgentCore {
         Objects.requireNonNull(parameters, "parameters");
         if (parameters.size() > MAX_PARAMETERS) throw new IllegalArgumentException("Too many step parameters.");
         LinkedHashMap<String, String> copy = new LinkedHashMap<>();
-        parameters.forEach((key, value) -> {
-            if (key == null || !key.matches("[a-zA-Z0-9_.-]{1,64}")
-                    || value == null || value.length() > 256) {
+        int totalCharacters = 0;
+        for (Map.Entry<String, String> entry : parameters.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            if (key == null || !key.matches("[a-zA-Z0-9_.-]{1,64}") || value == null) {
                 throw new IllegalArgumentException("Invalid step parameter.");
             }
+            totalCharacters = Math.addExact(totalCharacters, key.length() + value.length());
+            if (totalCharacters > MAX_STEP_PARAMETER_CHARS) {
+                throw new IllegalArgumentException("Step parameters exceed the 32 KiB limit.");
+            }
             copy.put(key, value);
-        });
+        }
         return Collections.unmodifiableMap(copy);
     }
 
