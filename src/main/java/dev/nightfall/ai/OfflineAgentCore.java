@@ -74,7 +74,10 @@ public final class OfflineAgentCore {
         public StepCheckpoint {
             Objects.requireNonNull(step, "step");
             Objects.requireNonNull(status, "status");
-            if (attempts < 0 || attempts > step.maxAttempts())
+            if (attempts < 0 || attempts > step.maxAttempts()
+                    || ((status == StepStatus.RUNNING || status == StepStatus.VERIFYING
+                    || status == StepStatus.CANCEL_REQUESTED || status == StepStatus.SUCCEEDED
+                    || status == StepStatus.FAILED) && attempts == 0))
                 throw new IllegalArgumentException("Invalid checkpoint attempt count.");
             detail = boundedDetail(detail);
         }
