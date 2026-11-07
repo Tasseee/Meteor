@@ -60,7 +60,7 @@ public final class OfflineAgentActionBridge {
                 throw new IllegalArgumentException("Aktion ist für den Offline-Agenten nicht freigegeben.");
             }
             AIActionRegistry.Action action = AIActionRegistry.prepare(
-                    ref.step().action(), toJson(ref.step().parameters()).toString());
+                    ref.step().action(), toJson(ref.step().action(), ref.step().parameters()).toString());
             pendingAction = action;
             pending = new PreparedStep(ref.goalId(), ref.step().id(), action.preview());
             lastError = "";
@@ -164,11 +164,15 @@ public final class OfflineAgentActionBridge {
         return lastError;
     }
 
-    private JsonObject toJson(Map<String, String> parameters) {
+    private JsonObject toJson(String action, Map<String, String> parameters) {
+        Set<String> allowed = allowedParameters(action);
         JsonObject json = new JsonObject();
         for (Map.Entry<String, String> entry : parameters.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
+            if (!allowed.contains(key)) {
+                throw new IllegalArgumentException("Parameter '" + key + "' ist für diese Aktion nicht erlaubt.");
+            }
             if (INTEGER_PARAMETERS.contains(key)) {
                 try {
                     json.add(key, new JsonPrimitive(Integer.parseInt(value)));
@@ -180,6 +184,21 @@ public final class OfflineAgentActionBridge {
             }
         }
         return json;
+    }
+
+
+    private static Set<String> allowedParameters(String action) {
+        return switch (action) {
+            case "walk_forward" -> Set.of("ticks");
+            case "search_structures" -> Set.of("structure");
+            case "navigate_to", "mine_block" -> Set.of("x", "y", "z");
+            case "mine_looked_block", "sort_inventory" -> Set.of();
+            case "gather_wood", "gather_block" -> Set.of("item", "count", "duration_seconds");
+            case "gather_ore" -> Set.of("item", "count", "duration_seconds", "target_y");
+            case "smelt_item", "craft_item" -> Set.of("item", "count");
+            case "eat_food" -> Set.of("item");
+            default -> throw new IllegalArgumentException("Aktion ist für den Offline-Agenten nicht freigegeben.");
+        };
     }
 
     private static String safeMessage(RuntimeException error) {
