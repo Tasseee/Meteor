@@ -12,10 +12,14 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.util.HexFormat;
 import java.util.Objects;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -26,10 +30,12 @@ import java.util.function.Consumer;
  */
 public final class LocalAIModelService {
     private static final Object LOCK = new Object();
+    // Immutable Hugging Face revision; SHA-256 and byte length are checked before loading.
     private static final URI MODEL_URI = URI.create(
-            "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf?download=true");
-    private static final long MIN_MODEL_BYTES = 500L * 1024L * 1024L;
-    private static final long MAX_MODEL_BYTES = 2L * 1024L * 1024L * 1024L;
+            "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/dd26da440ef0330c47919d1ecae0966d24022222/qwen2.5-1.5b-instruct-q4_k_m.gguf?download=true");
+    private static final long MODEL_SIZE_BYTES = 1_117_320_736L;
+    private static final String MODEL_SHA256 =
+            "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e";
     private static final int BUFFER_SIZE = 1024 * 1024;
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "Nightfall-Local-AI");
@@ -101,9 +107,16 @@ public final class LocalAIModelService {
         }
         WORKER.execute(() -> {
             try {
-                Files.createDirectories(modelDirectory());
+                Path directory = modelDirectory();
+                if (Files.isSymbolicLink(directory)) {
+                    throw new IOException("Der Modellordner darf kein symbolischer Link sein.");
+                }
+                Files.createDirectories(directory);
                 Path target = modelFile();
-                if (!Files.isRegularFile(target) || Files.size(target) < MIN_MODEL_BYTES) {
+                if (Files.isSymbolicLink(target)) {
+                    throw new IOException("Die lokale Modell-Datei darf kein symbolischer Link sein.");
+                }
+                if (!hasExpectedModelContent(target)) {
                     Files.deleteIfExists(target);
                     downloadModel(target);
                 }
@@ -180,10 +193,39 @@ public final class LocalAIModelService {
         });
     }
 
+    private static boolean hasExpectedModelContent(Path path) throws IOException {
+        if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)
+                || Files.size(path) != MODEL_SIZE_BYTES) return false;
+        return MODEL_SHA256.equals(sha256(path));
+    }
+
+    private static String sha256(Path path) throws IOException {
+        MessageDigest digest = newSha256();
+        try (InputStream input = Files.newInputStream(path)) {
+            byte[] buffer = new byte[BUFFER_SIZE];
+            int read;
+            while ((read = input.read(buffer)) != -1) digest.update(buffer, 0, read);
+        }
+        return HexFormat.of().formatHex(digest.digest());
+    }
+
+    private static MessageDigest newSha256() {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 ist auf dieser Java-Laufzeit nicht verfügbar.", impossible);
+        }
+    }
+
     private static void downloadModel(Path target) throws IOException {
         Path temporary = target.resolveSibling(target.getFileName() + ".part");
         HttpURLConnection connection = null;
         try {
+            if (Files.isSymbolicLink(temporary)) {
+                throw new IOException("Die temporäre Modell-Datei darf kein symbolischer Link sein.");
+            }
+            if (Files.exists(temporary, LinkOption.NOFOLLOW_LINKS)) Files.delete(temporary);
+
             status = "Modell wird einmalig von Hugging Face geladen …";
             connection = (HttpURLConnection) MODEL_URI.toURL().openConnection();
             connection.setInstanceFollowRedirects(true);
@@ -196,13 +238,14 @@ public final class LocalAIModelService {
                 throw new IOException("Modellserver antwortete mit HTTP " + response + ".");
             }
             expectedBytes = connection.getContentLengthLong();
-            if (expectedBytes > MAX_MODEL_BYTES) {
-                throw new IOException("Die Modell-Datei ist größer als das erlaubte Download-Limit.");
+            if (expectedBytes >= 0 && expectedBytes != MODEL_SIZE_BYTES) {
+                throw new IOException("Die Modell-Datei hat eine unerwartete Größe und wird abgelehnt.");
             }
             downloadedBytes = 0L;
+            MessageDigest digest = newSha256();
             try (InputStream input = connection.getInputStream();
                  OutputStream output = Files.newOutputStream(temporary,
-                         StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
+                         StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
                 byte[] buffer = new byte[BUFFER_SIZE];
                 int read;
                 while ((read = input.read(buffer)) != -1) {
@@ -210,22 +253,29 @@ public final class LocalAIModelService {
                         throw new IOException("Modell-Download wurde unterbrochen.");
                     }
                     downloadedBytes += read;
-                    if (downloadedBytes > MAX_MODEL_BYTES) {
-                        throw new IOException("Die Modell-Datei überschreitet das Download-Limit.");
+                    if (downloadedBytes > MODEL_SIZE_BYTES) {
+                        throw new IOException("Die Modell-Datei überschreitet die erwartete Größe.");
                     }
+                    digest.update(buffer, 0, read);
                     output.write(buffer, 0, read);
                     if (downloadedBytes % (8L * BUFFER_SIZE) < BUFFER_SIZE) {
-                        status = expectedBytes > 0
-                                ? "Modell-Download " + Math.min(100L, downloadedBytes * 100L / expectedBytes) + "%"
-                                : "Modell-Download · " + (downloadedBytes / (1024L * 1024L)) + " MiB";
+                        status = "Modell-Download "
+                                + Math.min(100L, downloadedBytes * 100L / MODEL_SIZE_BYTES) + "%";
                     }
                 }
             }
-            if (downloadedBytes < MIN_MODEL_BYTES) {
-                throw new IOException("Die heruntergeladene Datei ist ungewöhnlich klein und wird nicht als Modell akzeptiert.");
+            if (downloadedBytes != MODEL_SIZE_BYTES) {
+                throw new IOException("Der Modell-Download ist unvollständig; die Datei wird verworfen.");
+            }
+            String actualHash = HexFormat.of().formatHex(digest.digest());
+            if (!MODEL_SHA256.equals(actualHash)) {
+                throw new IOException("Die SHA-256-Prüfung des Modells ist fehlgeschlagen; die Datei wird verworfen.");
+            }
+            if (Files.isSymbolicLink(target)) {
+                throw new IOException("Die Modell-Zieldatei darf kein symbolischer Link sein.");
             }
             try {
-                Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE);
             } catch (IOException atomicMoveUnavailable) {
                 Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
             }
