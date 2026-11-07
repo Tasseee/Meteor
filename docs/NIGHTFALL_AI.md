@@ -22,6 +22,7 @@ Wichtige Befehle:
 - `/nf agent iron 64` – mehrstufig: prüft vorhandenes Roheisen und Brennstoff, sammelt Fehlmengen (bei Bedarf auch Kohle) und schmilzt danach in bestätigten Ofen-Chargen von höchstens 16 Stück.
 - `/nf agent build starter`, `/nf agent build large_house`, `/nf agent build watchtower` – vorhandene Bauvorlagen vorbereiten und bauen.
 - `/nf agent build resume` – einen vom vorhandenen Builder gespeicherten und server-/dimensionsgebundenen Bau-Checkpoint fortsetzen.
+- `/nf agent build pause`, `/nf agent build continue`, `/nf agent build stop` – einen laufenden Bau pausieren, fortsetzen oder bewusst stoppen. Bereits gesetzte Blöcke bleiben beim Stoppen bestehen.
 - `/nf agent schematic datei.schem` – ersten Abschnitt einer lokalen Schematic vorbereiten.
 - `/nf agent navigate X Y Z`, `/nf agent mine X Y Z`, `/nf agent walk 20` – begrenzte Navigation, Abbau und Bewegung.
 - `/nf agent search ancient_city`, `/nf agent attack`, `/nf agent guard` – Strukturhinweise suchen oder nahe feindliche Mobs abwehren.
