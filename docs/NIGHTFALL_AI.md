@@ -13,9 +13,9 @@ Das 1,5B-Modell ist ein kleiner CPU-freundlicher Einstieg und kann bei komplexen
 
 - A failed goal can now be reopened with a replacement plan. Confirmed successful steps are retained as immutable history; only unfinished, failed or blocked steps are replaced.
 - The local repair prompt receives the failed goal, per-step status and bounded result details, plus the current local world/inventory snapshot. It asks the local model to plan only the remaining work and routes the original goal's relevant local action schemas into the prompt.
-- In the AI chat, ask **„Plane weiter“**, **„Plane neu“** or **„Auftrag neu planen“** after a goal is marked failed. Nightfall validates every proposed action against the local offline allowlist and prepares a fresh preview; world-changing actions still require player confirmation.
-- Replanning is rejected while any Minecraft action is running, awaiting verification or awaiting stop acknowledgement. A failed goal cannot be resumed by blindly retrying an uncertain action.
-- The failed-goal repair flow currently targets failed goals available in the current world's in-memory/loaded task queue. It does not yet automatically invoke the model after every failure, and it does not restore failed goals as active tasks after a client restart.
+- After a controller or preparation failure is conclusively marked as failed, Nightfall automatically asks the loaded local model for a replacement plan. It attempts at most two automatic repairs per goal in one client session. If the model is unavailable or a repair is rejected, the player can still ask **„Plane weiter“**, **„Plane neu“** or **„Auftrag neu planen“**.
+- Nightfall validates every proposed action against the local offline allowlist and prepares a fresh preview; world-changing actions still require player confirmation. Replanning is rejected while any Minecraft action is running, awaiting verification or awaiting stop acknowledgement. A failed goal cannot be resumed by blindly retrying an uncertain action.
+- The failed-goal repair flow currently targets failed goals available in the current world's in-memory/loaded task queue. Failed goals are not restored as active tasks after a client restart.
 - Automated tests cover failed-goal reopening, preservation of successful steps, invalid replacement dependencies, in-flight safety and repair-prompt tool routing. Live Minecraft behavior still needs in-game validation.
 
 ## Offline-Agent im Spiel
