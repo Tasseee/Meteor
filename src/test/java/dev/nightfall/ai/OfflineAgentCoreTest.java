@@ -259,6 +259,41 @@ class OfflineAgentCoreTest {
     }
 
     @Test
+    void restoreRejectsAnInFlightStepBeforeItsDependencySucceeded() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        OfflineAgentCore.Step gather = step("gather", "gather_wood", List.of(), 2);
+        OfflineAgentCore.Step craft = step("craft", "craft_item", List.of("gather"), 2);
+        OfflineAgentCore.Goal goal = new OfflineAgentCore.Goal(
+                "bad-order", "Ungültige Wiederaufnahme", 0, List.of(gather, craft));
+        OfflineAgentCore.GoalCheckpoint checkpoint = new OfflineAgentCore.GoalCheckpoint(
+                goal, OfflineAgentCore.GoalStatus.ACTIVE, List.of(
+                new OfflineAgentCore.StepCheckpoint(gather, OfflineAgentCore.StepStatus.PENDING, 0, ""),
+                new OfflineAgentCore.StepCheckpoint(craft, OfflineAgentCore.StepStatus.RUNNING, 1, "Unmöglicher Zustand.")
+        ));
+
+        assertThrows(IllegalArgumentException.class, () -> core.restoreActiveCheckpoints(List.of(checkpoint)));
+        assertTrue(core.snapshot().isEmpty(),
+                "A dependency-invalid checkpoint must not partially restore any goal.");
+    }
+
+    @Test
+    void checkpointRejectsPendingStepWithNoAttemptsRemaining() {
+        OfflineAgentCore.Step work = step("work", "gather_wood", List.of(), 2);
+        assertThrows(IllegalArgumentException.class, () -> new OfflineAgentCore.StepCheckpoint(
+                work, OfflineAgentCore.StepStatus.PENDING, 2, "Keine Versuche mehr."));
+    }
+
+    @Test
+    void activeGoalCheckpointRejectsTerminalStepStatuses() {
+        OfflineAgentCore.Step work = step("work", "gather_wood", List.of(), 2);
+        OfflineAgentCore.Goal goal = new OfflineAgentCore.Goal(
+                "terminal-step", "Ungültiger aktiver Checkpoint", 0, List.of(work));
+        assertThrows(IllegalArgumentException.class, () -> new OfflineAgentCore.GoalCheckpoint(
+                goal, OfflineAgentCore.GoalStatus.ACTIVE,
+                List.of(new OfflineAgentCore.StepCheckpoint(work, OfflineAgentCore.StepStatus.BLOCKED, 0, "Blockiert."))));
+    }
+
+    @Test
     void duplicateGoalIdsAreRejected() {
         OfflineAgentCore core = new OfflineAgentCore();
         core.submit(new OfflineAgentCore.Goal("same", "Erster Plan", 0,
