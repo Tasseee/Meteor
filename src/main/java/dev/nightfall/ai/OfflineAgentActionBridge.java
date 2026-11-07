@@ -618,45 +618,46 @@ public final class OfflineAgentActionBridge {
         synchronized (OfflineAgentActionBridge.class) {
             cached = ACTION_SCHEMAS;
             if (cached != null) return cached;
-            JsonArray definitions = AIActionRegistry.toolDefinitions();
             Map<String, Map<String, String>> actions = new LinkedHashMap<>();
-            for (JsonElement definition : definitions) {
-                if (!definition.isJsonObject()) continue;
-                JsonObject function = definition.getAsJsonObject().getAsJsonObject("function");
-                if (function == null) continue;
+            for (JsonElement definition : AIActionRegistry.toolDefinitions()) {
+                if (definition == null || !definition.isJsonObject()) continue;
+                JsonElement functionElement = definition.getAsJsonObject().get("function");
+                if (functionElement == null || !functionElement.isJsonObject()) continue;
+                JsonObject function = functionElement.getAsJsonObject();
                 JsonElement nameElement = function.get("name");
-                if (nameElement == null || !nameElement.isJsonPrimitive()
-                        || !nameElement.getAsJsonPrimitive().isString()) continue;
-                String actionName = nameElement.getAsString();
-                if (!function.has("parameters")) continue;
                 JsonElement parameterElement = function.get("parameters");
-                if (parameterElement == null || !parameterElement.isJsonObject()) continue;
-                JsonObject parameterSchema = parameterElement.getAsJsonObject();
-                JsonElement propertiesElement = parameterSchema.get("properties");
+                if (nameElement == null || !nameElement.isJsonPrimitive()
+                        || !nameElement.getAsJsonPrimitive().isString()
+                        || parameterElement == null || !parameterElement.isJsonObject()) continue;
+                JsonElement propertiesElement = parameterElement.getAsJsonObject().get("properties");
                 if (propertiesElement == null || !propertiesElement.isJsonObject()) continue;
-                JsonObject properties = propertiesElement.getAsJsonObject();
-                Map<String, String> fields = new LinkedHashMap<>();
-                boolean scalarOnly = true;
-                for (Map.Entry<String, JsonElement> property : properties.entrySet()) {
-                    JsonElement propertyElement = property.getValue();
-                    if (propertyElement == null || !propertyElement.isJsonObject()) {
-                        scalarOnly = false;
-                        break;
+
+                try {
+                    Map<String, String> fields = new LinkedHashMap<>();
+                    boolean supported = true;
+                    for (Map.Entry<String, JsonElement> property : propertiesElement.getAsJsonObject().entrySet()) {
+                        JsonElement propertyElement = property.getValue();
+                        if (propertyElement == null || !propertyElement.isJsonObject()) {
+                            supported = false;
+                            break;
+                        }
+                        JsonElement typeElement = propertyElement.getAsJsonObject().get("type");
+                        if (typeElement == null || !typeElement.isJsonPrimitive()
+                                || !typeElement.getAsJsonPrimitive().isString()) {
+                            supported = false;
+                            break;
+                        }
+                        String type = typeElement.getAsString();
+                        if (!Set.of("string", "integer", "number", "boolean", "array", "object").contains(type)) {
+                            supported = false;
+                            break;
+                        }
+                        fields.put(property.getKey(), type);
                     }
-                    JsonElement typeElement = propertyElement.getAsJsonObject().get("type");
-                    if (typeElement == null || !typeElement.isJsonPrimitive()
-                            || !typeElement.getAsJsonPrimitive().isString()) {
-                        scalarOnly = false;
-                        break;
-                    }
-                    String type = typeElement.getAsString();
-                    if (!Set.of("string", "integer", "number", "boolean", "array", "object").contains(type)) {
-                        scalarOnly = false;
-                        break;
-                    }
-                    fields.put(property.getKey(), type);
+                    if (supported) actions.put(nameElement.getAsString(), Map.copyOf(fields));
+                } catch (RuntimeException malformedSchema) {
+                    // A malformed optional schema must not break discovery for every other action.
                 }
-                if (scalarOnly) actions.put(actionName, Map.copyOf(fields));
             }
             cached = Map.copyOf(actions);
             ACTION_SCHEMAS = cached;
