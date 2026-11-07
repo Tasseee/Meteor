@@ -132,8 +132,10 @@ public final class OfflineAgentActionBridge {
         verifyingStepId = null;
     }
 
-    /** Cancels a prepared preview; no Minecraft action has been executed. */
+    /** Cancels the goal behind a prepared preview; no Minecraft action is executed. */
     public synchronized void cancelPending() {
+        if (pending == null) return;
+        core.cancel(pending.goalId());
         pending = null;
         pendingAction = null;
     }
