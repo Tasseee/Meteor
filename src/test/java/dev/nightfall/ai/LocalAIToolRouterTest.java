@@ -106,6 +106,16 @@ class LocalAIToolRouterTest {
     }
 
     @Test
+    void englishMultiFloorBuildRequestGetsBuildAndMaterialTools() {
+        Set<String> tools = LocalAIToolRouter.selectTools(request(
+                "Plan a two-story castle and check my materials before construction."));
+        assertTrue(tools.contains("get_inventory"));
+        assertTrue(tools.contains("plan_build_materials"));
+        assertTrue(tools.contains("build_custom_structure"));
+        assertTrue(tools.contains("build_schematic"));
+    }
+
+    @Test
     void waypointRequestGetsWaypointTools() {
         Set<String> tools = LocalAIToolRouter.selectTools(request("Setze hier einen Wegpunkt und zeige meine Wegpunkte."));
         assertTrue(tools.contains("add_waypoint"));
