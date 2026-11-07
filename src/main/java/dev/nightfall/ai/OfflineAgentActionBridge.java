@@ -442,7 +442,11 @@ public final class OfflineAgentActionBridge {
             verifyingGoalId = null;
             verifyingStepId = null;
             verificationKind = VerificationKind.NONE;
+            setupPromptKey = "";
+            setupPrompt = "";
+            rememberFinishedGoals();
             core.clearAll();
+            rememberedGoals.clear();
         }
 
         loadedQueueWorldKey = worldKey;
@@ -452,6 +456,10 @@ public final class OfflineAgentActionBridge {
         try {
             int interrupted = core.restoreActiveCheckpoints(restored);
             lastQueueSaveRevision = core.revision();
+            rememberFinishedGoals();
+            if (core.exportActiveCheckpoints().size() != restored.size()) {
+                persistQueueFor(worldKey);
+            }
             if (interrupted > 0) {
                 for (OfflineAgentCore.GoalView goal : core.snapshot()) {
                     for (OfflineAgentCore.StepView step : goal.steps()) {
