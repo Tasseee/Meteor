@@ -9,7 +9,8 @@ public final class OfflineAgentOutcome {
     private OfflineAgentOutcome() {}
 
     public static boolean isSuccessfulImmediateControllerResult(String result) {
-        return result != null && result.startsWith("Du bist bereits am gewünschten Ziel.");
+        return result != null && (result.startsWith("Du bist bereits am gewünschten Ziel.")
+                || result.equals("Dein normales Inventar ist bereits sortiert."));
     }
 
     public static boolean isSuccessfulControllerCompletion(String summary) {
