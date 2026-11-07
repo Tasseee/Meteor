@@ -22,7 +22,7 @@ public final class OfflineAgentCore {
     public static final int MAX_ACTIVE_GOALS = 16;
     public static final int MAX_RETAINED_GOALS = 128;
     private static final int MAX_PARAMETERS = 16;
-    private static final int MAX_STEP_PARAMETER_CHARS = 32_768;
+    public static final int MAX_STEP_PARAMETER_CHARS = 32_768;
 
     public enum StepStatus {
         PENDING, RUNNING, VERIFYING, SUCCEEDED, FAILED, BLOCKED, CANCEL_REQUESTED, CANCELLED
