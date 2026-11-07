@@ -1253,7 +1253,17 @@ public final class AIActionRegistry {
     private static JsonObject moduleStateSchema() {
         JsonObject module = property("module", "string", "Exact Nightfall module name.").get("schema").getAsJsonObject();
         JsonArray names = new JsonArray();
-        for (Module item : ModuleManager.all()) names.add(item.getName());
+        try {
+            List<Module> modules = ModuleManager.all();
+            if (modules != null) {
+                for (Module item : modules) {
+                    if (item != null && item.getName() != null && !item.getName().isBlank())
+                        names.add(item.getName());
+                }
+            }
+        } catch (RuntimeException unavailable) {
+            // Keep the schema usable during early client startup and isolated tests.
+        }
         module.add("enum", names);
         JsonObject enabled = property("enabled", "boolean", "True to enable, false to disable.").get("schema").getAsJsonObject();
         JsonObject schema = objectSchema();
