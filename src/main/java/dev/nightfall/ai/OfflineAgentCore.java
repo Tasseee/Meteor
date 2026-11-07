@@ -238,19 +238,20 @@ public final class OfflineAgentCore {
     }
 
     private void refreshGoal(GoalState goal) {
-        for (StepState state : goal.steps.values()) {
-            if (state.status == StepStatus.PENDING && hasFailedDependency(goal, state.step)) {
-                state.status = StepStatus.BLOCKED;
-                state.detail = "Eine benötigte vorherige Aufgabe ist fehlgeschlagen.";
+        boolean hasFailure = goal.steps.values().stream().anyMatch(state ->
+                state.status == StepStatus.FAILED || state.status == StepStatus.BLOCKED);
+        if (hasFailure) {
+            for (StepState state : goal.steps.values()) {
+                if (state.status == StepStatus.PENDING) {
+                    state.status = StepStatus.BLOCKED;
+                    state.detail = "Aufgabe wegen eines fehlgeschlagenen Planschritts angehalten.";
+                }
             }
         }
         if (goal.steps.values().stream().allMatch(state -> state.status == StepStatus.SUCCEEDED)) {
             goal.status = GoalStatus.SUCCEEDED;
-        } else if (goal.steps.values().stream().anyMatch(state ->
-                state.status == StepStatus.FAILED || state.status == StepStatus.BLOCKED)) {
-            goal.status = GoalStatus.FAILED;
         } else if (goal.steps.values().stream().allMatch(state -> isTerminal(state.status))) {
-            goal.status = GoalStatus.CANCELLED;
+            goal.status = hasFailure ? GoalStatus.FAILED : GoalStatus.CANCELLED;
         }
     }
 
