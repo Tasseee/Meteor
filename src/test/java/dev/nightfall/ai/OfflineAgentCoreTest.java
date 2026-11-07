@@ -114,6 +114,24 @@ class OfflineAgentCoreTest {
     }
 
     @Test
+    void completedGoalHistoryRemainsBounded() {
+        OfflineAgentCore core = new OfflineAgentCore();
+        for (int i = 0; i < OfflineAgentCore.MAX_RETAINED_GOALS + 1; i++) {
+            String goalId = "goal-" + i;
+            core.submit(new OfflineAgentCore.Goal(goalId, "Kurzauftrag " + i, 0,
+                    List.of(step("step", "local_action", List.of(), 1))));
+            core.markStarted(goalId, "step");
+            core.report(goalId, "step", OfflineAgentCore.ActionResult.SUCCESS, "Fertig");
+        }
+
+        List<OfflineAgentCore.GoalView> snapshot = core.snapshot();
+        assertEquals(OfflineAgentCore.MAX_RETAINED_GOALS, snapshot.size());
+        assertFalse(snapshot.stream().anyMatch(goal -> goal.id().equals("goal-0")));
+        assertTrue(snapshot.stream().anyMatch(goal -> goal.id().equals(
+                "goal-" + OfflineAgentCore.MAX_RETAINED_GOALS)));
+    }
+
+    @Test
     void duplicateGoalIdsAreRejected() {
         OfflineAgentCore core = new OfflineAgentCore();
         core.submit(new OfflineAgentCore.Goal("same", "Erster Plan", 0,
