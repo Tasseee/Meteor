@@ -14,7 +14,7 @@ Wichtige Befehle:
 
 - `/nf agent status` – Auftragswarteschlange, Vorschau und Prüfergebnis ansehen.
 - `/nf agent prepare` – den nächsten bereiten Schritt erneut vorbereiten; bei einem Schmelzschritt zeigt Nightfall an, wenn das Ofenfenster geschlossen und ein leerer Ofen/Hochofen anvisiert werden muss.
-- `/nf agent action <name> <json>` – vorhandene lokale Aktionen aus dem Nightfall-Aktionsregister mit skalaren JSON-Parametern einreihen; auch Modul-, Wegpunkt-, Scanner-, Status- und Serverbefehlsaktionen werden vor dem Ausführen lokal validiert und angezeigt. Komplexe Array-Aktionen wie eigene Blocklisten sind in diesem generischen Auftragsformat noch ausgenommen.
+- `/nf agent action <name> <json>` – vorhandene lokale Aktionen aus dem Nightfall-Aktionsregister mit einfachen oder begrenzten strukturierten JSON-Parametern einreihen. Auch Modul-, Wegpunkt-, Scanner-, Status- und Serverbefehlsaktionen werden lokal validiert. Arrays/Objekte sind auf 32 KiB pro Auftragsschritt begrenzt; `build_custom_structure` prüft zusätzlich höchstens 512 Blöcke und deren Verbindung, Koordinaten und Materialien.
 - `/nf agent resume_task` und `/nf agent clear_task` – vorhandenen, server-/dimensionsgebundenen Sammel- oder Navigations-Checkpoint fortsetzen bzw. nach Vorschau löschen.
 - `/nf agent gather wood minecraft:oak_log 16`, `/nf agent gather block minecraft:cobblestone 32`, `/nf agent gather ore minecraft:raw_iron 8` – lokale Sammelaufträge.
 - `/nf agent craft minecraft:oak_planks 32`, `/nf agent smelt minecraft:raw_iron 8`, `/nf agent eat`, `/nf agent sort` – Crafting, Schmelzen, Essen und Inventarsortierung.
@@ -34,7 +34,10 @@ Beispiele für das generische Aktionsformat:
 /nf agent action get_module_settings {}
 /nf agent action set_module_state {"module":"PlayerESP","enabled":true}
 /nf agent action list_schematics {}
+/nf agent action build_custom_structure {"name":"mini_podest","blocks":[{"x":0,"y":0,"z":0,"material":"minecraft:stone"},{"x":1,"y":0,"z":0,"material":"minecraft:stone"}]}
 ```
+
+Der eigene Bauplan muss mit einer sicheren Standfläche oder einem vorhandenen festen Block verbunden sein; Nightfall zeigt vor dem Bau eine Vorschau. Nutze nur Baupläne, deren Form und Material du geprüft hast.
 
 Die JSON-Argumente müssen ein Objekt aus einfachen Text-, Zahlen- oder Wahrheitswerten sein. Nightfalls bestehender Aktionskatalog bleibt die Quelle der erlaubten Namen und Parametertypen; ungültige oder komplexe Parameter werden zurückgewiesen. Auch diese Aufträge erhalten vor einer Ausführung eine lokale Vorschau und müssen bestätigt werden.
 
@@ -48,7 +51,7 @@ Die folgenden älteren Abschnitte dokumentieren die vorhandenen Minecraft-Aktion
 
 # Nightfall AI – Extensible Skills and Actions
 
-Nightfall AI is an in-game Minecraft companion with an extensible, allow-listed tool system. The AI model may choose from the tools exposed by the client, but **the client validates every argument and controls every execution**.
+Nightfall is an in-game Minecraft companion. This branch uses a deterministic local task agent and reuses the legacy action catalog as an allow-list. **No AI model chooses actions here; the client validates every argument and controls every execution.**
 
 ## Struktur finden
 
@@ -112,7 +115,7 @@ Nightfall's offline agent queues scalar-parameter actions from the existing clie
 | `random_teleport` | Sends the common `/rtp` request to the server | Required; server must support it |
 | `run_server_command` | Sends one ordinary player-requested Minecraft or plugin command and watches briefly for a related server chat response | Required; dangerous server administration and world-edit command roots are blocked |
 | `build_structure` | Builds one of three validated templates and accepts an optional material ID/name | Required |
-| `build_custom_structure` | Builds an AI-generated connected plan of up to 512 blocks in a bounded 32x32x32 grid; supports an optional per-block material palette | Required; validates connectivity, per-material inventory counts, height, and replaceable targets |
+| `build_custom_structure` | Builds a player-supplied connected plan of up to 512 blocks in a bounded 32x32x32 grid; supports an optional per-block material palette through `/nf agent action` | Required; validates connectivity, per-material inventory counts, height, and replaceable targets |
 | `build_starter_shelter` | Backward-compatible alias for the 4x4 starter shelter | Required |
 | `get_build_status` | Reads confirmed builder progress, current phase, pause reason, blueprint and material palette | Read-only; no confirmation |
 | `pause_build` | Pauses after any in-flight placement has been confirmed | No; safe control action |
