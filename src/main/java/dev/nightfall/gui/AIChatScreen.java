@@ -969,8 +969,15 @@ public final class AIChatScreen extends Screen {
      * every replacement still stops at the normal player-confirmed action preview.
      */
     public static void requestAutomaticRepair(String goalId) {
-        AIChatScreen session = active;
-        if (session == null || session.waiting || !LocalAIModelService.isReady()) return;
+        AIChatScreen session = active == null ? getOrCreate() : active;
+        if (session.waiting) return;
+        if (!LocalAIModelService.isReady()) {
+            session.history.add(new ChatLine("assistant",
+                    "Ein Auftrag ist fehlgeschlagen. Lade das lokale Modell über MODELL LADEN, damit ich den offenen Teil neu planen kann."));
+            session.status = "Neuplanung wartet auf das lokale KI-Modell";
+            session.scroll = Float.MAX_VALUE;
+            return;
+        }
         OfflineAgentCore.GoalView failed = Nightfall.offlineAgentCore().snapshot().stream()
                 .filter(goal -> goal.id().equals(goalId)
                         && goal.status() == OfflineAgentCore.GoalStatus.FAILED)
