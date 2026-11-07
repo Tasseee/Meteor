@@ -365,6 +365,18 @@ public final class Commands {
                         "build_structure", Map.of("structure", str(c, "structure")))));
         root.then(build);
 
+        LiteralArgumentBuilder<FabricClientCommandSource> schematic = literal("schematic");
+        schematic.then(argument("file", StringArgumentType.word())
+                .executes(c -> submitOfflineAgentGoal(c, "Bereite den ersten Abschnitt der lokalen Schematic vor.",
+                        "build_schematic", Map.of("file", str(c, "file"),
+                                "part_x", "0", "part_y", "0", "part_z", "0"))));
+        root.then(schematic);
+
+        LiteralArgumentBuilder<FabricClientCommandSource> wood = literal("wood");
+        wood.then(argument("planks", IntegerArgumentType.integer(1, 256))
+                .executes(c -> queueWoodWorkflow(c, IntegerArgumentType.getInteger(c, "planks"))));
+        root.then(wood);
+
         LiteralArgumentBuilder<FabricClientCommandSource> iron = literal("iron");
         iron.then(argument("count", IntegerArgumentType.integer(1, 64))
                 .executes(c -> queueIronWorkflow(c, IntegerArgumentType.getInteger(c, "count"))));
@@ -401,6 +413,30 @@ public final class Commands {
         if (action == null) return say(c, "Art muss wood, block oder ore sein.");
         return submitOfflineAgentGoal(c, "Sammle " + count + " × " + item + ".",
                 action, Map.of("item", item, "count", Integer.toString(count)));
+    }
+
+    private static int queueWoodWorkflow(
+            com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> c, int plankCount) {
+        try {
+            String goalId = nextOfflineGoalId();
+            int logsNeeded = Math.max(1, (plankCount + 3) / 4);
+            OfflineAgentCore.Step gather = new OfflineAgentCore.Step(
+                    "gather_logs", "gather_wood",
+                    Map.of("item", "minecraft:oak_log", "count", Integer.toString(logsNeeded)),
+                    List.of(), 2);
+            OfflineAgentCore.Step craft = new OfflineAgentCore.Step(
+                    "craft_planks", "craft_item",
+                    Map.of("item", "minecraft:oak_planks", "count", Integer.toString(plankCount)),
+                    List.of("gather_logs"), 2);
+            Nightfall.offlineAgentCore().submit(new OfflineAgentCore.Goal(
+                    goalId, "Beschaffe Holz und stelle " + plankCount + " Eichenbretter her.",
+                    5, List.of(gather, craft)));
+            Nightfall.offlineAgentBridge().prepareNext();
+            return say(c, "Holz-Workflow " + goalId + " eingereiht: erst Eichenstämme sammeln, dann Bretter craften. "
+                    + "Jeder Schritt braucht eine eigene Vorschau und Ergebnisprüfung.");
+        } catch (RuntimeException failure) {
+            return say(c, "Holz-Workflow nicht eingereiht: " + safeAgentMessage(failure));
+        }
     }
 
     private static int queueIronWorkflow(
@@ -480,28 +516,28 @@ public final class Commands {
         StringBuilder out = new StringBuilder("Offline-Agent:");
         if (bridge.pendingPreview().isPresent()) {
             var preview = bridge.pendingPreview().get();
-            out.append("\\nVorschau wartet auf Bestätigung: ").append(preview.goalId())
+            out.append("\nVorschau wartet auf Bestätigung: ").append(preview.goalId())
                     .append("/").append(preview.stepId());
         } else if (bridge.awaitingVerification()) {
-            out.append("\\nEine ausgeführte Aktion wartet auf deine Ergebnisprüfung: /nf agent verify success|failed");
+            out.append("\nEine ausgeführte Aktion wartet auf deine Ergebnisprüfung: /nf agent verify success|failed");
         } else {
-            out.append("\\nKeine Vorschau und keine Ergebnisprüfung offen.");
+            out.append("\nKeine Vorschau und keine Ergebnisprüfung offen.");
         }
         int shown = 0;
         for (OfflineAgentCore.GoalView goal : core.snapshot()) {
             if (shown++ >= 8) {
-                out.append("\\nWeitere Aufträge in der Historie vorhanden.");
+                out.append("\nWeitere Aufträge in der Historie vorhanden.");
                 break;
             }
-            out.append("\\n").append(goal.id()).append(" · ").append(goal.status())
+            out.append("\n").append(goal.id()).append(" · ").append(goal.status())
                     .append(" · ").append(goal.description());
             for (OfflineAgentCore.StepView step : goal.steps()) {
-                out.append("\\n  ").append(step.id()).append(": ").append(step.action())
+                out.append("\n  ").append(step.id()).append(": ").append(step.action())
                         .append(" · ").append(step.status()).append(" · Versuche ")
                         .append(step.attempts()).append(step.detail().isBlank() ? "" : " · " + step.detail());
             }
         }
-        if (!bridge.lastError().isBlank()) out.append("\\nLetzter Fehler: ").append(bridge.lastError());
+        if (!bridge.lastError().isBlank()) out.append("\nLetzter Fehler: ").append(bridge.lastError());
         return say(c, out.toString());
     }
 
