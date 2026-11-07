@@ -4,7 +4,7 @@
 
 ## Offline-Agent im Spiel
 
-Alle Aufträge laufen über den deterministischen `OfflineAgentCore` und bestehende lokale Minecraft-Controller. Es werden keine KI-Modelle oder externen KI-Endpunkte benötigt. Der Agent kann mehrere Aufträge in eine begrenzte Warteschlange aufnehmen, führt aber nur eine Minecraft-Aktion gleichzeitig aus. Abhängige Schritte werden erst freigeschaltet, wenn ihr Vorgänger nach einem Controller-Abschluss anhand des eindeutigen Abschlussstatus automatisch als erfolgreich erkannt wurde. Externe Serverbefehle warten weiterhin auf eine manuelle Rückmeldung.
+Alle Aufträge laufen über den deterministischen `OfflineAgentCore` und bestehende lokale Minecraft-Controller. Die `/nf agent`-Befehle funktionieren auch ohne geladenes Sprachmodell; der natürlichsprachliche Chat und die Planung verwenden das eingebettete lokale Qwen-Modell. Externe KI-Endpunkte werden nicht verwendet. Der Agent kann mehrere Aufträge in eine begrenzte Warteschlange aufnehmen, führt aber nur eine Minecraft-Aktion gleichzeitig aus. Abhängige Schritte werden erst freigeschaltet, wenn ihr Vorgänger nach einem Controller-Abschluss anhand des eindeutigen Abschlussstatus automatisch als erfolgreich erkannt wurde. Externe Serverbefehle warten weiterhin auf eine manuelle Rückmeldung.
 
 **Jeder verändernde Schritt benötigt eine Vorschau und Bestätigung.** Nach dem Einreihen zeigt Nightfall die Vorschau im Chat. Bestätige sie mit `/nf agent confirm`, lehne mit `/nf agent reject` ab. Bei Aktionen, deren Abschluss vom Server abhängt und die Nightfall nicht lokal beobachten kann, bleibt das Ergebnis ungeprüft; prüfe die Serverantwort und melde danach `/nf agent verify success` oder `/nf agent verify failed`. `/nf agent cancel` stoppt die aktive Offline-Aufgabe und verwirft wartende Schritte.
 
@@ -95,7 +95,7 @@ Die folgenden älteren Abschnitte dokumentieren die vorhandenen Minecraft-Aktion
 
 # Nightfall AI – Extensible Skills and Actions
 
-Nightfall is an in-game Minecraft companion. This branch uses a deterministic local task agent and reuses the legacy action catalog as an allow-list. **No AI model chooses actions here; the client validates every argument and controls every execution.**
+Nightfall is an in-game Minecraft companion. This branch uses a local language model only to understand requests and propose structured plans. The deterministic task agent reuses the action catalog as an allow-list. **The client validates every argument and controls every execution; a model response never directly runs a Minecraft action.**
 
 ## Struktur finden
 
