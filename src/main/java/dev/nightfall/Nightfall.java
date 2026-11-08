@@ -75,7 +75,7 @@ public class Nightfall implements ClientModInitializer {
                 String host = entry.address.toLowerCase(Locale.ROOT).split(":")[0];
                 if (host.equals("donutsmp.net") || host.endsWith(".donutsmp.net")) {
                     balanceServer = BalanceServer.DONUT;
-                } else if (host.equals("hugsmp.net") || host.endsWith(".hugsmp.net")) {
+                } else if (host.equals("hugosmp.net") || host.endsWith(".hugosmp.net")) {
                     balanceServer = BalanceServer.HUGO;
                 }
                 if (balanceServer != BalanceServer.NONE) balanceJoinDelay = 2;
