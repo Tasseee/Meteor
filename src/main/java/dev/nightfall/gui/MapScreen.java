@@ -87,6 +87,7 @@ public class MapScreen extends Screen {
         // Chunk-Zellen
         int cell = Math.max(1, (int) Math.round(zoom));
         for (ChunkResult res : bf.results()) {
+            if (res.status == ChunkResult.Status.HIDDEN) continue;
             boolean show = switch (filter) {
                 case 2 -> res.status == ChunkResult.Status.SUS;
                 case 3 -> res.status == ChunkResult.Status.GONE;
@@ -141,7 +142,7 @@ public class MapScreen extends Screen {
         ChunkResult hr = bf.get(hcx, hcz);
         String coords = "Block " + (int) Math.floor(bx) + ", " + (int) Math.floor(bz) + "   Chunk " + hcx + ", " + hcz;
         ctx.drawText(mc.textRenderer, coords, 8, 8, Theme.TEXT, true);
-        if (hr != null && hr.status != ChunkResult.Status.CLEAN) {
+        if (hr != null && hr.status != ChunkResult.Status.CLEAN && hr.status != ChunkResult.Status.HIDDEN) {
             String t1 = (hr.status == ChunkResult.Status.SUS ? "SUS" : "SUS WEG") + "  Score " + String.format("%.1f", hr.score);
             String t2 = String.join(", ", hr.reasons);
             String t3 = hr.foundAtMillis > 0 ? "erkannt vor " + ago(System.currentTimeMillis() - hr.foundAtMillis) : "";
