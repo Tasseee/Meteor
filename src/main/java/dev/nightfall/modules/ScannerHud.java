@@ -22,7 +22,7 @@ public class ScannerHud extends HudModule {
         for (ChunkResult r : bf.marks()) if (r.status == ChunkResult.Status.GONE) gone++;
         int shown = Math.min(top.size(), 5);
         w = 190; h = 22 + shown * 10 + (gone > 0 ? 10 : 0);
-        ctx.fill(0, 0, w, h, 0xA0101014);
+        ctx.fill(0, 0, w, h, Theme.HUD_PANEL);
         ctx.fill(0, 0, 2, h, Theme.ACCENT);
         ctx.drawText(mc.textRenderer, "BaseFinder" + (bf.isPaused() ? "  PAUSE" : "")
                 + "  " + String.format("%.1f ms", bf.lastScanMs()) + "  q" + bf.queueSize(),
