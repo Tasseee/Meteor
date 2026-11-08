@@ -2,7 +2,7 @@ name: Nightfall Build
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, 'nightfall/improvements-2026-11-08']
   pull_request:
     branches: [main, master]
   workflow_dispatch:
