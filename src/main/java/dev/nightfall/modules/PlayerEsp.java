@@ -40,7 +40,7 @@ public class PlayerEsp extends EntityScanEsp {
         double rangeSquared = range.get() * range.get();
         for (PlayerEntity player : mc.world.getPlayers()) {
             if (player == mc.player) continue;
-            String name = player.getGameProfile().getName();
+            String name = player.getGameProfile().name();
             if (name == null || !name.matches("[A-Za-z0-9_]{3,16}")) continue;
             String key = name.toLowerCase(java.util.Locale.ROOT);
             if (inspectedPlayers.contains(key)) continue;
