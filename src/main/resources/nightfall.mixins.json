@@ -3,7 +3,9 @@
   "package": "dev.nightfall.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "HeldItemRendererMixin"
+    "HeldItemRendererMixin",
+    "MouseMixin",
+    "CameraMixin"
   ],
   "injectors": {
     "defaultRequire": 1
