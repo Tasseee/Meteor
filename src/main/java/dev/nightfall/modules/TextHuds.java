@@ -21,7 +21,7 @@ public final class TextHuds {
         @Override protected void draw(DrawContext ctx) {
             String t = text();
             w = mc.textRenderer.getWidth(t) + 10; h = 12;
-            ctx.fill(0, 0, w, h, 0xA0101014);
+            ctx.fill(0, 0, w, h, Theme.HUD_PANEL);
             ctx.fill(0, 0, 2, h, Theme.ACCENT);
             ctx.drawText(mc.textRenderer, t, 6, 2, Theme.TEXT, true);
         }
