@@ -30,11 +30,12 @@ public class BaseFinder extends Module {
     private final NumberSetting budgetMs  = add(new NumberSetting("Budget ms/Tick", 1.0, 0.2, 5.0, 0.1));
     private final NumberSetting rescan    = add(new NumberSetting("Rescan (s)", 10, 2, 120, 1));
     private final NumberSetting threshold = add(new NumberSetting("Min Score", 12, 3, 100, 1));
-    private final NumberSetting minSignals = add(new NumberSetting("Min. Signaltypen", 2, 1, 5, 1));
+    private final NumberSetting minSignals = add(new NumberSetting("Min. Signaltypen", 2, 1, 6, 1));
     private final NumberSetting wStorage  = add(new NumberSetting("Gewicht Storage", 1.0, 0.1, 5.0, 0.1));
     private final NumberSetting wHopper   = add(new NumberSetting("Gewicht Hopper", 1.5, 0.1, 5.0, 0.1));
     private final NumberSetting wFurnace  = add(new NumberSetting("Gewicht Furnace", 0.7, 0.1, 5.0, 0.1));
     private final NumberSetting wRedstone = add(new NumberSetting("Gewicht Redstone", 1.2, 0.1, 5.0, 0.1));
+    private final NumberSetting wSpawner  = add(new NumberSetting("Gewicht Spawner", 2.0, 0.1, 10.0, 0.1));
     private final NumberSetting wCluster  = add(new NumberSetting("Gewicht Cluster", 1.5, 0.0, 5.0, 0.1));
     private final BoolSetting   chat      = add(new BoolSetting("Chat-Meldung", true));
 
@@ -160,7 +161,7 @@ public class BaseFinder extends Module {
         WorldChunk ch = w.getChunkManager().getWorldChunk(cx, cz);
         if (ch == null) return;
 
-        int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0;
+        int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0, spawner = 0;
         Map<Integer, Integer> cells = new HashMap<>();
 
         for (BlockEntity be : ch.getBlockEntities().values()) {
@@ -171,6 +172,7 @@ public class BaseFinder extends Module {
             else if (be instanceof AbstractFurnaceBlockEntity) furnace++;
             else if (be instanceof DispenserBlockEntity || be instanceof ComparatorBlockEntity
                     || be instanceof CrafterBlockEntity) redstone++;
+            else if (be instanceof MobSpawnerBlockEntity) spawner++;
             if (dense) {
                 int px = be.getPos().getX() & 15, pz = be.getPos().getZ() & 15, py = be.getPos().getY();
                 cells.merge((px >> 2) | ((pz >> 2) << 2) | (((py >> 2) + 32) << 4), 1, Integer::sum);
@@ -181,9 +183,10 @@ public class BaseFinder extends Module {
 
         double cluster = maxCell >= 6 ? (maxCell - 5) * wCluster.get() : 0;
         double score = storage * wStorage.get() + shulker * wStorage.get() * 1.5
-                + hopper * wHopper.get() + furnace * wFurnace.get() + redstone * wRedstone.get() + cluster;
+                + hopper * wHopper.get() + furnace * wFurnace.get() + redstone * wRedstone.get()
+                + spawner * wSpawner.get() + cluster;
         int signalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
-                + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (cluster > 0 ? 1 : 0);
+                + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (spawner > 0 ? 1 : 0) + (cluster > 0 ? 1 : 0);
 
         ChunkResult old = results.get(k);
         ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
@@ -197,6 +200,7 @@ public class BaseFinder extends Module {
         if (hopper > 0) res.reasons.add(hopper + " Hopper (" + fmt(hopper * wHopper.get()) + ")");
         if (furnace > 0) res.reasons.add(furnace + " Furnace (" + fmt(furnace * wFurnace.get()) + ")");
         if (redstone > 0) res.reasons.add(redstone + " Dispenser/Comparator/Crafter (" + fmt(redstone * wRedstone.get()) + ")");
+        if (spawner > 0) res.reasons.add(spawner + " Mob-Spawner (" + fmt(spawner * wSpawner.get()) + ")");
         if (cluster > 0) res.reasons.add("Lagerzone (" + maxCell + " in 4x4x4, +" + fmt(cluster) + ")");
 
         if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
