@@ -28,6 +28,8 @@ public final class GlowESP extends Module {
 
     public boolean shouldGlow(Entity entity) {
         if (!isEnabled() || mc.player == null || mc.world == null || entity == null || entity == mc.player || !(entity instanceof LivingEntity)) return false;
+        BaseFinder baseFinder = dev.nightfall.module.ModuleManager.get(BaseFinder.class);
+        if (baseFinder != null && baseFinder.isFakeChunk(entity.getBlockX() >> 4, entity.getBlockZ() >> 4)) return false;
         Camera camera = mc.gameRenderer.getCamera();
         Vec3d cameraPos = camera != null && camera.isReady()
                 ? camera.getCameraPos()
