@@ -38,9 +38,9 @@ import java.util.Random;
 public final class TrapperBot extends Module {
     private enum Phase { IDLE, WARNING, WAITING_FOR_ARRIVAL, BUILDING, FIGHTING, COOLDOWN }
 
-    private final NumberSetting inviteDelay = add(new NumberSetting("Warn-Vorlauf (Ticks)", 40, 20, 200, 5));
+    private final NumberSetting inviteDelay = add(new NumberSetting("Warn-Vorlauf (Ticks)", 10, 5, 100, 1));
     private final NumberSetting arrivalTimeout = add(new NumberSetting("Wartezeit (Sek.)", 60, 10, 180, 5));
-    private final NumberSetting cooldownSeconds = add(new NumberSetting("Spieler-Cooldown (Sek.)", 90, 15, 600, 15));
+    private final NumberSetting cooldownSeconds = add(new NumberSetting("Spieler-Cooldown (Sek.)", 15, 5, 300, 5));
     private final NumberSetting fightRange = add(new NumberSetting("Kampfreichweite", 3.0, 2.5, 4.5, 0.1));
     private final BoolSetting sendWarning = add(new BoolSetting("Warnung vor TPAHere", true));
     private final BoolSetting buildTrap = add(new BoolSetting("1x2-Falle bauen", true));
@@ -129,7 +129,7 @@ public final class TrapperBot extends Module {
             candidates.add(name);
         }
         if (candidates.isEmpty()) {
-            timer = 100;
+            timer = 40;
             phase = Phase.COOLDOWN;
             return;
         }
