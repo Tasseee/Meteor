@@ -12,6 +12,8 @@ public final class Theme {
     public static int TEXT        = 0xFFE8E8F0;
     public static int TEXT_DIM    = 0xFF9A9AAE;
     public static int MAP_BG      = 0x0E0E12;
+    public static int HUD_PANEL   = 0xC910121B;
+    public static int HUD_EDGE    = 0xFF35E0D0;
 
     public static final int[] PALETTE = {0x35E0D0, 0x8B5CF6, 0xEF4444, 0x22C55E, 0x3B82F6, 0xF59E0B, 0xEC4899, 0xFFFFFF};
 
@@ -42,6 +44,8 @@ public final class Theme {
         TEXT_DIM = 0xFF000000 | (dim & 0xFFFFFF);
         ROW_HOVER = 0x30000000 | (accent & 0xFFFFFF);
         MAP_BG = panel & 0xFFFFFF;
+        HUD_PANEL = (\"Glass\".equals(design) ? 0xA8000000 : 0xD9000000) | (panel & 0xFFFFFF);
+        HUD_EDGE = 0xFF000000 | (accent & 0xFFFFFF);
         DESIGN = design == null ? "Gradient" : design;
     }
 
