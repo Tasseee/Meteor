@@ -30,12 +30,13 @@ public class ChunkEsp extends Module {
         if (mc.player == null || !Projection.valid()) return;
         BaseFinder bf = ModuleManager.get(BaseFinder.class);
         if (!bf.isEnabled()) return;
-        int pcx = mc.player.getBlockX() >> 4, pcz = mc.player.getBlockZ() >> 4;
+        int pcx = ((int) Math.floor(Projection.eyeX())) >> 4;
+        int pcz = ((int) Math.floor(Projection.eyeZ())) >> 4;
         int d = dist.getInt();
         double t = (System.currentTimeMillis() % 100000L) / 1000.0 * speed.get();
         double pulse = 0.5 + 0.5 * Math.sin(t * Math.PI * 2);
         int drawnHere = 0;
-        double py = mc.player.getY();
+        double py = Projection.eyeY();
 
         for (ChunkResult r : bf.marks()) {
             if (drawnHere >= maxObj.getInt() || EspBase.drawn >= 2048) break;
