@@ -199,13 +199,16 @@ public class ClickGuiScreen extends Screen {
         viewportTop = HEADER_TOP;
         viewportBottom = Math.max(viewportTop + 40, height - FOOTER_H - 8);
 
-        // Compact title and search bar stay fixed while the accordion itself scrolls.
-        ctx.drawText(mc.textRenderer, "NIGHTFALL", panelX + 2, 9, Theme.TEXT, true);
-        ctx.drawText(mc.textRenderer, Nightfall.VERSION, panelX + 78, 10, Theme.ACCENT, false);
-        int searchW = Math.min(240, panelW - 110);
-        int searchX = panelX + panelW - searchW;
-        ctx.fill(searchX, 6, searchX + searchW, 25, 0xD9101118);
-        ctx.fill(searchX, 24, searchX + searchW, 25, searchFocus ? Theme.ACCENT : Theme.ACCENT_DIM);
+        // Fixed app-style top bar with a clear brand lockup.
+        ctx.fill(panelX, 5, panelX + panelW, 39, Theme.PANEL);
+        ctx.fill(panelX, 5, panelX + 3, 39, Theme.ACCENT);
+        ctx.drawText(mc.textRenderer, "NIGHTFALL", panelX + 13, 10, Theme.TEXT, true);
+        ctx.drawText(mc.textRenderer, "CLIENT  /  MODULES", panelX + 13, 24, Theme.TEXT_DIM, false);
+        ctx.drawText(mc.textRenderer, Nightfall.VERSION, panelX + 132, 11, Theme.ACCENT, false);
+        int searchW = Math.min(240, panelW - 170);
+        int searchX = panelX + panelW - searchW - 10;
+        ctx.fill(searchX, 9, searchX + searchW, 31, 0xE9101118);
+        ctx.fill(searchX, 30, searchX + searchW, 31, searchFocus ? Theme.ACCENT : Theme.ACCENT_DIM);
         String searchText = search.isEmpty() && !searchFocus ? "Module suchen..." : search + (searchFocus && (System.currentTimeMillis() / 500) % 2 == 0 ? "_" : "");
         ctx.drawText(mc.textRenderer, searchText, searchX + 9, 17, search.isEmpty() ? Theme.TEXT_DIM : Theme.TEXT, false);
         if (clickL && in(mx, my, searchX, 9, searchW, 22)) { searchFocus = true; clickL = false; }
@@ -236,7 +239,9 @@ public class ClickGuiScreen extends Screen {
         float maxScroll = Math.max(0, totalHeight - (viewportBottom - viewportTop));
         scroll = Math.max(0, Math.min(maxScroll, scroll));
 
-        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportBottom, Theme.PANEL);\n        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportTop - 2, Theme.ACCENT_DIM);
+        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportBottom, Theme.PANEL);
+        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportTop - 2, Theme.ACCENT_DIM);
+        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportTop - 2, Theme.ACCENT_DIM);
         ctx.enableScissor(panelX, viewportTop, panelX + panelW, viewportBottom);
         float y = viewportTop - scroll;
         Module hovered = null;
@@ -321,9 +326,10 @@ public class ClickGuiScreen extends Screen {
             drawNotice(ctx, msg, 0xFFFFD27A);
         } else if (System.currentTimeMillis() < noticeUntil) drawNotice(ctx, notice, 0xFFFFD27A);
 
-        String footer = "L: Optionen  ·  Schalter rechts: An/Aus  ·  M: Keybind  ·  Mausrad: Scroll  ·  " + Nightfall.VERSION;
-        int footerW = mc.textRenderer.getWidth(footer);
-        ctx.drawText(mc.textRenderer, footer, Math.max(6, (width - footerW) / 2), height - 9, Theme.TEXT_DIM, false);
+        String footer = "L Optionen  ·  R Einstellungen  ·  M Keybind  ·  Mausrad Scroll";
+        ctx.fill(panelX, height - 22, panelX + panelW, height - 4, Theme.PANEL);
+        ctx.drawText(mc.textRenderer, footer, panelX + 10, height - 16, Theme.TEXT_DIM, false);
+        ctx.drawText(mc.textRenderer, Nightfall.VERSION, panelX + panelW - 10 - mc.textRenderer.getWidth(Nightfall.VERSION), height - 16, Theme.ACCENT, false);
     }
 
     private void drawCategoryHeader(DrawContext ctx, Category c, int y, int mx, int my, float progress) {
