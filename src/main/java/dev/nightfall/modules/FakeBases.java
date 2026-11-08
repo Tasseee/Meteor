@@ -27,7 +27,7 @@ public final class FakeBases extends Module {
         for (Waypoint w : WaypointManager.all()) {
             if (!CATEGORY.equalsIgnoreCase(w.category) || !w.dim.equals(Storage.dim())) continue;
             double x = w.x + 0.5, y = w.y + 0.5, z = w.z + 0.5;
-            double dx = x - mc.player.getX(), dy = y - mc.player.getY(), dz = z - mc.player.getZ();
+            double dx = x - Projection.eyeX(), dy = y - Projection.eyeY(), dz = z - Projection.eyeZ();
             double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
             if (distance > maxDistance.get() || !Projection.project(x, y, z, point)) continue;
             int color = Theme.withAlpha(0xFFFF5F75, 0xE8);
