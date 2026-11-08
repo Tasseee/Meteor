@@ -34,6 +34,7 @@ public final class ModuleManager {
         MODULES.add(new AutoGap());
         // Movement
         MODULES.add(new Fly());
+        MODULES.add(new BoatFly());
         MODULES.add(new Speed());
         MODULES.add(new Sprint());
         MODULES.add(new Step());
