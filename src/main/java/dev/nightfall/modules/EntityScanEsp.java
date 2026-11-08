@@ -49,11 +49,10 @@ public abstract class EntityScanEsp extends EspBase {
             // Match the interpolated entity position used by the rendered world,
             // otherwise name labels and boxes lag by part of a tick.
             var renderedPos = e.getLerpedPos(Projection.tickDelta());
-            var entityPos = e.getPos();
             var renderedBox = e.getBoundingBox().offset(
-                    renderedPos.x - entityPos.x,
-                    renderedPos.y - entityPos.y,
-                    renderedPos.z - entityPos.z);
+                    renderedPos.x - e.getX(),
+                    renderedPos.y - e.getY(),
+                    renderedPos.z - e.getZ());
             drawTarget(ctx, renderedBox, lb, color.rgb());
         }
     }
