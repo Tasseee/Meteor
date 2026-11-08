@@ -94,6 +94,53 @@ public final class Projection {
     }
 
     /**
+     * Projects a target direction to the screen border, including targets behind the camera.
+     * The returned point is clamped to a small inset so tracers remain visible when looking away.
+     */
+    public static boolean projectToEdge(double x, double y, double z, double[] out) {
+        if (!valid || viewProjection == null || out == null || out.length < 2
+                || !Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) return false;
+
+        float dx = (float) (x - ex);
+        float dy = (float) (y - ey);
+        float dz = (float) (z - ez);
+        float clipX = viewProjection.m00() * dx + viewProjection.m10() * dy
+                + viewProjection.m20() * dz;
+        float clipY = viewProjection.m01() * dx + viewProjection.m11() * dy
+                + viewProjection.m21() * dz;
+        float clipW = viewProjection.m03() * dx + viewProjection.m13() * dy
+                + viewProjection.m23() * dz;
+        if (!Float.isFinite(clipX) || !Float.isFinite(clipY) || !Float.isFinite(clipW)) return false;
+
+        // Reverse the projected direction for points behind the camera.
+        if (clipW < 0.0f) {
+            clipX = -clipX;
+            clipY = -clipY;
+        }
+        double vx = clipX;
+        double vy = -clipY;
+        double length = Math.hypot(vx, vy);
+        if (length < 1.0e-6) {
+            vx = 0.0;
+            vy = -1.0;
+            length = 1.0;
+        }
+        vx /= length;
+        vy /= length;
+
+        double cx = sw * 0.5;
+        double cy = sh * 0.5;
+        double halfW = Math.max(1.0, cx - 14.0);
+        double halfH = Math.max(1.0, cy - 14.0);
+        double scaleX = Math.abs(vx) < 1.0e-6 ? Double.POSITIVE_INFINITY : halfW / Math.abs(vx);
+        double scaleY = Math.abs(vy) < 1.0e-6 ? Double.POSITIVE_INFINITY : halfH / Math.abs(vy);
+        double scale = Math.min(scaleX, scaleY);
+        out[0] = cx + vx * scale;
+        out[1] = cy + vy * scale;
+        return Double.isFinite(out[0]) && Double.isFinite(out[1]);
+    }
+
+    /**
      * @return false when the point is behind/too close to the camera or invalid.
      * out = {x, y} in scaled GUI pixels.
      */
