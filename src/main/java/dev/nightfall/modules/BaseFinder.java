@@ -250,7 +250,24 @@ public class BaseFinder extends Module {
                 p.seenChunks.add(location);
                 saveFakePatterns();
             }
-            return p.seenChunks.size() >= 3;
+            if (p.seenChunks.size() >= 3) {
+                for (String seen : p.seenChunks) {
+                    String[] parts = seen.split(",");
+                    if (parts.length != 2) continue;
+                    try {
+                        ChunkResult previous = results.get(key(Integer.parseInt(parts[0]), Integer.parseInt(parts[1])));
+                        if (previous != null) {
+                            previous.status = Status.CLEAN;
+                            previous.reasons.clear();
+                        }
+                    } catch (NumberFormatException ignored) { }
+                }
+                dirty = true;
+                marksDirty = true;
+                saveMarks();
+                return true;
+            }
+            return false;
         }
         FakePattern p = new FakePattern();
         p.storage = storage; p.shulker = shulker; p.hopper = hopper;
