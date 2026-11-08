@@ -12,6 +12,7 @@ import dev.nightfall.util.Theme;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
@@ -105,7 +106,8 @@ public class ClickGuiScreen extends Screen {
     private boolean categoryOpen(Category c) { return OPEN_CATEGORIES.contains(c) || !search.isEmpty(); }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyInput input) {
+        int keyCode = input.key();
         if (listening != null || editingColor != null || editingMessages != null || editingString != null || searchFocus) {
             onKey(keyCode);
             return true;
@@ -114,7 +116,7 @@ public class ClickGuiScreen extends Screen {
             close();
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(input);
     }
 
     private void onKey(int k) {
