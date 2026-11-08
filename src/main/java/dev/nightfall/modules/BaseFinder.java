@@ -207,7 +207,8 @@ public class BaseFinder extends Module {
         } else {
             res.unchangedScans = 0;
         }
-        res.signature = new ArrayList<>(signature);
+        res.signature.clear();
+        res.signature.addAll(signature);
         res.score = score;
         res.lastScanTick = tick;
         res.reasons.clear();
