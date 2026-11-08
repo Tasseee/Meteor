@@ -30,12 +30,12 @@ import java.util.Set;
  * reveals its settings in-place. There is deliberately no secondary/side settings pane.
  */
 public class ClickGuiScreen extends Screen {
-    private static final int HEADER_TOP = 37;
-    private static final int CATEGORY_H = 27;
-    private static final int MODULE_H = 25;
-    private static final int SETTING_H = 20;
+    private static final int HEADER_TOP = 48;
+    private static final int CATEGORY_H = 32;
+    private static final int MODULE_H = 29;
+    private static final int SETTING_H = 23;
     private static final int GAP = 6;
-    private static final int FOOTER_H = 20;
+    private static final int FOOTER_H = 26;
 
     private static final Set<Category> OPEN_CATEGORIES = new HashSet<>();
     private static final Set<Module> EXPANDED = new HashSet<>();
@@ -192,7 +192,9 @@ public class ClickGuiScreen extends Screen {
         prevL = l; prevR = r; prevM = m;
 
         ctx.fill(0, 0, width, height, Theme.BG_DIM);
-        panelW = Math.min(520, width - 28);
+        ctx.fill(0, 0, width, 2, Theme.ACCENT);
+        ctx.fill(0, height - 2, width, height, Theme.ACCENT_DIM);
+        panelW = Math.min(720, width - 36);
         panelX = (width - panelW) / 2;
         viewportTop = HEADER_TOP;
         viewportBottom = Math.max(viewportTop + 40, height - FOOTER_H - 8);
@@ -205,8 +207,8 @@ public class ClickGuiScreen extends Screen {
         ctx.fill(searchX, 6, searchX + searchW, 25, 0xD9101118);
         ctx.fill(searchX, 24, searchX + searchW, 25, searchFocus ? Theme.ACCENT : Theme.ACCENT_DIM);
         String searchText = search.isEmpty() && !searchFocus ? "Module suchen..." : search + (searchFocus && (System.currentTimeMillis() / 500) % 2 == 0 ? "_" : "");
-        ctx.drawText(mc.textRenderer, searchText, searchX + 8, 12, search.isEmpty() ? Theme.TEXT_DIM : Theme.TEXT, false);
-        if (clickL && in(mx, my, searchX, 6, searchW, 19)) { searchFocus = true; clickL = false; }
+        ctx.drawText(mc.textRenderer, searchText, searchX + 9, 17, search.isEmpty() ? Theme.TEXT_DIM : Theme.TEXT, false);
+        if (clickL && in(mx, my, searchX, 9, searchW, 22)) { searchFocus = true; clickL = false; }
         else if (clickL && searchFocus) searchFocus = false;
 
         if (!l) slider = null;
@@ -234,7 +236,7 @@ public class ClickGuiScreen extends Screen {
         float maxScroll = Math.max(0, totalHeight - (viewportBottom - viewportTop));
         scroll = Math.max(0, Math.min(maxScroll, scroll));
 
-        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportBottom, 0x3A000000);
+        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportBottom, Theme.PANEL);\n        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportTop - 2, Theme.ACCENT_DIM);
         ctx.enableScissor(panelX, viewportTop, panelX + panelW, viewportBottom);
         float y = viewportTop - scroll;
         Module hovered = null;
@@ -255,7 +257,7 @@ public class ClickGuiScreen extends Screen {
             float bodyH = categoryBodies[i];
             int bodyBottom = Math.round(y + CATEGORY_H + bodyH);
             if (bodyH > 0.5f) {
-                ctx.fill(panelX + 1, cy + CATEGORY_H, panelX + panelW - 1, bodyBottom, Theme.withAlpha(Theme.PANEL, 238));
+                ctx.fill(panelX + 1, cy + CATEGORY_H, panelX + panelW - 1, bodyBottom, Theme.withAlpha(Theme.PANEL, 248));
                 ctx.fill(panelX + 1, cy + CATEGORY_H, panelX + 3, bodyBottom, Theme.withAlpha(Theme.ACCENT, 95));
                 ctx.enableScissor(panelX + 1, cy + CATEGORY_H, panelX + panelW - 1, Math.min(viewportBottom, bodyBottom));
                 float rowY = y + CATEGORY_H;
@@ -333,14 +335,14 @@ public class ClickGuiScreen extends Screen {
         if (hover) ctx.fill(panelX, y, panelX + panelW, y + CATEGORY_H - 1, Theme.ROW_HOVER);
         ctx.fill(panelX, y + CATEGORY_H - 2, panelX + panelW, y + CATEGORY_H - 1, Theme.withAlpha(Theme.ACCENT, open ? 210 : 90));
         String icon = categoryIcon(c);
-        ctx.fill(panelX + 8, y + 6, panelX + 24, y + 22, Theme.withAlpha(Theme.ACCENT, 45));
-        ctx.drawText(mc.textRenderer, icon, panelX + 12, y + 10, Theme.ACCENT, true);
-        ctx.drawText(mc.textRenderer, c.display.toUpperCase(Locale.ROOT), panelX + 32, y + 10, Theme.TEXT, true);
+        ctx.fill(panelX + 9, y + 8, panelX + 27, y + 25, Theme.withAlpha(Theme.ACCENT, 45));
+        ctx.drawText(mc.textRenderer, icon, panelX + 15, y + 13, Theme.ACCENT, true);
+        ctx.drawText(mc.textRenderer, c.display.toUpperCase(Locale.ROOT), panelX + 36, y + 13, Theme.TEXT, true);
         String count = String.valueOf(visible(c).size());
         int countW = mc.textRenderer.getWidth(count);
-        ctx.drawText(mc.textRenderer, count, panelX + panelW - 34 - countW, y + 10, Theme.TEXT_DIM, false);
+        ctx.drawText(mc.textRenderer, count, panelX + panelW - 38 - countW, y + 13, Theme.TEXT_DIM, false);
         String chevron = open ? "v" : ">";
-        ctx.drawText(mc.textRenderer, chevron, panelX + panelW - 18, y + 10, Theme.ACCENT, true);
+        ctx.drawText(mc.textRenderer, chevron, panelX + panelW - 22, y + 13, Theme.ACCENT, true);
     }
 
     private String categoryIcon(Category c) {
@@ -366,10 +368,10 @@ public class ClickGuiScreen extends Screen {
             ctx.fill(panelX + 3, y, panelX + 5, y + MODULE_H - 1, Theme.withAlpha(Theme.ACCENT, alpha));
         }
         int iconX = panelX + 11;
-        ctx.fill(iconX, y + 5, iconX + 15, y + 20, Theme.withAlpha(mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, mod.isEnabled() ? 58 : 28));
+        ctx.fill(iconX, y + 7, iconX + 17, y + 23, Theme.withAlpha(mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, mod.isEnabled() ? 58 : 28));
         String icon = mod.getName().substring(0, 1).toUpperCase(Locale.ROOT);
-        ctx.drawText(mc.textRenderer, icon, iconX + 4, y + 9, mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, true);
-        ctx.drawText(mc.textRenderer, mod.getName(), panelX + 34, y + 9, (0xFF000000 | Theme.lerp(Theme.TEXT_DIM, Theme.TEXT, enabled)), false);
+        ctx.drawText(mc.textRenderer, icon, iconX + 5, y + 11, mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, true);
+        ctx.drawText(mc.textRenderer, mod.getName(), panelX + 38, y + 11, (0xFF000000 | Theme.lerp(Theme.TEXT_DIM, Theme.TEXT, enabled)), false);
 
         String key = listening == mod ? "..." : (mod.getKey() >= 0 ? Keys.name(mod.getKey()) : "");
         if (!key.isEmpty()) {
@@ -378,13 +380,13 @@ public class ClickGuiScreen extends Screen {
         }
         // Compact toggle at the far right: independent from the row's expand/collapse action.
         int tx = panelX + panelW - 43;
-        int ty = y + 7;
-        ctx.fill(tx, ty, tx + 29, ty + 12, mod.isEnabled() ? Theme.ACCENT : 0xFF343440);
+        int ty = y + 8;
+        ctx.fill(tx, ty, tx + 29, ty + 13, mod.isEnabled() ? Theme.ACCENT : 0xFF343440);
         int knobX = mod.isEnabled() ? tx + 18 : tx + 3;
-        ctx.fill(knobX, ty + 2, knobX + 8, ty + 10, 0xFFF7F7FA);
+        ctx.fill(knobX, ty + 2, knobX + 8, ty + 11, 0xFFF7F7FA);
         if (!mod.getSettings().isEmpty()) {
             String expand = EXPANDED.contains(mod) ? "v" : ">";
-            ctx.drawText(mc.textRenderer, expand, tx - 15, y + 9, Theme.ACCENT_DIM, false);
+            ctx.drawText(mc.textRenderer, expand, tx - 15, y + 11, Theme.ACCENT_DIM, false);
         }
     }
 
@@ -401,7 +403,7 @@ public class ClickGuiScreen extends Screen {
         if (over) ctx.fill(x, y, x + w, y + SETTING_H - 1, 0x24FFFFFF);
 
         if (setting instanceof BoolSetting b) {
-            ctx.drawText(mc.textRenderer, b.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
+            ctx.drawText(mc.textRenderer, b.getName(), x + 10, y + 8, Theme.TEXT_DIM, false);
             int bx = x + w - 31;
             ctx.fill(bx, y + 5, bx + 22, y + 15, b.get() ? Theme.ACCENT : 0xFF343440);
             ctx.fill(b.get() ? bx + 13 : bx + 2, y + 7, b.get() ? bx + 20 : bx + 9, y + 13, 0xFFF7F7FA);
@@ -409,8 +411,8 @@ public class ClickGuiScreen extends Screen {
         } else if (setting instanceof NumberSetting n) {
             double t = n.max == n.min ? 0 : (n.get() - n.min) / (n.max - n.min);
             int barX = x + w - 112;
-            ctx.fill(barX, y + 15, x + w - 8, y + 17, 0xFF343440);
-            ctx.fill(barX, y + 15, barX + (int) ((w - 120) * t), y + 17, Theme.ACCENT);
+            ctx.fill(barX, y + 17, x + w - 8, y + 19, 0xFF343440);
+            ctx.fill(barX, y + 17, barX + (int) ((w - 120) * t), y + 17, Theme.ACCENT);
             ctx.drawText(mc.textRenderer, n.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
             String val = n.display();
             ctx.drawText(mc.textRenderer, val, barX - 7 - mc.textRenderer.getWidth(val), y + 6, Theme.TEXT, false);
@@ -423,7 +425,7 @@ public class ClickGuiScreen extends Screen {
             else if (over && clickR) { mode.cycle(-1); Config.save(); clickR = false; }
         } else if (setting instanceof ColorSetting color) {
             ctx.drawText(mc.textRenderer, color.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
-            ctx.fill(x + w - 34, y + 5, x + w - 9, y + 16, 0xFF000000 | color.rgb());
+            ctx.fill(x + w - 34, y + 6, x + w - 9, y + 18, 0xFF000000 | color.rgb());
             if (over && clickL) {
                 try { ModuleManager.get(GUITheme.class).prepareColorEdit(color); } catch (Throwable ignored) { }
                 color.cycle(1); Config.save(); clickL = false;
