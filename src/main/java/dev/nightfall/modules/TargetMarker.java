@@ -8,6 +8,8 @@ import dev.nightfall.module.setting.BoolSetting;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.client.render.Camera;
+import net.minecraft.util.math.Vec3d;
 
 /** Lightweight target card for the entity currently under the crosshair. */
 public final class TargetMarker extends Module {
@@ -20,6 +22,10 @@ public final class TargetMarker extends Module {
         if (mc.player == null || mc.world == null || mc.options.hudHidden || mc.currentScreen != null) return;
         Entity e = mc.targetedEntity;
         if (e == null || e == mc.player || !e.isAlive()) return;
+        Camera camera = mc.gameRenderer.getCamera();
+        Vec3d cameraPos = camera != null && camera.isReady()
+                ? camera.getCameraPos()
+                : mc.player.getEyePos();
         int cx = ctx.getScaledWindowWidth()/2, cy = ctx.getScaledWindowHeight()/2;
         int c = 0xFF000000 | color.rgb();
         if (style.is("Fadenkreuz")) {
@@ -28,7 +34,8 @@ public final class TargetMarker extends Module {
         }
         String label = e.getName().getString();
         if (health.get() && e instanceof LivingEntity le) label += "  " + Math.round(le.getHealth()) + " HP";
-        if (distance.get()) label += "  " + String.format(java.util.Locale.ROOT, "%.1fm", Math.sqrt(e.squaredDistanceTo(mc.player)));
+        if (distance.get()) label += "  " + String.format(java.util.Locale.ROOT, "%.1fm",
+                Math.sqrt(e.squaredDistanceTo(cameraPos.x, cameraPos.y, cameraPos.z)));
         int w = mc.textRenderer.getWidth(label);
         int x = (ctx.getScaledWindowWidth()-w)/2, y = cy+18;
         if (style.is("Karte")) ctx.fill(x-5,y-3,x+w+5,y+mc.textRenderer.fontHeight+4,0xB9000000);
