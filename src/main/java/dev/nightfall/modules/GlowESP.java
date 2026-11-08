@@ -5,6 +5,9 @@ import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.NumberSetting;
+import dev.nightfall.util.Projection;
+import net.minecraft.client.render.Camera;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.SpawnGroup;
@@ -25,8 +28,12 @@ public final class GlowESP extends Module {
 
     public boolean shouldGlow(Entity entity) {
         if (!isEnabled() || mc.player == null || mc.world == null || entity == null || entity == mc.player || !(entity instanceof LivingEntity)) return false;
-        if (entity.squaredDistanceTo(mc.player) > range.get() * range.get()) return false;
-        if (!throughWalls.get() && !mc.player.canSee(entity)) return false;
+        Camera camera = mc.gameRenderer.getCamera();
+        Vec3d cameraPos = camera != null && camera.isReady()
+                ? camera.getCameraPos()
+                : mc.player.getEyePos();
+        if (entity.squaredDistanceTo(cameraPos.x, cameraPos.y, cameraPos.z) > range.get() * range.get()) return false;
+        if (!throughWalls.get() && !Projection.canSeeFromCamera(mc, entity)) return false;
         if (entity instanceof PlayerEntity) return players.get();
         SpawnGroup group = entity.getType().getSpawnGroup();
         return group == SpawnGroup.MONSTER ? hostile.get() : passive.get();
