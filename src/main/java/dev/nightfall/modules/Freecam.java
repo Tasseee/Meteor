@@ -26,9 +26,8 @@ public final class Freecam extends Module {
     public static float cameraYaw() { return cameraYaw; }
     public static float cameraPitch() { return cameraPitch; }
 
-    @Override
-    protected void onEnable() {
-        if (mc.player == null) return;
+    private boolean activateIfReady() {
+        if (mc.player == null || mc.world == null) return false;
         try {
             FreeLook look = dev.nightfall.module.ModuleManager.get(FreeLook.class);
             if (look.isEnabled()) look.setEnabled(false);
@@ -41,11 +40,22 @@ public final class Freecam extends Module {
         cameraPosition = mc.player.getEyePos();
         mouseInitialized = false;
         active = true;
+        return true;
+    }
+
+    @Override
+    protected void onEnable() {
+        // Config may enable modules before a world/player exists. onTick retries.
+        activateIfReady();
     }
 
     @Override
     public void onTick() {
-        if (!active || mc.player == null || mc.getWindow() == null) return;
+        if (!active) {
+            activateIfReady();
+            return;
+        }
+        if (mc.player == null || mc.world == null || mc.getWindow() == null) return;
         long window = mc.getWindow().getHandle();
         double[] x = new double[1], y = new double[1];
         GLFW.glfwGetCursorPos(window, x, y);
@@ -73,6 +83,7 @@ public final class Freecam extends Module {
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS) move = move.add(0, -1, 0);
         if (move.lengthSquared() > 0) cameraPosition = cameraPosition.add(move.normalize().multiply(speed.get()));
 
+        // Keep the actual player fixed while the detached camera moves.
         mc.player.setPosition(playerStart);
         mc.player.setVelocity(Vec3d.ZERO);
         mc.player.setYaw(savedYaw);
@@ -81,12 +92,15 @@ public final class Freecam extends Module {
 
     @Override
     protected void onDisable() {
+        boolean wasActive = active;
         active = false;
-        if (mc.player != null) {
+        // Only restore a position if this session actually initialized Freecam.
+        if (wasActive && mc.player != null) {
             mc.player.setPosition(playerStart);
             mc.player.setVelocity(Vec3d.ZERO);
             mc.player.setYaw(savedYaw);
             mc.player.setPitch(savedPitch);
         }
+        mouseInitialized = false;
     }
 }
