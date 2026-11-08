@@ -51,6 +51,7 @@ public final class Config {
                 JsonObject o = new JsonObject();
                 o.addProperty("enabled", m.isEnabled());
                 o.addProperty("key", m.getKey());
+                o.addProperty("keyMouse", m.isMouseKey());
                 JsonObject s = new JsonObject();
                 for (Setting<?> st : m.getSettings()) s.add(st.getName(), st.save());
                 o.add("settings", s);
@@ -108,7 +109,11 @@ public final class Config {
                     JsonObject s = o.getAsJsonObject("settings");
                     for (Setting<?> st : m.getSettings()) if (s.has(st.getName())) st.load(s.get(st.getName()));
                 }
-                if (o.has("key")) m.setKey(o.get("key").getAsInt());
+                if (o.has("key")) {
+                    int key = o.get("key").getAsInt();
+                    if (o.has("keyMouse") && o.get("keyMouse").getAsBoolean()) m.setMouseKey(key);
+                    else m.setKey(key);
+                }
                 if (o.has("enabled")) m.setEnabled(o.get("enabled").getAsBoolean());
             }
             if (root.has("panels")) jsonToMap(root.getAsJsonObject("panels"), panels, 3);
