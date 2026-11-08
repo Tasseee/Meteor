@@ -11,11 +11,14 @@ import org.lwjgl.glfw.GLFW;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class ModuleManager {
     private static final List<Module> MODULES = new ArrayList<>();
     private static final boolean[] KEY_DOWN = new boolean[GLFW.GLFW_KEY_LAST + 1];
     public static int errorCount;
+    private static final Map<String, Long> SLOW_LOG_TIMES = new HashMap<>();
 
     private ModuleManager() {}
 
@@ -140,12 +143,15 @@ public final class ModuleManager {
         if (mc.player == null || mc.world == null) return;
         for (Module m : MODULES) {
             if (!m.isEnabled()) continue;
+            long started = System.nanoTime();
             try {
                 m.onTick();
             } catch (Throwable t) {
                 Nightfall.LOGGER.error("Fehler in Modul {} - Modul wird deaktiviert", m.getName(), t);
                 errorCount++;
                 m.setEnabled(false);
+            } finally {
+                reportSlow(m, "Tick", System.nanoTime() - started);
             }
         }
     }
@@ -156,12 +162,15 @@ public final class ModuleManager {
         EspBase.drawn = 0;
         for (Module m : MODULES) {
             if (!m.isEnabled()) continue;
+            long started = System.nanoTime();
             try {
                 m.renderHud(ctx);
             } catch (Throwable t) {
                 Nightfall.LOGGER.error("Render-Fehler in Modul {} - Modul wird deaktiviert", m.getName(), t);
                 errorCount++;
                 m.setEnabled(false);
+            } finally {
+                reportSlow(m, "Render", System.nanoTime() - started);
             }
         }
     }
