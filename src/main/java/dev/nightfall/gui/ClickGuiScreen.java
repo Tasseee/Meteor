@@ -33,6 +33,7 @@ public class ClickGuiScreen extends Screen {
     private static final int CATEGORY_H = 27;
     private static final int MODULE_H = 25;
     private static final int SETTING_H = 20;
+    private static final int KEYBIND_H = 20;
     private static final int GAP = 6;
     private static final int FOOTER_H = 20;
 
@@ -48,6 +49,8 @@ public class ClickGuiScreen extends Screen {
     private boolean prevL, prevR, prevM, clickL, clickR, clickM;
     private boolean searchFocus;
     private Module listening;
+    private int bindMode;
+    private final boolean[] prevMouseButtons = new boolean[GLFW.GLFW_MOUSE_BUTTON_LAST + 1];
     private String notice = "";
     private long noticeUntil;
     private NumberSetting slider;
@@ -68,6 +71,7 @@ public class ClickGuiScreen extends Screen {
         prevR = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
         prevM = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
         poller.sync(h);
+        for (int b = 0; b <= GLFW.GLFW_MOUSE_BUTTON_LAST; b++) prevMouseButtons[b] = GLFW.glfwGetMouseButton(h, b) == GLFW.GLFW_PRESS;
     }
 
     @Override public boolean shouldPause() { return false; }
@@ -107,7 +111,8 @@ public class ClickGuiScreen extends Screen {
     private void onKey(int k) {
         if (listening != null) {
             if (k == GLFW.GLFW_KEY_ESCAPE) { listening = null; return; }
-            if (k == GLFW.GLFW_KEY_BACKSPACE) { listening.setKey(-1); notice("Keybind entfernt: " + listening.getName()); listening = null; Config.save(); return; }
+            if (k == GLFW.GLFW_KEY_BACKSPACE) { listening.clearKey(); notice("Keybind entfernt: " + listening.getName()); listening = null; Config.save(); return; }
+            if (bindMode == 1) return;
             String err = ModuleManager.assignKey(listening, k);
             notice(err != null ? err : listening.getName() + " = " + Keys.name(k));
             if (err == null) Config.save();
@@ -175,6 +180,18 @@ public class ClickGuiScreen extends Screen {
         boolean m = GLFW.glfwGetMouseButton(handle, GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
         clickL = l && !prevL; clickR = r && !prevR; clickM = m && !prevM;
         prevL = l; prevR = r; prevM = m;
+        int pressedMouse = -1;
+        for (int b = 0; b <= GLFW.GLFW_MOUSE_BUTTON_LAST; b++) {
+            boolean down = GLFW.glfwGetMouseButton(handle, b) == GLFW.GLFW_PRESS;
+            if (down && !prevMouseButtons[b] && pressedMouse < 0) pressedMouse = b;
+            prevMouseButtons[b] = down;
+        }
+        if (listening != null && bindMode == 1 && pressedMouse >= 0) {
+            String err = ModuleManager.assignMouseKey(listening, pressedMouse);
+            notice(err != null ? err : listening.getName() + " = " + Keys.mouseName(pressedMouse));
+            if (err == null) Config.save();
+            listening = null; clickL = clickR = clickM = false;
+        }
 
         boolean[] closeFlag = {false};
         poller.poll(handle, key -> {
@@ -218,7 +235,7 @@ public class ClickGuiScreen extends Screen {
             float bodyTarget = 0;
             for (Module mod : mods) {
                 float mp = ease(MODULE_PROGRESS, mod, EXPANDED.contains(mod), delta);
-                bodyTarget += MODULE_H + mod.getSettings().size() * SETTING_H * mp;
+                bodyTarget += MODULE_H + (KEYBIND_H + mod.getSettings().size() * SETTING_H) * mp;
             }
             categoryBodies[i] = bodyTarget * cp;
             totalHeight += CATEGORY_H + categoryBodies[i] + GAP;
@@ -267,6 +284,24 @@ public class ClickGuiScreen extends Screen {
                     if (rowHovered) hovered = mod;
                     rowY += MODULE_H;
 
+                    float keybindH = KEYBIND_H * mp;
+                    if (keybindH > 0.5f) {
+                        int ky = Math.round(rowY), kx = panelX + 8, kw = panelW - 16;
+                        boolean over = !modalOpen && my >= viewportTop && my < viewportBottom && in(mx, my, kx, ky, kw, KEYBIND_H);
+                        ctx.fill(kx, ky, kx + kw, ky + KEYBIND_H - 1, 0x35000000);
+                        if (over) ctx.fill(kx, ky, kx + kw, ky + KEYBIND_H - 1, 0x24FFFFFF);
+                        ctx.drawText(mc.textRenderer, bindMode == 0 ? "Typ: Tastatur" : "Typ: Maustaste", kx + 9, ky + 6, Theme.TEXT_DIM, false);
+                        String bindLabel = listening == mod ? "Drücke Eingabe..." : (mod.getKey() < 0 ? "Nicht belegt" : (mod.isMouseKey() ? Keys.mouseName(mod.getKey()) : Keys.name(mod.getKey())));
+                        ctx.drawText(mc.textRenderer, bindLabel, kx + kw - 92, ky + 6, Theme.ACCENT, false);
+                        ctx.fill(kx + kw - 43, ky + 3, kx + kw - 5, ky + 17, 0xFF343440);
+                        ctx.drawText(mc.textRenderer, "BIND", kx + kw - 37, ky + 6, Theme.TEXT, true);
+                        if (over && clickL) {
+                            if (mx < kx + kw / 2) bindMode = 1 - bindMode;
+                            else { listening = mod; searchFocus = false; notice(bindMode == 0 ? "Taste drücken für " + mod.getName() : "Maustaste für " + mod.getName() + " klicken"); }
+                            clickL = false;
+                        }
+                    }
+                    rowY += keybindH;
                     float settingsH = mod.getSettings().size() * SETTING_H * mp;
                     if (settingsH > 0.5f) {
                         int settingsBottom = Math.round(rowY + settingsH);
@@ -307,7 +342,7 @@ public class ClickGuiScreen extends Screen {
 
         if (modalOpen) drawTextModal(ctx, mx, my);
         if (listening != null) {
-            String msg = "Taste für " + listening.getName() + " drücken · Backspace = löschen · Esc = abbrechen";
+            String msg = bindMode == 0 ? "Taste für " + listening.getName() + " drücken · Backspace = löschen · Esc = abbrechen" : "Maustaste für " + listening.getName() + " klicken · Esc = abbrechen";
             drawNotice(ctx, msg, 0xFFFFD27A);
         } else if (System.currentTimeMillis() < noticeUntil) drawNotice(ctx, notice, 0xFFFFD27A);
 
@@ -374,16 +409,12 @@ public class ClickGuiScreen extends Screen {
         ctx.fill(tx, ty, tx + 29, ty + 12, mod.isEnabled() ? Theme.ACCENT : 0xFF343440);
         int knobX = mod.isEnabled() ? tx + 18 : tx + 3;
         ctx.fill(knobX, ty + 2, knobX + 8, ty + 10, 0xFFF7F7FA);
-        if (!mod.getSettings().isEmpty()) {
-            String expand = EXPANDED.contains(mod) ? "v" : ">";
-            ctx.drawText(mc.textRenderer, expand, tx - 15, y + 9, Theme.ACCENT_DIM, false);
-        }
+        String expand = EXPANDED.contains(mod) ? "v" : ">";
+        ctx.drawText(mc.textRenderer, expand, tx - 15, y + 9, Theme.ACCENT_DIM, false);
     }
 
     private void toggleExpanded(Module mod) {
-        if (!mod.getSettings().isEmpty()) {
-            if (!EXPANDED.remove(mod)) EXPANDED.add(mod);
-        }
+        if (!EXPANDED.remove(mod)) EXPANDED.add(mod);
     }
 
     private void drawSetting(DrawContext ctx, Setting<?> setting, int y, int mx, int my, int x, int w, boolean modalOpen) {
