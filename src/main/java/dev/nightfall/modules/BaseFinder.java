@@ -11,6 +11,8 @@ import dev.nightfall.scanner.ChunkResult;
 import dev.nightfall.scanner.ChunkResult.Status;
 import dev.nightfall.util.Storage;
 import net.minecraft.block.entity.*;
+import net.minecraft.block.BlockState;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.text.Text;
 import net.minecraft.registry.Registries;
@@ -50,6 +52,20 @@ public class BaseFinder extends Module {
 
     private final Map<Long, ChunkResult> results = new HashMap<>();
     private final ArrayDeque<Long> queue = new ArrayDeque<>();
+    private ScanTask pendingScan;
+
+    private static final class ScanTask {
+        final long key;
+        final WorldChunk chunk;
+        final int bottomY, total;
+        final List<String> structure = new ArrayList<>();
+        int cursor;
+        ScanTask(long key, WorldChunk chunk) {
+            this.key = key; this.chunk = chunk;
+            this.bottomY = chunk.getBottomY();
+            this.total = 16 * 16 * chunk.getHeight();
+        }
+    }
     private final List<ChunkResult> top = new ArrayList<>();
     private final List<ChunkResult> marks = new ArrayList<>();
     private boolean dirty = true, marksDirty;
@@ -94,7 +110,7 @@ public class BaseFinder extends Module {
     }
 
     private void clearData() {
-        results.clear(); queue.clear(); top.clear(); marks.clear(); dirty = true; marksDirty = false; candidatesLastRefill = 0; scannedSinceRefill = 0;
+        results.clear(); queue.clear(); pendingScan = null; top.clear(); marks.clear(); dirty = true; marksDirty = false; candidatesLastRefill = 0; scannedSinceRefill = 0;
     }
 
     public void clearMarks() { clearData(); marksDirty = true; saveMarks(); }
@@ -121,10 +137,41 @@ public class BaseFinder extends Module {
         long start = System.nanoTime();
         long deadline = start + (long) (budgetMs.get() * 1_000_000.0);
         int n = 0;
-        while (!queue.isEmpty() && System.nanoTime() < deadline) {
-            scan(w, queue.poll());
-            n++;
-            scannedSinceRefill++;
+        while (System.nanoTime() < deadline) {
+            if (pendingScan == null) {
+                if (queue.isEmpty()) break;
+                long next = queue.poll();
+                int cx = (int) next, cz = (int) (next >> 32);
+                WorldChunk chunk = w.getChunkManager().getWorldChunk(cx, cz);
+                if (chunk == null) continue;
+                pendingScan = new ScanTask(next, chunk);
+            }
+            ScanTask task = pendingScan;
+            BlockPos.Mutable pos = new BlockPos.Mutable();
+            int processed = 0;
+            while (task.cursor < task.total && processed < 512 && System.nanoTime() < deadline) {
+                int i = task.cursor++;
+                int x = i & 15;
+                int z = (i >> 4) & 15;
+                int y = task.bottomY + (i >> 8);
+                pos.set(task.chunk.getPos().getStartX() + x, y, task.chunk.getPos().getStartZ() + z);
+                BlockState state = task.chunk.getBlockState(pos);
+                if (!state.isAir() && state.getFluidState().isEmpty()) {
+                    String id = Registries.BLOCK.getId(state.getBlock()).getPath();
+                    if (!isCommonTerrain(id)) {
+                        task.structure.add(id + "@" + x + "," + y + "," + z);
+                    }
+                }
+                processed++;
+            }
+            if (task.cursor >= task.total) {
+                pendingScan = null;
+                scan(w, task.key, task.structure);
+                n++;
+                scannedSinceRefill++;
+            } else {
+                break;
+            }
         }
         lastScanNanos = System.nanoTime() - start;
         lastScanned = n;
@@ -158,14 +205,14 @@ public class BaseFinder extends Module {
                 && (e.cx - pcx) * (e.cx - pcx) + (e.cz - pcz) * (e.cz - pcz) > limit);
     }
 
-    private void scan(ClientWorld w, long k) {
+    private void scan(ClientWorld w, long k, List<String> structureSignature) {
         int cx = (int) k, cz = (int) (k >> 32);
         WorldChunk ch = w.getChunkManager().getWorldChunk(cx, cz);
         if (ch == null) return;
 
         int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0;
         Map<Integer, Integer> cells = new HashMap<>();
-        List<String> signature = new ArrayList<>();
+        List<String> signature = new ArrayList<>(structureSignature);
 
         for (BlockEntity be : ch.getBlockEntities().values()) {
             // Nur Typ + Position vergleichen: Facing/Rotation ist absichtlich kein Bestandteil.
@@ -243,6 +290,19 @@ public class BaseFinder extends Module {
                 res.reasons.add("Score hoch, aber nur " + signalKinds + " Signaltyp(en) — nicht als SUS markiert");
         }
         if (old == null) results.put(k, res);
+    }
+
+    // Häufige natürliche Terrainblöcke nicht in die Strukturähnlichkeit einrechnen.
+    // Holz, Glas, Steinziegel und andere typische Baumaterialien bleiben ausdrücklich enthalten.
+    private static boolean isCommonTerrain(String id) {
+        return switch (id) {
+            case "stone", "granite", "diorite", "andesite", "tuff", "deepslate",
+                 "dirt", "coarse_dirt", "rooted_dirt", "grass_block", "podzol", "mycelium",
+                 "sand", "red_sand", "gravel", "clay", "snow", "snow_block",
+                 "ice", "packed_ice", "blue_ice", "bedrock", "netherrack",
+                 "end_stone", "calcite", "dripstone_block" -> true;
+            default -> id.endsWith("_ore") || id.startsWith("deepslate_") && id.endsWith("_ore");
+        };
     }
 
     private static double similarity(List<String> a, List<String> b) {
