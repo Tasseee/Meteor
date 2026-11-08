@@ -34,7 +34,7 @@ public final class NotificationsHud extends HudModule {
             int y = i * 34;
             float progress = toast == null ? 0.72f : toast.progress(now);
             int offset = Math.round((1f - progress) * 8f);
-            ctx.fill(offset, y, w, y + 30, 0xD0101018);
+            ctx.fill(offset, y, w, y + 30, Theme.HUD_PANEL);
             int color = toast == null ? Theme.ACCENT : toast.color;
             String title = toast == null ? "Nightfall" : toast.title;
             String message = toast == null ? "Beispiel-Benachrichtigung" : toast.message;
