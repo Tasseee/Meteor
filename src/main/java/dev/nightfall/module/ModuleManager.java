@@ -156,6 +156,17 @@ public final class ModuleManager {
         }
     }
 
+    private static void reportSlow(Module module, String phase, long elapsedNanos) {
+        if (elapsedNanos < 20_000_000L) return;
+        long now = System.nanoTime();
+        String key = module.getName() + ":" + phase;
+        Long previous = SLOW_LOG_TIMES.get(key);
+        if (previous != null && now - previous < 5_000_000_000L) return;
+        SLOW_LOG_TIMES.put(key, now);
+        Nightfall.LOGGER.warn("Langsames Modul: {} ({}) benoetigt {} ms",
+            module.getName(), phase, String.format(java.util.Locale.ROOT, "%.1f", elapsedNanos / 1_000_000.0));
+    }
+
     public static void tick() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null) return;
