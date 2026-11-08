@@ -28,7 +28,7 @@ public final class CooldownHud extends HudModule {
         for (boolean e : enabled) if (e) count++;
         w = 120;
         h = 7 + count * 16;
-        ctx.fill(0, 0, w, h, 0xA0101014);
+        ctx.fill(0, 0, w, h, Theme.HUD_PANEL);
         ctx.fill(0, 0, 2, h, Theme.ACCENT);
         int line = 0;
         for (int i = 0; i < items.length; i++) {
