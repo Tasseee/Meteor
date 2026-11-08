@@ -119,7 +119,7 @@ public class AutoPvp extends Module {
             p.setPitch(pitch);
             return;
         }
-        float max = (float) turnSpeed.get();
+        float max = turnSpeed.get().floatValue();
         p.setYaw(p.getYaw() + MathHelper.clamp(MathHelper.wrapDegrees(yaw - p.getYaw()), -max, max));
         p.setPitch(p.getPitch() + MathHelper.clamp(MathHelper.wrapDegrees(pitch - p.getPitch()), -max, max));
     }
