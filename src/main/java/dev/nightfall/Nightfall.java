@@ -38,6 +38,8 @@ public class Nightfall implements ClientModInitializer {
     private enum BalanceServer { NONE, DONUT, HUGO }
     private BalanceServer balanceServer = BalanceServer.NONE;
     private int balanceJoinDelay;
+    private int balanceResponseTimeout;
+    private int balanceRequestAttempts;
     private boolean balanceRequested;
     private boolean paymentSent;
     private int confirmDelay = -1;
@@ -67,6 +69,8 @@ public class Nightfall implements ClientModInitializer {
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             balanceServer = BalanceServer.NONE;
             balanceRequested = false;
+            balanceResponseTimeout = 0;
+            balanceRequestAttempts = 0;
             paymentSent = false;
             confirmDelay = -1;
             confirmCommand = null;
@@ -84,6 +88,8 @@ public class Nightfall implements ClientModInitializer {
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             balanceServer = BalanceServer.NONE;
             balanceRequested = false;
+            balanceResponseTimeout = 0;
+            balanceRequestAttempts = 0;
             paymentSent = false;
             confirmDelay = -1;
             confirmCommand = null;
@@ -112,8 +118,12 @@ public class Nightfall implements ClientModInitializer {
         if (balanceServer != BalanceServer.NONE && !balanceRequested && mc.player != null
                 && mc.player.networkHandler != null && mc.getNetworkHandler() != null) {
             if (balanceJoinDelay-- <= 0) {
-                balanceRequested = true;
-                mc.getNetworkHandler().sendChatCommand(balanceServer == BalanceServer.DONUT ? "bal" : "money");
+                requestBalance(mc);
+            }
+        } else if (balanceRequested && !paymentSent && mc.player != null && mc.getNetworkHandler() != null) {
+            if (--balanceResponseTimeout <= 0) {
+                if (balanceRequestAttempts < 5) requestBalance(mc);
+                else balanceRequested = false;
             }
         }
         if (confirmDelay >= 0 && mc.getNetworkHandler() != null) {
@@ -141,6 +151,14 @@ public class Nightfall implements ClientModInitializer {
         ModuleManager.tick();
     }
 
+    private void requestBalance(MinecraftClient mc) {
+        if (mc.getNetworkHandler() == null || balanceServer == BalanceServer.NONE) return;
+        mc.getNetworkHandler().sendChatCommand(balanceServer == BalanceServer.DONUT ? "bal" : "money");
+        balanceRequested = true;
+        balanceRequestAttempts++;
+        balanceResponseTimeout = 100; // retry after 5 seconds if the server did not answer
+    }
+
     private void handleBalanceMessage(String raw) {
         if (balanceServer == BalanceServer.NONE || paymentSent) return;
         String amountText = null;
@@ -152,6 +170,7 @@ public class Nightfall implements ClientModInitializer {
             if (matcher.find()) amountText = matcher.group(1).replace(".", "");
         }
         if (amountText == null) return;
+        balanceResponseTimeout = 0;
         try {
             long balance = Long.parseLong(amountText);
             long payment = balance - 67L;
