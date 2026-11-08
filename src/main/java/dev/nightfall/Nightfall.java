@@ -74,16 +74,7 @@ public class Nightfall implements ClientModInitializer {
             paymentSent = false;
             confirmDelay = -1;
             confirmCommand = null;
-            var entry = client.getCurrentServerEntry();
-            if (entry != null && entry.address != null) {
-                String host = entry.address.toLowerCase(Locale.ROOT).split(":")[0];
-                if (host.equals("donutsmp.net") || host.endsWith(".donutsmp.net")) {
-                    balanceServer = BalanceServer.DONUT;
-                } else if (host.equals("hugosmp.net") || host.endsWith(".hugosmp.net")) {
-                    balanceServer = BalanceServer.HUGO;
-                }
-                if (balanceServer != BalanceServer.NONE) balanceJoinDelay = 2;
-            }
+            detectBalanceServer(client);
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             balanceServer = BalanceServer.NONE;
@@ -114,7 +105,25 @@ public class Nightfall implements ClientModInitializer {
         LOGGER.info("{} {} geladen", NAME, VERSION);
     }
 
+    private void detectBalanceServer(MinecraftClient mc) {
+        if (balanceServer != BalanceServer.NONE || mc.getCurrentServerEntry() == null
+                || mc.getCurrentServerEntry().address == null) return;
+        String host = mc.getCurrentServerEntry().address.toLowerCase(Locale.ROOT).split(":")[0];
+        if (host.equals("donutsmp.net") || host.endsWith(".donutsmp.net")) {
+            balanceServer = BalanceServer.DONUT;
+        } else if (host.equals("hugosmp.net") || host.endsWith(".hugosmp.net")) {
+            balanceServer = BalanceServer.HUGO;
+        }
+        if (balanceServer != BalanceServer.NONE) {
+            balanceJoinDelay = 2;
+            balanceRequested = false;
+            balanceRequestAttempts = 0;
+        }
+    }
+
     private void onTick(MinecraftClient mc) {
+        // Some clients expose the server entry only after the JOIN callback.
+        detectBalanceServer(mc);
         if (balanceServer != BalanceServer.NONE && !balanceRequested && balanceRequestAttempts < 5 && mc.player != null
                 && mc.player.networkHandler != null && mc.getNetworkHandler() != null) {
             if (balanceJoinDelay-- <= 0) {
