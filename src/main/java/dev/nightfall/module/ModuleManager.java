@@ -152,9 +152,9 @@ public final class ModuleManager {
         }
     }
 
-    public static void renderHud(DrawContext ctx) {
+    public static void renderHud(DrawContext ctx, float tickDelta) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        Projection.update(mc, ctx.getScaledWindowWidth(), ctx.getScaledWindowHeight());
+        Projection.update(mc, tickDelta, ctx.getScaledWindowWidth(), ctx.getScaledWindowHeight());
         EspBase.drawn = 0;
         for (Module m : MODULES) {
             if (!m.isEnabled()) continue;
