@@ -104,6 +104,19 @@ public class ClickGuiScreen extends Screen {
 
     private boolean categoryOpen(Category c) { return OPEN_CATEGORIES.contains(c) || !search.isEmpty(); }
 
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (listening != null || editingColor != null || editingMessages != null || editingString != null || searchFocus) {
+            onKey(keyCode);
+            return true;
+        }
+        if (keyCode == Config.guiKey) {
+            close();
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
     private void onKey(int k) {
         if (listening != null) {
             if (k == GLFW.GLFW_KEY_ESCAPE) { listening = null; return; }
@@ -175,13 +188,6 @@ public class ClickGuiScreen extends Screen {
         boolean m = GLFW.glfwGetMouseButton(handle, GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
         clickL = l && !prevL; clickR = r && !prevR; clickM = m && !prevM;
         prevL = l; prevR = r; prevM = m;
-
-        boolean[] closeFlag = {false};
-        poller.poll(handle, key -> {
-            if (key == Config.guiKey && listening == null && !searchFocus && editingMessages == null && editingString == null && editingColor == null) closeFlag[0] = true;
-            else onKey(key);
-        });
-        if (closeFlag[0]) { close(); return; }
 
         ctx.fill(0, 0, width, height, Theme.BG_DIM);
         panelW = Math.min(520, width - 28);
