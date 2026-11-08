@@ -33,7 +33,7 @@ public abstract class EntityScanEsp extends EspBase {
         for (Entity e : mc.world.getEntities()) {
             if (e == mc.player || !accept(e)) continue;
             if (e.squaredDistanceTo(sx, sy, sz) > r2) continue;
-            if (visibleOnly.get() && !mc.player.canSee(e)) continue;
+            if (visibleOnly.get() && !Projection.canSeeFromCamera(mc, e)) continue;
             buf.add(e);
         }
         if (buf.size() > maxObjects.getInt()) {
