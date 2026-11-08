@@ -27,7 +27,7 @@ public class WaypointHud extends HudModule {
         tmp.sort((a, b) -> Double.compare(Math.hypot(a.x - px, a.z - pz), Math.hypot(b.x - px, b.z - pz)));
         int n = Math.min(5, tmp.size());
         w = 120; h = 12 + n * 10;
-        ctx.fill(0, 0, w, h, 0xA0101014);
+        ctx.fill(0, 0, w, h, Theme.HUD_PANEL);
         ctx.fill(0, 0, 2, h, Theme.ACCENT);
         ctx.drawText(mc.textRenderer, "Waypoints", 6, 2, Theme.TEXT_DIM, false);
         for (int i = 0; i < n; i++) {
