@@ -167,7 +167,11 @@ public class BaseFinder extends Module {
                 if (!state.isAir() && state.getFluidState().isEmpty()) {
                     String id = Registries.BLOCK.getId(state.getBlock()).getPath();
                     if (!isCommonTerrain(id)) {
-                        task.structure.add(id + "@" + x + "," + y + "," + z);
+                        String token = id + "@" + x + "," + y + "," + z;
+                        // Deterministische Stichprobe begrenzt Speicher- und Sortier-Spitzen
+                        // bei sehr grossen Bauwerken, ohne die Vergleichssignatur aufzublähen.
+                        if (task.structure.size() < 4096 && (token.hashCode() & 7) == 0)
+                            task.structure.add(token);
                     }
                 }
                 processed++;
