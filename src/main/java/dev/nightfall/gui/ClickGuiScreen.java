@@ -398,7 +398,7 @@ public class ClickGuiScreen extends Screen {
         ctx.drawText(mc.textRenderer, icon, iconX + 4, y + 9, mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, true);
         ctx.drawText(mc.textRenderer, mod.getName(), panelX + 34, y + 9, (0xFF000000 | Theme.lerp(Theme.TEXT_DIM, Theme.TEXT, enabled)), false);
 
-        String key = listening == mod ? "..." : (mod.getKey() >= 0 ? Keys.name(mod.getKey()) : "");
+        String key = listening == mod ? "..." : (mod.getKey() >= 0 ? (mod.isMouseKey() ? Keys.mouseName(mod.getKey()) : Keys.name(mod.getKey())) : "");
         if (!key.isEmpty()) {
             int keyW = mc.textRenderer.getWidth(key);
             ctx.drawText(mc.textRenderer, key, panelX + panelW - 73 - keyW, y + 9, Theme.TEXT_DIM, false);
