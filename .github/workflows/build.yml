@@ -1,5 +1,6 @@
 name: Nightfall Build
 
+# Build and publish a downloadable JAR on every main-branch update.
 on:
   push:
     branches: [main, master]
