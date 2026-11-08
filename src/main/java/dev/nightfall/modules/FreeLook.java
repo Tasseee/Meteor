@@ -1,8 +1,7 @@
 package dev.nightfall.modules;
 
-import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
-import net.minecraft.client.MinecraftClient;
+import dev.nightfall.module.Category;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -24,9 +23,8 @@ public final class FreeLook extends Module {
     public static float cameraYaw() { return cameraYaw; }
     public static float cameraPitch() { return cameraPitch; }
 
-    @Override
-    protected void onEnable() {
-        if (mc.player == null) return;
+    private boolean activateIfReady() {
+        if (mc.player == null || mc.world == null) return false;
         Freecam freecam = null;
         try { freecam = dev.nightfall.module.ModuleManager.get(Freecam.class); }
         catch (IllegalStateException ignored) {}
@@ -38,11 +36,22 @@ public final class FreeLook extends Module {
         cameraPitch = playerPitch;
         mouseInitialized = false;
         active = true;
+        return true;
+    }
+
+    @Override
+    protected void onEnable() {
+        // Config can enable this module before the player exists.
+        activateIfReady();
     }
 
     @Override
     public void onTick() {
-        if (!active || mc.player == null || mc.getWindow() == null) return;
+        if (!active) {
+            activateIfReady();
+            return;
+        }
+        if (mc.player == null || mc.world == null || mc.getWindow() == null) return;
         long window = mc.getWindow().getHandle();
         double[] x = new double[1], y = new double[1];
         GLFW.glfwGetCursorPos(window, x, y);
@@ -63,10 +72,12 @@ public final class FreeLook extends Module {
 
     @Override
     protected void onDisable() {
+        boolean wasActive = active;
         active = false;
-        if (mc.player != null) {
+        if (wasActive && mc.player != null) {
             mc.player.setYaw(playerYaw);
             mc.player.setPitch(playerPitch);
         }
+        mouseInitialized = false;
     }
 }
