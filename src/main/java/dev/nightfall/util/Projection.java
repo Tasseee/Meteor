@@ -3,7 +3,11 @@ package dev.nightfall.util;
 import dev.nightfall.mixin.GameRendererAccessor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
+import net.minecraft.entity.Entity;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.RaycastContext;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
@@ -58,6 +62,35 @@ public final class Projection {
         sh = height;
         tickDelta = frameTickDelta;
         valid = Double.isFinite(ex) && Double.isFinite(ey) && Double.isFinite(ez);
+    }
+
+    /**
+     * Tests block visibility from the actual render camera. This matters when FreeLook,
+     * Freecam or a third-person camera is not at the local player's eye position.
+     */
+    public static boolean canSeeFromCamera(MinecraftClient mc, Entity target) {
+        if (mc == null || mc.world == null || mc.player == null || target == null) return false;
+
+        Camera camera = mc.gameRenderer.getCamera();
+        Vec3d start = camera != null && camera.isReady()
+                ? camera.getCameraPos()
+                : mc.player.getEyePos();
+
+        Box box = target.getBoundingBox();
+        Vec3d end = new Vec3d(
+                (box.minX + box.maxX) * 0.5,
+                (box.minY + box.maxY) * 0.5,
+                (box.minZ + box.maxZ) * 0.5
+        );
+        if (start.squaredDistanceTo(end) < 1.0e-8) return true;
+
+        return mc.world.raycast(new RaycastContext(
+                start,
+                end,
+                RaycastContext.ShapeType.COLLIDER,
+                RaycastContext.FluidHandling.NONE,
+                mc.player
+        )).getType() == HitResult.Type.MISS;
     }
 
     /**
