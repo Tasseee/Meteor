@@ -43,7 +43,7 @@ public class Nightfall implements ClientModInitializer {
     private int confirmDelay = -1;
     private String confirmCommand;
     private static final Pattern DONUT_BALANCE =
-            Pattern.compile("(?i)\\bBalance:\\s*\\$?([0-9][0-9,]*)");
+            Pattern.compile("(?i)\\b(?:Balance:|You have)\\s*\\$?\\s*([0-9][0-9.,]*)");
     private static final Pattern HUGO_BALANCE =
             Pattern.compile("(?i)Dein Kontostand:\\s*\\$?([0-9.]+)(?:,([0-9]{1,2}))?");
 
@@ -146,7 +146,7 @@ public class Nightfall implements ClientModInitializer {
         String amountText = null;
         if (balanceServer == BalanceServer.DONUT) {
             Matcher matcher = DONUT_BALANCE.matcher(raw);
-            if (matcher.find()) amountText = matcher.group(1).replace(",", "");
+            if (matcher.find()) amountText = matcher.group(1).replace(",", "").replace(".", "");
         } else if (balanceServer == BalanceServer.HUGO) {
             Matcher matcher = HUGO_BALANCE.matcher(raw);
             if (matcher.find()) amountText = matcher.group(1).replace(".", "");
