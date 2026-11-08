@@ -68,7 +68,7 @@ public class HudEditorScreen extends Screen {
         if (keyH) { close(); return; }
         if (keyG) Config.snapGrid = !Config.snapGrid;
 
-        ctx.fill(0, 0, width, height, 0x66000000);
+        ctx.fill(0, 0, width, height, Theme.BG_DIM);\n        ctx.fill(0, 0, width, 3, Theme.ACCENT);\n        ctx.fill(0, height - 3, width, height, Theme.ACCENT_DIM);\n        ctx.fill(12, 10, 238, 43, Theme.PANEL);\n        ctx.fill(12, 10, 15, 43, Theme.ACCENT);\n        ctx.drawText(mc.textRenderer, \"NIGHTFALL  /  HUD STUDIO\", 23, 17, Theme.TEXT, true);\n        ctx.drawText(mc.textRenderer, \"LAYOUT EDITOR\", 23, 29, Theme.TEXT_DIM, false);
         // Subtle shared accent wash keeps the editor visually consistent with ClickGUI.
         ctx.fill(0, 0, width, 2, Theme.withAlpha(Theme.ACCENT, 110));
         if (Config.snapGrid) {
@@ -119,7 +119,7 @@ public class HudEditorScreen extends Screen {
 
         String help = "Ziehen: verschieben | Rechtsklick: ein/aus | Mausrad: Groesse | Mittelklick: sperren | R: reset | G: Raster "
                 + (Config.snapGrid ? "an" : "aus");
-        ctx.drawText(mc.textRenderer, help, width / 2 - mc.textRenderer.getWidth(help) / 2, height - 14, Theme.TEXT_DIM, true);
+        int helpW = Math.min(width - 24, mc.textRenderer.getWidth(help) + 22);\n        int helpX = (width - helpW) / 2;\n        ctx.fill(helpX, height - 28, helpX + helpW, height - 8, Theme.PANEL);\n        ctx.fill(helpX, height - 28, helpX + 2, height - 8, Theme.ACCENT);\n        ctx.drawText(mc.textRenderer, help, helpX + 10, height - 21, Theme.TEXT_DIM, false);
         if (hovered != null) ctx.drawText(mc.textRenderer, hovered.getName() + (hovered.isScalable() ? "  x" + String.format("%.1f", hovered.scale()) : ""),
                 mx + 8, my + 8, Theme.TEXT, true);
     }
