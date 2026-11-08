@@ -157,6 +157,7 @@ public final class TrapperBot extends Module {
         target = findWorldPlayer(targetName);
         if (target != null && target.isAlive() && target.squaredDistanceTo(mc.player) <= 25.0) {
             restoreSlot();
+            timer = 100;
             buildOrder = createTrapOrder(target.getBlockPos());
             buildIndex = 0;
             buildDelay = 0;
@@ -232,7 +233,6 @@ public final class TrapperBot extends Module {
             // The target left the trap area; do not chase across the world.
             releaseControls();
             if (--timer <= 0) startCooldown(20 * 20);
-            else if (timer == 0) timer = 100;
             return;
         }
         timer = 100;
