@@ -23,7 +23,7 @@ public class Coordinates extends HudModule {
             else if (key.equals("overworld")) line += "  (N " + (x / 8) + " " + (z / 8) + ")";
         }
         w = mc.textRenderer.getWidth(line) + 10; h = 12;
-        ctx.fill(0, 0, w, h, 0xA0101014);
+        ctx.fill(0, 0, w, h, Theme.HUD_PANEL);
         ctx.fill(0, 0, 2, h, Theme.ACCENT);
         ctx.drawText(mc.textRenderer, line, 6, 2, Theme.TEXT, true);
     }
