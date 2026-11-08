@@ -35,7 +35,9 @@ public final class Projection {
         double yaw = Math.toRadians(camera.getYaw()), pitch = Math.toRadians(camera.getPitch());
         double sy = Math.sin(yaw), cy = Math.cos(yaw), sp = Math.sin(pitch), cp = Math.cos(pitch);
         fx = -sy * cp; fy = -sp; fz = cy * cp;
-        rx = -cy; rz = -sy;
+        // Minecraft yaw 0 faces +Z; screen-right therefore points along +X.
+        // The previous negative signs mirrored every projected ESP marker horizontally.
+        rx = cy; rz = sy;
         ux = -sy * sp; uy = cp; uz = cy * sp;
         // Guard against invalid FOV values during resolution/world transitions.
         double fov = mc.options.getFov().getValue();
@@ -45,7 +47,6 @@ public final class Projection {
         if (!Double.isFinite(tanH) || tanH <= 0.0) return;
         sw = w; sh = h; aspect = w / (double) h;
         valid = Double.isFinite(ex) && Double.isFinite(ey) && Double.isFinite(ez);
-
     }
 
     /** @return false, wenn der Punkt hinter der Kamera liegt. out = {x, y} in GUI-Pixeln. */
