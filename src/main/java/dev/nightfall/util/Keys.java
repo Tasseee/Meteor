@@ -27,6 +27,17 @@ public final class Keys {
 
     public static boolean down(long h, int key) { return key >= 0 && GLFW.glfwGetKey(h, key) == GLFW.GLFW_PRESS; }
 
+    public static String mouseName(int button) {
+        return switch (button) {
+            case GLFW.GLFW_MOUSE_BUTTON_LEFT -> "MOUSE1";
+            case GLFW.GLFW_MOUSE_BUTTON_RIGHT -> "MOUSE2";
+            case GLFW.GLFW_MOUSE_BUTTON_MIDDLE -> "MOUSE3";
+            case 3 -> "MOUSE4";
+            case 4 -> "MOUSE5";
+            default -> "MOUSE" + (button + 1);
+        };
+    }
+
     public static String name(int k) {
         if (k < 0) return "-";
         if (k >= GLFW.GLFW_KEY_F1 && k <= GLFW.GLFW_KEY_F12) return "F" + (k - GLFW.GLFW_KEY_F1 + 1);
