@@ -28,7 +28,7 @@ public class Waypoints extends Module {
             // Fake-base markers are rendered separately with an unmistakable TEST/DECOY label.
             if (FakeBases.CATEGORY.equalsIgnoreCase(w.category)) continue;
             if (!w.dim.equals(dim)) continue;
-            double dx = w.x + 0.5 - mc.player.getX(), dy = w.y + 0.5 - mc.player.getY(), dz = w.z + 0.5 - mc.player.getZ();
+            double dx = w.x + 0.5 - Projection.eyeX(), dy = w.y + 0.5 - Projection.eyeY(), dz = w.z + 0.5 - Projection.eyeZ();
             double d = Math.sqrt(dx * dx + dy * dy + dz * dz);
             if (d > maxDist.get()) continue;
             if (!Projection.project(w.x + 0.5, w.y + 0.5, w.z + 0.5, pt)) continue;
