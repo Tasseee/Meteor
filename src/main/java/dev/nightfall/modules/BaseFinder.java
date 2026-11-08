@@ -13,6 +13,7 @@ import dev.nightfall.util.Storage;
 import net.minecraft.block.entity.*;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.text.Text;
+import net.minecraft.registry.Registries;
 import net.minecraft.world.chunk.WorldChunk;
 
 import java.io.IOException;
@@ -30,6 +31,8 @@ public class BaseFinder extends Module {
     private final NumberSetting budgetMs  = add(new NumberSetting("Budget ms/Tick", 1.0, 0.2, 5.0, 0.1));
     private final NumberSetting rescan    = add(new NumberSetting("Rescan (s)", 10, 2, 120, 1));
     private final NumberSetting threshold = add(new NumberSetting("Min Score", 12, 3, 100, 1));
+    private final NumberSetting similarity = add(new NumberSetting("Ähnlichkeit (%)", 95, 50, 100, 5));
+    private final NumberSetting unchangedScans = add(new NumberSetting("Unveränderte Scans", 3, 2, 10, 1));
     private final NumberSetting minSignals = add(new NumberSetting("Min. Signaltypen", 2, 1, 5, 1));
     private final NumberSetting wStorage  = add(new NumberSetting("Gewicht Storage", 1.0, 0.1, 5.0, 0.1));
     private final NumberSetting wHopper   = add(new NumberSetting("Gewicht Hopper", 1.5, 0.1, 5.0, 0.1));
@@ -42,7 +45,7 @@ public class BaseFinder extends Module {
     private static final Type MARK_LIST = new TypeToken<List<Mark>>() {}.getType();
 
     private static final class Mark {
-        int cx, cz; double score; String status; long found; List<String> reasons;
+        int cx, cz; double score; String status; long found; List<String> reasons; List<String> signature; int unchanged;
     }
 
     private final Map<Long, ChunkResult> results = new HashMap<>();
@@ -162,8 +165,12 @@ public class BaseFinder extends Module {
 
         int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0;
         Map<Integer, Integer> cells = new HashMap<>();
+        List<String> signature = new ArrayList<>();
 
         for (BlockEntity be : ch.getBlockEntities().values()) {
+            // Nur Typ + Position vergleichen: Facing/Rotation ist absichtlich kein Bestandteil.
+            String typeId = String.valueOf(Registries.BLOCK_ENTITY_TYPE.getId(be.getType()));
+            signature.add(typeId + "@" + (be.getPos().getX() & 15) + "," + be.getPos().getY() + "," + (be.getPos().getZ() & 15));
             boolean dense = false;
             if (be instanceof ChestBlockEntity || be instanceof BarrelBlockEntity) { storage++; dense = true; }
             else if (be instanceof ShulkerBoxBlockEntity) { shulker++; dense = true; }
@@ -184,10 +191,23 @@ public class BaseFinder extends Module {
                 + hopper * wHopper.get() + furnace * wFurnace.get() + redstone * wRedstone.get() + cluster;
         int signalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
                 + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (cluster > 0 ? 1 : 0);
+        Collections.sort(signature);
 
         ChunkResult old = results.get(k);
         ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
         Status prev = res.status;
+        List<String> previousSignature = res.signature == null ? Collections.emptyList() : res.signature;
+        boolean candidate = score >= threshold.get() && signalKinds >= minSignals.getInt();
+        if (candidate && !previousSignature.isEmpty()) {
+            double similarityRatio = similarity(previousSignature, signature);
+            if (similarityRatio * 100.0 >= similarity.get()) res.unchangedScans++;
+            else res.unchangedScans = 1;
+        } else if (candidate) {
+            res.unchangedScans = 1;
+        } else {
+            res.unchangedScans = 0;
+        }
+        res.signature = new ArrayList<>(signature);
         res.score = score;
         res.lastScanTick = tick;
         res.reasons.clear();
@@ -199,7 +219,10 @@ public class BaseFinder extends Module {
         if (redstone > 0) res.reasons.add(redstone + " Dispenser/Comparator/Crafter (" + fmt(redstone * wRedstone.get()) + ")");
         if (cluster > 0) res.reasons.add("Lagerzone (" + maxCell + " in 4x4x4, +" + fmt(cluster) + ")");
 
-        if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
+        if (candidate && res.unchangedScans >= unchangedScans.getInt()) {
+            res.status = Status.HIDDEN;
+            if (prev != Status.HIDDEN) { dirty = true; marksDirty = true; }
+        } else if (candidate) {
             res.status = Status.SUS;
             if (prev != Status.SUS) {
                 res.foundAtMillis = System.currentTimeMillis();
@@ -219,6 +242,16 @@ public class BaseFinder extends Module {
                 res.reasons.add("Score hoch, aber nur " + signalKinds + " Signaltyp(en) — nicht als SUS markiert");
         }
         if (old == null) results.put(k, res);
+    }
+
+    private static double similarity(List<String> a, List<String> b) {
+        if (a.isEmpty() && b.isEmpty()) return 1.0;
+        Set<String> left = new HashSet<>(a), right = new HashSet<>(b);
+        Set<String> intersection = new HashSet<>(left);
+        intersection.retainAll(right);
+        Set<String> union = new HashSet<>(left);
+        union.addAll(right);
+        return union.isEmpty() ? 1.0 : (double) intersection.size() / union.size();
     }
 
     private static String fmt(double value) { return String.format(Locale.ROOT, "%.1f", value); }
@@ -245,6 +278,7 @@ public class BaseFinder extends Module {
                 Mark m = new Mark();
                 m.cx = r.cx; m.cz = r.cz; m.score = r.score; m.status = r.status.name();
                 m.found = r.foundAtMillis; m.reasons = new ArrayList<>(r.reasons);
+                m.signature = r.signature == null ? new ArrayList<>() : new ArrayList<>(r.signature); m.unchanged = r.unchangedScans;
                 out.add(m);
             }
             Path f = marksFile();
@@ -268,6 +302,7 @@ public class BaseFinder extends Module {
                 r.status = Status.valueOf(m.status);
                 r.foundAtMillis = m.found;
                 if (m.reasons != null) r.reasons.addAll(m.reasons);
+                if (m.signature != null) r.signature.addAll(m.signature); r.unchangedScans = m.unchanged;
                 r.lastScanTick = 0;
                 results.put(key(m.cx, m.cz), r);
             }
