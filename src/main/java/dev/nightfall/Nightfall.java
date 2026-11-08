@@ -47,7 +47,7 @@ public class Nightfall implements ClientModInitializer {
                 (ctx, tickCounter) -> {
                     MinecraftClient mc = MinecraftClient.getInstance();
                     if (mc.options.hudHidden || mc.world == null) return;
-                    ModuleManager.renderHud(ctx);
+                    ModuleManager.renderHud(ctx, tickCounter.getTickProgress(false));
                 });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
@@ -95,7 +95,7 @@ public class Nightfall implements ClientModInitializer {
         private static final boolean[] PREVIOUS = new boolean[GLFW.GLFW_KEY_LAST + 1];
         private static boolean wasInUi;
         private KeySound() {}
-    
+
         public static void tick(MinecraftClient mc, boolean inUi) {
             if (mc.getWindow() == null) return;
             long handle = mc.getWindow().getHandle();
@@ -115,12 +115,12 @@ public class Nightfall implements ClientModInitializer {
                 PREVIOUS[key] = down;
             }
         }
-    
+
         private static void sync(long handle) {
             for (int key = GLFW.GLFW_KEY_SPACE; key <= GLFW.GLFW_KEY_LAST; key++)
                 PREVIOUS[key] = GLFW.glfwGetKey(handle, key) == GLFW.GLFW_PRESS;
         }
-    
+
         private static void play(MinecraftClient mc, int key) {
             if (!Config.keySounds || mc.player == null) return;
             // A soft vanilla UI click with a tiny pitch variation gives tactile feedback
@@ -128,5 +128,5 @@ public class Nightfall implements ClientModInitializer {
             float pitch = 0.88f + ((key * 37) % 17) / 100.0f;
             mc.player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.16f, pitch);
         }
-}
+    }
 }
