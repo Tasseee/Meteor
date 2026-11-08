@@ -144,6 +144,14 @@ public class BaseFinder extends Module {
                 int cx = (int) next, cz = (int) (next >> 32);
                 WorldChunk chunk = w.getChunkManager().getWorldChunk(cx, cz);
                 if (chunk == null) continue;
+                // Die Blocksuche ist nur sinnvoll, wenn die schnellen BlockEntity-Signale
+                // den Chunk überhaupt als Kandidaten einstufen können.
+                if (!shouldBlockScan(chunk)) {
+                    scan(w, next, Collections.emptyList());
+                    n++;
+                    scannedSinceRefill++;
+                    continue;
+                }
                 pendingScan = new ScanTask(next, chunk);
             }
             ScanTask task = pendingScan;
@@ -205,6 +213,33 @@ public class BaseFinder extends Module {
                 && (e.cx - pcx) * (e.cx - pcx) + (e.cz - pcz) * (e.cz - pcz) > limit);
     }
 
+    private boolean shouldBlockScan(WorldChunk ch) {
+        int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0;
+        Map<Integer, Integer> cells = new HashMap<>();
+        for (BlockEntity be : ch.getBlockEntities().values()) {
+            boolean dense = false;
+            if (be instanceof ChestBlockEntity || be instanceof BarrelBlockEntity) { storage++; dense = true; }
+            else if (be instanceof ShulkerBoxBlockEntity) { shulker++; dense = true; }
+            else if (be instanceof HopperBlockEntity) { hopper++; dense = true; }
+            else if (be instanceof AbstractFurnaceBlockEntity) furnace++;
+            else if (be instanceof DispenserBlockEntity || be instanceof ComparatorBlockEntity
+                    || be instanceof CrafterBlockEntity) redstone++;
+            if (dense) {
+                int px = be.getPos().getX() & 15, pz = be.getPos().getZ() & 15, py = be.getPos().getY();
+                cells.merge((px >> 2) | ((pz >> 2) << 2) | (((py >> 2) + 32) << 4), 1, Integer::sum);
+            }
+        }
+        int maxCell = 0;
+        for (int value : cells.values()) maxCell = Math.max(maxCell, value);
+        double cluster = maxCell >= 6 ? (maxCell - 5) * wCluster.get() : 0;
+        double score = storage * wStorage.get() + shulker * wStorage.get() * 1.5
+                + hopper * wHopper.get() + furnace * wFurnace.get()
+                + redstone * wRedstone.get() + cluster;
+        int kinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
+                + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (cluster > 0 ? 1 : 0);
+        return score >= threshold.get() && kinds >= minSignals.getInt();
+    }
+
     private void scan(ClientWorld w, long k, List<String> structureSignature) {
         int cx = (int) k, cz = (int) (k >> 32);
         WorldChunk ch = w.getChunkManager().getWorldChunk(cx, cz);
@@ -255,7 +290,7 @@ public class BaseFinder extends Module {
             res.unchangedScans = 0;
         }
         res.signature.clear();
-        res.signature.addAll(signature);
+        if (candidate) res.signature.addAll(signature);
         res.score = score;
         res.lastScanTick = tick;
         res.reasons.clear();
