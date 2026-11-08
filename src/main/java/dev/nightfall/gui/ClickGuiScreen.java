@@ -346,7 +346,7 @@ public class ClickGuiScreen extends Screen {
             drawNotice(ctx, msg, 0xFFFFD27A);
         } else if (System.currentTimeMillis() < noticeUntil) drawNotice(ctx, notice, 0xFFFFD27A);
 
-        String footer = "L: Optionen  ·  Schalter rechts: An/Aus  ·  M: Keybind  ·  Mausrad: Scroll  ·  " + Nightfall.VERSION;
+        String footer = "L: Optionen  ·  Keybind: Typ + BIND  ·  M: Schnellbelegung  ·  Mausrad: Scroll  ·  " + Nightfall.VERSION;
         int footerW = mc.textRenderer.getWidth(footer);
         ctx.drawText(mc.textRenderer, footer, Math.max(6, (width - footerW) / 2), height - 9, Theme.TEXT_DIM, false);
     }
