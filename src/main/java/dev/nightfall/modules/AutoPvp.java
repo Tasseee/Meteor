@@ -19,13 +19,23 @@ public class AutoPvp extends Module {
     private final BoolSetting strafe   = add(new BoolSetting("Strafen", true));
     private final BoolSetting jump     = add(new BoolSetting("Springen bei Hindernis", true));
     private boolean driving;
+    private boolean wasForward, wasSprint, wasLeft, wasRight, wasJump;
     private int strafeDir = 1, strafeTimer;
 
     public AutoPvp() { super("AutoPvP", "Folgt dem naechsten Spieler und kaempft (Freunde werden ignoriert).", Category.COMBAT); }
 
     @Override protected void onDisable() { release(); }
 
-    private void release() { if (driving) { KeyBinding.updatePressedStates(); driving = false; } }
+    private void release() {
+        if (!driving || mc.options == null) return;
+        mc.options.forwardKey.setPressed(wasForward);
+        mc.options.sprintKey.setPressed(wasSprint);
+        mc.options.leftKey.setPressed(wasLeft);
+        mc.options.rightKey.setPressed(wasRight);
+        mc.options.jumpKey.setPressed(wasJump);
+        KeyBinding.updatePressedStates();
+        driving = false;
+    }
 
     @Override
     public void onTick() {
@@ -33,6 +43,14 @@ public class AutoPvp extends Module {
         if (p == null || mc.currentScreen != null || mc.interactionManager == null) { release(); return; }
         PlayerEntity t = CombatUtil.nearestPlayer(follow.get());
         if (t == null) { release(); return; }
+
+        if (!driving) {
+            wasForward = mc.options.forwardKey.isPressed();
+            wasSprint = mc.options.sprintKey.isPressed();
+            wasLeft = mc.options.leftKey.isPressed();
+            wasRight = mc.options.rightKey.isPressed();
+            wasJump = mc.options.jumpKey.isPressed();
+        }
 
         Vec3d eye = p.getEyePos();
         double dx = t.getX() - eye.x, dy = t.getBodyY(0.5) - eye.y, dz = t.getZ() - eye.z;
