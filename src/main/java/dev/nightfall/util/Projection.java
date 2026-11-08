@@ -1,16 +1,21 @@
 package dev.nightfall.util;
 
+import dev.nightfall.mixin.GameRendererAccessor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.util.math.Vec3d;
+import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 
 /**
- * Projiziert Weltkoordinaten anhand der tatsaechlichen Renderkamera auf GUI-Koordinaten.
- * Die Basisvektoren muessen dieselbe Orientierung wie Minecrafts Kamerakoordinaten haben.
+ * Projects world coordinates with the same camera rotation and projection matrix
+ * Minecraft uses for the current world frame.
  */
 public final class Projection {
-    private static double ex, ey, ez, fx, fy, fz, rx, rz, ux, uy, uz, tanH, aspect;
+    private static double ex, ey, ez;
     private static int sw, sh;
+    private static float tickDelta;
+    private static Matrix4f viewProjection;
     private static boolean valid;
 
     private Projection() {}
@@ -21,60 +26,68 @@ public final class Projection {
     public static double eyeX() { return ex; }
     public static double eyeY() { return ey; }
     public static double eyeZ() { return ez; }
+    public static float tickDelta() { return tickDelta; }
 
-    public static void update(MinecraftClient mc, int w, int h) {
+    public static void update(MinecraftClient mc, float frameTickDelta, int width, int height) {
         valid = false;
-        if (mc.player == null || mc.world == null || w <= 0 || h <= 0
-                || !mc.options.getPerspective().isFirstPerson()) return;
+        viewProjection = null;
+
+        if (mc.player == null || mc.world == null || width <= 0 || height <= 0
+                || !Float.isFinite(frameTickDelta)) return;
 
         Camera camera = mc.gameRenderer.getCamera();
-        Vec3d e = camera.getCameraPos();
-        ex = e.x;
-        ey = e.y;
-        ez = e.z;
+        if (camera == null || !camera.isReady()) return;
 
-        double yaw = Math.toRadians(camera.getYaw());
-        double pitch = Math.toRadians(camera.getPitch());
-        double sy = Math.sin(yaw), cy = Math.cos(yaw);
-        double sp = Math.sin(pitch), cp = Math.cos(pitch);
+        Vec3d cameraPos = camera.getCameraPos();
+        ex = cameraPos.x;
+        ey = cameraPos.y;
+        ez = cameraPos.z;
 
-        fx = -sy * cp;
-        fy = -sp;
-        fz = cy * cp;
+        GameRendererAccessor renderer = (GameRendererAccessor) mc.gameRenderer;
+        float fov = renderer.nightfall$invokeGetFov(camera, frameTickDelta, true);
+        if (!Float.isFinite(fov) || fov <= 0.0f) return;
 
-        // Minecraft camera-right points towards +X at yaw 0 (not -X).
-        rx = cy;
-        rz = sy;
+        // Use Minecraft's actual projection matrix (including dynamic FOV effects),
+        // not a second approximation based only on the user's configured FOV.
+        Matrix4f projection = renderer.nightfall$invokeGetProjectionMatrix(fov);
+        Quaternionf inverseCameraRotation = camera.getRotation().conjugate(new Quaternionf());
+        Matrix4f view = new Matrix4f().rotation(inverseCameraRotation);
+        viewProjection = projection.mul(view);
 
-        ux = -sy * sp;
-        uy = cp;
-        uz = cy * sp;
-
-        double fov = mc.options.getFov().getValue();
-        if (!Double.isFinite(fov)) return;
-        fov = Math.max(1.0, Math.min(179.0, fov));
-        tanH = Math.tan(Math.toRadians(fov) / 2.0);
-        if (!Double.isFinite(tanH) || tanH <= 0.0) return;
-
-        sw = w;
-        sh = h;
-        aspect = w / (double) h;
+        sw = width;
+        sh = height;
+        tickDelta = frameTickDelta;
         valid = Double.isFinite(ex) && Double.isFinite(ey) && Double.isFinite(ez);
     }
 
-    /** @return false, wenn der Punkt hinter der Kamera liegt. out = {x, y} in GUI-Pixeln. */
+    /**
+     * @return false when the point is behind/too close to the camera or invalid.
+     * out = {x, y} in scaled GUI pixels.
+     */
     public static boolean project(double x, double y, double z, double[] out) {
-        if (!valid || out == null || out.length < 2
+        if (!valid || viewProjection == null || out == null || out.length < 2
                 || !Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) return false;
 
-        double dx = x - ex, dy = y - ey, dz = z - ez;
-        double depth = dx * fx + dy * fy + dz * fz;
-        if (depth < 0.05) return false;
+        float dx = (float) (x - ex);
+        float dy = (float) (y - ey);
+        float dz = (float) (z - ez);
 
-        double dr = dx * rx + dz * rz;
-        double du = dx * ux + dy * uy + dz * uz;
-        out[0] = (0.5 + 0.5 * (dr / depth) / (tanH * aspect)) * sw;
-        out[1] = (0.5 - 0.5 * (du / depth) / tanH) * sh;
+        // JOML stores matrices column-major: these are the x, y and w
+        // components of projection * inverseCameraRotation * position.
+        float clipX = viewProjection.m00() * dx + viewProjection.m10() * dy
+                + viewProjection.m20() * dz + viewProjection.m30();
+        float clipY = viewProjection.m01() * dx + viewProjection.m11() * dy
+                + viewProjection.m21() * dz + viewProjection.m31();
+        float clipW = viewProjection.m03() * dx + viewProjection.m13() * dy
+                + viewProjection.m23() * dz + viewProjection.m33();
+
+        if (!Float.isFinite(clipX) || !Float.isFinite(clipY)
+                || !Float.isFinite(clipW) || clipW <= 1.0e-4f) return false;
+
+        double ndcX = clipX / clipW;
+        double ndcY = clipY / clipW;
+        out[0] = (ndcX * 0.5 + 0.5) * sw;
+        out[1] = (0.5 - ndcY * 0.5) * sh;
         return Double.isFinite(out[0]) && Double.isFinite(out[1]);
     }
 }
