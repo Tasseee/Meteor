@@ -132,7 +132,7 @@ public class BaseFinder extends Module {
         if (paused) { lastScanned = 0; lastScanNanos = 0; return; }
 
         int pcx = mc.player.getBlockX() >> 4, pcz = mc.player.getBlockZ() >> 4;
-        if (queue.isEmpty() && tick % 20 == 0) refill(w, pcx, pcz);
+        if (pendingScan == null && queue.isEmpty() && tick % 20 == 0) refill(w, pcx, pcz);
 
         long start = System.nanoTime();
         long deadline = start + (long) (budgetMs.get() * 1_000_000.0);
