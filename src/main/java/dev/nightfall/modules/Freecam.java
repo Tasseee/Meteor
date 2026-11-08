@@ -33,7 +33,7 @@ public final class Freecam extends Module {
             FreeLook look = dev.nightfall.module.ModuleManager.get(FreeLook.class);
             if (look.isEnabled()) look.setEnabled(false);
         } catch (IllegalStateException ignored) {}
-        playerStart = mc.player.getPos();
+        playerStart = mc.player.getEntityPos();
         savedYaw = mc.player.getYaw();
         savedPitch = mc.player.getPitch();
         cameraYaw = savedYaw;
