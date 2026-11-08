@@ -115,7 +115,7 @@ public class Nightfall implements ClientModInitializer {
     }
 
     private void onTick(MinecraftClient mc) {
-        if (balanceServer != BalanceServer.NONE && !balanceRequested && mc.player != null
+        if (balanceServer != BalanceServer.NONE && !balanceRequested && balanceRequestAttempts < 5 && mc.player != null
                 && mc.player.networkHandler != null && mc.getNetworkHandler() != null) {
             if (balanceJoinDelay-- <= 0) {
                 requestBalance(mc);
