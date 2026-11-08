@@ -17,7 +17,7 @@ public class CombatStatusHud extends HudModule {
         LivingEntity t = tc.target;
         double mace = ModuleManager.get(MaceAssist.class).estimate;
         w = 110; h = mace > 0 ? 46 : 34;
-        ctx.fill(0, 0, w, h, 0xA0101014);
+        ctx.fill(0, 0, w, h, Theme.HUD_PANEL);
         ctx.fill(0, 0, 2, h, Theme.ACCENT);
         if (t == null || mc.player == null) {
             ctx.drawText(mc.textRenderer, tc.isEnabled() ? "Kein Ziel" : "TrapCrit aus", 6, 3, Theme.TEXT_DIM, false);
