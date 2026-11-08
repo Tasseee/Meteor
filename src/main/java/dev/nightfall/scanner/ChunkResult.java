@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class ChunkResult {
-    public enum Status { CLEAN, SUS, GONE }
+    public enum Status { CLEAN, SUS, GONE, HIDDEN }
 
     public final int cx, cz;
     public double score;
@@ -12,6 +12,8 @@ public final class ChunkResult {
     public long foundAtMillis;
     public long lastScanTick;
     public final List<String> reasons = new ArrayList<>();
+    public final List<String> signature = new ArrayList<>();
+    public int unchangedScans;
 
     public ChunkResult(int cx, int cz) { this.cx = cx; this.cz = cz; }
 
