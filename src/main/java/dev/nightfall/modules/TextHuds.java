@@ -3,6 +3,7 @@ package dev.nightfall.modules;
 import dev.nightfall.module.HudModule;
 import dev.nightfall.util.Theme;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.Camera;
 import net.minecraft.client.network.PlayerListEntry;
 
 import java.time.LocalTime;
@@ -50,7 +51,8 @@ public final class TextHuds {
         public Direction() { super("Direction", "Blickrichtung.", 134); }
         @Override String text() {
             if (mc.player == null) return "-";
-            float yaw = mc.player.getYaw();
+            Camera camera = mc.gameRenderer.getCamera();
+            float yaw = camera != null && camera.isReady() ? camera.getYaw() : mc.player.getYaw();
             String[] n = {"S (+Z)", "SW", "W (-X)", "NW", "N (-Z)", "NE", "E (+X)", "SE"};
             int i = Math.floorMod(Math.round(yaw / 45f), 8);
             return n[i] + String.format("  %.0f", ((yaw % 360) + 360) % 360);
