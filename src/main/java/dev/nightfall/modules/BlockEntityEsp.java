@@ -2,8 +2,10 @@ package dev.nightfall.modules;
 
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.Camera;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.chunk.WorldChunk;
 import dev.nightfall.util.Projection;
 
@@ -31,9 +33,13 @@ public abstract class BlockEntityEsp extends EspBase {
         timer = 10;
         cache.clear(); boxes.clear();
         int r = range.getInt();
-        int pcx = mc.player.getBlockX() >> 4, pcz = mc.player.getBlockZ() >> 4;
+        Camera camera = mc.gameRenderer.getCamera();
+        Vec3d origin = camera != null && camera.isReady()
+                ? camera.getCameraPos()
+                : mc.player.getEyePos();
+        double px = origin.x, py = origin.y, pz = origin.z;
+        int pcx = ((int) Math.floor(px)) >> 4, pcz = ((int) Math.floor(pz)) >> 4;
         int cr = (r >> 4) + 1;
-        double px = mc.player.getX(), py = mc.player.getY(), pz = mc.player.getZ();
         double r2 = (double) r * r;
         for (int dz = -cr; dz <= cr; dz++) {
             for (int dx = -cr; dx <= cr; dx++) {
