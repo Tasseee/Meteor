@@ -123,7 +123,8 @@ public class BaseFinder extends Module {
             clearData();
             lastWorld = w;
             ctxKey = Storage.server() + "_" + Storage.dim();
-            loadMarks();\n            loadFakePatterns();
+            loadMarks();
+            loadFakePatterns();
         }
         tick++;
         if (paused) { lastScanned = 0; lastScanNanos = 0; return; }
