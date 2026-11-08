@@ -148,10 +148,16 @@ public final class Commands {
         StaffWatch staff = ModuleManager.get(StaffWatch.class);
         root.then(literal("staff")
                 .then(literal("add").then(argument("name", StringArgumentType.word()).executes(c ->
-                        say(c, staff.staffNames.add(str(c, "name")) ? "StaffWatch-Name hinzugefügt" : "Name bereits eingetragen"))))
+                        say(c, staff.staffNames.add(str(c, "name")) ? "Zusätzlicher StaffWatch-Name hinzugefügt" : "Name bereits eingetragen"))))
                 .then(literal("del").then(argument("name", StringArgumentType.word()).executes(c ->
-                        say(c, staff.staffNames.remove(str(c, "name")) ? "StaffWatch-Name entfernt" : "Name nicht gefunden"))))
-                .then(literal("list").executes(c -> say(c, "Beobachtete Namen: " + String.join(", ", staff.staffNames.get())))));
+                        say(c, staff.staffNames.remove(str(c, "name")) ? "Zusätzlicher Name entfernt" : "Name nicht gefunden"))))
+                .then(literal("list").executes(c -> {
+                    List<StaffWatch.DetectedStaff> detected = staff.getDetectedStaff();
+                    for (StaffWatch.DetectedStaff candidate : detected)
+                        say(c, candidate.name() + " — " + candidate.reason());
+                    if (detected.isEmpty()) say(c, "Keine erkennbaren Staff-Marker in der sichtbaren Tab-Liste");
+                    return say(c, detected.size() + " automatisch erkannte Kandidaten (keine Berechtigungs-Garantie)");
+                })));
 
         // ---- Soft keyboard click feedback (only while Nightfall UI/editor is open) ----
         root.then(literal("keysounds")
