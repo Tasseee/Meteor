@@ -44,7 +44,7 @@ public final class Theme {
         TEXT_DIM = 0xFF000000 | (dim & 0xFFFFFF);
         ROW_HOVER = 0x30000000 | (accent & 0xFFFFFF);
         MAP_BG = panel & 0xFFFFFF;
-        HUD_PANEL = (\"Glass\".equals(design) ? 0xA8000000 : 0xD9000000) | (panel & 0xFFFFFF);
+        HUD_PANEL = ("Glass".equals(design) ? 0xA8000000 : 0xD9000000) | (panel & 0xFFFFFF);
         HUD_EDGE = 0xFF000000 | (accent & 0xFFFFFF);
         DESIGN = design == null ? "Gradient" : design;
     }
