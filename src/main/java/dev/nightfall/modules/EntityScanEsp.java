@@ -45,7 +45,16 @@ public abstract class EntityScanEsp extends EspBase {
             double d = Math.sqrt(e.squaredDistanceTo(sx, sy, sz));
             String lb = label(nameOf(e), d);
             if (health.get() && e instanceof LivingEntity le) lb += " " + Math.round(le.getHealth()) + "hp";
-            drawTarget(ctx, e.getBoundingBox(), lb, color.rgb());
+
+            // Match the interpolated entity position used by the rendered world,
+            // otherwise name labels and boxes lag by part of a tick.
+            var renderedPos = e.getLerpedPos(Projection.tickDelta());
+            var entityPos = e.getPos();
+            var renderedBox = e.getBoundingBox().offset(
+                    renderedPos.x - entityPos.x,
+                    renderedPos.y - entityPos.y,
+                    renderedPos.z - entityPos.z);
+            drawTarget(ctx, renderedBox, lb, color.rgb());
         }
     }
 }
