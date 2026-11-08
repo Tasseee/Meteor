@@ -41,6 +41,12 @@ public class BaseFinder extends Module {
 
     private static final Gson GSON = new Gson();
     private static final Type MARK_LIST = new TypeToken<List<Mark>>() {}.getType();
+    private static final Type FAKE_LIST = new TypeToken<List<FakePattern>>() {}.getType();
+
+    private static final class FakePattern {
+        int storage, shulker, hopper, furnace, redstone, spawner;
+        List<String> seenChunks = new ArrayList<>();
+    }
 
     private static final class Mark {
         int cx, cz; double score; String status; long found; List<String> reasons;
@@ -50,6 +56,7 @@ public class BaseFinder extends Module {
     private final ArrayDeque<Long> queue = new ArrayDeque<>();
     private final List<ChunkResult> top = new ArrayList<>();
     private final List<ChunkResult> marks = new ArrayList<>();
+    private final List<FakePattern> fakePatterns = new ArrayList<>();
     private boolean dirty = true, marksDirty;
     private ClientWorld lastWorld;
     private String ctxKey;
@@ -108,7 +115,7 @@ public class BaseFinder extends Module {
             clearData();
             lastWorld = w;
             ctxKey = Storage.server() + "_" + Storage.dim();
-            loadMarks();
+            loadMarks();\n            loadFakePatterns();
         }
         tick++;
         if (paused) { lastScanned = 0; lastScanNanos = 0; return; }
@@ -204,6 +211,13 @@ public class BaseFinder extends Module {
         if (cluster > 0) res.reasons.add("Lagerzone (" + maxCell + " in 4x4x4, +" + fmt(cluster) + ")");
 
         if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
+            if (isRepeatedFakePattern(storage, shulker, hopper, furnace, redstone, spawner, cx, cz)) {
+                res.status = Status.CLEAN;
+                res.reasons.clear();
+                results.put(k, res);
+                dirty = true;
+                return;
+            }
             res.status = Status.SUS;
             if (prev != Status.SUS) {
                 res.foundAtMillis = System.currentTimeMillis();
@@ -223,6 +237,57 @@ public class BaseFinder extends Module {
                 res.reasons.add("Score hoch, aber nur " + signalKinds + " Signaltyp(en) — nicht als SUS markiert");
         }
         if (old == null) results.put(k, res);
+    }
+
+    private boolean isRepeatedFakePattern(int storage, int shulker, int hopper, int furnace,
+                                          int redstone, int spawner, int cx, int cz) {
+        for (FakePattern p : fakePatterns) {
+            if (!similar(p.storage, storage) || !similar(p.shulker, shulker)
+                    || !similar(p.hopper, hopper) || !similar(p.furnace, furnace)
+                    || !similar(p.redstone, redstone) || !similar(p.spawner, spawner)) continue;
+            String location = cx + "," + cz;
+            if (!p.seenChunks.contains(location)) {
+                p.seenChunks.add(location);
+                saveFakePatterns();
+            }
+            return p.seenChunks.size() >= 3;
+        }
+        FakePattern p = new FakePattern();
+        p.storage = storage; p.shulker = shulker; p.hopper = hopper;
+        p.furnace = furnace; p.redstone = redstone; p.spawner = spawner;
+        p.seenChunks.add(cx + "," + cz);
+        fakePatterns.add(p);
+        saveFakePatterns();
+        return false;
+    }
+
+    private static boolean similar(int a, int b) {
+        return Math.abs(a - b) <= Math.max(2, Math.round(Math.max(a, b) * 0.25f));
+    }
+
+    private Path fakePatternsFile() { return Storage.dir().resolve("fake_patterns_" + ctxKey + ".json"); }
+
+    private void saveFakePatterns() {
+        if (ctxKey == null) return;
+        try {
+            Files.writeString(fakePatternsFile(), GSON.toJson(fakePatterns));
+        } catch (IOException e) {
+            Nightfall.LOGGER.error("Fake-Base-Fingerprints konnten nicht gespeichert werden", e);
+        }
+    }
+
+    private void loadFakePatterns() {
+        Path f = fakePatternsFile();
+        if (!Files.exists(f)) return;
+        try {
+            List<FakePattern> loaded = GSON.fromJson(Files.readString(f), FAKE_LIST);
+            if (loaded != null) {
+                fakePatterns.clear();
+                fakePatterns.addAll(loaded);
+            }
+        } catch (Exception e) {
+            Nightfall.LOGGER.error("Fake-Base-Fingerprints defekt: {}", f, e);
+        }
     }
 
     private static String fmt(double value) { return String.format(Locale.ROOT, "%.1f", value); }
