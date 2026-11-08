@@ -51,11 +51,18 @@ public abstract class EspBase extends Module {
             Draw.centeredText(ctx, mc.textRenderer, label, Draw.topX, Draw.topY - 10, 0xFFFFFFFF);
         else if (!shown && centerOk && label != null && !label.isEmpty())
             Draw.centeredText(ctx, mc.textRenderer, label, (float) pt[0], (float) pt[1] - 4, 0xFFFFFFFF);
-        if (tracers.get() && centerOk) {
+        if (tracers.get()) {
             float sx = Projection.width() / 2f;
             float sy = origin.is("Mitte") ? Projection.height() / 2f : Projection.height();
-            Draw.line(ctx, sx, sy, (float) pt[0], (float) pt[1], col, thickness.getInt());
-            shown = true;
+            if (centerOk) {
+                Draw.line(ctx, sx, sy, (float) pt[0], (float) pt[1], col, thickness.getInt());
+                shown = true;
+            } else if (Projection.projectToEdge(cx, cy, cz, pt)) {
+                // Keep a directional tracer visible when the target is outside the view,
+                // including directly behind the camera.
+                Draw.line(ctx, sx, sy, (float) pt[0], (float) pt[1], col, thickness.getInt());
+                shown = true;
+            }
         }
         if (shown) drawn++;
     }
