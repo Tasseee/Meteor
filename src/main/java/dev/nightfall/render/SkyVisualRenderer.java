@@ -5,9 +5,12 @@ import dev.nightfall.modules.SkyVisuals;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.VertexConsumer;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
@@ -30,12 +33,19 @@ public final class SkyVisualRenderer {
         if (!sky.isEnabled()) return;
 
         MatrixStack matrices = context.matrices();
-        Vec3d camera = mc.gameRenderer.getCamera().getCameraPos();
-        Vec3d forward = mc.player.getRotationVec(1.0f).normalize();
-        Vec3d right = new Vec3d(forward.z, 0.0, -forward.x);
-        if (right.lengthSquared() < 1.0E-6) right = new Vec3d(1.0, 0.0, 0.0);
-        else right = right.normalize();
-        Vec3d up = forward.crossProduct(right).normalize();
+        Camera renderCamera = mc.gameRenderer.getCamera();
+        Vec3d camera = renderCamera.getCameraPos();
+
+        // Use the render camera basis, not the player's body rotation. This also follows
+        // FreeLook and Freecam, where the camera can face a different direction.
+        Quaternionf cameraRotation = renderCamera.getRotation();
+        Vector3f forwardVector = new Vector3f(0.0f, 0.0f, -1.0f).rotate(cameraRotation);
+        Vector3f rightVector = new Vector3f(1.0f, 0.0f, 0.0f).rotate(cameraRotation);
+        Vector3f upVector = new Vector3f(0.0f, 1.0f, 0.0f).rotate(cameraRotation);
+        Vec3d forward = new Vec3d(forwardVector.x, forwardVector.y, forwardVector.z).normalize();
+        Vec3d right = new Vec3d(rightVector.x, rightVector.y, rightVector.z).normalize();
+        Vec3d up = new Vec3d(upVector.x, upVector.y, upVector.z).normalize();
+
         VertexConsumer fills = context.consumers().getBuffer(RenderLayers.debugFilledBox());
         double distance = sky.distance();
         float intensity = sky.intensity();
