@@ -75,6 +75,14 @@ public class BaseFinder extends Module {
     // ---- Zugriff fuer Karte/HUD/ESP ----
     public double thresholdValue() { return threshold.get(); }
     public ChunkResult get(int cx, int cz) { return results.get(key(cx, cz)); }
+    public boolean isFakeChunk(int cx, int cz) {
+        String location = cx + "," + cz;
+        for (FakePattern pattern : fakePatterns) {
+            if (pattern.seenChunks != null && pattern.seenChunks.size() >= 3
+                    && pattern.seenChunks.contains(location)) return true;
+        }
+        return false;
+    }
     public Collection<ChunkResult> results() { return results.values(); }
     public List<ChunkResult> suspects() { return top; }
     public List<ChunkResult> marks() { return marks; }
