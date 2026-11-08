@@ -17,6 +17,7 @@ import java.util.Map;
 public final class ModuleManager {
     private static final List<Module> MODULES = new ArrayList<>();
     private static final boolean[] KEY_DOWN = new boolean[GLFW.GLFW_KEY_LAST + 1];
+    private static final boolean[] MOUSE_DOWN = new boolean[GLFW.GLFW_MOUSE_BUTTON_LAST + 1];
     public static int errorCount;
     private static final Map<String, Long> SLOW_LOG_TIMES = new HashMap<>();
 
@@ -122,9 +123,17 @@ public final class ModuleManager {
     public static String assignKey(Module m, int key) {
         if (key >= 0) {
             if (key == Config.guiKey || key == Config.hudKey || key == Config.mapKey) return "Taste ist bereits fuer GUI/HUD/Karte belegt";
-            for (Module o : MODULES) if (o != m && o.getKey() == key) return "Taste bereits belegt von " + o.getName();
+            for (Module o : MODULES) if (o != m && !o.isMouseKey() && o.getKey() == key) return "Taste bereits belegt von " + o.getName();
         }
         m.setKey(key);
+        return null;
+    }
+
+    public static String assignMouseKey(Module m, int button) {
+        if (button >= 0) {
+            for (Module o : MODULES) if (o != m && o.isMouseKey() && o.getKey() == button) return "Maustaste bereits belegt von " + o.getName();
+        }
+        m.setMouseKey(button);
         return null;
     }
 
@@ -133,10 +142,17 @@ public final class ModuleManager {
         long h = mc.getWindow().getHandle();
         for (Module m : MODULES) {
             int k = m.getKey();
-            if (k < 0 || k > GLFW.GLFW_KEY_LAST) continue;
-            boolean d = GLFW.glfwGetKey(h, k) == GLFW.GLFW_PRESS;
-            if (d && !KEY_DOWN[k] && mc.currentScreen == null && mc.player != null) m.toggle();
-            KEY_DOWN[k] = d;
+            if (m.isMouseKey()) {
+                if (k < 0 || k > GLFW.GLFW_MOUSE_BUTTON_LAST) continue;
+                boolean d = GLFW.glfwGetMouseButton(h, k) == GLFW.GLFW_PRESS;
+                if (d && !MOUSE_DOWN[k] && mc.currentScreen == null && mc.player != null) m.toggle();
+                MOUSE_DOWN[k] = d;
+            } else {
+                if (k < 0 || k > GLFW.GLFW_KEY_LAST) continue;
+                boolean d = GLFW.glfwGetKey(h, k) == GLFW.GLFW_PRESS;
+                if (d && !KEY_DOWN[k] && mc.currentScreen == null && mc.player != null) m.toggle();
+                KEY_DOWN[k] = d;
+            }
         }
     }
 
