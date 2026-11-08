@@ -82,7 +82,8 @@ public class MapScreen extends Screen {
         lastMx = mx; lastMy = my;
 
         BaseFinder bf = ModuleManager.get(BaseFinder.class);
-        ctx.fill(0, 0, width, height, 0xF00B0B0F);
+        ctx.fill(0, 0, width, height, 0xF0080B12);
+        ctx.fill(0, 0, width, 2, Theme.ACCENT);
 
         // Chunk-Zellen
         int cell = Math.max(1, (int) Math.round(zoom));
@@ -140,14 +141,16 @@ public class MapScreen extends Screen {
         int hcx = (int) Math.floor(bx / 16.0), hcz = (int) Math.floor(bz / 16.0);
         ChunkResult hr = bf.get(hcx, hcz);
         String coords = "Block " + (int) Math.floor(bx) + ", " + (int) Math.floor(bz) + "   Chunk " + hcx + ", " + hcz;
-        ctx.drawText(mc.textRenderer, coords, 8, 8, Theme.TEXT, true);
+        ctx.fill(6, 5, Math.min(width - 6, mc.textRenderer.getWidth(coords) + 22), 24, Theme.PANEL);
+        ctx.fill(6, 5, 8, 24, Theme.ACCENT);
+        ctx.drawText(mc.textRenderer, coords, 13, 10, Theme.TEXT, true);
         if (hr != null && hr.status != ChunkResult.Status.CLEAN) {
             String t1 = (hr.status == ChunkResult.Status.SUS ? "SUS" : "SUS WEG") + "  Score " + String.format("%.1f", hr.score);
             String t2 = String.join(", ", hr.reasons);
             String t3 = hr.foundAtMillis > 0 ? "erkannt vor " + ago(System.currentTimeMillis() - hr.foundAtMillis) : "";
             int tw = Math.max(mc.textRenderer.getWidth(t1), Math.max(mc.textRenderer.getWidth(t2), mc.textRenderer.getWidth(t3))) + 10;
             int tx = Math.min(mx + 10, width - tw - 4), ty = Math.min(my + 10, height - 40);
-            ctx.fill(tx, ty, tx + tw, ty + 34, 0xF0141418);
+            ctx.fill(tx, ty, tx + tw, ty + 34, Theme.HUD_PANEL);
             ctx.fill(tx, ty, tx + 2, ty + 34, Theme.ACCENT);
             ctx.drawText(mc.textRenderer, t1, tx + 6, ty + 3, Theme.TEXT, false);
             ctx.drawText(mc.textRenderer, t2, tx + 6, ty + 13, Theme.TEXT_DIM, false);
@@ -163,8 +166,9 @@ public class MapScreen extends Screen {
 
         // Legende + Filter
         String[] names = {"Alle", "Verdaechtig", "Verschwunden"};
-        ctx.fill(6, height - 52, 150, height - 6, 0xE6141418);
+        ctx.fill(6, height - 52, 190, height - 6, Theme.PANEL);
         ctx.fill(6, height - 52, 8, height - 6, Theme.ACCENT);
+        ctx.fill(6, height - 54, 190, height - 52, Theme.ACCENT_DIM);
         legend(ctx, mc, 14, height - 46, 0x9B5CF6, "SUS (Score steigt: rot)");
         legend(ctx, mc, 14, height - 34, 0x2F6FDB, "SUS WEG");
         legend(ctx, mc, 14, height - 22, 0x24242E, "gescannt, unauffaellig");
