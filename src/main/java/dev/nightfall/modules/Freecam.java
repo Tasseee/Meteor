@@ -6,20 +6,25 @@ import dev.nightfall.module.setting.NumberSetting;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 
-/** Independent, movable render camera. The player entity is kept at its start position. */
+/** Independent camera with its own mouse rotation and movement; the player stays put. */
 public final class Freecam extends Module {
     private static Vec3d cameraPosition = Vec3d.ZERO;
     private static boolean active;
+    private static float cameraYaw, cameraPitch;
     private Vec3d playerStart = Vec3d.ZERO;
     private float savedYaw, savedPitch;
+    private double lastMouseX, lastMouseY;
+    private boolean mouseInitialized;
     private final NumberSetting speed = add(new NumberSetting("Geschwindigkeit", 0.6, 0.1, 3.0, 0.1));
 
     public Freecam() {
-        super("Freecam", "Bewegt die Kamera unabhaengig vom Spieler durch die Welt.", Category.MOVEMENT);
+        super("Freecam", "Bewegt und dreht die Kamera unabhaengig vom Spieler durch die Welt.", Category.MOVEMENT);
     }
 
     public static boolean isActive() { return active; }
     public static Vec3d cameraPosition() { return cameraPosition; }
+    public static float cameraYaw() { return cameraYaw; }
+    public static float cameraPitch() { return cameraPitch; }
 
     @Override
     protected void onEnable() {
@@ -31,7 +36,10 @@ public final class Freecam extends Module {
         playerStart = mc.player.getPos();
         savedYaw = mc.player.getYaw();
         savedPitch = mc.player.getPitch();
+        cameraYaw = savedYaw;
+        cameraPitch = savedPitch;
         cameraPosition = mc.player.getEyePos();
+        mouseInitialized = false;
         active = true;
     }
 
@@ -39,8 +47,21 @@ public final class Freecam extends Module {
     public void onTick() {
         if (!active || mc.player == null || mc.getWindow() == null) return;
         long window = mc.getWindow().getHandle();
-        float yaw = (float) Math.toRadians(savedYaw);
-        Vec3d forward = new Vec3d(-Math.sin(yaw), 0, Math.cos(yaw));
+        double[] x = new double[1], y = new double[1];
+        GLFW.glfwGetCursorPos(window, x, y);
+        if (mouseInitialized) {
+            cameraYaw += (float) ((x[0] - lastMouseX) * 0.15);
+            cameraPitch += (float) ((y[0] - lastMouseY) * 0.15);
+            cameraPitch = Math.max(-90.0f, Math.min(90.0f, cameraPitch));
+        }
+        lastMouseX = x[0];
+        lastMouseY = y[0];
+        mouseInitialized = true;
+
+        float yaw = (float) Math.toRadians(cameraYaw);
+        float pitch = (float) Math.toRadians(cameraPitch);
+        Vec3d forward = new Vec3d(-Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch),
+                Math.cos(yaw) * Math.cos(pitch));
         Vec3d right = new Vec3d(Math.cos(yaw), 0, Math.sin(yaw));
         Vec3d move = Vec3d.ZERO;
 
