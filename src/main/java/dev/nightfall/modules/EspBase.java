@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.*;
 import dev.nightfall.util.Draw;
 import dev.nightfall.util.Projection;
@@ -42,6 +43,9 @@ public abstract class EspBase extends Module {
 
     protected void drawTarget(DrawContext ctx, Box box, String label, int rgb) {
         if (!Projection.valid()) return;
+        BaseFinder baseFinder = ModuleManager.get(BaseFinder.class);
+        if (baseFinder != null && baseFinder.isFakeChunk(((int) Math.floor((box.minX + box.maxX) / 2.0)) >> 4,
+                ((int) Math.floor((box.minZ + box.maxZ) / 2.0)) >> 4)) return;
         int col = argb(rgb);
         boolean shown = false;
         if (!style.is("Aus")) shown = Draw.box(ctx, box, col, thickness.getInt(), style.is("3D"));
