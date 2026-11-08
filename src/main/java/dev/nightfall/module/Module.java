@@ -16,6 +16,7 @@ public abstract class Module {
     private final Category category;
     private boolean enabled;
     private int key = -1;
+    private boolean mouseKey;
     private final List<Setting<?>> settings = new ArrayList<>();
 
     protected Module(String name, String description, Category category) {
@@ -31,7 +32,10 @@ public abstract class Module {
     public List<Setting<?>> getSettings() { return Collections.unmodifiableList(settings); }
 
     public int getKey() { return key; }
-    public void setKey(int k) { key = k; }
+    public void setKey(int k) { key = k; mouseKey = false; }
+    public boolean isMouseKey() { return mouseKey; }
+    public void setMouseKey(int button) { key = button; mouseKey = true; }
+    public void clearKey() { key = -1; mouseKey = false; }
 
     public void toggle() { setEnabled(!enabled); }
     public void setEnabled(boolean e) {
