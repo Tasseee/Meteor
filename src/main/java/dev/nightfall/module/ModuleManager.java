@@ -61,7 +61,6 @@ public final class ModuleManager {
         MODULES.add(new SkyVisuals());
         MODULES.add(new FirstPersonStyle());
         MODULES.add(new WeaponAnimations());
-        MODULES.add(new GhostHand());
         MODULES.add(new SlowSwing());
         MODULES.add(new InvSee());
         MODULES.add(new GlowESP());
