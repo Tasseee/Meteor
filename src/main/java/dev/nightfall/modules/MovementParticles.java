@@ -16,6 +16,7 @@ public final class MovementParticles extends Module {
     private final BoolSetting jumping = add(new BoolSetting("Beim Springen/Landen", true));
     private boolean wasGrounded = true;
     private int ticks;
+    @Override public void onWorldLeave() { wasGrounded = true; ticks = 0; }
     public MovementParticles() { super("MovementParticles", "Zusätzliche lokale Bewegungs-, Sprung- und Totem-Optik.", Category.VISUALS); }
     @Override public void onTick() {
         if (mc.player == null || mc.world == null) return;
