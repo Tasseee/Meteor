@@ -15,6 +15,7 @@ public final class JumpCircles extends Module {
 
     public JumpCircles() { super("JumpCircles", "Partikelkreis beim Landen nach einem Sprung (lokal).", Category.VISUALS); }
     @Override protected void onEnable() { airborne = false; }
+    @Override public void onWorldLeave() { airborne = false; }
 
     @Override public void onTick() {
         if (mc.player == null || mc.world == null) return;
