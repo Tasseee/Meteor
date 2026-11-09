@@ -2,7 +2,6 @@ package dev.nightfall.mixin;
 
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.FirstPersonStyle;
-import dev.nightfall.modules.GhostHand;
 import dev.nightfall.modules.WeaponAnimations;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
@@ -27,12 +26,6 @@ public abstract class HeldItemRendererMixin {
                                                 Hand hand, float swingProgress, ItemStack item, float equipProgress,
                                                 MatrixStack matrices, OrderedRenderCommandQueue queue, int light,
                                                 CallbackInfo ci) {
-        try {
-            if (hand == Hand.MAIN_HAND && item.isEmpty() && ModuleManager.get(GhostHand.class).isEnabled()) {
-                ci.cancel();
-                return;
-            }
-        } catch (Throwable ignored) { }
         boolean styleEnabled = false, weaponEnabled = false;
         try { styleEnabled = ModuleManager.get(FirstPersonStyle.class).isEnabled(); } catch (Throwable ignored) { }
         try { weaponEnabled = ModuleManager.get(WeaponAnimations.class).isEnabled(); } catch (Throwable ignored) { }
