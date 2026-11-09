@@ -82,6 +82,11 @@ public final class TrapperBot extends Module {
         phase = Phase.IDLE;
     }
 
+    @Override
+    public void onWorldLeave() {
+        resetSession();
+    }
+
     /** Clears all per-connection state when leaving a server/world. */
     public void resetSession() {
         releaseControls();
