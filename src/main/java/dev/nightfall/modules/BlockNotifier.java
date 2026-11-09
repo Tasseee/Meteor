@@ -42,6 +42,12 @@ public final class BlockNotifier extends Module {
         initialized = false;
     }
 
+    @Override public void onWorldLeave() {
+        seen.clear();
+        initialized = false;
+        timer = 0;
+    }
+
     @Override public void onTick() {
         if (mc.world == null || mc.player == null || timer-- > 0) return;
         timer = 20;
