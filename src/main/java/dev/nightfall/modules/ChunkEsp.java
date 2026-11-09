@@ -81,7 +81,7 @@ public final class ChunkEsp extends Module {
             if(r.favorite&&showFavorites.get())baseColor=favoriteColor.rgb();
             double x0=r.cx*16.0,z0=r.cz*16.0,x1=x0+r.width*16.0,z1=z0+r.depth*16.0;
             double h=height.get(),y0=py-h/2.0;
-            double regionDistance=mc.player.getPos().distanceTo(new net.minecraft.util.math.Vec3d((x0+x1)/2.0,py,(z0+z1)/2.0));
+            double regionDistance=new net.minecraft.util.math.Vec3d(mc.player.getX(),mc.player.getY(),mc.player.getZ()).distanceTo(new net.minecraft.util.math.Vec3d((x0+x1)/2.0,py,(z0+z1)/2.0));
             double fade=1.0;
             if(fadeDistance.get()){
                 double normalized=regionDistance/Math.max(16.0,dist.get()*16.0);
