@@ -71,6 +71,12 @@ public final class FreeLook extends Module {
     }
 
     @Override
+    public void onWorldLeave() {
+        active = false;
+        mouseInitialized = false;
+    }
+
+    @Override
     protected void onDisable() {
         boolean wasActive = active;
         active = false;
