@@ -70,9 +70,15 @@ public final class ModuleManager {
         MODULES.add(new FakeBases());
         MODULES.add(new SeedCracker());
         MODULES.add(new AdvancedWorldOverlay());
+        MODULES.add(new AutoFarm());
+        MODULES.add(new AutoBreed());
+        MODULES.add(new AutoSmelter());
+        MODULES.add(new AutoCraftPlanner());
         // Basefinder
         MODULES.add(new BaseFinder());
         // Misc
+        MODULES.add(new AutoReconnect());
+        MODULES.add(new AutoSign());
         MODULES.add(new AutoTpa());
         MODULES.add(new AutoText());
         MODULES.add(new SpawnerProtect());
