@@ -160,7 +160,7 @@ public class AutoPvp extends Module {
     /** Start with a real jump, use a real Wind Charge, then switch to Mace while descending. */
     private boolean tickStunSlam(ClientPlayerEntity p, PlayerEntity target, double distance) {
         if (!useStunSlam.get()) {
-            if (slamPhase != SlamPhase.NONE) cancelSlam(false);
+            if (slamPhase != SlamPhase.NONE) cancelSlam(true);
             return false;
         }
         if (slamPhase == SlamPhase.NONE) {
@@ -225,6 +225,15 @@ public class AutoPvp extends Module {
             }
             default -> { return false; }
         }
+    }
+
+    @Override
+    public void onWorldLeave() {
+        cancelSlam(true);
+        release();
+        disableOwnedAssistModules();
+        driving = false;
+        strafeTimer = 0;
     }
 
     @Override
