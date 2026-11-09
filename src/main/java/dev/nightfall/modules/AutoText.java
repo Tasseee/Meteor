@@ -42,6 +42,7 @@ public final class AutoText extends Module {
     }
 
     @Override protected void onDisable() { ticks = 0; }
+    @Override public void onWorldLeave() { ticks = 0; nextIndex = 0; }
 
     @Override public void onTick() {
         if (mc.player == null || mc.player.networkHandler == null) return;
