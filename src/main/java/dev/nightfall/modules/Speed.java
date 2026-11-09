@@ -10,7 +10,7 @@ import net.minecraft.util.math.Vec3d;
 
 public class Speed extends Module {
     private static final double BASE_SPRINT = 0.2806; // ca. Sprint-Geschwindigkeit in Bloecken/Tick
-    private final NumberSetting multiplier = add(new NumberSetting("Multiplier", 1.3, 1.0, 3.0, 0.05));
+    private final NumberSetting multiplier = add(new NumberSetting("Multiplier", 1.4, 1.0, 3.0, 0.05));
     private final BoolSetting onlyGround = add(new BoolSetting("Only Ground", false));
 
     public Speed() { super("Speed", "Erhoeht die Laufgeschwindigkeit (nur bei Bewegung).", Category.MOVEMENT); }
