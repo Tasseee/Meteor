@@ -124,7 +124,7 @@ public class ClickGuiScreen extends Screen {
     private void onKey(int k) {
         if (listening != null) {
             if (k == GLFW.GLFW_KEY_ESCAPE) { listening = null; return; }
-            if (k == GLFW.GLFW_KEY_BACKSPACE) { listening.setKey(-1); notice("Keybind entfernt: " + listening.getName()); listening = null; Config.save(); return; }
+            if (k == GLFW.GLFW_KEY_BACKSPACE || k == GLFW.GLFW_KEY_DELETE) { listening.setKey(-1); notice("Keybind entfernt: " + listening.getName()); listening = null; Config.save(); return; }
             String err = ModuleManager.assignKey(listening, k);
             notice(err != null ? err : listening.getName() + " = " + Keys.name(k));
             if (err == null) Config.save();
@@ -248,6 +248,14 @@ public class ClickGuiScreen extends Screen {
         if (clickL && in(mx, my, searchX, 9, searchW, 22)) { searchFocus = true; clickL = false; }
         else if (clickL && searchFocus) searchFocus = false;
 
+        if (listening != null && clickR) {
+            listening.setKey(-1);
+            notice("Keybind entfernt: " + listening.getName());
+            listening = null;
+            clickR = false;
+            Config.save();
+        }
+
         if (!l) slider = null;
         if (slider != null && sliderW > 0) {
             double t = (mx - sliderX) / (double) sliderW;
@@ -316,9 +324,15 @@ public class ClickGuiScreen extends Screen {
                             clickL = false;
                         }
                         else if (clickL && mx >= toggleX) { mod.toggle(); Config.save(); clickL = false; }
+                        else if (clickL && mx >= panelX + panelW - 138 && mx < favoriteX - 5) {
+                            listening = mod;
+                            searchFocus = false;
+                            notice("Taste drücken für " + mod.getName() + " · Rechtsklick/Entf löscht");
+                            clickL = false;
+                        }
                         else if (clickL) { toggleExpanded(mod); clickL = false; }
                         else if (clickR) { toggleExpanded(mod); clickR = false; }
-                        else if (clickM) { listening = mod; searchFocus = false; notice("Taste drücken für " + mod.getName() + " · Backspace löscht"); clickM = false; }
+                        else if (clickM) { listening = mod; searchFocus = false; notice("Taste drücken für " + mod.getName() + " · Rechtsklick/Entf löscht"); clickM = false; }
                     }
                     if (rowHovered) hovered = mod;
                     rowY += MODULE_H;
@@ -420,11 +434,12 @@ public class ClickGuiScreen extends Screen {
         ctx.drawText(mc.textRenderer, icon, iconX + 5, y + 11, mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, true);
         ctx.drawText(mc.textRenderer, mod.getName(), panelX + 38, y + 11, (0xFF000000 | Theme.lerp(Theme.TEXT_DIM, Theme.TEXT, enabled)), false);
 
-        String key = listening == mod ? "..." : (mod.getKey() >= 0 ? Keys.name(mod.getKey()) : "");
-        if (!key.isEmpty()) {
-            int keyW = mc.textRenderer.getWidth(key);
-            ctx.drawText(mc.textRenderer, key, panelX + panelW - 101 - keyW, y + 9, Theme.TEXT_DIM, false);
-        }
+        String key = listening == mod ? "..." : (mod.getKey() >= 0 ? Keys.name(mod.getKey()) : "KEY");
+        int keyW = mc.textRenderer.getWidth(key);
+        int keyBoxX = panelX + panelW - 138;
+        ctx.fill(keyBoxX, y + 7, panelX + panelW - 91, y + 22, listening == mod ? 0x6655DDBB : 0x55343A49);
+        ctx.drawText(mc.textRenderer, key, panelX + panelW - 114 - keyW / 2, y + 11,
+                listening == mod ? Theme.ACCENT : Theme.TEXT_DIM, false);
         // Click the star to favourite this module; favourites are persisted in nightfall.json.
         int favoriteX = panelX + panelW - 82;
         String favoriteIcon = mod.isFavorite() ? "★" : "☆";
