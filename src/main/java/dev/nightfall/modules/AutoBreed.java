@@ -29,8 +29,17 @@ public final class AutoBreed extends Module {
                 mc.player.getBoundingBox().expand(range.get()),
                 animal -> animal.isAlive() && !animal.isInLove() && animal.isBreedingItem(food));
         if (animals.isEmpty()) return;
-        animals.sort((a, b) -> Double.compare(mc.player.squaredDistanceTo(a), mc.player.squaredDistanceTo(b)));
-        mc.interactionManager.interactEntity(mc.player, animals.getFirst(), Hand.MAIN_HAND);
+        AnimalEntity nearest = null;
+        double nearestDistance = Double.MAX_VALUE;
+        for (AnimalEntity animal : animals) {
+            double distance = mc.player.squaredDistanceTo(animal);
+            if (distance < nearestDistance) {
+                nearest = animal;
+                nearestDistance = distance;
+            }
+        }
+        if (nearest == null) return;
+        mc.interactionManager.interactEntity(mc.player, nearest, Hand.MAIN_HAND);
         cooldown = interval.getInt();
     }
 }
