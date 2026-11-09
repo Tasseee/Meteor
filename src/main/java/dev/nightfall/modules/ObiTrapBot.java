@@ -21,10 +21,10 @@ import java.util.Locale;
 /** Server-filterable obsidian trap helper using ordinary client interactions. */
 public final class ObiTrapBot extends Module {
     private final StringSetting serverFilter=add(new StringSetting("Server-Filter (leer = alle)","",64));
-    private final NumberSetting targetRange=add(new NumberSetting("Ziel-Reichweite",6,3,12,1));
-    private final NumberSetting placeRange=add(new NumberSetting("Platzier-Reichweite",4.5,2.5,6,0.5));
-    private final NumberSetting placeDelay=add(new NumberSetting("Bau-Intervall (Ticks)",2,1,10,1));
-    private final NumberSetting attackRange=add(new NumberSetting("Angriffs-Reichweite",3,2.5,4.5,0.1));
+    private final NumberSetting targetRange=add(new NumberSetting("Ziel-Reichweite",7,3,12,1));
+    private final NumberSetting placeRange=add(new NumberSetting("Platzier-Reichweite",5.0,2.5,6,0.5));
+    private final NumberSetting placeDelay=add(new NumberSetting("Bau-Intervall (Ticks)",1,1,10,1));
+    private final NumberSetting attackRange=add(new NumberSetting("Angriffs-Reichweite",3.2,2.5,4.5,0.1));
     private final BoolSetting attack=add(new BoolSetting("Nach Falle angreifen",true));
     private PlayerEntity target;private BlockPos anchor;private List<BlockPos> order=List.of();
     private int index,timer,previousSlot=-1;
