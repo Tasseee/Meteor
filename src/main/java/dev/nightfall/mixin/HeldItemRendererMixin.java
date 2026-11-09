@@ -22,7 +22,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class HeldItemRendererMixin {
     @Unique private int nightfall$matrixDepth;
 
-    @Inject(method = "renderFirstPersonItem", at = @At("HEAD"))
+    @Inject(method = "renderFirstPersonItem", at = @At("HEAD"), cancellable = true)
     private void nightfall$beforeFirstPersonItem(AbstractClientPlayerEntity player, float tickProgress, float pitch,
                                                 Hand hand, float swingProgress, ItemStack item, float equipProgress,
                                                 MatrixStack matrices, OrderedRenderCommandQueue queue, int light,
