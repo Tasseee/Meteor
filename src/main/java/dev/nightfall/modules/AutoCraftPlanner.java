@@ -1,12 +1,12 @@
 package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
-import dev.nightfall.module.HudModule;
+import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.StringSetting;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
-import net.minecraft.client.gui.DrawContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +15,7 @@ import java.util.List;
  * Inventory-based crafting checklist. Ingredients use item-id:amount pairs separated by commas.
  * Example: minecraft:oak_planks:4,minecraft:stick:2
  */
-public final class AutoCraftPlanner extends HudModule {
+public final class AutoCraftPlanner extends Module {
     private final StringSetting ingredients = add(new StringSetting(
             "Zutaten (ID:Menge, Komma)", "minecraft:oak_planks:4,minecraft:stick:2", 256));
     private final BoolSetting showHud = add(new BoolSetting("HUD anzeigen", true));
@@ -27,6 +27,7 @@ public final class AutoCraftPlanner extends HudModule {
     private record Requirement(String id, int amount, int owned) {}
     private List<Requirement> requirements() {
         List<Requirement> out = new ArrayList<>();
+        if (mc.player == null) return out;
         for (String part : ingredients.get().split(",")) {
             String clean = part.trim();
             int cut = clean.lastIndexOf(':');
