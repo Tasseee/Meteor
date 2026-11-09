@@ -97,6 +97,21 @@ public final class ObiTrapBot extends Module {
 
     private boolean place(BlockPos pos) {
         ClientPlayerEntity p = mc.player;
+        if (placeAgainstSupport(pos)) return true;
+
+        // Fallback for servers that reject air placement: place a permanent
+        // support block directly below the requested upper block, then retry
+        // the requested position on the next tick. The support is intentionally
+        // left in place; no cleanup/removal is performed.
+        BlockPos scaffold = pos.down();
+        if (mc.world.getBlockState(scaffold).isReplaceable()) {
+            placeAgainstSupport(scaffold);
+        }
+        return false;
+    }
+
+    private boolean placeAgainstSupport(BlockPos pos) {
+        ClientPlayerEntity p = mc.player;
         for (Direction face : Direction.values()) {
             BlockPos support = pos.offset(face.getOpposite());
             if (mc.world.getBlockState(support).getCollisionShape(mc.world, support).isEmpty()) continue;
