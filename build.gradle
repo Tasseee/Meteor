@@ -84,3 +84,7 @@ dependencies {
 tasks.named("compileJava") {
     dependsOn tasks.named("downloadSeedCracker")
 }
+
+tasks.named("remapSourcesJar") {
+    dependsOn tasks.named("downloadSeedCracker")
+}
