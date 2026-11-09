@@ -8,7 +8,7 @@ import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.item.ItemStack;
 /** Displays only slots provided to the client by the currently open handled screen. */
 public final class InvSee extends Module {
-    private final StringSetting titleFilter=add(new StringSetting("Titel-Filter (leer = alle)",""));
+    private final StringSetting titleFilter=add(new StringSetting("Titel-Filter (leer = alle)","",48));
     private final NumberSetting maxEntries=add(new NumberSetting("Max. Eintraege",18,6,54,1));
     public InvSee(){super("InvSee","Zeigt Slots eines geoeffneten, serverseitig bereitgestellten Menues.",Category.VISUALS);}
     @Override public void renderHud(DrawContext ctx){
