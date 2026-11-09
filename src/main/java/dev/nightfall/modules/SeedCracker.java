@@ -87,6 +87,6 @@ public final class SeedCracker extends Module {
         ctx.fill(x, y, x + width, y + 4, accent);
         ctx.drawCenteredTextWithShadow(mc.textRenderer, Text.literal("SEED GEFUNDEN"), sw / 2, y + 17, accent);
         ctx.drawCenteredTextWithShadow(mc.textRenderer, Text.literal(Long.toString(foundSeed)), sw / 2, y + 39, white);
-        ctx.drawCenteredTextWithShadow(mc.textRenderer, Text.literal("Klicken/Kopieren über Chat: Seed markieren"), sw / 2, y + 66, white);
+        ctx.drawCenteredTextWithShadow(mc.textRenderer, Text.literal("Welt-Seed erfolgreich berechnet"), sw / 2, y + 66, white);
     }
 }
