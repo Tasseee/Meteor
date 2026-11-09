@@ -13,6 +13,9 @@
   "mixins": [
     "nightfall.mixins.json"
   ],
+  "jars": [
+    { "file": "META-INF/jars/seedcrackerX-2.15.6.jar" }
+  ],
   "depends": {
     "fabricloader": ">=0.18.1",
     "minecraft": "~1.21.11",
