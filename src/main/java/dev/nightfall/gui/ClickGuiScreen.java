@@ -164,10 +164,23 @@ public class ClickGuiScreen extends Screen {
                 messageDraft += (char) ((shift ? 'A' : 'a') + (k - GLFW.GLFW_KEY_A)); return;
             }
             if (k >= GLFW.GLFW_KEY_0 && k <= GLFW.GLFW_KEY_9 && messageDraft.length() < 256) { messageDraft += (char) ('0' + k - GLFW.GLFW_KEY_0); return; }
-            if (k == GLFW.GLFW_KEY_MINUS && messageDraft.length() < 256) { messageDraft += "-"; return; }
+            if (k == GLFW.GLFW_KEY_MINUS && messageDraft.length() < 256) {
+                boolean shift = GLFW.glfwGetKey(MinecraftClient.getInstance().getWindow().getHandle(), GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
+                        || GLFW.glfwGetKey(MinecraftClient.getInstance().getWindow().getHandle(), GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
+                messageDraft += shift ? "_" : "-"; return;
+            }
             if (k == GLFW.GLFW_KEY_PERIOD && messageDraft.length() < 256) { messageDraft += "."; return; }
             if (k == GLFW.GLFW_KEY_COMMA && messageDraft.length() < 256) { messageDraft += ","; return; }
             if (k == GLFW.GLFW_KEY_SLASH && messageDraft.length() < 256) { messageDraft += "/"; return; }
+            if ((k == GLFW.GLFW_KEY_SEMICOLON || k == GLFW.GLFW_KEY_PERIOD) && messageDraft.length() < 256) {
+                boolean shift = GLFW.glfwGetKey(MinecraftClient.getInstance().getWindow().getHandle(), GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
+                        || GLFW.glfwGetKey(MinecraftClient.getInstance().getWindow().getHandle(), GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
+                if (shift) messageDraft += ":";
+                else if (k == GLFW.GLFW_KEY_SEMICOLON) messageDraft += ";";
+                else messageDraft += ".";
+                return;
+            }
+            if (k == GLFW.GLFW_KEY_EQUAL && messageDraft.length() < 256) { messageDraft += "="; return; }
             return;
         }
         if (!searchFocus) return;
