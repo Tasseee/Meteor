@@ -44,5 +44,7 @@ public abstract class Module {
     protected void onEnable() {}
     protected void onDisable() {}
     public void onTick() {}
+    /** Called when leaving a world/server to clear transient state without changing saved module settings. */
+    public void onWorldLeave() {}
     public void renderHud(DrawContext ctx) {}
 }
