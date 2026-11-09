@@ -8,8 +8,8 @@ import net.minecraft.util.math.Vec3d;
 
 /** Clientseitige freie Bootsbewegung in der Luft und im Wasser. */
 public final class BoatFly extends Module {
-    private final NumberSetting horizontal = add(new NumberSetting("Geschwindigkeit", 1.2, 0.1, 4.0, 0.1));
-    private final NumberSetting vertical = add(new NumberSetting("Vertikal", 0.8, 0.1, 3.0, 0.1));
+    private final NumberSetting horizontal = add(new NumberSetting("Geschwindigkeit", 1.3, 0.1, 4.0, 0.1));
+    private final NumberSetting vertical = add(new NumberSetting("Vertikal", 0.9, 0.1, 3.0, 0.1));
     private Entity controlled;
     private boolean previousNoGravity;
 
