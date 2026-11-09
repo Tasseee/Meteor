@@ -12,17 +12,35 @@ public class Step extends Module {
 
     public Step() { super("Step", "Erhoeht die Stufenhoehe (Attribut step_height).", Category.MOVEMENT); }
 
+    private double previousHeight = VANILLA;
+    private boolean captured;
+
     private EntityAttributeInstance attr() {
         return mc.player == null ? null : mc.player.getAttributeInstance(EntityAttributes.STEP_HEIGHT);
     }
 
     @Override public void onTick() {
         EntityAttributeInstance a = attr();
-        if (a != null && a.getBaseValue() != height.get()) a.setBaseValue(height.get());
+        if (a == null) return;
+        if (!captured) {
+            previousHeight = a.getBaseValue();
+            captured = true;
+        }
+        if (a.getBaseValue() != height.get()) a.setBaseValue(height.get());
     }
 
     @Override protected void onDisable() {
+        restore();
+    }
+
+    @Override public void onWorldLeave() {
+        restore();
+    }
+
+    private void restore() {
         EntityAttributeInstance a = attr();
-        if (a != null) a.setBaseValue(VANILLA);
+        if (captured && a != null) a.setBaseValue(previousHeight);
+        captured = false;
+        previousHeight = VANILLA;
     }
 }
