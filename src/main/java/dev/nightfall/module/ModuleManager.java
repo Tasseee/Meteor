@@ -79,6 +79,9 @@ public final class ModuleManager {
         MODULES.add(new StaffWatch());
         MODULES.add(new AntiVanishHints());
         MODULES.add(new AntiCheatMonitor());
+        MODULES.add(new AutoRespawn());
+        MODULES.add(new AutoFish());
+        MODULES.add(new MacroManager());
         // HUD
         MODULES.add(new Watermark());
         MODULES.add(new Coordinates());
