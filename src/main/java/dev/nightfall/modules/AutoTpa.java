@@ -33,6 +33,7 @@ public class AutoTpa extends Module {
     public AutoTpa() { super("AutoTPA", "Nimmt /tpa-Anfragen automatisch an (nicht /tpahere).", Category.MISC); }
 
     @Override protected void onDisable() { pending.clear(); }
+    @Override public void onWorldLeave() { pending.clear(); }
     public int pendingCount() { return pending.size(); }
 
     /** Wird fuer jede Chatnachricht aufgerufen (Hauptthread). */
