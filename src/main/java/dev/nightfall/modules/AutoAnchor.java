@@ -28,6 +28,8 @@ public class AutoAnchor extends Module {
     private final NumberSetting maxSelf     = add(new NumberSetting("Max. Eigenschaden", 6, 1, 20, 1));
     private int timer;
 
+    @Override public void onWorldLeave() { timer = 0; }
+
     public AutoAnchor() { super("AutoAnchor", "Setzt, laedt und zuendet Respawn-Anker ueber dem Gegner.", Category.COMBAT); }
 
     private void use(ClientPlayerEntity p, BlockPos pos, Direction face, Vec3d hit) {
