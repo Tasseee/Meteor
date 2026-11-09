@@ -9,6 +9,7 @@ import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.TrapperBot;
+import dev.nightfall.seed.SeedResultListener;
 import dev.nightfall.scanner.WaypointManager;
 import dev.nightfall.render.SkyVisualRenderer;
 import net.fabricmc.api.ClientModInitializer;
@@ -55,6 +56,19 @@ public class Nightfall implements ClientModInitializer {
         Config.load();
         SkyVisualRenderer.register();
 
+        // SeedCrackerX normally scans incoming chunks automatically. Keep its background
+        // finder enabled even if an older local config had disabled it.
+        ClientLifecycleEvents.CLIENT_STARTED.register(client -> {
+            try {
+                if (!kaptainwutax.seedcrackerX.config.Config.get().active) {
+                    kaptainwutax.seedcrackerX.config.Config.get().active = true;
+                    kaptainwutax.seedcrackerX.config.Config.save();
+                }
+            } catch (Throwable t) {
+                LOGGER.error("SeedCrackerX konnte nicht automatisch aktiviert werden", t);
+            }
+        });
+
         ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
 
         HudElementRegistry.attachElementAfter(
@@ -67,6 +81,7 @@ public class Nightfall implements ClientModInitializer {
                 });
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            SeedResultListener.resetForNewWorld();
             balanceServer = BalanceServer.NONE;
             balanceRequested = false;
             balanceResponseTimeout = 0;
@@ -77,6 +92,8 @@ public class Nightfall implements ClientModInitializer {
             detectBalanceServer(client);
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            ModuleManager.onWorldLeave();
+            SeedResultListener.resetForNewWorld();
             balanceServer = BalanceServer.NONE;
             balanceRequested = false;
             balanceResponseTimeout = 0;
@@ -84,8 +101,6 @@ public class Nightfall implements ClientModInitializer {
             paymentSent = false;
             confirmDelay = -1;
             confirmCommand = null;
-            ModuleManager.get(BaseFinder.class).clear();
-            ModuleManager.get(TrapperBot.class).resetSession();
             Config.save();
         });
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
