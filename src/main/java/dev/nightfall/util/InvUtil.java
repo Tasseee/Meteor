@@ -23,7 +23,7 @@ public final class InvUtil {
     /** Moves an item from main inventory into hotbar, preserving the selected slot where possible. */
     public static int ensureHotbar(Item item) {
         MinecraftClient client=MinecraftClient.getInstance(); ClientPlayerEntity p=client.player;
-        if(p==null || client.interactionManager==null || client.currentScreen!=null) return -1;
+        if(p==null || client.interactionManager==null || p.currentScreenHandler!=p.playerScreenHandler) return -1;
         int existing=findHotbar(item); if(existing>=0) return existing;
         int source=findInventory(item); if(source<9) return -1;
         int destination=-1;
@@ -33,7 +33,7 @@ public final class InvUtil {
             for(int i=0;i<9;i++) if(i!=selected) { destination=i;break; }
         }
         if(destination<0) destination=p.getInventory().getSelectedSlot();
-        client.interactionManager.clickSlot(p.currentScreenHandler.syncId,source,destination,SlotActionType.SWAP,p);
+        client.interactionManager.clickSlot(p.playerScreenHandler.syncId,source,destination,SlotActionType.SWAP,p);
         return destination;
     }
     public static int findBestSword() {
@@ -57,9 +57,10 @@ public final class InvUtil {
     }
     public static boolean swapWithOffhand(int index) {
         MinecraftClient client=MinecraftClient.getInstance();
-        if(client.player==null || client.interactionManager==null || client.currentScreen!=null || index<0 || index>35) return false;
+        ClientPlayerEntity player=client.player;
+        if(player==null || client.interactionManager==null || player.currentScreenHandler!=player.playerScreenHandler || index<0 || index>35) return false;
         int slotId=index<9?36+index:index;
-        client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId,slotId,40,SlotActionType.SWAP,client.player);
+        client.interactionManager.clickSlot(player.playerScreenHandler.syncId,slotId,40,SlotActionType.SWAP,player);
         return true;
     }
 }
