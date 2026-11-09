@@ -13,7 +13,7 @@ public final class AutoTpa extends Module {
     private static final Pattern TPA=Pattern.compile("(?i)(?:^|\\s)([A-Za-z0-9_]{3,16})\\s+(?:has\\s+)?(?:requested|asked|wants|would like|is requesting)\\s+(?:to\\s+)?teleport(?:ation)?\\s+to\\s+you");
     private static final Pattern TPA_HERE=Pattern.compile("(?i)(?:^|\\s)([A-Za-z0-9_]{3,16})\\s+(?:has\\s+)?(?:requested|asked|wants|would like|is requesting)\\s+(?:that\\s+)?you\\s+teleport\\s+(?:to\\s+)?(?:them|him|her|their location|there)");
     private static final String[] HERE_HINTS={"tpahere","you to teleport","you teleport to","teleport you to","teleport to them","teleport to him","teleport to her"};
-    private final NumberSetting delay=add(new NumberSetting("Verzoegerung (Ticks)",5,0,200,1));
+    private final NumberSetting delay=add(new NumberSetting("Verzoegerung (Ticks)",3,0,200,1));
     private final ModeSetting filter=add(new ModeSetting("Filter","Aus","Aus","Whitelist","Blacklist"));
     private final BoolSetting withName=add(new BoolSetting("tpaccept mit Name",false));
     private final BoolSetting acceptHere=add(new BoolSetting("TPAHere annehmen",false));
