@@ -264,6 +264,7 @@ public class AutoPvp extends Module {
     @Override
     public void onWorldLeave() {
         cancelSlam(true);
+        releaseShieldAxe();
         release();
         disableOwnedAssistModules();
         driving = false;
@@ -275,14 +276,16 @@ public class AutoPvp extends Module {
         syncAssistModules();
         ClientPlayerEntity p = mc.player;
         if (p == null || mc.currentScreen != null || mc.interactionManager == null || mc.world == null) {
-            cancelSlam(false);
+            cancelSlam(true);
+            releaseShieldAxe();
             release();
             return;
         }
 
         PlayerEntity target = CombatUtil.nearestPlayer(follow.get());
         if (target == null) {
-            cancelSlam(false);
+            cancelSlam(true);
+            releaseShieldAxe();
             release();
             return;
         }
