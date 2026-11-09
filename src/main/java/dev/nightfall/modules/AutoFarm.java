@@ -79,14 +79,14 @@ public final class AutoFarm extends Module {
         if (pendingSeed == null || pendingSoil == null || mc.world == null || mc.player == null) return;
         if (!mc.world.getBlockState(pendingSoil).isOf(Blocks.FARMLAND)
                 || !mc.world.getBlockState(pendingCrop).isAir()) return;
-        int oldSlot = mc.player.getInventory().selectedSlot;
+        int oldSlot = mc.player.getInventory().getSelectedSlot();
         for (int slot = 0; slot < 9; slot++) {
             if (!mc.player.getInventory().getStack(slot).isOf(pendingSeed)) continue;
-            mc.player.getInventory().selectedSlot = slot;
+            mc.player.getInventory().setSelectedSlot(slot);
             BlockHitResult placeHit = new BlockHitResult(
                     Vec3d.ofCenter(pendingSoil).add(0, 0.5, 0), Direction.UP, pendingSoil, false);
             mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, placeHit);
-            mc.player.getInventory().selectedSlot = oldSlot;
+            mc.player.getInventory().setSelectedSlot(oldSlot);
             return;
         }
     }
