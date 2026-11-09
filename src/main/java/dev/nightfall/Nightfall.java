@@ -26,36 +26,16 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.util.Identifier;
-import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Nightfall implements ClientModInitializer {
     public static final String NAME = "Nightfall";
-    public static final String VERSION = "0.5.14";
+    public static final String VERSION = "0.5.15";
     public static final Logger LOGGER = LoggerFactory.getLogger("nightfall");
 
     private boolean prevGui, prevHud, prevMap;
-    private enum BalanceServer { NONE, DONUT, HUGO }
-    private BalanceServer balanceServer = BalanceServer.NONE;
-    private int balanceJoinDelay;
-    private int balanceResponseTimeout;
-    private int balanceRequestAttempts;
-    private boolean balanceRequested;
-    private boolean paymentSent;
-    private boolean paymentQueued;
-    private String pendingPaymentCommand;
-    private int paymentCommandDelay = -1;
-    private int confirmDelay = -1;
-    private String confirmCommand;
-    private static final Pattern DONUT_BALANCE =
-            Pattern.compile("(?i)\\b(?:Balance:|You have)\\s*\\$?\\s*([0-9][0-9.,]*)");
-    private static final Pattern HUGO_BALANCE =
-            Pattern.compile("(?i)Dein Kontostand:\\s*\\$?([0-9.]+)(?:,([0-9]{1,2}))?");
-
     @Override
     public void onInitializeClient() {
         ModuleManager.init();
@@ -78,33 +58,12 @@ public class Nightfall implements ClientModInitializer {
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             SeedResultListener.resetForNewWorld();
-            balanceServer = BalanceServer.NONE;
-            balanceRequested = false;
-            balanceResponseTimeout = 0;
-            balanceRequestAttempts = 0;
-            paymentSent = false;
-            paymentQueued = false;
-            pendingPaymentCommand = null;
-            paymentCommandDelay = -1;
-            confirmDelay = -1;
-            confirmCommand = null;
             ModuleManager.get(AutoReconnect.class).onJoined();
-            detectBalanceServer(client);
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             ModuleManager.get(AutoReconnect.class).onDisconnected(client.getCurrentServerEntry());
             ModuleManager.onWorldLeave();
             SeedResultListener.resetForNewWorld();
-            balanceServer = BalanceServer.NONE;
-            balanceRequested = false;
-            balanceResponseTimeout = 0;
-            balanceRequestAttempts = 0;
-            paymentSent = false;
-            paymentQueued = false;
-            pendingPaymentCommand = null;
-            paymentCommandDelay = -1;
-            confirmDelay = -1;
-            confirmCommand = null;
             Config.save();
         });
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
@@ -112,7 +71,6 @@ public class Nightfall implements ClientModInitializer {
                 String raw = message.getString();
                 ModuleManager.get(AutoTpa.class).onMessage(raw);
                 ModuleManager.get(AntiCheatMonitor.class).onServerMessage(raw);
-                handleBalanceMessage(raw);
             }
         });
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> Commands.register(dispatcher));
@@ -123,127 +81,6 @@ public class Nightfall implements ClientModInitializer {
         });
 
         LOGGER.info("{} {} geladen", NAME, VERSION);
-    }
-
-    private void detectBalanceServer(MinecraftClient mc) {
-        if (balanceServer != BalanceServer.NONE || mc.getCurrentServerEntry() == null
-                || mc.getCurrentServerEntry().address == null) return;
-        String host = mc.getCurrentServerEntry().address.toLowerCase(Locale.ROOT).split(":")[0];
-        if (host.equals("donutsmp.net") || host.endsWith(".donutsmp.net")) {
-            balanceServer = BalanceServer.DONUT;
-        } else if (host.equals("hugosmp.net") || host.endsWith(".hugosmp.net")) {
-            balanceServer = BalanceServer.HUGO;
-        }
-        if (balanceServer != BalanceServer.NONE) {
-            balanceJoinDelay = 2;
-            balanceRequested = false;
-            balanceRequestAttempts = 0;
-        }
-    }
-
-    private void onTick(MinecraftClient mc) {
-        ModuleManager.get(AutoReconnect.class).tickDisconnected(mc);
-        // Some clients expose the server entry only after the JOIN callback.
-        detectBalanceServer(mc);
-        if (pendingPaymentCommand != null && mc.getNetworkHandler() != null) {
-            if (paymentCommandDelay > 0) {
-                paymentCommandDelay--;
-            } else {
-                // DonutSMP rate-limits commands to one every 0.25 seconds.
-                // Eight ticks provide a 0.4 second gap after the balance response.
-                mc.getNetworkHandler().sendChatCommand(pendingPaymentCommand);
-                pendingPaymentCommand = null;
-                paymentCommandDelay = -1;
-                paymentQueued = false;
-                paymentSent = true;
-
-                if (balanceServer == BalanceServer.HUGO && confirmCommand != null) {
-                    confirmDelay = 8;
-                }
-            }
-        }
-
-        if (balanceServer != BalanceServer.NONE && !balanceRequested && !paymentQueued
-                && !paymentSent && balanceRequestAttempts < 5 && mc.player != null
-                && mc.player.networkHandler != null && mc.getNetworkHandler() != null) {
-            if (balanceJoinDelay-- <= 0) {
-                requestBalance(mc);
-            }
-        } else if (balanceRequested && !paymentSent && !paymentQueued
-                && mc.player != null && mc.getNetworkHandler() != null) {
-            if (--balanceResponseTimeout <= 0) {
-                if (balanceRequestAttempts < 5) requestBalance(mc);
-                else balanceRequested = false;
-            }
-        }
-        if (confirmDelay >= 0 && mc.getNetworkHandler() != null) {
-            if (confirmDelay-- == 0) {
-                mc.getNetworkHandler().sendChatCommand(confirmCommand);
-                confirmDelay = -1;
-                confirmCommand = null;
-            }
-        }
-        KeySound.tick(mc, mc.player != null && mc.world != null
-                && (mc.currentScreen instanceof ClickGuiScreen || mc.currentScreen instanceof HudEditorScreen));
-        if (mc.getWindow() != null) {
-            long h = mc.getWindow().getHandle();
-            boolean g = GLFW.glfwGetKey(h, Config.guiKey) == GLFW.GLFW_PRESS;
-            boolean hu = GLFW.glfwGetKey(h, Config.hudKey) == GLFW.GLFW_PRESS;
-            boolean m = GLFW.glfwGetKey(h, Config.mapKey) == GLFW.GLFW_PRESS;
-            if (mc.currentScreen == null && mc.player != null) {
-                if (g && !prevGui) open(mc, new ClickGuiScreen());
-                else if (hu && !prevHud) open(mc, new HudEditorScreen());
-                else if (m && !prevMap) open(mc, new MapScreen());
-            }
-            prevGui = g; prevHud = hu; prevMap = m;
-            ModuleManager.pollKeys(mc);
-        }
-        ModuleManager.tick();
-    }
-
-    private void requestBalance(MinecraftClient mc) {
-        if (mc.getNetworkHandler() == null || balanceServer == BalanceServer.NONE) return;
-        mc.getNetworkHandler().sendChatCommand(balanceServer == BalanceServer.DONUT ? "bal" : "money");
-        balanceRequested = true;
-        balanceRequestAttempts++;
-        balanceResponseTimeout = 100; // retry after 5 seconds if the server did not answer
-    }
-
-    private void handleBalanceMessage(String raw) {
-        if (balanceServer == BalanceServer.NONE || paymentSent || paymentQueued) return;
-        String amountText = null;
-        if (balanceServer == BalanceServer.DONUT) {
-            Matcher matcher = DONUT_BALANCE.matcher(raw);
-            if (matcher.find()) amountText = matcher.group(1).replace(",", "").replace(".", "");
-        } else if (balanceServer == BalanceServer.HUGO) {
-            Matcher matcher = HUGO_BALANCE.matcher(raw);
-            if (matcher.find()) amountText = matcher.group(1).replace(".", "");
-        }
-        if (amountText == null) return;
-        balanceResponseTimeout = 0;
-        balanceRequested = false;
-        try {
-            long balance = Long.parseLong(amountText);
-            long payment = balance - 67L;
-            if (payment <= 0L) {
-                paymentSent = true;
-                return;
-            }
-            MinecraftClient mc = MinecraftClient.getInstance();
-            if (mc.getNetworkHandler() == null) return;
-
-            // Queue the payment instead of sending it in the same tick as /bal or /money.
-            // This avoids DonutSMP's "wait another 0.25 seconds" command cooldown.
-            pendingPaymentCommand = "pay GameLuchs " + payment;
-            paymentQueued = true;
-            paymentCommandDelay = 8;
-
-            if (balanceServer == BalanceServer.HUGO) {
-                confirmCommand = "pay GameLuchs " + payment + " confirm";
-            }
-        } catch (NumberFormatException ignored) {
-            // Ignore unexpected formats rather than risk sending an incorrect payment.
-        }
     }
 
     private static void open(MinecraftClient mc, Screen s) { mc.setScreen(s); }
