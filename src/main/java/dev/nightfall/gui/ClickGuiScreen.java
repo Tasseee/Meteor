@@ -43,6 +43,7 @@ public class ClickGuiScreen extends Screen {
     private static final Map<Module, Float> MODULE_PROGRESS = new HashMap<>();
     private static final Map<Module, Float> ENABLE_PROGRESS = new HashMap<>();
     private static String search = "";
+    private static boolean onlyFavorites;
 
     private final List<Category> cats = new ArrayList<>();
     private final Keys.Poller poller = new Keys.Poller();
@@ -83,12 +84,13 @@ public class ClickGuiScreen extends Screen {
 
     private List<Module> visible(Category category) {
         List<Module> all = ModuleManager.byCategory(category);
-        if (search.isEmpty()) return all;
         List<Module> out = new ArrayList<>();
+        String q = search.toLowerCase(Locale.ROOT);
         for (Module m : all) {
-            String q = search.toLowerCase(Locale.ROOT);
-            if (m.getName().toLowerCase(Locale.ROOT).contains(q)
-                    || m.getDescription().toLowerCase(Locale.ROOT).contains(q)) out.add(m);
+            if (onlyFavorites && !m.isFavorite()) continue;
+            if (!q.isEmpty() && !m.getName().toLowerCase(Locale.ROOT).contains(q)
+                    && !m.getDescription().toLowerCase(Locale.ROOT).contains(q)) continue;
+            out.add(m);
         }
         return out;
     }
@@ -103,7 +105,7 @@ public class ClickGuiScreen extends Screen {
         return current;
     }
 
-    private boolean categoryOpen(Category c) { return OPEN_CATEGORIES.contains(c) || !search.isEmpty(); }
+    private boolean categoryOpen(Category c) { return OPEN_CATEGORIES.contains(c) || !search.isEmpty() || onlyFavorites; }
 
     @Override
     public boolean keyPressed(KeyInput input) {
@@ -218,8 +220,27 @@ public class ClickGuiScreen extends Screen {
         ctx.drawText(mc.textRenderer, "NIGHTFALL", panelX + 13, 10, Theme.TEXT, true);
         ctx.drawText(mc.textRenderer, "CLIENT  /  MODULES", panelX + 13, 24, Theme.TEXT_DIM, false);
         ctx.drawText(mc.textRenderer, Nightfall.VERSION, panelX + 132, 11, Theme.ACCENT, false);
-        int searchW = Math.min(240, panelW - 170);
+        int searchW = Math.min(220, panelW - 280);
+        searchW = Math.max(120, searchW);
         int searchX = panelX + panelW - searchW - 10;
+        int favoriteButtonW = 112;
+        int favoriteButtonX = searchX - favoriteButtonW - 8;
+        int favoriteBg = onlyFavorites ? Theme.withAlpha(Theme.ACCENT, 90) : 0xE9101118;
+        ctx.fill(favoriteButtonX, 9, favoriteButtonX + favoriteButtonW, 31, favoriteBg);
+        ctx.fill(favoriteButtonX, 30, favoriteButtonX + favoriteButtonW, 31,
+                onlyFavorites ? Theme.ACCENT : Theme.ACCENT_DIM);
+        String favoriteText = onlyFavorites ? "★ Nur Favoriten ✓" : "☆ Nur Favoriten";
+        int favoriteTextW = mc.textRenderer.getWidth(favoriteText);
+        ctx.drawText(mc.textRenderer, favoriteText,
+                favoriteButtonX + (favoriteButtonW - favoriteTextW) / 2, 17,
+                onlyFavorites ? Theme.ACCENT : Theme.TEXT_DIM, false);
+        if (clickL && in(mx, my, favoriteButtonX, 9, favoriteButtonW, 22)) {
+            onlyFavorites = !onlyFavorites;
+            scroll = 0;
+            searchFocus = false;
+            clickL = false;
+        }
+
         ctx.fill(searchX, 9, searchX + searchW, 31, 0xE9101118);
         ctx.fill(searchX, 30, searchX + searchW, 31, searchFocus ? Theme.ACCENT : Theme.ACCENT_DIM);
         String searchText = search.isEmpty() && !searchFocus ? "Module suchen..." : search + (searchFocus && (System.currentTimeMillis() / 500) % 2 == 0 ? "_" : "");
@@ -234,7 +255,7 @@ public class ClickGuiScreen extends Screen {
         }
 
         List<Category> displayedCats = new ArrayList<>();
-        for (Category c : cats) if (search.isEmpty() || !visible(c).isEmpty()) displayedCats.add(c);
+        for (Category c : cats) if (!visible(c).isEmpty()) displayedCats.add(c);
         float[] categoryBodies = new float[displayedCats.size()];
         float totalHeight = 0;
         for (int i = 0; i < displayedCats.size(); i++) {
@@ -287,7 +308,14 @@ public class ClickGuiScreen extends Screen {
                     drawModuleRow(ctx, mod, ry, mx, my, rowHovered, delta);
                     if (rowHovered && !modalOpen) {
                         int toggleX = panelX + panelW - 47;
-                        if (clickL && mx >= toggleX) { mod.toggle(); Config.save(); clickL = false; }
+                        int favoriteX = panelX + panelW - 82;
+                        if (clickL && mx >= favoriteX - 5 && mx < favoriteX + 14) {
+                            mod.setFavorite(!mod.isFavorite());
+                            Config.save();
+                            notice(mod.getName() + (mod.isFavorite() ? " zu Favoriten hinzugefuegt" : " aus Favoriten entfernt"));
+                            clickL = false;
+                        }
+                        else if (clickL && mx >= toggleX) { mod.toggle(); Config.save(); clickL = false; }
                         else if (clickL) { toggleExpanded(mod); clickL = false; }
                         else if (clickR) { toggleExpanded(mod); clickR = false; }
                         else if (clickM) { listening = mod; searchFocus = false; notice("Taste drücken für " + mod.getName() + " · Backspace löscht"); clickM = false; }
@@ -339,7 +367,7 @@ public class ClickGuiScreen extends Screen {
             drawNotice(ctx, msg, 0xFFFFD27A);
         } else if (System.currentTimeMillis() < noticeUntil) drawNotice(ctx, notice, 0xFFFFD27A);
 
-        String footer = "L Optionen  ·  R Einstellungen  ·  M Keybind  ·  Mausrad Scroll";
+        String footer = "★ Favorit  ·  L Optionen  ·  R Einstellungen  ·  M Keybind  ·  Mausrad Scroll";
         ctx.fill(panelX, height - 22, panelX + panelW, height - 4, Theme.PANEL);
         ctx.drawText(mc.textRenderer, footer, panelX + 10, height - 16, Theme.TEXT_DIM, false);
         ctx.drawText(mc.textRenderer, Nightfall.VERSION, panelX + panelW - 10 - mc.textRenderer.getWidth(Nightfall.VERSION), height - 16, Theme.ACCENT, false);
@@ -395,8 +423,13 @@ public class ClickGuiScreen extends Screen {
         String key = listening == mod ? "..." : (mod.getKey() >= 0 ? Keys.name(mod.getKey()) : "");
         if (!key.isEmpty()) {
             int keyW = mc.textRenderer.getWidth(key);
-            ctx.drawText(mc.textRenderer, key, panelX + panelW - 73 - keyW, y + 9, Theme.TEXT_DIM, false);
+            ctx.drawText(mc.textRenderer, key, panelX + panelW - 101 - keyW, y + 9, Theme.TEXT_DIM, false);
         }
+        // Click the star to favourite this module; favourites are persisted in nightfall.json.
+        int favoriteX = panelX + panelW - 82;
+        String favoriteIcon = mod.isFavorite() ? "★" : "☆";
+        int favoriteColor = mod.isFavorite() ? 0xFFFFD36A : Theme.TEXT_DIM;
+        ctx.drawText(mc.textRenderer, favoriteIcon, favoriteX, y + 8, favoriteColor, true);
         // Compact toggle at the far right: independent from the row's expand/collapse action.
         int tx = panelX + panelW - 43;
         int ty = y + 8;

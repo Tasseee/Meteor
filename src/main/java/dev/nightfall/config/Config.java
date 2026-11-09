@@ -50,6 +50,7 @@ public final class Config {
             for (Module m : ModuleManager.all()) {
                 JsonObject o = new JsonObject();
                 o.addProperty("enabled", m.isEnabled());
+                o.addProperty("favorite", m.isFavorite());
                 o.addProperty("key", m.getKey());
                 JsonObject s = new JsonObject();
                 for (Setting<?> st : m.getSettings()) s.add(st.getName(), st.save());
@@ -109,6 +110,7 @@ public final class Config {
                     for (Setting<?> st : m.getSettings()) if (s.has(st.getName())) st.load(s.get(st.getName()));
                 }
                 if (o.has("key")) m.setKey(o.get("key").getAsInt());
+                if (o.has("favorite")) m.setFavorite(o.get("favorite").getAsBoolean());
                 if (o.has("enabled")) m.setEnabled(o.get("enabled").getAsBoolean());
             }
             if (root.has("panels")) jsonToMap(root.getAsJsonObject("panels"), panels, 3);
