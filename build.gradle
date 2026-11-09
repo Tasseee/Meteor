@@ -74,3 +74,13 @@ processResources {
         into "META-INF/jars"
     }
 }
+
+
+// Compile against the bundled mod's public callback API; runtime is supplied by Fabric's nested-mod loader.
+dependencies {
+    compileOnly files(seedCrackerJar)
+}
+
+tasks.named("compileJava") {
+    dependsOn tasks.named("downloadSeedCracker")
+}
