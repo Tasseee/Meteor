@@ -22,7 +22,7 @@ public final class AutoGap extends Module {
         if(cooldown>0) cooldown--;
         if(eating) {
             ticks++;if(p.isUsingItem()) used=true;
-            if((used&&!p.isUsingItem())||ticks>60) { finish();cooldown=40; }
+            if((used&&!p.isUsingItem())||ticks>60) { finish();cooldown=32; }
             else mc.options.useKey.setPressed(true);
             return;
         }
