@@ -18,6 +18,13 @@ public final class ChunkEsp extends Module {
     private final NumberSetting speed=add(new NumberSetting("Pulse-Speed",1.0,0.2,4.0,0.1));
     private final NumberSetting thick=add(new NumberSetting("Linienstaerke",1,1,4,1));
     private final NumberSetting opacity=add(new NumberSetting("Transparenz",0.82,0.2,1.0,0.05));
+    private final ColorSetting susColor=add(new ColorSetting("SUS-Farbe",0xFF9B75F5));
+    private final ColorSetting goneColor=add(new ColorSetting("SUS-WEG-Farbe",0xFF4386D9));
+    private final ColorSetting favoriteColor=add(new ColorSetting("Favoriten-Farbe",0xFFFFC85A));
+    private final BoolSetting showFill=add(new BoolSetting("Dezente Fuellung",true));
+    private final NumberSetting fillOpacity=add(new NumberSetting("Fuell-Transparenz",0.12,0.02,0.35,0.01));
+    private final BoolSetting fadeDistance=add(new BoolSetting("Distanz-Fade",true));
+    private final NumberSetting fadeStart=add(new NumberSetting("Fade ab (Anteil)",0.55,0.1,0.9,0.05));
     private final BoolSetting showScore=add(new BoolSetting("Score anzeigen",true));
     private final BoolSetting showGone=add(new BoolSetting("SUS WEG anzeigen",true));
     private final BoolSetting showFavorites=add(new BoolSetting("Favoriten hervorheben",true));
@@ -70,14 +77,27 @@ public final class ChunkEsp extends Module {
         for(Region r:regions) {
             if(drawn>=maxObj.getInt()||EspBase.drawn>=2048)break;
             float scoreT=(float)Math.max(0.0,Math.min(1.0,r.score/(finder.thresholdValue()*3.0)));
-            int color=r.status==ChunkResult.Status.GONE?0xFF4386D9:Theme.lerp(0xFF9B75F5,0xFFFF526E,scoreT);
-            if(r.favorite&&showFavorites.get())color=0xFFFFC85A;
+            int baseColor=r.status==ChunkResult.Status.GONE?goneColor.rgb():Theme.lerp(susColor.rgb(),0xFFFF526E,scoreT);
+            if(r.favorite&&showFavorites.get())baseColor=favoriteColor.rgb();
             double x0=r.cx*16.0,z0=r.cz*16.0,x1=x0+r.width*16.0,z1=z0+r.depth*16.0;
-            double h=height.get(),y0=py-h/2.0;int alpha=(int)(opacity.get()*255.0);Box box;
+            double h=height.get(),y0=py-h/2.0;
+            double regionDistance=mc.player.getPos().distanceTo(new net.minecraft.util.math.Vec3d((x0+x1)/2.0,py,(z0+z1)/2.0));
+            double fade=1.0;
+            if(fadeDistance.get()){
+                double normalized=regionDistance/Math.max(16.0,dist.get()*16.0);
+                double progress=(normalized-fadeStart.get())/Math.max(0.01,1.0-fadeStart.get());
+                fade=Math.max(0.0,Math.min(1.0,1.0-progress));
+            }
+            if(fade<=0.005)continue;
+            int alpha=(int)(opacity.get()*255.0*fade);int color=0xFF000000|(baseColor&0x00FFFFFF);Box box;
             switch(mode.get()) {
                 case "Surface" -> box=new Box(x0,py-0.06,z0,x1,py-0.02,z1);
                 case "Pulse" -> { double hh=h*(0.65+0.35*pulse);box=new Box(x0,py-hh/2.0,z0,x1,py+hh/2.0,z1);alpha=(int)(alpha*(0.55+0.45*pulse)); }
                 default -> box=new Box(x0,y0,z0,x1,y0+h,z1);
+            }
+            if(showFill.get()){
+                int fillAlpha=(int)(fillOpacity.get()*255.0*fade);
+                Draw.fillProjectedBounds(ctx,box,Theme.withAlpha(color,fillAlpha));
             }
             if(!Draw.box(ctx,box,Theme.withAlpha(color,alpha),thick.getInt(),true))continue;
             String label=(r.favorite&&showFavorites.get()?"★ ":"")+(r.status==ChunkResult.Status.GONE?"SUS WEG":"SUS")
