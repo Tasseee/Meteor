@@ -7,6 +7,7 @@ import dev.nightfall.gui.HudEditorScreen;
 import dev.nightfall.gui.MapScreen;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.AutoTpa;
+import dev.nightfall.modules.AutoReconnect;
 import dev.nightfall.modules.AntiCheatMonitor;
 import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.TrapperBot;
@@ -81,9 +82,11 @@ public class Nightfall implements ClientModInitializer {
             paymentSent = false;
             confirmDelay = -1;
             confirmCommand = null;
+            ModuleManager.get(AutoReconnect.class).onJoined();
             detectBalanceServer(client);
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            ModuleManager.get(AutoReconnect.class).onDisconnected(client.getCurrentServerEntry());
             ModuleManager.onWorldLeave();
             SeedResultListener.resetForNewWorld();
             balanceServer = BalanceServer.NONE;
@@ -130,6 +133,7 @@ public class Nightfall implements ClientModInitializer {
     }
 
     private void onTick(MinecraftClient mc) {
+        ModuleManager.get(AutoReconnect.class).tickDisconnected(mc);
         // Some clients expose the server entry only after the JOIN callback.
         detectBalanceServer(mc);
         if (balanceServer != BalanceServer.NONE && !balanceRequested && balanceRequestAttempts < 5 && mc.player != null
