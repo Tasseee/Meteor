@@ -17,6 +17,8 @@ public final class LowHealthWarning extends HudModule {
         setEnabled(true);
     }
 
+    @Override public void onWorldLeave() { wasLow = false; }
+
     @Override protected int[] defaultPos(int sw, int sh) { return new int[]{sw / 2 - 60, 36}; }
 
     @Override public void onTick() {
