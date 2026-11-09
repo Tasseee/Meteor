@@ -31,7 +31,7 @@ public final class AutoSmelter extends Module {
         ticks = 0;
 
         if (!handler.getSlot(0).hasStack()) {
-            for (int i = 3; i < handler.slots.size(); i++) {
+            for (int i = 3; i < handler.getStacks().size(); i++) {
                 ItemStack stack = handler.getSlot(i).getStack();
                 if (isSmeltable(stack)) {
                     mc.interactionManager.clickSlot(handler.syncId, i, 0, SlotActionType.QUICK_MOVE, mc.player);
