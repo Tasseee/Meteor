@@ -9,6 +9,7 @@ import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.TrapperBot;
+import dev.nightfall.modules.SeedCracker;
 import dev.nightfall.seed.SeedResultListener;
 import dev.nightfall.scanner.WaypointManager;
 import dev.nightfall.render.SkyVisualRenderer;
@@ -56,18 +57,8 @@ public class Nightfall implements ClientModInitializer {
         Config.load();
         SkyVisualRenderer.register();
 
-        // SeedCrackerX normally scans incoming chunks automatically. Keep its background
-        // finder enabled even if an older local config had disabled it.
-        ClientLifecycleEvents.CLIENT_STARTED.register(client -> {
-            try {
-                if (!kaptainwutax.seedcrackerX.config.Config.get().active) {
-                    kaptainwutax.seedcrackerX.config.Config.get().active = true;
-                    kaptainwutax.seedcrackerX.config.Config.save();
-                }
-            } catch (Throwable t) {
-                LOGGER.error("SeedCrackerX konnte nicht automatisch aktiviert werden", t);
-            }
-        });
+        // Match SeedCrackerX's background collection to the saved Nightfall module toggle.
+        ClientLifecycleEvents.CLIENT_STARTED.register(client -> SeedCracker.syncState());
 
         ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
 
