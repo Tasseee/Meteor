@@ -30,7 +30,20 @@ public class MaceAssist extends Module {
 
     public MaceAssist() { super("MaceAssist", "Mace-Smash: Auto-Switch und Angriff bei ausreichender Fallhoehe.", Category.COMBAT); }
 
-    @Override protected void onDisable() { estimate = 0; prevSlot = -1; }
+    @Override protected void onDisable() {
+        restoreSlot();
+        estimate = 0;
+    }
+
+    @Override public void onWorldLeave() {
+        restoreSlot();
+        estimate = 0;
+    }
+
+    private void restoreSlot() {
+        if (switchBack.get() && prevSlot >= 0 && mc.player != null) InvUtil.select(prevSlot);
+        prevSlot = -1;
+    }
 
     public static double smashDamage(double fall) {
         double bonus = fall <= 3 ? 4 * fall : fall <= 8 ? 12 + 2 * (fall - 3) : 22 + (fall - 8);
