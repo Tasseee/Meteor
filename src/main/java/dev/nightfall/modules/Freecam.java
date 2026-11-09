@@ -91,6 +91,13 @@ public final class Freecam extends Module {
     }
 
     @Override
+    public void onWorldLeave() {
+        active = false;
+        mouseInitialized = false;
+        cameraPosition = Vec3d.ZERO;
+    }
+
+    @Override
     protected void onDisable() {
         boolean wasActive = active;
         active = false;
