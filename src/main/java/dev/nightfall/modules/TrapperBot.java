@@ -58,6 +58,9 @@ public final class TrapperBot extends Module {
     private int buildPasses;
     private int previousSlot = -1;
     private int blockSlot = -1;
+    private boolean controlsCaptured;
+    private boolean previousJumpPressed;
+    private boolean previousSprintPressed;
     private PlayerEntity target;
     private List<BlockPos> buildOrder = List.of();
 
@@ -265,6 +268,7 @@ public final class TrapperBot extends Module {
             return;
         }
 
+        captureControls();
         mc.options.sprintKey.setPressed(false);
         player.setSprinting(false);
         if (player.isOnGround()) {
@@ -353,9 +357,18 @@ public final class TrapperBot extends Module {
         blockSlot = -1;
     }
 
+    private void captureControls() {
+        if (controlsCaptured || mc.options == null) return;
+        previousJumpPressed = mc.options.jumpKey.isPressed();
+        previousSprintPressed = mc.options.sprintKey.isPressed();
+        controlsCaptured = true;
+    }
+
     private void releaseControls() {
-        if (mc.options == null) return;
-        mc.options.jumpKey.setPressed(false);
-        mc.options.sprintKey.setPressed(false);
+        if (mc.options == null || !controlsCaptured) return;
+        mc.options.jumpKey.setPressed(previousJumpPressed);
+        mc.options.sprintKey.setPressed(previousSprintPressed);
+        net.minecraft.client.option.KeyBinding.updatePressedStates();
+        controlsCaptured = false;
     }
 }
