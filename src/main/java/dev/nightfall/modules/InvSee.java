@@ -79,7 +79,7 @@ public final class InvSee extends HudModule {
             } else {
                 // Equipment is the only per-player data exposed here; hidden inventory slots are not queried.
                 ctx.drawItem(stack, x + 4, 31);
-                if (stack.getCount() > 1) ctx.drawItemInSlot(mc.textRenderer, stack, x + 4, 31);
+                if (stack.getCount() > 1) ctx.drawText(mc.textRenderer, Integer.toString(stack.getCount()), x + 13, 43, 0xFFFFFFFF, true);
             }
         }
 
