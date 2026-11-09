@@ -8,6 +8,9 @@
   "entrypoints": {
     "client": [
       "dev.nightfall.Nightfall"
+    ],
+    "seedcrackerx": [
+      "dev.nightfall.seed.SeedResultListener"
     ]
   },
   "mixins": [
