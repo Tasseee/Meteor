@@ -143,7 +143,7 @@ public final class ObiTrapBot extends Module {
             return;
         }
 
-        if (target != next || anchor == null || !anchor.equals(next.getBlockPos())) {
+        if (target != next || anchor == null || (!obsidianComplete && !anchor.equals(next.getBlockPos()))) {
             restoreSlot();
             target = next;
             anchor = next.getBlockPos();
