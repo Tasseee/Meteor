@@ -69,6 +69,7 @@ public final class ModuleManager {
         MODULES.add(new Waypoints());
         MODULES.add(new FakeBases());
         MODULES.add(new SeedCracker());
+        MODULES.add(new AdvancedWorldOverlay());
         // Basefinder
         MODULES.add(new BaseFinder());
         // Misc
@@ -77,6 +78,7 @@ public final class ModuleManager {
         MODULES.add(new SpawnerProtect());
         MODULES.add(new StaffWatch());
         MODULES.add(new AntiVanishHints());
+        MODULES.add(new AntiCheatMonitor());
         // HUD
         MODULES.add(new Watermark());
         MODULES.add(new Coordinates());
