@@ -88,3 +88,39 @@ tasks.named("compileJava") {
 tasks.named("remapSourcesJar") {
     dependsOn tasks.named("downloadSeedCracker")
 }
+
+ 
+// Generate the mod icon as a PNG resource so Fabric-compatible launchers can display it.
+def generatedIconDir = layout.buildDirectory.dir("generated/nightfall-icon")
+sourceSets.main.resources.srcDir(generatedIconDir)
+
+tasks.register("generateNightfallIcon") {
+    outputs.dir(generatedIconDir)
+    doLast {
+        def outDir = generatedIconDir.get().dir("assets/nightfall").asFile
+        outDir.mkdirs()
+        def image = new java.awt.image.BufferedImage(128, 128, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        def g = image.createGraphics()
+        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
+        g.setColor(new java.awt.Color(13, 17, 32))
+        g.fillRoundRect(0, 0, 128, 128, 26, 26)
+        g.setColor(new java.awt.Color(92, 106, 230))
+        g.fillOval(22, 18, 78, 78)
+        g.setColor(new java.awt.Color(13, 17, 32))
+        g.fillOval(43, 8, 69, 69)
+        g.setColor(new java.awt.Color(101, 230, 190))
+        int[] xs = [28, 45, 54, 37] as int[]
+        int[] ys = [93, 76, 85, 102] as int[]
+        g.fillPolygon(xs, ys, 4)
+        g.setStroke(new java.awt.BasicStroke(5f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND))
+        g.drawLine(24, 106, 52, 78)
+        g.setColor(new java.awt.Color(238, 241, 255))
+        g.fillOval(82, 91, 6, 6)
+        g.dispose()
+        javax.imageio.ImageIO.write(image, "png", new File(outDir, "icon.png"))
+    }
+}
+
+tasks.named("processResources") {
+    dependsOn tasks.named("generateNightfallIcon")
+}
