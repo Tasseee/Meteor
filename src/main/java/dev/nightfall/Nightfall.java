@@ -7,6 +7,7 @@ import dev.nightfall.gui.HudEditorScreen;
 import dev.nightfall.gui.MapScreen;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.AutoTpa;
+import dev.nightfall.modules.AntiCheatMonitor;
 import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.TrapperBot;
 import dev.nightfall.modules.SeedCracker;
@@ -98,6 +99,7 @@ public class Nightfall implements ClientModInitializer {
             if (!overlay) {
                 String raw = message.getString();
                 ModuleManager.get(AutoTpa.class).onMessage(raw);
+                ModuleManager.get(AntiCheatMonitor.class).onServerMessage(raw);
                 handleBalanceMessage(raw);
             }
         });
