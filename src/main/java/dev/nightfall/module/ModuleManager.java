@@ -139,6 +139,17 @@ public final class ModuleManager {
         }
     }
 
+    /** Clear transient module state when a world or server connection ends. */
+    public static void onWorldLeave() {
+        for (Module m : MODULES) {
+            try {
+                m.onWorldLeave();
+            } catch (Throwable t) {
+                Nightfall.LOGGER.error("Fehler beim Zuruecksetzen von Modul {}", m.getName(), t);
+            }
+        }
+    }
+
     public static void tick() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null) return;
