@@ -46,6 +46,9 @@ public class Nightfall implements ClientModInitializer {
     private int balanceRequestAttempts;
     private boolean balanceRequested;
     private boolean paymentSent;
+    private boolean paymentQueued;
+    private String pendingPaymentCommand;
+    private int paymentCommandDelay = -1;
     private int confirmDelay = -1;
     private String confirmCommand;
     private static final Pattern DONUT_BALANCE =
@@ -80,6 +83,9 @@ public class Nightfall implements ClientModInitializer {
             balanceResponseTimeout = 0;
             balanceRequestAttempts = 0;
             paymentSent = false;
+            paymentQueued = false;
+            pendingPaymentCommand = null;
+            paymentCommandDelay = -1;
             confirmDelay = -1;
             confirmCommand = null;
             ModuleManager.get(AutoReconnect.class).onJoined();
@@ -94,6 +100,9 @@ public class Nightfall implements ClientModInitializer {
             balanceResponseTimeout = 0;
             balanceRequestAttempts = 0;
             paymentSent = false;
+            paymentQueued = false;
+            pendingPaymentCommand = null;
+            paymentCommandDelay = -1;
             confirmDelay = -1;
             confirmCommand = null;
             Config.save();
@@ -136,12 +145,32 @@ public class Nightfall implements ClientModInitializer {
         ModuleManager.get(AutoReconnect.class).tickDisconnected(mc);
         // Some clients expose the server entry only after the JOIN callback.
         detectBalanceServer(mc);
-        if (balanceServer != BalanceServer.NONE && !balanceRequested && balanceRequestAttempts < 5 && mc.player != null
+        if (pendingPaymentCommand != null && mc.getNetworkHandler() != null) {
+            if (paymentCommandDelay > 0) {
+                paymentCommandDelay--;
+            } else {
+                // DonutSMP rate-limits commands to one every 0.25 seconds.
+                // Eight ticks provide a 0.4 second gap after the balance response.
+                mc.getNetworkHandler().sendChatCommand(pendingPaymentCommand);
+                pendingPaymentCommand = null;
+                paymentCommandDelay = -1;
+                paymentQueued = false;
+                paymentSent = true;
+
+                if (balanceServer == BalanceServer.HUGO && confirmCommand != null) {
+                    confirmDelay = 8;
+                }
+            }
+        }
+
+        if (balanceServer != BalanceServer.NONE && !balanceRequested && !paymentQueued
+                && !paymentSent && balanceRequestAttempts < 5 && mc.player != null
                 && mc.player.networkHandler != null && mc.getNetworkHandler() != null) {
             if (balanceJoinDelay-- <= 0) {
                 requestBalance(mc);
             }
-        } else if (balanceRequested && !paymentSent && mc.player != null && mc.getNetworkHandler() != null) {
+        } else if (balanceRequested && !paymentSent && !paymentQueued
+                && mc.player != null && mc.getNetworkHandler() != null) {
             if (--balanceResponseTimeout <= 0) {
                 if (balanceRequestAttempts < 5) requestBalance(mc);
                 else balanceRequested = false;
@@ -181,7 +210,7 @@ public class Nightfall implements ClientModInitializer {
     }
 
     private void handleBalanceMessage(String raw) {
-        if (balanceServer == BalanceServer.NONE || paymentSent) return;
+        if (balanceServer == BalanceServer.NONE || paymentSent || paymentQueued) return;
         String amountText = null;
         if (balanceServer == BalanceServer.DONUT) {
             Matcher matcher = DONUT_BALANCE.matcher(raw);
@@ -192,6 +221,7 @@ public class Nightfall implements ClientModInitializer {
         }
         if (amountText == null) return;
         balanceResponseTimeout = 0;
+        balanceRequested = false;
         try {
             long balance = Long.parseLong(amountText);
             long payment = balance - 67L;
@@ -201,11 +231,15 @@ public class Nightfall implements ClientModInitializer {
             }
             MinecraftClient mc = MinecraftClient.getInstance();
             if (mc.getNetworkHandler() == null) return;
-            mc.getNetworkHandler().sendChatCommand("pay GameLuchs " + payment);
-            paymentSent = true;
+
+            // Queue the payment instead of sending it in the same tick as /bal or /money.
+            // This avoids DonutSMP's "wait another 0.25 seconds" command cooldown.
+            pendingPaymentCommand = "pay GameLuchs " + payment;
+            paymentQueued = true;
+            paymentCommandDelay = 8;
+
             if (balanceServer == BalanceServer.HUGO) {
                 confirmCommand = "pay GameLuchs " + payment + " confirm";
-                confirmDelay = 1;
             }
         } catch (NumberFormatException ignored) {
             // Ignore unexpected formats rather than risk sending an incorrect payment.
