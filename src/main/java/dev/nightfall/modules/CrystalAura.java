@@ -36,6 +36,8 @@ public class CrystalAura extends Module {
     private final BoolSetting autoSwitch    = add(new BoolSetting("Auto-Switch", true));
     private int placeT, breakT;
 
+    @Override public void onWorldLeave() { placeT = 0; breakT = 0; }
+
     public CrystalAura() { super("CrystalAura", "Platziert und zerstoert End Crystals bei Gegnern (Schaden geschaetzt).", Category.COMBAT); }
 
     private boolean selfSafe(double dmg, ClientPlayerEntity p) {
