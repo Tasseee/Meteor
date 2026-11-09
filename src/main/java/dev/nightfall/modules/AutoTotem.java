@@ -15,10 +15,12 @@ public class AutoTotem extends Module {
 
     public AutoTotem() { super("AutoTotem", "Legt einen Totem in die Offhand.", Category.COMBAT); }
 
+    @Override public void onWorldLeave() { wait = 0; }
+
     @Override
     public void onTick() {
         ClientPlayerEntity p = mc.player;
-        if (p == null || mc.interactionManager == null) return;
+        if (p == null || mc.interactionManager == null || mc.currentScreen != null) return;
         if (wait > 0) { wait--; return; }
         if (p.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING)) return;
         if (health.get() > 0 && p.getHealth() + p.getAbsorptionAmount() > health.get()) return;
