@@ -119,9 +119,10 @@ public final class ObiTrapBot extends Module {
                 face.getOffsetX() * 0.5, face.getOffsetY() * 0.5, face.getOffsetZ() * 0.5
             );
             if (p.getEyePos().distanceTo(hit) > placeRange.get()) continue;
-            mc.interactionManager.interactBlock(p, Hand.MAIN_HAND, new BlockHitResult(hit, face, support, false));
+            var result = mc.interactionManager.interactBlock(p, Hand.MAIN_HAND,
+                new BlockHitResult(hit, face, support, false));
             p.swingHand(Hand.MAIN_HAND);
-            return true;
+            if (result.isAccepted()) return true;
         }
         return false;
     }
