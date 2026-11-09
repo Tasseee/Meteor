@@ -84,6 +84,26 @@ public class Nightfall implements ClientModInitializer {
         LOGGER.info("{} {} geladen", NAME, VERSION);
     }
 
+    private void onTick(MinecraftClient mc) {
+        ModuleManager.get(AutoReconnect.class).tickDisconnected(mc);
+        KeySound.tick(mc, mc.player != null && mc.world != null
+                && (mc.currentScreen instanceof ClickGuiScreen || mc.currentScreen instanceof HudEditorScreen));
+        if (mc.getWindow() != null) {
+            long h = mc.getWindow().getHandle();
+            boolean g = GLFW.glfwGetKey(h, Config.guiKey) == GLFW.GLFW_PRESS;
+            boolean hu = GLFW.glfwGetKey(h, Config.hudKey) == GLFW.GLFW_PRESS;
+            boolean m = GLFW.glfwGetKey(h, Config.mapKey) == GLFW.GLFW_PRESS;
+            if (mc.currentScreen == null && mc.player != null) {
+                if (g && !prevGui) open(mc, new ClickGuiScreen());
+                else if (hu && !prevHud) open(mc, new HudEditorScreen());
+                else if (m && !prevMap) open(mc, new MapScreen());
+            }
+            prevGui = g; prevHud = hu; prevMap = m;
+            ModuleManager.pollKeys(mc);
+        }
+        ModuleManager.tick();
+    }
+
     private static void open(MinecraftClient mc, Screen s) { mc.setScreen(s); }
 
 
