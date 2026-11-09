@@ -9,8 +9,8 @@ import net.minecraft.util.math.Vec3d;
 
 /** Client-side Elytra steering and speed control. Server movement validation still applies. */
 public final class ElytraFly extends Module {
-    private final NumberSetting horizontal = add(new NumberSetting("Horizontal (b/s)", 24, 5, 60, 1));
-    private final NumberSetting vertical = add(new NumberSetting("Vertical (b/s)", 8, 1, 25, 1));
+    private final NumberSetting horizontal = add(new NumberSetting("Horizontal (b/s)", 26, 5, 60, 1));
+    private final NumberSetting vertical = add(new NumberSetting("Vertical (b/s)", 9, 1, 25, 1));
 
     public ElytraFly() {
         super("ElytraFly", "Steuert den Gleitflug: WASD, Space hoch, Shift runter.", Category.MOVEMENT);
