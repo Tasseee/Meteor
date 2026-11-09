@@ -78,7 +78,7 @@ public class CrystalAura extends Module {
             int slot = -1;
             if (hand == null) {
                 if (!autoSwitch.get()) return;
-                slot = InvUtil.findHotbar(Items.END_CRYSTAL);
+                slot = InvUtil.ensureHotbar(Items.END_CRYSTAL);
                 if (slot < 0) return;
             }
             BlockPos base = p.getBlockPos();

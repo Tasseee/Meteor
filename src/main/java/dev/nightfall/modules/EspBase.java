@@ -52,9 +52,9 @@ public abstract class EspBase extends Module {
         double cx = (box.minX + box.maxX) / 2, cy = (box.minY + box.maxY) / 2, cz = (box.minZ + box.maxZ) / 2;
         boolean centerOk = Projection.project(cx, cy, cz, pt);
         if (shown && label != null && !label.isEmpty())
-            Draw.centeredText(ctx, mc.textRenderer, label, Draw.topX, Draw.topY - 10, 0xFFFFFFFF);
+            drawCleanLabel(ctx, label, Draw.topX, Draw.topY - 11);
         else if (!shown && centerOk && label != null && !label.isEmpty())
-            Draw.centeredText(ctx, mc.textRenderer, label, (float) pt[0], (float) pt[1] - 4, 0xFFFFFFFF);
+            drawCleanLabel(ctx, label, (float) pt[0], (float) pt[1] - 5);
         if (tracers.get()) {
             float sx = Projection.width() / 2f;
             float sy = origin.is("Mitte") ? Projection.height() / 2f : Projection.height();
@@ -69,6 +69,12 @@ public abstract class EspBase extends Module {
             }
         }
         if (shown) drawn++;
+    }
+
+    private void drawCleanLabel(DrawContext ctx, String label, float centerX, float topY) {
+        int w=mc.textRenderer.getWidth(label),x=Math.round(centerX-w/2.0f),y=Math.round(topY);
+        ctx.fill(x-3,y-2,x+w+3,y+10,0xB910121B);
+        ctx.drawText(mc.textRenderer,label,x,y,0xFFF2F4FA,true);
     }
 
     protected String label(String name, double dist) {

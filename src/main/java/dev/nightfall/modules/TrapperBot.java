@@ -38,9 +38,10 @@ import java.util.Random;
 public final class TrapperBot extends Module {
     private enum Phase { IDLE, WARNING, WAITING_FOR_ARRIVAL, BUILDING, FIGHTING, COOLDOWN }
 
-    private final NumberSetting inviteDelay = add(new NumberSetting("Warn-Vorlauf (Ticks)", 10, 5, 100, 1));
+    private final NumberSetting inviteDelay = add(new NumberSetting("Warn-Vorlauf (Ticks)", 5, 1, 100, 1));
     private final NumberSetting arrivalTimeout = add(new NumberSetting("Wartezeit (Sek.)", 60, 10, 180, 5));
-    private final NumberSetting cooldownSeconds = add(new NumberSetting("Spieler-Cooldown (Sek.)", 15, 5, 300, 5));
+    private final NumberSetting cooldownSeconds = add(new NumberSetting("Spieler-Cooldown (Sek.)", 8, 1, 300, 1));
+    private final NumberSetting buildInterval = add(new NumberSetting("Bau-Intervall (Ticks)", 2, 1, 8, 1));
     private final NumberSetting fightRange = add(new NumberSetting("Kampfreichweite", 3.0, 2.5, 4.5, 0.1));
     private final BoolSetting sendWarning = add(new BoolSetting("Warnung vor TPAHere", true));
     private final BoolSetting buildTrap = add(new BoolSetting("1x2-Falle bauen", true));
@@ -198,7 +199,7 @@ public final class TrapperBot extends Module {
             } else if (++buildPasses < 3 && findBuildBlock() >= 0) {
                 buildOrder = createTrapOrder(target.getBlockPos());
                 buildIndex = 0;
-                buildDelay = 8;
+                buildDelay = Math.max(2, buildInterval.getInt() * 2);
                 blockSlot = findBuildBlock();
                 mc.player.getInventory().setSelectedSlot(blockSlot);
             } else {
@@ -210,7 +211,7 @@ public final class TrapperBot extends Module {
         }
         BlockPos place = buildOrder.get(buildIndex++);
         if (mc.world.getBlockState(place).isReplaceable()) placeAgainstNeighbour(place);
-        buildDelay = 3; // limit placement rate and allow the server to acknowledge blocks
+        buildDelay = buildInterval.getInt(); // paced placement while the server confirms blocks
     }
 
     private boolean placeAgainstNeighbour(BlockPos place) {

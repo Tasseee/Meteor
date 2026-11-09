@@ -120,9 +120,9 @@ public class AutoPvp extends Module {
             }
             return;
         }
-        int axe = InvUtil.findHotbar(Items.NETHERITE_AXE);
-        if (axe < 0) axe = InvUtil.findHotbar(Items.DIAMOND_AXE);
-        if (axe < 0) axe = InvUtil.findHotbar(Items.IRON_AXE);
+        int axe = InvUtil.ensureHotbar(Items.NETHERITE_AXE);
+        if (axe < 0) axe = InvUtil.ensureHotbar(Items.DIAMOND_AXE);
+        if (axe < 0) axe = InvUtil.ensureHotbar(Items.IRON_AXE);
         if (axe < 0) return;
         shieldPreviousSlot = InvUtil.selected();
         shieldAxeSlot = axe;
@@ -199,8 +199,8 @@ public class AutoPvp extends Module {
         }
         if (slamPhase == SlamPhase.NONE) {
             if (!p.isOnGround() || distance < 3.5 || distance > 7.5 || !p.canSee(target) || !clearAbove(p, 4)) return false;
-            windSlot = InvUtil.findHotbar(Items.WIND_CHARGE);
-            maceSlot = InvUtil.findHotbar(Items.MACE);
+            windSlot = InvUtil.ensureHotbar(Items.WIND_CHARGE);
+            maceSlot = InvUtil.ensureHotbar(Items.MACE);
             if (windSlot < 0 || maceSlot < 0) return false;
             originalSlot = InvUtil.selected();
             slamTarget = target;
@@ -328,6 +328,13 @@ public class AutoPvp extends Module {
         if (!attack.get() || distance > reach.get() || !p.canSee(target)
                 || p.getAttackCooldownProgress(0.5f) < 0.95f) return;
 
+        // Ordinary hits use a sword rather than punching with an empty hand.
+        // Shield-break axe selection above remains the intentional exception.
+        if (shieldAxeSlot < 0) {
+            int swordSlot = InvUtil.findBestSword();
+            if (swordSlot < 0) return;
+            InvUtil.select(swordSlot);
+        }
         mc.interactionManager.attackEntity(p, target);
         p.swingHand(Hand.MAIN_HAND);
     }

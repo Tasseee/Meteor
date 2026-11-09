@@ -27,6 +27,7 @@ public final class ModuleManager {
         MODULES.add(new TriggerBot());
         MODULES.add(new AutoPvp());
         MODULES.add(new TrapperBot());
+        MODULES.add(new ObiTrapBot());
         MODULES.add(new CrystalAura());
         MODULES.add(new AutoAnchor());
         MODULES.add(new MaceAssist());
@@ -60,6 +61,9 @@ public final class ModuleManager {
         MODULES.add(new SkyVisuals());
         MODULES.add(new FirstPersonStyle());
         MODULES.add(new WeaponAnimations());
+        MODULES.add(new GhostHand());
+        MODULES.add(new SlowSwing());
+        MODULES.add(new InvSee());
         MODULES.add(new GlowESP());
         MODULES.add(new GUITheme());
         MODULES.add(new CustomCrosshair());
@@ -69,6 +73,7 @@ public final class ModuleManager {
         MODULES.add(new Waypoints());
         MODULES.add(new FakeBases());
         MODULES.add(new SeedCracker());
+        MODULES.add(new FavoriteChunk());
         MODULES.add(new AdvancedWorldOverlay());
         MODULES.add(new AutoFarm());
         MODULES.add(new AutoBreed());

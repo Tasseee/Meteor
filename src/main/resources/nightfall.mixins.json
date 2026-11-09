@@ -6,9 +6,9 @@
     "HeldItemRendererMixin",
     "CameraMixin",
     "GameRendererAccessor",
-    "AbstractSignEditScreenMixin"
+    "AbstractSignEditScreenMixin",
+    "SlowSwingMixin",
+    "SeedCrackerProgressMixin"
   ],
-  "injectors": {
-    "defaultRequire": 1
-  }
+  "injectors": { "defaultRequire": 1 }
 }

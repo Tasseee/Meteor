@@ -56,7 +56,7 @@ public class AutoAnchor extends Module {
             if (self > maxSelf.get() || self >= CombatUtil.effectiveHealth(p) - 1.0) return;
             int charges = st.get(RespawnAnchorBlock.CHARGES);
             if (charges < 1) {
-                int g = InvUtil.findHotbar(Items.GLOWSTONE);
+                int g = InvUtil.ensureHotbar(Items.GLOWSTONE);
                 if (g < 0) return;
                 InvUtil.select(g);
             } else {
@@ -70,7 +70,7 @@ public class AutoAnchor extends Module {
             return;
         }
         if (!st.isAir()) return;
-        int a = InvUtil.findHotbar(Items.RESPAWN_ANCHOR);
+        int a = InvUtil.ensureHotbar(Items.RESPAWN_ANCHOR);
         if (a < 0) return;
         for (Direction d : Direction.values()) {
             BlockPos nb = cand.offset(d);
