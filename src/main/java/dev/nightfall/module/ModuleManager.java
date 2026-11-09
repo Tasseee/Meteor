@@ -68,6 +68,7 @@ public final class ModuleManager {
         // World
         MODULES.add(new Waypoints());
         MODULES.add(new FakeBases());
+        MODULES.add(new SeedCracker());
         // Basefinder
         MODULES.add(new BaseFinder());
         // Misc
