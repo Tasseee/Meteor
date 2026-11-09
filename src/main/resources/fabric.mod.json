@@ -3,7 +3,8 @@
   "id": "nightfall",
   "version": "${version}",
   "name": "Nightfall",
-  "description": "Client-side utility, basefinding, combat and movement features.",
+  "icon": "assets/nightfall/icon.png",
+  "description": "Clientseitiger Minecraft-Utility-Client mit Bewegungs-, Kampf-, ESP- und Weltwerkzeugen.",
   "environment": "client",
   "entrypoints": {
     "client": [
