@@ -38,11 +38,11 @@ import java.util.Random;
 public final class TrapperBot extends Module {
     private enum Phase { IDLE, WARNING, WAITING_FOR_ARRIVAL, BUILDING, FIGHTING, COOLDOWN }
 
-    private final NumberSetting inviteDelay = add(new NumberSetting("Warn-Vorlauf (Ticks)", 5, 1, 100, 1));
+    private final NumberSetting inviteDelay = add(new NumberSetting("Warn-Vorlauf (Ticks)", 3, 1, 100, 1));
     private final NumberSetting arrivalTimeout = add(new NumberSetting("Wartezeit (Sek.)", 60, 10, 180, 5));
-    private final NumberSetting cooldownSeconds = add(new NumberSetting("Spieler-Cooldown (Sek.)", 8, 1, 300, 1));
-    private final NumberSetting buildInterval = add(new NumberSetting("Bau-Intervall (Ticks)", 2, 1, 8, 1));
-    private final NumberSetting fightRange = add(new NumberSetting("Kampfreichweite", 3.0, 2.5, 4.5, 0.1));
+    private final NumberSetting cooldownSeconds = add(new NumberSetting("Spieler-Cooldown (Sek.)", 6, 1, 300, 1));
+    private final NumberSetting buildInterval = add(new NumberSetting("Bau-Intervall (Ticks)", 1, 1, 8, 1));
+    private final NumberSetting fightRange = add(new NumberSetting("Kampfreichweite", 3.1, 2.5, 4.5, 0.1));
     private final BoolSetting sendWarning = add(new BoolSetting("Warnung vor TPAHere", true));
     private final BoolSetting buildTrap = add(new BoolSetting("1x2-Falle bauen", true));
     private final BoolSetting requireTrap = add(new BoolSetting("Nur in Falle angreifen", true));
