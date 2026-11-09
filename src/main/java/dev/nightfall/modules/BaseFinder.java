@@ -101,9 +101,16 @@ public class BaseFinder extends Module {
 
     public void clear() {
         saveMarks();
+        saveFakePatterns();
         clearData();
+        fakePatterns.clear();
         lastWorld = null;
         ctxKey = null;
+    }
+
+    @Override
+    public void onWorldLeave() {
+        clear();
     }
 
     private void clearData() {
@@ -123,6 +130,7 @@ public class BaseFinder extends Module {
             clearData();
             lastWorld = w;
             ctxKey = Storage.server() + "_" + Storage.dim();
+            fakePatterns.clear();
             loadMarks();
             loadFakePatterns();
         }
@@ -303,13 +311,17 @@ public class BaseFinder extends Module {
     }
 
     private void loadFakePatterns() {
+        fakePatterns.clear();
         Path f = fakePatternsFile();
         if (!Files.exists(f)) return;
         try {
             List<FakePattern> loaded = GSON.fromJson(Files.readString(f), FAKE_LIST);
             if (loaded != null) {
-                fakePatterns.clear();
-                fakePatterns.addAll(loaded);
+                for (FakePattern pattern : loaded) {
+                    if (pattern == null) continue;
+                    if (pattern.seenChunks == null) pattern.seenChunks = new ArrayList<>();
+                    fakePatterns.add(pattern);
+                }
             }
         } catch (Exception e) {
             Nightfall.LOGGER.error("Fake-Base-Fingerprints defekt: {}", f, e);
