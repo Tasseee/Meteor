@@ -97,7 +97,7 @@ public final class ChunkEsp extends Module {
             String label=(r.favorite&&showFavorites.get()?"★ ":"")+(r.status==ChunkResult.Status.GONE?"SUS WEG":"SUS")
                     +(r.count>1?" · "+r.count+" Chunks":"")+(showScore.get()?" · "+String.format(Locale.ROOT,"%.1f",r.score):"");
             int tw=mc.textRenderer.getWidth(label),lx=Math.round(Draw.topX-tw/2.0f),ly=Math.round(Draw.topY-14.0f);
-            ctx.fill(lx-4,ly-2,lx-2,ly+10,color);
+            // No dark backing/fill behind SUS labels; keep the projected chunk outline.
             ctx.drawText(mc.textRenderer,label,lx,ly,0xFFF5F6FA,true);drawn++;EspBase.drawn++;
         }
     }
