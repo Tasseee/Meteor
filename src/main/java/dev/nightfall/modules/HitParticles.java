@@ -23,6 +23,7 @@ public final class HitParticles extends Module {
 
     @Override protected void onEnable() { lastHealth.clear(); }
     @Override protected void onDisable() { lastHealth.clear(); }
+    @Override public void onWorldLeave() { lastHealth.clear(); }
 
     @Override public void onTick() {
         if (mc.player == null || mc.world == null) return;
