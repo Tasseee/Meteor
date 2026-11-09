@@ -17,6 +17,8 @@ public final class ParticleTrail extends Module {
 
     public ParticleTrail() { super("ParticleTrail", "Kosmetische Partikelspur hinter dir (nur lokal).", Category.VISUALS); }
 
+    @Override public void onWorldLeave() { ticks = 0; }
+
     @Override public void onTick() {
         if (mc.player == null || mc.world == null) return;
         if (++ticks % 2 != 0) return;
