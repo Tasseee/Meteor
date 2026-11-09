@@ -25,6 +25,7 @@ public abstract class BlockEntityEsp extends EspBase {
     protected abstract String nameOf(BlockEntity be);
 
     @Override protected void onDisable() { cache.clear(); boxes.clear(); }
+    @Override public void onWorldLeave() { cache.clear(); boxes.clear(); timer = 0; }
 
     @Override
     public void onTick() {
