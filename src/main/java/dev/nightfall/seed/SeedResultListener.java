@@ -1,8 +1,8 @@
 package dev.nightfall.seed;
 
+import dev.nightfall.modules.SeedCracker;
 import kaptainwutax.seedcrackerX.api.SeedCrackerAPI;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.text.Text;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -13,13 +13,8 @@ public final class SeedResultListener implements SeedCrackerAPI {
     @Override
     public void pushWorldSeed(long seed) {
         if (LAST_REPORTED.getAndSet(seed) == seed) return;
-
         MinecraftClient client = MinecraftClient.getInstance();
-        client.execute(() -> {
-            if (client.player == null) return;
-            client.player.sendMessage(Text.literal(
-                    "[Nightfall] SeedCracker: Seed gefunden: " + seed), false);
-        });
+        client.execute(() -> SeedCracker.reportSeed(seed));
     }
 
     /** Allows the same seed to be reported again after joining a new world. */
