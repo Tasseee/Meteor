@@ -37,7 +37,7 @@ public final class AutoReconnect extends Module {
     }
 
     public void onDisconnected(ServerInfo server) {
-        if (!isEnabled() || server == null || mc.getNetworkHandler() != null) return;
+        if (!isEnabled() || server == null) return;
         if (lastServer == null || attempts == 0) lastServer = server;
         if (attempts >= maxAttempts.getInt()) {
             pending = false;
