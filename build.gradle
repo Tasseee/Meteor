@@ -124,3 +124,7 @@ tasks.register("generateNightfallIcon") {
 tasks.named("processResources") {
     dependsOn tasks.named("generateNightfallIcon")
 }
+
+tasks.named("sourcesJar") {
+    dependsOn tasks.named("generateNightfallIcon")
+}
