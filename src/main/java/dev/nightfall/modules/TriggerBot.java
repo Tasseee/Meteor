@@ -27,6 +27,8 @@ public class TriggerBot extends Module {
 
     public TriggerBot() { super("TriggerBot", "Greift automatisch an, wenn das Fadenkreuz ein Ziel trifft.", Category.COMBAT); }
 
+    @Override public void onWorldLeave() { wait = 0; }
+
     @Override
     public void onTick() {
         ClientPlayerEntity p = mc.player;
