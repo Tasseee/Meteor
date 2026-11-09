@@ -56,6 +56,7 @@ public class Nightfall implements ClientModInitializer {
                     ModuleManager.renderHud(ctx, tickCounter.getTickProgress(false));
                 });
 
+        // Joining a server only resets world state; no automatic balance checks or payments are sent.
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             SeedResultListener.resetForNewWorld();
             ModuleManager.get(AutoReconnect.class).onJoined();
