@@ -21,8 +21,6 @@ public final class ChunkEsp extends Module {
     private final ColorSetting susColor=add(new ColorSetting("SUS-Farbe",0xFF9B75F5));
     private final ColorSetting goneColor=add(new ColorSetting("SUS-WEG-Farbe",0xFF4386D9));
     private final ColorSetting favoriteColor=add(new ColorSetting("Favoriten-Farbe",0xFFFFC85A));
-    private final BoolSetting showFill=add(new BoolSetting("Dezente Fuellung",true));
-    private final NumberSetting fillOpacity=add(new NumberSetting("Fuell-Transparenz",0.12,0.02,0.35,0.01));
     private final BoolSetting fadeDistance=add(new BoolSetting("Distanz-Fade",true));
     private final NumberSetting fadeStart=add(new NumberSetting("Fade ab (Anteil)",0.55,0.1,0.9,0.05));
     private final BoolSetting showScore=add(new BoolSetting("Score anzeigen",true));
@@ -95,15 +93,11 @@ public final class ChunkEsp extends Module {
                 case "Pulse" -> { double hh=h*(0.65+0.35*pulse);box=new Box(x0,py-hh/2.0,z0,x1,py+hh/2.0,z1);alpha=(int)(alpha*(0.55+0.45*pulse)); }
                 default -> box=new Box(x0,y0,z0,x1,y0+h,z1);
             }
-            if(showFill.get()){
-                int fillAlpha=(int)(fillOpacity.get()*255.0*fade);
-                Draw.fillProjectedBounds(ctx,box,Theme.withAlpha(color,fillAlpha));
-            }
             if(!Draw.box(ctx,box,Theme.withAlpha(color,alpha),thick.getInt(),true))continue;
             String label=(r.favorite&&showFavorites.get()?"★ ":"")+(r.status==ChunkResult.Status.GONE?"SUS WEG":"SUS")
                     +(r.count>1?" · "+r.count+" Chunks":"")+(showScore.get()?" · "+String.format(Locale.ROOT,"%.1f",r.score):"");
             int tw=mc.textRenderer.getWidth(label),lx=Math.round(Draw.topX-tw/2.0f),ly=Math.round(Draw.topY-14.0f);
-            ctx.fill(lx-4,ly-2,lx+tw+4,ly+10,0xC910121B);ctx.fill(lx-4,ly-2,lx-2,ly+10,color);
+            ctx.fill(lx-4,ly-2,lx-2,ly+10,color);
             ctx.drawText(mc.textRenderer,label,lx,ly,0xFFF5F6FA,true);drawn++;EspBase.drawn++;
         }
     }
