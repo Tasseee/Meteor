@@ -44,8 +44,10 @@ public final class InvUtil {
     /** Tauscht Inventar-Slot (0..35) mit der Offhand (Container 0, SWAP-Taste 40). */
     public static void swapWithOffhand(int invIndex) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.interactionManager == null) return;
+        if (mc.player == null || mc.interactionManager == null || mc.currentScreen != null
+                || invIndex < 0 || invIndex > 35) return;
         int slotId = invIndex < 9 ? 36 + invIndex : invIndex;
-        mc.interactionManager.clickSlot(0, slotId, 40, SlotActionType.SWAP, mc.player);
+        mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, slotId, 40,
+                SlotActionType.SWAP, mc.player);
     }
 }
