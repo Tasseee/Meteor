@@ -57,7 +57,7 @@ public abstract class EspBase extends Module {
         double cx = (box.minX + box.maxX) / 2, cy = (box.minY + box.maxY) / 2, cz = (box.minZ + box.maxZ) / 2;
         double fade = 1.0;
         if (distanceFade.get() && mc.player != null && range.get() > 0) {
-            double distanceToTarget = mc.player.getPos().distanceTo(new net.minecraft.util.math.Vec3d(cx, cy, cz));
+            double distanceToTarget = new net.minecraft.util.math.Vec3d(mc.player.getX(), mc.player.getY(), mc.player.getZ()).distanceTo(new net.minecraft.util.math.Vec3d(cx, cy, cz));
             double start = fadeStart.get();
             double progress = (distanceToTarget / range.get() - start) / Math.max(0.01, 1.0 - start);
             fade = Math.max(0.0, Math.min(1.0, 1.0 - progress));
