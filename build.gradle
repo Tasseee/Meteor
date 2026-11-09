@@ -39,3 +39,38 @@ java {
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
 }
+
+
+// Bundle the official SeedCrackerX Fabric mod for Minecraft 1.21.11 as a nested mod.
+def seedCrackerJar = layout.buildDirectory.file("generated/seedcracker/seedcrackerX-2.15.6.jar")
+tasks.register("downloadSeedCracker") {
+    outputs.file(seedCrackerJar)
+    doLast {
+        def output = seedCrackerJar.get().asFile
+        if (!output.parentFile.exists()) output.parentFile.mkdirs()
+        if (!output.exists()) {
+            new URL("https://github.com/19MisterX98/SeedcrackerX/releases/download/2.15.6/seedcrackerX-2.15.6.jar").withInputStream { input ->
+                output.withOutputStream { stream -> stream << input }
+            }
+        }
+        def digest = java.security.MessageDigest.getInstance("SHA-256")
+        output.withInputStream { input ->
+            byte[] buffer = new byte[8192]
+            int read
+            while ((read = input.read(buffer)) > 0) digest.update(buffer, 0, read)
+        }
+        def actual = digest.digest().collect { String.format("%02x", it & 0xff) }.join()
+        def expected = "8695edc230f832339dc53c6fe3543e6d507ac054ef775082083b819fa8b4f227"
+        if (actual != expected) {
+            output.delete()
+            throw new GradleException("SeedCrackerX checksum verification failed")
+        }
+    }
+}
+
+processResources {
+    dependsOn tasks.named("downloadSeedCracker")
+    from(seedCrackerJar) {
+        into "META-INF/jars"
+    }
+}
