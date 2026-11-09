@@ -24,7 +24,7 @@ import net.minecraft.util.math.Vec3d;
 public class AutoAnchor extends Module {
     private final NumberSetting targetRange = add(new NumberSetting("Ziel-Reichweite", 8, 3, 12, 1));
     private final NumberSetting range       = add(new NumberSetting("Reichweite", 4.5, 2, 6, 0.5));
-    private final NumberSetting delay       = add(new NumberSetting("Delay (Ticks)", 3, 1, 20, 1));
+    private final NumberSetting delay       = add(new NumberSetting("Delay (Ticks)", 2, 1, 20, 1));
     private final NumberSetting maxSelf     = add(new NumberSetting("Max. Eigenschaden", 6, 1, 20, 1));
     private int timer;
 
