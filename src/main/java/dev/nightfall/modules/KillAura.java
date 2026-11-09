@@ -17,7 +17,7 @@ import net.minecraft.util.math.Vec3d;
  * Server mit Anti-Cheat koennen das trotzdem erkennen und ahnden.
  */
 public class KillAura extends Module {
-    private final NumberSetting reach     = add(new NumberSetting("Reichweite", 3.0, 1.0, 6.0, 0.1));
+    private final NumberSetting reach     = add(new NumberSetting("Reichweite", 3.2, 1.0, 6.0, 0.1));
     private final NumberSetting fov       = add(new NumberSetting("FOV-Limit", 180, 30, 360, 10));
     private final ModeSetting   priority  = add(new ModeSetting("Prioritaet", "Distanz", "Distanz", "Health"));
     private final ModeSetting   rotate    = add(new ModeSetting("Rotation", "Aus", "Aus", "Sichtbar"));
