@@ -41,6 +41,7 @@ public class AutoPvp extends Module {
     private boolean wasForward, wasSprint, wasLeft, wasRight, wasJump;
     private boolean ownsAutoGap, ownsAutoTotem, ownsCrystalAura, ownsAutoAnchor, ownsMaceAssist;
     private int strafeDir = 1, strafeTimer;
+    private int shieldPreviousSlot = -1, shieldAxeSlot = -1, shieldTargetId = -1;
 
     private enum SlamPhase { NONE, JUMP, AIM_AND_CHARGE, RISING, FALLING }
     private SlamPhase slamPhase = SlamPhase.NONE;
@@ -58,6 +59,7 @@ public class AutoPvp extends Module {
 
     @Override protected void onDisable() {
         cancelSlam(true);
+        releaseShieldAxe();
         release();
         disableOwnedAssistModules();
     }
@@ -94,6 +96,38 @@ public class AutoPvp extends Module {
             T module = ModuleManager.get(type);
             if (module.isEnabled()) module.setEnabled(false);
         }
+    }
+
+    private void releaseShieldAxe() {
+        if (shieldAxeSlot >= 0 && mc.player != null
+                && mc.player.getInventory().getSelectedSlot() == shieldAxeSlot
+                && shieldPreviousSlot >= 0) {
+            InvUtil.select(shieldPreviousSlot);
+        }
+        shieldPreviousSlot = shieldAxeSlot = shieldTargetId = -1;
+    }
+
+    private void updateShieldAxe(PlayerEntity target) {
+        if (!useShieldBreak.get() || target == null || !target.isBlocking()) {
+            releaseShieldAxe();
+            return;
+        }
+        if (shieldTargetId != -1 && shieldTargetId != target.getId()) releaseShieldAxe();
+        if (shieldAxeSlot >= 0) {
+            // Respect a manual hotbar change instead of fighting the user's input.
+            if (InvUtil.selected() != shieldAxeSlot) {
+                shieldPreviousSlot = shieldAxeSlot = shieldTargetId = -1;
+            }
+            return;
+        }
+        int axe = InvUtil.findHotbar(Items.NETHERITE_AXE);
+        if (axe < 0) axe = InvUtil.findHotbar(Items.DIAMOND_AXE);
+        if (axe < 0) axe = InvUtil.findHotbar(Items.IRON_AXE);
+        if (axe < 0) return;
+        shieldPreviousSlot = InvUtil.selected();
+        shieldAxeSlot = axe;
+        shieldTargetId = target.getId();
+        InvUtil.select(axe);
     }
 
     private void release() {
@@ -217,10 +251,10 @@ public class AutoPvp extends Module {
                         && p.getAttackCooldownProgress(0.5f) >= 0.95f) {
                     mc.interactionManager.attackEntity(p, target);
                     p.swingHand(Hand.MAIN_HAND);
-                    cancelSlam(false);
+                    cancelSlam(true);
                     return true;
                 }
-                if (p.isOnGround()) cancelSlam(false);
+                if (p.isOnGround()) cancelSlam(true);
                 return true;
             }
             default -> { return false; }
@@ -287,16 +321,10 @@ public class AutoPvp extends Module {
         mc.options.jumpKey.setPressed(jump.get() && obstacle && p.isOnGround() && clearAbove(p, 2));
         driving = true;
 
+        updateShieldAxe(target);
         if (!attack.get() || distance > reach.get() || !p.canSee(target)
                 || p.getAttackCooldownProgress(0.5f) < 0.95f) return;
 
-        // Axe is preferred only while the target is actively blocking; otherwise use the current sword.
-        if (useShieldBreak.get() && target.isBlocking()) {
-            int axe = InvUtil.findHotbar(Items.DIAMOND_AXE);
-            if (axe < 0) axe = InvUtil.findHotbar(Items.IRON_AXE);
-            if (axe < 0) axe = InvUtil.findHotbar(Items.NETHERITE_AXE);
-            if (axe >= 0) InvUtil.select(axe);
-        }
         mc.interactionManager.attackEntity(p, target);
         p.swingHand(Hand.MAIN_HAND);
     }
