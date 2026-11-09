@@ -16,6 +16,7 @@ public class AutoGap extends Module {
     public AutoGap() { super("AutoGap", "Isst bei niedriger Health einen goldenen Apfel.", Category.COMBAT); }
 
     @Override protected void onDisable() { finish(); }
+    @Override public void onWorldLeave() { finish(); cooldown = 0; }
 
     private void finish() {
         if (eating) { mc.options.useKey.setPressed(false); InvUtil.select(prev); }
