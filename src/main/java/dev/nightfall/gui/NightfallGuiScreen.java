@@ -28,6 +28,7 @@ public final class NightfallGuiScreen extends Screen {
     private String slider = "";
     private int sliderX, sliderW;
     private int scroll;
+    private long tabChangedAt = System.nanoTime();
 
     public NightfallGuiScreen() {
         super(Text.literal("Nightfall"));
@@ -67,6 +68,14 @@ public final class NightfallGuiScreen extends Screen {
     }
     private boolean opened(String id) { return panel(id, 0, 0)[2] != 0; }
     private void setOpen(String id, boolean v) { panel(id, 0, 0)[2] = v ? 1 : 0; Config.save(); }
+    private void selectTab(String tab) {
+        if (tab.equals(activeTab)) return;
+        activeTab = tab;
+        for (String name : TABS) panel(name, 0, 0)[2] = name.equals(tab) ? 1 : 0;
+        tabChangedAt = System.nanoTime();
+        scroll = 0;
+        Config.save();
+    }
 
     @Override
     public void render(DrawContext ctx, int mx, int my, float delta) {
@@ -104,7 +113,7 @@ public final class NightfallGuiScreen extends Screen {
                 if (draggingTab && dragTab != null) {
                     int from = TABS.indexOf(dragTab), to = i;
                     if (from >= 0) { TABS.remove(from); TABS.add(Math.max(0, Math.min(TABS.size(), to)), dragTab); saveTabs(); }
-                } else { activeTab = tab; setOpen(tab, true); }
+                } else { selectTab(tab); }
                 click = false;
             }
             if (left && over && dragTab == null && !draggingWindow) { dragTab = tab; tabStart = i; }
@@ -121,25 +130,45 @@ public final class NightfallGuiScreen extends Screen {
         }
         if (release) dragTab = null;
 
-        // The selected category opens as a movable module window; other open windows remain on screen.
-        if (click && inside(mx,my,14,sy + TABS.indexOf(activeTab)*38,SIDE,32)) setOpen(activeTab,true);
-        if (!opened(activeTab)) setOpen(activeTab,true);
-
-        int defaultX = SIDE + 34, defaultY = 105;
-        int cols = Math.max(1, Math.min(4, (width - SIDE - 60) / 270));
-        int index = 0;
-        for (String tab : TABS) {
-            if (!opened(tab)) continue;
-            int[] p = panel(tab, defaultX + (index % cols) * 270, defaultY + (index / cols) * 300);
-            int x = Math.max(SIDE + 20, Math.min(width - 250, p[0]));
-            int y = Math.max(82, Math.min(height - 70, p[1]));
-            int w = Math.min(252, width - x - 12);
-            drawWindow(ctx, tab, x, y, w, mx, my, click, rightClick, mc);
-            if (draggingWindow && tab.equals(dragPanel)) {
-                if (left) { p[0] = Math.max(SIDE + 20, Math.min(width - 250, mx - dragX)); p[1] = Math.max(82, Math.min(height - 50, my - dragY)); }
-                else { draggingWindow = false; dragPanel = null; Config.save(); }
+        // A single selected tab owns the workspace; switching tabs closes the previous panel.
+        if (!opened(activeTab)) {
+            for (String name : TABS) panel(name, 0, 0)[2] = name.equals(activeTab) ? 1 : 0;
+        }
+        int defaultX = Math.max(SIDE + 20, (width + SIDE - 270) / 2);
+        int defaultY = Math.max(82, (height - Math.min(520, height - 110)) / 2);
+        int[] p = panel(activeTab, defaultX, defaultY);
+        int minX = Math.min(SIDE + 18, Math.max(8, width - 220));
+        int maxX = Math.max(minX, width - 220);
+        int maxY = Math.max(72, height - HEAD - 36);
+        int x = Math.max(minX, Math.min(maxX, p[0]));
+        int y = Math.max(72, Math.min(maxY, p[1]));
+        int w = Math.max(210, Math.min(300, width - x - 10));
+        float anim = 1.0f;
+        if (Config.guiAnimations) {
+            float duration = Math.max(50, Config.guiAnimationDuration) / Math.max(0.1f, Config.guiAnimationSpeed);
+            float t = Math.max(0.0f, Math.min(1.0f, (System.nanoTime() - tabChangedAt) / 1_000_000.0f / duration));
+            anim = switch (Config.guiEasing) {
+                case "Linear" -> t;
+                case "Sine" -> (float)(1.0 - Math.cos(t * Math.PI * 0.5));
+                default -> 1.0f - (float)Math.pow(1.0f - t, 3.0);
+            };
+        }
+        int offsetX = 0, offsetY = 0;
+        if (Config.guiAnimations && Config.guiAnimationType.equals("Slide")) {
+            int distance = Math.round((1.0f - anim) * 24.0f);
+            switch (Config.guiAnimationDirection) {
+                case "Right" -> offsetX = distance;
+                case "Up" -> offsetY = -distance;
+                case "Down" -> offsetY = distance;
+                default -> offsetX = -distance;
             }
-            index++;
+        }
+        drawWindow(ctx, activeTab, x + offsetX, y + offsetY, w, mx, my, click, rightClick, mc);
+        if (draggingWindow && activeTab.equals(dragPanel)) {
+            if (left) {
+                p[0] = Math.max(minX, Math.min(maxX, mx - dragX));
+                p[1] = Math.max(72, Math.min(maxY, my - dragY));
+            } else { draggingWindow = false; dragPanel = null; Config.save(); }
         }
         if (!left && slider.isEmpty()) { draggingWindow = false; dragPanel = null; }
         if (!slider.isEmpty() && left) {
@@ -157,7 +186,7 @@ public final class NightfallGuiScreen extends Screen {
         Set<String> expanded = EXPANDED.computeIfAbsent(tab, k -> new HashSet<>());
         int visible = 0;
         for (Module m : mods) visible += ROW + (expanded.contains(m.getName()) ? m.getSettings().size() * ROW : 0);
-        int bodyH = tab.equals("Config") ? 176 : Math.min(430, Math.max(50, visible + 8));
+        int bodyH = pMinimized(tab) ? 0 : Math.max(0, Math.min(Math.max(64, height - y - HEAD - 12), tab.equals("Config") ? 340 : Math.max(50, visible + 8)));
         panel(ctx, x, y, w, HEAD + bodyH);
         ctx.fill(x, y, x + w, y + HEAD, 0xEE100D19);
         ctx.fill(x, y, x + 2, y + HEAD, Theme.ACCENT);
@@ -239,6 +268,7 @@ public final class NightfallGuiScreen extends Screen {
         int rgb=java.awt.Color.HSBtoRGB((Config.accentHue%360f)/360f,0.78f,1f)&0xFFFFFF;
         Theme.apply(rgb,Theme.ACCENT_DIM&0xFFFFFF,Theme.PANEL&0xFFFFFF,Theme.TEXT&0xFFFFFF,Theme.TEXT_DIM&0xFFFFFF,Theme.BG_DIM&0xFFFFFF,Theme.DESIGN);
     }
+    private boolean pMinimized(String tab) { return panel(tab, 0, 0)[2] == 2; }
     private void pMin(String tab){int[] p=panel(tab,0,0);p[2]=p[2]==2?1:2;Config.save();}
     private void panel(DrawContext c,int x,int y,int w,int h){c.fill(x-1,y-1,x+w+1,y+h+1,Theme.withAlpha(Theme.ACCENT,190));c.fill(x,y,x+w,y+h,0xD90B0A11);}
     private static String icon(String s){return switch(s){case "Combat"->"⚔";case "Movement"->"⌁";case "Visuals"->"◉";case "Player"->"●";case "World"->"◇";case "Misc"->"⚙";case "HUD"->"▣";default->"☷";};}
