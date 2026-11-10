@@ -30,12 +30,13 @@ import java.util.*;
 public final class LootDropFinder extends Module {
     private final NumberSetting range = add(new NumberSetting("Reichweite", 64, 8, 256, 8));
     private final NumberSetting markerSeconds = add(new NumberSetting("Chunk-Markierung (Sek.)", 60, 5, 300, 5));
-    private final BoolSetting emeraldOre = add(new BoolSetting("Emerald-Erz", true));
-    private final BoolSetting diamondOre = add(new BoolSetting("Diamant-Erz", true));
-    private final BoolSetting ancientDebris = add(new BoolSetting("Ancient Debris", true));
+    private final BoolSetting emeraldBlock = add(new BoolSetting("Emerald-Block", true));
+    private final BoolSetting diamondBlock = add(new BoolSetting("Diamant-Block", true));
+    private final BoolSetting ironBlock = add(new BoolSetting("Eisen-Block", true));
+    private final BoolSetting heavyCore = add(new BoolSetting("Heavy Core", true));
+    private final BoolSetting netheriteGoldBlocks = add(new BoolSetting("Netherite-/Goldblock", true));
     private final BoolSetting gildedBlackstone = add(new BoolSetting("Gilded Blackstone", true));
     private final BoolSetting spawners = add(new BoolSetting("Spawner", true));
-    private final BoolSetting valuableBlocks = add(new BoolSetting("Wertvolle Bloecke", true));
     private final BoolSetting droppedItems = add(new BoolSetting("Item-Drops", true));
     private final BoolSetting itemFrames = add(new BoolSetting("Itemframes", true));
     private final BoolSetting armorStands = add(new BoolSetting("Ruestungsstaender", true));
@@ -215,13 +216,13 @@ public final class LootDropFinder extends Module {
             for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
                 BlockState state = section.getBlockState(x, y, z);
                 String name = null;
-                if (emeraldOre.get() && (state.isOf(Blocks.EMERALD_ORE) || state.isOf(Blocks.DEEPSLATE_EMERALD_ORE))) name = "Emerald-Erz";
-                else if (diamondOre.get() && (state.isOf(Blocks.DIAMOND_ORE) || state.isOf(Blocks.DEEPSLATE_DIAMOND_ORE))) name = "Diamant-Erz";
-                else if (ancientDebris.get() && state.isOf(Blocks.ANCIENT_DEBRIS)) name = "Ancient Debris";
+                if (emeraldBlock.get() && state.isOf(Blocks.EMERALD_BLOCK)) name = "Emerald-Block";
+                else if (diamondBlock.get() && state.isOf(Blocks.DIAMOND_BLOCK)) name = "Diamant-Block";
+                else if (ironBlock.get() && state.isOf(Blocks.IRON_BLOCK)) name = "Eisen-Block";
+                else if (heavyCore.get() && state.isOf(Blocks.HEAVY_CORE)) name = "Heavy Core";
+                else if (netheriteGoldBlocks.get() && (state.isOf(Blocks.NETHERITE_BLOCK) || state.isOf(Blocks.GOLD_BLOCK))) name = "Netherite-/Goldblock";
                 else if (gildedBlackstone.get() && state.isOf(Blocks.GILDED_BLACKSTONE)) name = "Gilded Blackstone";
                 else if (spawners.get() && state.isOf(Blocks.SPAWNER)) name = "Spawner";
-                else if (valuableBlocks.get() && (state.isOf(Blocks.EMERALD_BLOCK) || state.isOf(Blocks.DIAMOND_BLOCK)
-                        || state.isOf(Blocks.NETHERITE_BLOCK) || state.isOf(Blocks.GOLD_BLOCK))) name = "Wertvoller Block";
                 if (name == null) continue;
                 BlockPos pos = new BlockPos((cx << 4) + x, baseY + y, (cz << 4) + z);
                 String id = "block:" + pos.asLong() + ":" + name;
