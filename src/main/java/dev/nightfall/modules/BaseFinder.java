@@ -46,6 +46,7 @@ public class BaseFinder extends Module {
     private final NumberSetting wSculk    = add(new NumberSetting("Gewicht Sculk", 1.2, 0.0, 8.0, 0.1));
     private final NumberSetting wCrops    = add(new NumberSetting("Gewicht Reife Felder", 0.5, 0.0, 5.0, 0.1));
     private final NumberSetting wKelp     = add(new NumberSetting("Gewicht Kelp", 0.7, 0.0, 5.0, 0.1));
+    private final NumberSetting naturalAreaBonusSetting = add(new NumberSetting("Umgebungsbonus Natur-Signale", 0.15, 0.0, 0.5, 0.05));
     private final BoolSetting   chat      = add(new BoolSetting("Chat-Meldung", true));
 
     private static final Gson GSON = new Gson();
@@ -250,9 +251,21 @@ public class BaseFinder extends Module {
         double sculkScore = sculk >= 3 ? (sculk - 2) * wSculk.get() : 0;
         double cropScore = matureCrops >= 16 ? (matureCrops / 16.0) * wCrops.get() : 0;
         double kelpScore = matureKelp >= 4 ? (matureKelp / 4.0) * wKelp.get() : 0;
+        // Only amethyst, sculk, mature crops and kelp receive a small neighboring-chunk bonus.
+        double naturalSignalScore = amethyst + sculkScore + cropScore + kelpScore;
+        double neighboringNaturalScore = 0;
+        for (int dz = -1; dz <= 1; dz++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                if (dx == 0 && dz == 0) continue;
+                ChunkResult neighbor = results.get(key(cx + dx, cz + dz));
+                if (neighbor != null && neighbor.lastScanTick > 0)
+                    neighboringNaturalScore += neighbor.naturalSignalScore;
+            }
+        }
+        double areaBonus = Math.min(1.0, neighboringNaturalScore * naturalAreaBonusSetting.get());
         double score = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + redstone * wRedstone.get()
-                + spawner * wSpawner.get() + cluster + amethyst + sculkScore + cropScore + kelpScore;
+                + spawner * wSpawner.get() + cluster + naturalSignalScore + areaBonus;
         int signalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
                 + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (spawner > 0 ? 1 : 0)
                 + (cluster > 0 ? 1 : 0) + (amethyst > 0 ? 1 : 0) + (sculkScore > 0 ? 1 : 0)
@@ -262,6 +275,7 @@ public class BaseFinder extends Module {
         ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
         Status prev = res.status;
         res.score = score;
+        res.naturalSignalScore = naturalSignalScore;
         res.lastScanTick = tick;
         res.reasons.clear();
         // Expose the weighted contributions so a score can be inspected and tuned.
@@ -278,6 +292,7 @@ public class BaseFinder extends Module {
         if (sculkScore > 0) res.reasons.add("Sculk-Cluster (" + sculk + ", +" + fmt(sculkScore) + ")");
         if (cropScore > 0) res.reasons.add("Reife Feldfrüchte (" + matureCrops + ", +" + fmt(cropScore) + ")");
         if (kelpScore > 0) res.reasons.add("Reifer Kelp (" + matureKelp + " ausgewachsene Pflanzen, +" + fmt(kelpScore) + ")");
+        if (areaBonus > 0.01) res.reasons.add("Natur-Signale in Nachbar-Chunks (+" + fmt(areaBonus) + ")");
 
         if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
             if (isRepeatedFakePattern(storage, shulker, hopper, furnace, redstone, spawner, cx, cz)) {
