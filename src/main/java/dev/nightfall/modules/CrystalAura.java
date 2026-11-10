@@ -28,7 +28,7 @@ public class CrystalAura extends Module {
     private final NumberSetting placeRange  = add(new NumberSetting("Platzier-Reichweite", 4.5, 2, 6, 0.5));
     private final NumberSetting breakRange  = add(new NumberSetting("Zerstoer-Reichweite", 4.5, 2, 6, 0.5));
     private final NumberSetting minDamage   = add(new NumberSetting("Min. Schaden", 6, 1, 36, 1));
-    private final NumberSetting maxSelf     = add(new NumberSetting("Max. Eigenschaden", 6, 1, 20, 1));
+    private final NumberSetting maxSelf     = add(new NumberSetting("Max. Eigenschaden", 12, 1, 20, 1));
     private final NumberSetting placeDelay  = add(new NumberSetting("Platzier-Delay (Ticks)", 2, 0, 20, 1));
     private final NumberSetting breakDelay  = add(new NumberSetting("Zerstoer-Delay (Ticks)", 1, 0, 20, 1));
     private final BoolSetting place         = add(new BoolSetting("Platzieren", true));
