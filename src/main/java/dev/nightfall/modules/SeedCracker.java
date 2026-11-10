@@ -37,8 +37,15 @@ public final class SeedCracker extends Module {
     public static void reportSeed(long seed){
         SeedCracker module;try{module=dev.nightfall.module.ModuleManager.get(SeedCracker.class);}catch(Throwable ignored){return;}
         if(!module.isEnabled())return;
+        SeedIntegrity.Report integrity = module.integrity.verify(seed);
+        lastIntegrity = integrity;
+        if (!integrity.accepted()) {
+            NotificationCenter.push("SEED VERWORFEN", integrity.reason(), 12_000L, 0xFFFF7777);
+            return;
+        }
         foundSeed=seed;foundAt=System.currentTimeMillis();hasResult=true;SeedCrackerProgress.complete();
-        NotificationCenter.push("SEED GEFUNDEN",Long.toString(seed),12_000L,0xFF65E6A5);
+        NotificationCenter.push("SEED " + integrity.level().label(), Long.toString(seed) + " · " + integrity.summary(), 12_000L,
+                integrity.level() == SeedIntegrity.Level.HIGH ? 0xFF65E6A5 : 0xFFFFC46B);
     }
     @Override public void onWorldLeave(){hasResult=false;SeedCrackerProgress.reset();}
     private record ProgressView(float progress,String label,boolean indeterminate){}
