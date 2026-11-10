@@ -26,6 +26,13 @@ public final class WorldLyrics extends Module {
 
     private final double[] projected = new double[2];
 
+    @Override protected void onEnable() {
+        try {
+            SpotifyLyricsHud spotify = ModuleManager.get(SpotifyLyricsHud.class);
+            if (!spotify.isEnabled()) spotify.setEnabled(true);
+        } catch (Exception ignored) { }
+    }
+
     public WorldLyrics() {
         super("WorldLyrics", "Laesst synchronisierte Spotify-Lyrics frei vor dir in der Welt schweben.");
     }
