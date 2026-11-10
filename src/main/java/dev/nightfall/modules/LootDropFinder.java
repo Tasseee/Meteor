@@ -1,6 +1,10 @@
 package dev.nightfall.modules;
 
+import dev.nightfall.module.Category;
+import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
+import dev.nightfall.module.setting.NumberSetting;
+import dev.nightfall.util.Draw;
 import dev.nightfall.util.Projection;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -13,7 +17,6 @@ import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.chunk.ChunkSection;
 import net.minecraft.world.chunk.WorldChunk;
@@ -21,10 +24,12 @@ import net.minecraft.world.chunk.WorldChunk;
 import java.util.*;
 
 /**
- * Client-side ESP for notable blocks and visible entities in already loaded chunks.
- * It never requests chunks or inspects container contents that the server has not sent.
+ * Loot discovery notifier: no per-object ESP. A newly detected chunk gets one
+ * notification and a temporary outline around the whole chunk.
  */
-public final class LootDropFinder extends EspBase {
+public final class LootDropFinder extends Module {
+    private final NumberSetting range = add(new NumberSetting("Reichweite", 64, 8, 256, 8));
+    private final NumberSetting markerSeconds = add(new NumberSetting("Chunk-Markierung (Sek.)", 60, 5, 300, 5));
     private final BoolSetting emeraldOre = add(new BoolSetting("Emerald-Erz", true));
     private final BoolSetting diamondOre = add(new BoolSetting("Diamant-Erz", true));
     private final BoolSetting ancientDebris = add(new BoolSetting("Ancient Debris", true));
@@ -40,38 +45,36 @@ public final class LootDropFinder extends EspBase {
     private static final int CHUNK_REFRESH_TICKS = 100;
     private static final int ENTITY_REFRESH_TICKS = 10;
     private static final int CHUNKS_PER_TICK = 2;
+    private static final int MARKER_COLOR = 0xE638BDF8;
 
     private static final class Target {
         final String id;
         final String label;
         final BlockPos pos;
         final Entity entity;
-        final int rgb;
 
-        Target(String id, String label, BlockPos pos, Entity entity, int rgb) {
+        Target(String id, String label, BlockPos pos, Entity entity) {
             this.id = id;
             this.label = label;
             this.pos = pos == null ? null : pos.toImmutable();
             this.entity = entity;
-            this.rgb = rgb;
-        }
-
-        Box box() {
-            return entity != null ? entity.getBoundingBox() : new Box(pos);
         }
 
         Vec3d center() {
-            Box b = box();
-            return new Vec3d((b.minX + b.maxX) * 0.5, (b.minY + b.maxY) * 0.5, (b.minZ + b.maxZ) * 0.5);
+            if (entity != null) {
+                Box b = entity.getBoundingBox();
+                return new Vec3d((b.minX + b.maxX) * 0.5, (b.minY + b.maxY) * 0.5, (b.minZ + b.maxZ) * 0.5);
+            }
+            return Vec3d.ofCenter(pos);
         }
     }
 
     private final Map<Long, List<Target>> blockTargetsByChunk = new HashMap<>();
     private final Map<Long, Long> lastChunkScan = new HashMap<>();
     private final Map<String, Target> entityTargets = new HashMap<>();
+    private final Map<Long, Long> markedChunks = new HashMap<>();
     private final ArrayDeque<Long> chunkQueue = new ArrayDeque<>();
     private final Set<Long> queuedChunks = new HashSet<>();
-    private final List<Target> renderTargets = new ArrayList<>();
 
     private net.minecraft.client.world.ClientWorld lastWorld;
     private long tick;
@@ -81,40 +84,27 @@ public final class LootDropFinder extends EspBase {
 
     public LootDropFinder() {
         super("LootDropFinder",
-                "ESP fuer wertvolle Bloecke, Itemframes, Ruestungsstaender und Item-Drops in geladenen Chunks.",
-                64, 256, 0x38BDF8);
+                "Meldet gefundene Loot-Hinweise mit Sound und markiert nur den betroffenen Chunk.",
+                Category.VISUALS);
     }
 
     private static long chunkKey(int cx, int cz) {
         return ((long) cx & 0xFFFFFFFFL) | ((long) cz << 32);
     }
-
     private static int chunkX(long key) { return (int) key; }
     private static int chunkZ(long key) { return (int) (key >> 32); }
 
-    @Override
-    protected void onEnable() {
-        clearState();
-    }
-
-    @Override
-    protected void onDisable() {
-        clearState();
-    }
-
-    @Override
-    public void onWorldLeave() {
-        clearState();
-        lastWorld = null;
-    }
+    @Override protected void onEnable() { clearState(); }
+    @Override protected void onDisable() { clearState(); }
+    @Override public void onWorldLeave() { clearState(); lastWorld = null; }
 
     private void clearState() {
         blockTargetsByChunk.clear();
         lastChunkScan.clear();
         entityTargets.clear();
+        markedChunks.clear();
         chunkQueue.clear();
         queuedChunks.clear();
-        renderTargets.clear();
         tick = 0L;
         lastRefillTick = 0L;
         initialPassStarted = false;
@@ -129,21 +119,18 @@ public final class LootDropFinder extends EspBase {
             lastWorld = mc.world;
         }
         tick++;
+        markedChunks.entrySet().removeIf(e -> tick - e.getValue() > markerSeconds.get() * 20.0);
 
         List<Target> found = new ArrayList<>();
         if (tick % ENTITY_REFRESH_TICKS == 0) refreshEntities(found);
-
         if (chunkQueue.isEmpty() && tick - lastRefillTick >= 20L) refillChunkQueue();
         for (int i = 0; i < CHUNKS_PER_TICK && !chunkQueue.isEmpty(); i++) {
             long key = chunkQueue.pollFirst();
             queuedChunks.remove(key);
             scanChunk(key, found);
         }
-        if (initialPassStarted && !initialPassComplete && chunkQueue.isEmpty()) {
-            initialPassComplete = true;
-        }
-
-        if (!found.isEmpty()) alert(found);
+        if (initialPassStarted && !initialPassComplete && chunkQueue.isEmpty()) initialPassComplete = true;
+        if (!found.isEmpty()) alertByChunk(found);
     }
 
     private void refillChunkQueue() {
@@ -158,11 +145,10 @@ public final class LootDropFinder extends EspBase {
         Iterator<Long> cached = blockTargetsByChunk.keySet().iterator();
         while (cached.hasNext()) {
             long key = cached.next();
-            int cx = chunkX(key), cz = chunkZ(key);
-            double dx = (cx * 16.0 + 8.0) - mc.player.getX();
-            double dz = (cz * 16.0 + 8.0) - mc.player.getZ();
+            double dx = chunkX(key) * 16.0 + 8.0 - mc.player.getX();
+            double dz = chunkZ(key) * 16.0 + 8.0 - mc.player.getZ();
             if (dx * dx + dz * dz > rangeSq + 512.0
-                    || mc.world.getChunkManager().getWorldChunk(cx, cz) == null) {
+                    || mc.world.getChunkManager().getWorldChunk(chunkX(key), chunkZ(key)) == null) {
                 cached.remove();
                 lastChunkScan.remove(key);
                 queuedChunks.remove(key);
@@ -180,8 +166,7 @@ public final class LootDropFinder extends EspBase {
                 if (mc.world.getChunkManager().getWorldChunk(cx, cz) == null) continue;
                 long key = chunkKey(cx, cz);
                 if (queuedChunks.contains(key)) continue;
-                long last = lastChunkScan.getOrDefault(key, Long.MIN_VALUE / 2);
-                if (tick - last < CHUNK_REFRESH_TICKS) continue;
+                if (tick - lastChunkScan.getOrDefault(key, Long.MIN_VALUE / 2) < CHUNK_REFRESH_TICKS) continue;
                 candidates.add(key);
             }
         }
@@ -199,7 +184,7 @@ public final class LootDropFinder extends EspBase {
     }
 
     private void scanChunk(long key, List<Target> found) {
-        if (mc.world == null || mc.player == null) return;
+        if (mc.world == null) return;
         int cx = chunkX(key), cz = chunkZ(key);
         WorldChunk chunk = mc.world.getChunkManager().getWorldChunk(cx, cz);
         if (chunk == null) {
@@ -207,50 +192,32 @@ public final class LootDropFinder extends EspBase {
             lastChunkScan.remove(key);
             return;
         }
-
         List<Target> old = blockTargetsByChunk.getOrDefault(key, List.of());
         Set<String> oldIds = new HashSet<>();
         for (Target target : old) oldIds.add(target.id);
-
         List<Target> next = new ArrayList<>();
+
         ChunkSection[] sections = chunk.getSectionArray();
         for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
             ChunkSection section = sections[sectionIndex];
             if (section == null || section.isEmpty()) continue;
             int baseY = chunk.getBottomY() + sectionIndex * 16;
-            for (int y = 0; y < 16; y++) {
-                for (int z = 0; z < 16; z++) {
-                    for (int x = 0; x < 16; x++) {
-                        BlockState state = section.getBlockState(x, y, z);
-                        int rgb = 0;
-                        String name = null;
-                        if (emeraldOre.get() && (state.isOf(Blocks.EMERALD_ORE) || state.isOf(Blocks.DEEPSLATE_EMERALD_ORE))) {
-                            name = "Emerald Ore"; rgb = 0x22C55E;
-                        } else if (diamondOre.get() && (state.isOf(Blocks.DIAMOND_ORE) || state.isOf(Blocks.DEEPSLATE_DIAMOND_ORE))) {
-                            name = "Diamond Ore"; rgb = 0x38BDF8;
-                        } else if (ancientDebris.get() && state.isOf(Blocks.ANCIENT_DEBRIS)) {
-                            name = "Ancient Debris"; rgb = 0xB45309;
-                        } else if (gildedBlackstone.get() && state.isOf(Blocks.GILDED_BLACKSTONE)) {
-                            name = "Gilded Blackstone"; rgb = 0xF59E0B;
-                        } else if (spawners.get() && state.isOf(Blocks.SPAWNER)) {
-                            name = "Spawner"; rgb = 0xEC4899;
-                        } else if (valuableBlocks.get() && state.isOf(Blocks.EMERALD_BLOCK)) {
-                            name = "Emerald Block"; rgb = 0x16A34A;
-                        } else if (valuableBlocks.get() && state.isOf(Blocks.DIAMOND_BLOCK)) {
-                            name = "Diamond Block"; rgb = 0x0EA5E9;
-                        } else if (valuableBlocks.get() && state.isOf(Blocks.NETHERITE_BLOCK)) {
-                            name = "Netherite Block"; rgb = 0xA855F7;
-                        } else if (valuableBlocks.get() && state.isOf(Blocks.GOLD_BLOCK)) {
-                            name = "Gold Block"; rgb = 0xEAB308;
-                        }
-                        if (name == null) continue;
-                        BlockPos pos = new BlockPos((cx << 4) + x, baseY + y, (cz << 4) + z);
-                        String id = "block:" + pos.asLong() + ":" + name;
-                        Target target = new Target(id, name, pos, null, rgb);
-                        next.add(target);
-                        if (initialPassComplete && !oldIds.contains(id)) found.add(target);
-                    }
-                }
+            for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+                BlockState state = section.getBlockState(x, y, z);
+                String name = null;
+                if (emeraldOre.get() && (state.isOf(Blocks.EMERALD_ORE) || state.isOf(Blocks.DEEPSLATE_EMERALD_ORE))) name = "Emerald-Erz";
+                else if (diamondOre.get() && (state.isOf(Blocks.DIAMOND_ORE) || state.isOf(Blocks.DEEPSLATE_DIAMOND_ORE))) name = "Diamant-Erz";
+                else if (ancientDebris.get() && state.isOf(Blocks.ANCIENT_DEBRIS)) name = "Ancient Debris";
+                else if (gildedBlackstone.get() && state.isOf(Blocks.GILDED_BLACKSTONE)) name = "Gilded Blackstone";
+                else if (spawners.get() && state.isOf(Blocks.SPAWNER)) name = "Spawner";
+                else if (valuableBlocks.get() && (state.isOf(Blocks.EMERALD_BLOCK) || state.isOf(Blocks.DIAMOND_BLOCK)
+                        || state.isOf(Blocks.NETHERITE_BLOCK) || state.isOf(Blocks.GOLD_BLOCK))) name = "Wertvoller Block";
+                if (name == null) continue;
+                BlockPos pos = new BlockPos((cx << 4) + x, baseY + y, (cz << 4) + z);
+                String id = "block:" + pos.asLong() + ":" + name;
+                Target target = new Target(id, name, pos, null);
+                next.add(target);
+                if (initialPassComplete && !oldIds.contains(id)) found.add(target);
             }
         }
         blockTargetsByChunk.put(key, next);
@@ -262,22 +229,17 @@ public final class LootDropFinder extends EspBase {
         Map<String, Target> next = new HashMap<>();
         double maxDistanceSq = range.get() * range.get();
         Vec3d playerPos = mc.player.getPos();
-
         for (Entity entity : mc.world.getEntities()) {
             if (entity == mc.player || entity.squaredDistanceTo(playerPos) > maxDistanceSq) continue;
             Target target = null;
             if (droppedItems.get() && entity instanceof ItemEntity item) {
-                String itemName = item.getStack().getName().getString();
                 target = new Target("entity:" + entity.getUuidAsString(),
-                        "Item: " + itemName + " x" + item.getStack().getCount(),
-                        null, entity, 0x22C55E);
+                        "Item-Drop: " + item.getStack().getName().getString() + " x" + item.getStack().getCount(), null, entity);
             } else if (itemFrames.get() && entity instanceof ItemFrameEntity frame) {
                 String held = frame.getHeldItemStack().isEmpty() ? "leer" : frame.getHeldItemStack().getName().getString();
-                target = new Target("entity:" + entity.getUuidAsString(), "Itemframe: " + held,
-                        null, entity, 0xF8FAFC);
+                target = new Target("entity:" + entity.getUuidAsString(), "Itemframe: " + held, null, entity);
             } else if (armorStands.get() && entity instanceof ArmorStandEntity) {
-                target = new Target("entity:" + entity.getUuidAsString(), "Ruestungsstaender",
-                        null, entity, 0xA78BFA);
+                target = new Target("entity:" + entity.getUuidAsString(), "Ruestungsstaender", null, entity);
             }
             if (target != null) {
                 next.put(target.id, target);
@@ -288,43 +250,46 @@ public final class LootDropFinder extends EspBase {
         entityTargets.putAll(next);
     }
 
-    private void alert(List<Target> found) {
-        if (mc.player == null) return;
-        Target closest = null;
-        double closestSq = Double.MAX_VALUE;
+    private void alertByChunk(List<Target> found) {
+        Map<Long, List<Target>> grouped = new LinkedHashMap<>();
         for (Target target : found) {
-            Vec3d center = target.center();
-            double d2 = center.squaredDistanceTo(mc.player.getX(), mc.player.getY(), mc.player.getZ());
-            if (d2 < closestSq) { closestSq = d2; closest = target; }
+            Vec3d p = target.center();
+            long key = chunkKey(((int) Math.floor(p.x)) >> 4, ((int) Math.floor(p.z)) >> 4);
+            grouped.computeIfAbsent(key, ignored -> new ArrayList<>()).add(target);
         }
-        if (closest == null) return;
-        Vec3d p = closest.center();
-        if (chatAlert.get()) {
-            String extra = found.size() > 1 ? " (+" + (found.size() - 1) + " weitere)" : "";
-            mc.player.sendMessage(Text.literal("[Nightfall] Fund: " + closest.label
-                    + " bei " + (int) p.x + " " + (int) p.y + " " + (int) p.z
-                    + " · " + (int) Math.sqrt(closestSq) + "m" + extra), false);
+        for (Map.Entry<Long, List<Target>> entry : grouped.entrySet()) {
+            long key = entry.getKey();
+            if (markedChunks.containsKey(key)) continue;
+            markedChunks.put(key, tick);
+            List<Target> items = entry.getValue();
+            if (chatAlert.get() && mc.player != null) {
+                mc.player.sendMessage(Text.literal("[Nightfall] LOOTDROP FOUND! Chunk "
+                        + chunkX(key) + " / " + chunkZ(key) + " · " + items.size() + " Treffer"), false);
+            }
+            if (soundAlert.get() && mc.player != null) {
+                mc.player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP.value(), 0.8f, 1.15f);
+            }
         }
-        if (soundAlert.get()) mc.player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP.value(), 0.65f, 1.25f);
     }
 
     @Override
     public void renderHud(DrawContext ctx) {
         if (mc.world == null || mc.player == null || !Projection.valid()) return;
-        renderTargets.clear();
-        for (List<Target> targets : blockTargetsByChunk.values()) renderTargets.addAll(targets);
-        renderTargets.addAll(entityTargets.values());
-        renderTargets.sort(Comparator.comparingDouble(t -> t.center().squaredDistanceTo(
-                Projection.eyeX(), Projection.eyeY(), Projection.eyeZ())));
-
-        int limit = Math.min(renderTargets.size(), maxObjects.getInt());
-        for (int i = 0; i < limit && !capReached(); i++) {
-            Target target = renderTargets.get(i);
-            Vec3d center = target.center();
-            double distance = Math.sqrt(center.squaredDistanceTo(
-                    Projection.eyeX(), Projection.eyeY(), Projection.eyeZ()));
-            if (distance > range.get()) continue;
-            drawTarget(ctx, target.box(), label(target.label, distance), target.rgb);
+        List<Long> keys = new ArrayList<>(markedChunks.keySet());
+        keys.sort(Comparator.comparingDouble(key -> {
+            double x = chunkX(key) * 16.0 + 8.0 - Projection.eyeX();
+            double z = chunkZ(key) * 16.0 + 8.0 - Projection.eyeZ();
+            return x * x + z * z;
+        }));
+        int drawn = 0;
+        int minY = mc.world.getBottomY();
+        int maxY = mc.world.getTopY();
+        for (long key : keys) {
+            if (drawn >= 64) break;
+            int x = chunkX(key) << 4;
+            int z = chunkZ(key) << 4;
+            Box chunkBox = new Box(x, minY, z, x + 16, maxY, z + 16);
+            if (Draw.box(ctx, chunkBox, MARKER_COLOR, 2, true, true)) drawn++;
         }
     }
 }
