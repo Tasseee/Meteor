@@ -34,7 +34,7 @@ public final class NightfallGuiScreen extends Screen {
         long h = MinecraftClient.getInstance().getWindow().getHandle();
         prevLeft = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
         prevRight = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
-        restoreTabs();
+        restoreTabs();\n        panel("Combat", SIDE + 34, 105)[2] = 1;
     }
     @Override public boolean shouldPause() { return false; }
     @Override public void removed() { Config.save(); }
@@ -103,7 +103,7 @@ public final class NightfallGuiScreen extends Screen {
                 if (draggingTab && dragTab != null) {
                     int from = TABS.indexOf(dragTab), to = i;
                     if (from >= 0) { TABS.remove(from); TABS.add(Math.max(0, Math.min(TABS.size(), to)), dragTab); saveTabs(); }
-                } else activeTab = tab;
+                } else { activeTab = tab; setOpen(tab, true); }
                 click = false;
             }
             if (left && over && dragTab == null && !draggingWindow) { dragTab = tab; tabStart = i; }
@@ -168,7 +168,7 @@ public final class NightfallGuiScreen extends Screen {
             if (mx >= x+w-43) { pMin(tab); return; }
             draggingWindow = true; dragPanel = tab; dragX = mx-x; dragY = my-y;
         }
-        if (panel(tab,0,0)[2] == 2) return;
+        if (bodyH == 0) return;
         if (tab.equals("Config")) { drawConfig(ctx,x,y,w,mx,my,click); return; }
 
         int rowY = y + HEAD + 5;
