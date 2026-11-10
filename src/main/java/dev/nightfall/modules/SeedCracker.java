@@ -18,7 +18,7 @@ public final class SeedCracker extends Module {
     public SeedCracker(){super("SeedCracker","Sammelt Seed-Daten und steuert die Zuverlaessigkeit und Intensitaet der Seed-Suche.",Category.WORLD);}
     @Override protected void onEnable(){SeedCrackerProgress.reset();setCrackerActive(true);hasResult=false;applySearchProfile();}
     @Override public void onTick(){
-        if (!searchProfile.get().equals(appliedProfile)) applySearchProfile();
+        applySearchProfile();
     }
 
     private void applySearchProfile() {
