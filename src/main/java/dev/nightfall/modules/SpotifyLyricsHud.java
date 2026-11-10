@@ -55,6 +55,7 @@ public final class SpotifyLyricsHud extends HudModule {
     private volatile long trackReceivedAt;
     private volatile long positionAtReceipt;
     private volatile boolean loginInProgress;
+    private volatile boolean loginAttempted;
     private volatile boolean lyricsLoading;
     private volatile String oauthState;
     private volatile String verifier;
@@ -72,6 +73,7 @@ public final class SpotifyLyricsHud extends HudModule {
 
     @Override protected void onEnable() {
         stopWorker();
+        loginAttempted = false;
         if (clientId.get().isBlank()) {
             status = "Client ID in den Einstellungen eintragen";
             notifyPlayer("SpotifyLyricsHUD: Client ID fehlt. Spotify Developer Dashboard und Redirect-URI 127.0.0.1:8888/callback einrichten.");
@@ -108,11 +110,20 @@ public final class SpotifyLyricsHud extends HudModule {
         if (worker != null) worker.shutdownNow();
         worker = null;
         loginInProgress = false;
+        loginAttempted = false;
         closeCallbackServer();
+    }
+
+    @Override public void onTick() {
+        if (!isEnabled() || clientId.get().isBlank() || accessToken != null || loginInProgress || loginAttempted) return;
+        loginAttempted = true;
+        startWorker();
+        beginLogin();
     }
 
     private void beginLogin() {
         if (loginInProgress) return;
+        loginAttempted = true;
         loginInProgress = true;
         status = "Spotify-Anmeldung wird geoeffnet";
         try {
