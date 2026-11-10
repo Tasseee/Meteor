@@ -255,17 +255,40 @@ public final class NightfallGuiScreen extends Screen {
 
     private void drawConfig(DrawContext ctx,int x,int y,int w,int mx,int my,boolean click) {
         MinecraftClient mc=MinecraftClient.getInstance();
-        ctx.drawText(mc.textRenderer,"Akzentfarbe · Farbton",x+10,y+39,Theme.TEXT,false);
-        drawSlider(ctx,x+10,y+61,w-20,Config.accentHue/360f);
-        ctx.drawText(mc.textRenderer,String.format(Locale.ROOT,"%.0f°",Config.accentHue),x+w-42,y+48,Theme.ACCENT,false);
-        ctx.drawText(mc.textRenderer,"Hintergrund · Blur-Stärke",x+10,y+88,Theme.TEXT,false);
-        drawSlider(ctx,x+10,y+110,w-20,Config.blurStrength/150f);
-        ctx.drawText(mc.textRenderer,Config.blurStrength==0?"Aus":Config.blurStrength<60?"Leicht":Config.blurStrength<110?"Mittel":"Stark",x+w-48,y+97,Theme.ACCENT,false);
-        ctx.fill(x+10,y+133,x+w-10,y+162,Theme.withAlpha(Theme.ACCENT,40));
-        ctx.drawText(mc.textRenderer,"Vorschau · Änderungen live",x+18,y+144,Theme.TEXT,true);
-        if(click&&inside(mx,my,x+10,y+56,w-20,12)){slider="hue";sliderX=x+10;sliderW=w-20;Config.accentHue=Math.max(0,Math.min(360,(mx-sliderX)/(float)sliderW*360));applyHue();}
-        if(click&&inside(mx,my,x+10,y+105,w-20,12)){slider="blur";sliderX=x+10;sliderW=w-20;Config.blurStrength=Math.round(Math.max(0,Math.min(1,(mx-sliderX)/(float)sliderW))*150);}
-        if(click)Config.save();
+        ctx.drawText(mc.textRenderer,"TAB-ANIMATION",x+10,y+37,Theme.ACCENT,true);
+        drawConfigOption(ctx,mc,"Enabled",Config.guiAnimations?"AN":"AUS",x+10,y+53,w-20);
+        drawConfigOption(ctx,mc,"Style",Config.guiAnimationType,x+10,y+73,w-20);
+        drawConfigOption(ctx,mc,"Richtung",Config.guiAnimationDirection,x+10,y+93,w-20);
+        drawConfigOption(ctx,mc,"Easing",Config.guiEasing,x+10,y+113,w-20);
+        drawConfigOption(ctx,mc,"Dauer",Config.guiAnimationDuration+" ms",x+10,y+133,w-20);
+        drawConfigOption(ctx,mc,"Geschwindigkeit",String.format(Locale.ROOT,"%.1fx",Config.guiAnimationSpeed),x+10,y+153,w-20);
+        ctx.drawText(mc.textRenderer,"Akzentfarbe · Farbton",x+10,y+185,Theme.TEXT,false);
+        drawSlider(ctx,x+10,y+207,w-20,Config.accentHue/360f);
+        ctx.drawText(mc.textRenderer,String.format(Locale.ROOT,"%.0f°",Config.accentHue),x+w-42,y+192,Theme.ACCENT,false);
+        ctx.drawText(mc.textRenderer,"Hintergrund · Blur-Stärke",x+10,y+232,Theme.TEXT,false);
+        drawSlider(ctx,x+10,y+254,w-20,Config.blurStrength/150f);
+        ctx.drawText(mc.textRenderer,Config.blurStrength==0?"Aus":Config.blurStrength<60?"Leicht":Config.blurStrength<110?"Mittel":"Stark",x+w-48,y+239,Theme.ACCENT,false);
+        ctx.fill(x+10,y+278,x+w-10,y+307,Theme.withAlpha(Theme.ACCENT,40));
+        ctx.drawText(mc.textRenderer,"Vorschau · Änderungen live",x+18,y+289,Theme.TEXT,true);
+        if(click&&inside(mx,my,x+10,y+202,w-20,12)){slider="hue";sliderX=x+10;sliderW=w-20;Config.accentHue=Math.max(0,Math.min(360,(mx-sliderX)/(float)sliderW*360));applyHue();}
+        if(click&&inside(mx,my,x+10,y+249,w-20,12)){slider="blur";sliderX=x+10;sliderW=w-20;Config.blurStrength=Math.round(Math.max(0,Math.min(1,(mx-sliderX)/(float)sliderW))*150);}
+        if(click&&inside(mx,my,x+10,y+53,w-20,18)) Config.guiAnimations=!Config.guiAnimations;
+        if(click&&inside(mx,my,x+10,y+73,w-20,18)) Config.guiAnimationType=cycle(Config.guiAnimationType,List.of("Fade","Slide","Scale","Zoom"));
+        if(click&&inside(mx,my,x+10,y+93,w-20,18)) Config.guiAnimationDirection=cycle(Config.guiAnimationDirection,List.of("Left","Right","Up","Down"));
+        if(click&&inside(mx,my,x+10,y+113,w-20,18)) Config.guiEasing=cycle(Config.guiEasing,List.of("Linear","Sine","Cubic"));
+        if(click&&inside(mx,my,x+10,y+133,w-20,18)) Config.guiAnimationDuration=Config.guiAnimationDuration>=1000?50:Math.min(1000,Config.guiAnimationDuration+50);
+        if(click&&inside(mx,my,x+10,y+153,w-20,18)) Config.guiAnimationSpeed=Config.guiAnimationSpeed>=5.0f?0.1f:Math.min(5.0f,Config.guiAnimationSpeed+0.1f);
+        if(click) Config.save();
+    }
+    private void drawConfigOption(DrawContext ctx,MinecraftClient mc,String label,String value,int x,int y,int w) {
+        ctx.fill(x,y,x+w,y+18,0x3820182B);
+        ctx.drawText(mc.textRenderer,label,x+5,y+5,Theme.TEXT_DIM,false);
+        int vw=mc.textRenderer.getWidth(value);
+        ctx.drawText(mc.textRenderer,value,x+w-vw-5,y+5,Theme.ACCENT,true);
+    }
+    private static String cycle(String current,List<String> values) {
+        int index=values.indexOf(current);
+        return values.get((index+1+values.size())%values.size());
     }
     private void drawSlider(DrawContext ctx,int x,int y,int w,float t){ctx.fill(x,y,x+w,y+4,0xFF403B4A);ctx.fill(x,y,x+(int)(w*Math.max(0,Math.min(1,t))),y+4,Theme.ACCENT);ctx.fill(x+(int)(w*t)-3,y-3,x+(int)(w*t)+3,y+7,0xFFFFFFFF);}
     private void applyHue() {
