@@ -228,7 +228,7 @@ public final class LootDropFinder extends Module {
         if (mc.world == null || mc.player == null) return;
         Map<String, Target> next = new HashMap<>();
         double maxDistanceSq = range.get() * range.get();
-        Vec3d playerPos = mc.player.getPos();
+        Vec3d playerPos = new Vec3d(mc.player.getX(), mc.player.getY(), mc.player.getZ());
         for (Entity entity : mc.world.getEntities()) {
             if (entity == mc.player || entity.squaredDistanceTo(playerPos) > maxDistanceSq) continue;
             Target target = null;
@@ -267,7 +267,7 @@ public final class LootDropFinder extends Module {
                         + chunkX(key) + " / " + chunkZ(key) + " · " + items.size() + " Treffer"), false);
             }
             if (soundAlert.get() && mc.player != null) {
-                mc.player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP.value(), 0.8f, 1.15f);
+                mc.player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 0.8f, 1.15f);
             }
         }
     }
