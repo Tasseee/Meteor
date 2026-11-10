@@ -152,7 +152,7 @@ public final class WorldLyrics extends Module {
             long expireAt = spawnAt + life;
             double x, y, z;
             float sx = 0, sy = 0, angle = 0;
-            float scale = (float) textScale.get() * (0.85f + random.nextFloat() * 0.35f);
+            float scale = textScale.get().floatValue() * (0.85f + random.nextFloat() * 0.35f);
 
             if (mode.is("Screen-Random")) {
                 sx = 48 + random.nextFloat() * Math.max(1, Projection.width() - 96);
