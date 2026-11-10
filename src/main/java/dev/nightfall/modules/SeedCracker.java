@@ -1,16 +1,72 @@
 package dev.nightfall.modules;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.util.NotificationCenter;
 import kaptainwutax.seedcrackerX.config.Config;
+import kaptainwutax.seedcrackerX.finder.Finder;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 import java.util.Locale;
 /** Shows collected evidence and actual SeedCrackerX search progress. */
 public final class SeedCracker extends Module {
     private static long foundSeed,foundAt;private static boolean hasResult;
-    public SeedCracker(){super("SeedCracker","Sammelt Seed-Daten und zeigt den Fortschritt der Seed-Suche.",Category.WORLD);}
-    @Override protected void onEnable(){SeedCrackerProgress.reset();setCrackerActive(true);hasResult=false;}
+    private final ModeSetting searchProfile = add(new ModeSetting(
+            "Suchintensitaet", "Ausgewogen", "Sparsam", "Ausgewogen", "Intensiv"
+    ));
+    private String appliedProfile = "";
+
+    public SeedCracker(){super("SeedCracker","Sammelt Seed-Daten und steuert die Zuverlaessigkeit und Intensitaet der Seed-Suche.",Category.WORLD);}
+    @Override protected void onEnable(){SeedCrackerProgress.reset();setCrackerActive(true);hasResult=false;applySearchProfile();}
+    @Override public void onTick(){
+        if (!searchProfile.get().equals(appliedProfile)) applySearchProfile();
+    }
+
+    private void applySearchProfile() {
+        try {
+            Config config = Config.get();
+            String profile = searchProfile.get();
+
+            // Core structure finders and End pillars are the stable baseline in every profile.
+            config.buriedTreasure.set(true);
+            config.desertTemple.set(true);
+            config.endCity.set(true);
+            config.jungleTemple.set(true);
+            config.monument.set(true);
+            config.swampHut.set(true);
+            config.shipwreck.set(true);
+            config.outpost.set(true);
+            config.igloo.set(true);
+            config.trialChambers.set(true);
+            config.endPillars.set(true);
+
+            // Keep experimental/known-problematic finders disabled in every profile.
+            config.dungeon.set(false);
+            config.emeraldOre.set(false);
+            config.warpedFungus.set(false);
+
+            boolean balanced = profile.equals("Ausgewogen") || profile.equals("Intensiv");
+            boolean intensive = profile.equals("Intensiv");
+
+            // Additional supported decorators are enabled progressively.
+            config.endGateway.set(balanced);
+            config.desertWell.set(balanced);
+            config.biome.set(intensive);
+
+            Finder.Type.END_PILLARS.enabled.set(true);
+            Finder.Type.END_GATEWAY.enabled.set(balanced);
+            Finder.Type.DESERT_WELL.enabled.set(balanced);
+            Finder.Type.BIOME.enabled.set(intensive);
+            Finder.Type.DUNGEON.enabled.set(false);
+            Finder.Type.EMERALD_ORE.enabled.set(false);
+            Finder.Type.WARPED_FUNGUS.enabled.set(false);
+
+            appliedProfile = profile;
+            Config.save();
+        } catch (Throwable t) {
+            dev.nightfall.Nightfall.LOGGER.error("SeedCracker-Suchprofil konnte nicht angewendet werden", t);
+        }
+    }
     @Override protected void onDisable(){setCrackerActive(false);SeedCrackerProgress.reset();hasResult=false;}
     public static void syncState(){try{setCrackerActive(dev.nightfall.module.ModuleManager.get(SeedCracker.class).isEnabled());}catch(Throwable ignored){}}
     private static void setCrackerActive(boolean active){
