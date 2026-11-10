@@ -68,10 +68,12 @@ public final class ChunkEsp extends Module {
     @Override public void renderHud(DrawContext ctx) {
         if(mc.player==null||!Projection.valid())return;
         BaseFinder finder=ModuleManager.get(BaseFinder.class);if(!finder.isEnabled())return;
-        int pcx=((int)Math.floor(Projection.eyeX()))>>4,pcz=((int)Math.floor(Projection.eyeZ()))>>4;
+        // Keep region selection tied to the player, not the zoomed/third-person camera.
+        int pcx=mc.player.getBlockX()>>4,pcz=mc.player.getBlockZ()>>4;
         List<Region> regions=mergeAdjacent(finder.marks(),pcx,pcz,dist.getInt());
         double phase=(System.currentTimeMillis()%100000L)/1000.0*speed.get(),pulse=0.5+0.5*Math.sin(phase*Math.PI*2.0);
-        double py=Projection.eyeY();int drawn=0;
+        // Anchor overlays to the player's world position; camera bobbing/zoom must not move boxes.
+        double py=Math.floor(mc.player.getY());int drawn=0;
         for(Region r:regions) {
             if(drawn>=maxObj.getInt()||EspBase.drawn>=2048)break;
             float scoreT=(float)Math.max(0.0,Math.min(1.0,r.score/(finder.thresholdValue()*3.0)));
@@ -79,7 +81,7 @@ public final class ChunkEsp extends Module {
             if(r.favorite&&showFavorites.get())baseColor=favoriteColor.rgb();
             double x0=r.cx*16.0,z0=r.cz*16.0,x1=x0+r.width*16.0,z1=z0+r.depth*16.0;
             double h=height.get(),y0=py-h/2.0;
-            double regionDistance=new net.minecraft.util.math.Vec3d(mc.player.getX(),mc.player.getY(),mc.player.getZ()).distanceTo(new net.minecraft.util.math.Vec3d((x0+x1)/2.0,py,(z0+z1)/2.0));
+            double regionDistance=new net.minecraft.util.math.Vec3d(mc.player.getX(),py,mc.player.getZ()).distanceTo(new net.minecraft.util.math.Vec3d((x0+x1)/2.0,py,(z0+z1)/2.0));
             double fade=1.0;
             if(fadeDistance.get()){
                 double normalized=regionDistance/Math.max(16.0,dist.get()*16.0);
