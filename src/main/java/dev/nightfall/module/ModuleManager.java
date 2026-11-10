@@ -28,6 +28,7 @@ public final class ModuleManager {
         MODULES.add(new AutoPvp());
         MODULES.add(new TrapperBot());
         MODULES.add(new ObiTrapBot());
+        MODULES.add(new AutoShield());
         MODULES.add(new CrystalAura());
         MODULES.add(new AutoAnchor());
         MODULES.add(new MaceAssist());
