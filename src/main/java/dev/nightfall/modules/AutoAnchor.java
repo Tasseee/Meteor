@@ -25,7 +25,7 @@ public class AutoAnchor extends Module {
     private final NumberSetting targetRange = add(new NumberSetting("Ziel-Reichweite", 8, 3, 12, 1));
     private final NumberSetting range       = add(new NumberSetting("Reichweite", 4.5, 2, 6, 0.5));
     private final NumberSetting delay       = add(new NumberSetting("Delay (Ticks)", 2, 1, 20, 1));
-    private final NumberSetting maxSelf     = add(new NumberSetting("Max. Eigenschaden", 6, 1, 20, 1));
+    private final NumberSetting maxSelf     = add(new NumberSetting("Max. Eigenschaden", 16, 1, 20, 1));
     private int timer;
 
     @Override public void onWorldLeave() { timer = 0; }
@@ -47,7 +47,7 @@ public class AutoAnchor extends Module {
         if (t == null) return;
 
         BlockPos cand = t.getBlockPos().up(2);
-        Vec3d center = Vec3d.ofCenter(cand);
+        Vec3d center = new Vec3d(cand.getX() + 0.5, cand.getY() + 1.0, cand.getZ() + 0.5);
         if (p.getEyePos().distanceTo(center) > range.get()) return;
         double self = CombatUtil.explosionDamage(center, p, 5.0);
         BlockState st = mc.world.getBlockState(cand);
@@ -69,7 +69,7 @@ public class AutoAnchor extends Module {
             timer = delay.getInt();
             return;
         }
-        if (!st.isAir()) return;
+        if (!st.isReplaceable()) return;
         int a = InvUtil.ensureHotbar(Items.RESPAWN_ANCHOR);
         if (a < 0) return;
         for (Direction d : Direction.values()) {
