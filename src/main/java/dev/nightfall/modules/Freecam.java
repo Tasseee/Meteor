@@ -9,6 +9,9 @@ import org.lwjgl.glfw.GLFW;
 /** Independent camera with its own mouse rotation and movement; the player stays put. */
 public final class Freecam extends Module {
     private static Vec3d cameraPosition = Vec3d.ZERO;
+    private static Vec3d previousCameraPosition = Vec3d.ZERO;
+    private static float previousCameraYaw, previousCameraPitch;
+    private long lastMoveNanos;
     private static boolean active;
     private static float cameraYaw, cameraPitch;
     private Vec3d playerStart = Vec3d.ZERO;
@@ -26,6 +29,18 @@ public final class Freecam extends Module {
     public static Vec3d cameraPosition() { return cameraPosition; }
     public static float cameraYaw() { return cameraYaw; }
     public static float cameraPitch() { return cameraPitch; }
+    public static Vec3d interpolatedPosition(float tickDelta) {
+        return previousCameraPosition.lerp(cameraPosition, Math.max(0.0f, Math.min(1.0f, tickDelta)));
+    }
+    public static float interpolatedYaw(float tickDelta) {
+        float difference = (cameraYaw - previousCameraYaw) % 360.0f;
+        if (difference >= 180.0f) difference -= 360.0f;
+        if (difference < -180.0f) difference += 360.0f;
+        return previousCameraYaw + difference * Math.max(0.0f, Math.min(1.0f, tickDelta));
+    }
+    public static float interpolatedPitch(float tickDelta) {
+        return previousCameraPitch + (cameraPitch - previousCameraPitch) * Math.max(0.0f, Math.min(1.0f, tickDelta));
+    }
 
     private boolean activateIfReady() {
         if (mc.player == null || mc.world == null) return false;
@@ -38,10 +53,14 @@ public final class Freecam extends Module {
         savedPitch = mc.player.getPitch();
         cameraYaw = savedYaw;
         cameraPitch = savedPitch;
+        previousCameraYaw = cameraYaw;
+        previousCameraPitch = cameraPitch;
         // Start just behind the player so the local model is visible immediately.
         Vec3d lookDirection = new Vec3d(-Math.sin(Math.toRadians(cameraYaw)), 0,
                 Math.cos(Math.toRadians(cameraYaw)));
         cameraPosition = mc.player.getEyePos().subtract(lookDirection.multiply(2.5));
+        previousCameraPosition = cameraPosition;
+        lastMoveNanos = System.nanoTime();
         mouseInitialized = false;
         active = true;
         return true;
@@ -61,6 +80,12 @@ public final class Freecam extends Module {
         }
         if (mc.player == null || mc.world == null || mc.getWindow() == null) return;
         long window = mc.getWindow().getHandle();
+        previousCameraPosition = cameraPosition;
+        previousCameraYaw = cameraYaw;
+        previousCameraPitch = cameraPitch;
+        long now = System.nanoTime();
+        double frameSeconds = Math.max(0.0, Math.min(0.05, (now - lastMoveNanos) / 1_000_000_000.0));
+        lastMoveNanos = now;
         double[] x = new double[1], y = new double[1];
         GLFW.glfwGetCursorPos(window, x, y);
         if (mouseInitialized) {
@@ -87,7 +112,10 @@ public final class Freecam extends Module {
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_A) == GLFW.GLFW_PRESS) move = move.subtract(right);
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS) move = move.add(0, 1, 0);
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS) move = move.add(0, -1, 0);
-        if (move.lengthSquared() > 0) cameraPosition = cameraPosition.add(move.normalize().multiply(speed.get()));
+        if (move.lengthSquared() > 0) {
+            // Speed is measured in blocks per tick, scaled by elapsed time for stable movement.
+            cameraPosition = cameraPosition.add(move.normalize().multiply(speed.get() * 20.0 * frameSeconds));
+        }
 
         // Keep the player anchored independently of camera movement and placement input.
         if (mc.player.getEntityPos().squaredDistanceTo(playerStart) > 1.0E-8) {
@@ -103,6 +131,8 @@ public final class Freecam extends Module {
         active = false;
         mouseInitialized = false;
         cameraPosition = Vec3d.ZERO;
+        previousCameraPosition = Vec3d.ZERO;
+        lastMoveNanos = 0L;
     }
 
     @Override
@@ -117,5 +147,7 @@ public final class Freecam extends Module {
             mc.player.setPitch(savedPitch);
         }
         mouseInitialized = false;
+        previousCameraPosition = Vec3d.ZERO;
+        lastMoveNanos = 0L;
     }
 }
