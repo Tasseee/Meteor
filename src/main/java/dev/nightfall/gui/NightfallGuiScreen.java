@@ -34,7 +34,8 @@ public final class NightfallGuiScreen extends Screen {
         long h = MinecraftClient.getInstance().getWindow().getHandle();
         prevLeft = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
         prevRight = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
-        restoreTabs();\n        panel("Combat", SIDE + 34, 105)[2] = 1;
+        restoreTabs();
+        panel("Combat", SIDE + 34, 105)[2] = 1;
     }
     @Override public boolean shouldPause() { return false; }
     @Override public void removed() { Config.save(); }
