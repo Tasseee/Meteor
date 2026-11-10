@@ -287,6 +287,8 @@ public final class SpotifyLyricsHud extends HudModule {
                     for (String line : json.get("plainLyrics").getAsString().split("\\R")) {
                         if (!line.isBlank()) plain.add(new LyricLine(0, line.trim()));
                     }
+                    long step = plain.isEmpty() ? 0 : Math.max(1000, t.durationMs() / plain.size());
+                    for (int i = 0; i < plain.size(); i++) plain.set(i, new LyricLine(step * i, plain.get(i).text()));
                     lyrics = List.copyOf(plain);
                 }
             }
