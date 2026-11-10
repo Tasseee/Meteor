@@ -29,6 +29,9 @@ public final class NightfallGuiScreen extends Screen {
     private int sliderX, sliderW;
     private int scroll;
     private long tabChangedAt = System.nanoTime();
+    private int ninoSecretClicks;
+    private long lastNinoSecretClick;
+    private boolean ninoSecretUnlocked;
 
     public NightfallGuiScreen() {
         super(Text.literal("Nightfall"));
@@ -89,6 +92,13 @@ public final class NightfallGuiScreen extends Screen {
         boolean right = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
         boolean click = left && !prevLeft, release = !left && prevLeft, rightClick = right && !prevRight;
         prevLeft = left; prevRight = right;
+        // Easter egg: click the NIGHTFALL brand five times quickly.
+        if (click && inside(mx, my, 12, 10, SIDE + 10, 78)) {
+            long now = System.currentTimeMillis();
+            if (now - lastNinoSecretClick > 1200L) ninoSecretClicks = 0;
+            lastNinoSecretClick = now;
+            if (++ninoSecretClicks >= 5) { ninoSecretUnlocked = true; ninoSecretClicks = 0; }
+        }
 
         ctx.fill(0, 0, width, height, 0xA9080910);
         int blurShade = Math.max(0, Math.min(150, Config.blurStrength));
@@ -181,6 +191,13 @@ public final class NightfallGuiScreen extends Screen {
             else if (slider.equals("blur")) { Config.blurStrength = Math.round(t * 150); }
         }
         if (!left) slider = "";
+        if (ninoSecretUnlocked) {
+            int ex = Math.max(SIDE + 24, width - 190), ey = Math.max(12, height - 78);
+            ctx.fill(ex - 2, ey - 2, ex + 176, ey + 52, Theme.withAlpha(0xA020F0, 220));
+            ctx.fill(ex, ey, ex + 172, ey + 48, 0xEE120D1D);
+            ctx.drawText(mc.textRenderer, "NINO SECRET UNLOCKED", ex + 8, ey + 8, 0xFFFFB8E8, true);
+            ctx.drawText(mc.textRenderer, "Nino > Miku  ♥", ex + 8, ey + 26, 0xFFFFFFFF, false);
+        }
         ctx.drawText(mc.textRenderer, "Nightfall  •  Ziehen: Fenster | Tabs per Drag & Drop sortieren | Rechtsklick: Einstellungen", SIDE + 28, height - 22, Theme.TEXT_DIM, false);
     }
 
