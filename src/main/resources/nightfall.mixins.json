@@ -10,7 +10,8 @@
     "SlowSwingMixin",
     "SeedCrackerProgressMixin",
     "SeedCrackerDataIntegrityMixin",
-    "AutoShieldNetworkMixin"
+    "AutoShieldNetworkMixin",
+    "ItemStackGlintMixin"
   ],
   "injectors": {
     "defaultRequire": 1

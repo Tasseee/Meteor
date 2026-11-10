@@ -72,6 +72,7 @@ public final class ModuleManager {
         MODULES.add(new SlowSwing());
         MODULES.add(new InvSee());
         MODULES.add(new GlowESP());
+        MODULES.add(new ItemGlint());
         MODULES.add(new GUITheme());
         MODULES.add(new CustomCrosshair());
         MODULES.add(new SpawnerEsp());
