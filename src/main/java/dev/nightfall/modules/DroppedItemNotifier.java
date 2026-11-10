@@ -62,7 +62,6 @@ public final class DroppedItemNotifier extends Module {
 
         for (Entity entity : mc.world.getEntities()) {
             if (!(entity instanceof ItemEntity itemEntity)
-                    || itemEntity == mc.player
                     || itemEntity.squaredDistanceTo(mc.player) > maxDistanceSq) continue;
 
             UUID id = itemEntity.getUuid();
