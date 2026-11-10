@@ -51,6 +51,7 @@ public final class ModuleManager {
         MODULES.add(new PlayerEsp());
         MODULES.add(new EntityEsp());
         MODULES.add(new ItemEsp());
+        MODULES.add(new LootDropFinder());
         MODULES.add(new StorageEsp());
         MODULES.add(new BlockNotifier());
         MODULES.add(new ParticleTrail());
