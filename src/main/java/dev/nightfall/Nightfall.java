@@ -87,7 +87,7 @@ public class Nightfall implements ClientModInitializer {
     private void onTick(MinecraftClient mc) {
         ModuleManager.get(AutoReconnect.class).tickDisconnected(mc);
         KeySound.tick(mc, mc.player != null && mc.world != null
-                && (mc.currentScreen instanceof ClickGuiScreen || mc.currentScreen instanceof HudEditorScreen));
+                && (mc.currentScreen instanceof NightfallGuiScreen || mc.currentScreen instanceof HudEditorScreen));
         if (mc.getWindow() != null) {
             long h = mc.getWindow().getHandle();
             boolean g = GLFW.glfwGetKey(h, Config.guiKey) == GLFW.GLFW_PRESS;
