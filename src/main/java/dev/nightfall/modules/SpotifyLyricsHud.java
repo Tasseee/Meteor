@@ -406,6 +406,32 @@ public final class SpotifyLyricsHud extends HudModule {
         }
     }
 
+    /** Read-only snapshot for the in-world lyrics renderer. */
+    public String[] worldLyricLines() {
+        List<LyricLine> snapshot = lyrics;
+        String[] out = new String[snapshot.size()];
+        for (int i = 0; i < snapshot.size(); i++) out[i] = snapshot.get(i).text();
+        return out;
+    }
+
+    public long[] worldLyricTimes() {
+        List<LyricLine> snapshot = lyrics;
+        long[] out = new long[snapshot.size()];
+        for (int i = 0; i < snapshot.size(); i++) out[i] = snapshot.get(i).timeMs();
+        return out;
+    }
+
+    public long worldProgressMs() {
+        Track t = track;
+        if (t == null) return 0;
+        long p = t.progressMs();
+        if (t.playing()) p += Math.max(0, System.currentTimeMillis() - trackReceivedAt);
+        return Math.min(t.durationMs(), p);
+    }
+
+    public boolean hasWorldTrack() { return track != null; }
+    public boolean isWorldTrackPlaying() { return track != null && track.playing(); }
+
     private void notifyPlayer(String message) {
         mc.execute(() -> {
             if (mc.player != null) mc.player.sendMessage(Text.literal("[Nightfall] " + message), false);
