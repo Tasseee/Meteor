@@ -12,6 +12,7 @@ import dev.nightfall.scanner.ChunkResult.Status;
 import dev.nightfall.util.Storage;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.CropBlock;
+import net.minecraft.block.KelpBlock;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.*;
 import net.minecraft.client.world.ClientWorld;
@@ -34,7 +35,7 @@ public class BaseFinder extends Module {
     private final NumberSetting budgetMs  = add(new NumberSetting("Budget ms/Tick", 1.2, 0.2, 5.0, 0.1));
     private final NumberSetting rescan    = add(new NumberSetting("Rescan (s)", 8, 2, 120, 1));
     private final NumberSetting threshold = add(new NumberSetting("Min Score", 12, 3, 100, 1));
-    private final NumberSetting minSignals = add(new NumberSetting("Min. Signaltypen", 2, 1, 9, 1));
+    private final NumberSetting minSignals = add(new NumberSetting("Min. Signaltypen", 2, 1, 10, 1));
     private final NumberSetting wStorage  = add(new NumberSetting("Gewicht Storage", 1.0, 0.1, 5.0, 0.1));
     private final NumberSetting wHopper   = add(new NumberSetting("Gewicht Hopper", 1.5, 0.1, 5.0, 0.1));
     private final NumberSetting wFurnace  = add(new NumberSetting("Gewicht Furnace", 0.7, 0.1, 5.0, 0.1));
@@ -44,6 +45,7 @@ public class BaseFinder extends Module {
     private final NumberSetting wAmethyst = add(new NumberSetting("Gewicht Amethyst", 1.5, 0.0, 8.0, 0.1));
     private final NumberSetting wSculk    = add(new NumberSetting("Gewicht Sculk", 1.2, 0.0, 8.0, 0.1));
     private final NumberSetting wCrops    = add(new NumberSetting("Gewicht Reife Felder", 0.5, 0.0, 5.0, 0.1));
+    private final NumberSetting wKelp     = add(new NumberSetting("Gewicht Kelp", 0.7, 0.0, 5.0, 0.1));
     private final BoolSetting   chat      = add(new BoolSetting("Chat-Meldung", true));
 
     private static final Gson GSON = new Gson();
@@ -194,7 +196,7 @@ public class BaseFinder extends Module {
 
         int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0, spawner = 0;
         int amethystCluster = 0, amethystLarge = 0, amethystMedium = 0, amethystSmall = 0;
-        int sculk = 0, matureCrops = 0;
+        int sculk = 0, matureCrops = 0, matureKelp = 0;
         Map<Integer, Integer> cells = new HashMap<>();
 
         for (BlockEntity be : ch.getBlockEntities().values()) {
@@ -229,6 +231,10 @@ public class BaseFinder extends Module {
 
                         if (state.getBlock() instanceof CropBlock && state.get(CropBlock.AGE) == CropBlock.MAX_AGE)
                             matureCrops++;
+
+                        // Only mature top KELP blocks have the age property; stalk blocks are KELP_PLANT.
+                        if (state.getBlock() instanceof KelpBlock && state.get(KelpBlock.AGE) >= 20)
+                            matureKelp++;
                     }
                 }
             }
@@ -243,13 +249,14 @@ public class BaseFinder extends Module {
                 + amethystMedium * 0.75 + amethystSmall * 0.25) * wAmethyst.get();
         double sculkScore = sculk >= 3 ? (sculk - 2) * wSculk.get() : 0;
         double cropScore = matureCrops >= 16 ? (matureCrops / 16.0) * wCrops.get() : 0;
+        double kelpScore = matureKelp >= 4 ? (matureKelp / 4.0) * wKelp.get() : 0;
         double score = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + redstone * wRedstone.get()
-                + spawner * wSpawner.get() + cluster + amethyst + sculkScore + cropScore;
+                + spawner * wSpawner.get() + cluster + amethyst + sculkScore + cropScore + kelpScore;
         int signalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
                 + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (spawner > 0 ? 1 : 0)
                 + (cluster > 0 ? 1 : 0) + (amethyst > 0 ? 1 : 0) + (sculkScore > 0 ? 1 : 0)
-                + (cropScore > 0 ? 1 : 0);
+                + (cropScore > 0 ? 1 : 0) + (kelpScore > 0 ? 1 : 0);
 
         ChunkResult old = results.get(k);
         ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
@@ -270,6 +277,7 @@ public class BaseFinder extends Module {
                 + " klein, +" + fmt(amethyst) + ")");
         if (sculkScore > 0) res.reasons.add("Sculk-Cluster (" + sculk + ", +" + fmt(sculkScore) + ")");
         if (cropScore > 0) res.reasons.add("Reife Feldfrüchte (" + matureCrops + ", +" + fmt(cropScore) + ")");
+        if (kelpScore > 0) res.reasons.add("Reifer Kelp (" + matureKelp + " ausgewachsene Pflanzen, +" + fmt(kelpScore) + ")");
 
         if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
             if (isRepeatedFakePattern(storage, shulker, hopper, furnace, redstone, spawner, cx, cz)) {
