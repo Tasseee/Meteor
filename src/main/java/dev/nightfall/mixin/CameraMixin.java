@@ -28,9 +28,9 @@ public abstract class CameraMixin {
     private void nightfall$applyCameraState(World area, Entity focusedEntity, boolean thirdPerson,
                                               boolean inverseView, float tickDelta, CallbackInfo ci) {
         if (Freecam.isActive()) {
-            var pos = Freecam.cameraPosition();
+            var pos = Freecam.interpolatedPosition(tickDelta);
             setPos(pos.x, pos.y, pos.z);
-            setRotation(Freecam.cameraYaw(), Freecam.cameraPitch());
+            setRotation(Freecam.interpolatedYaw(tickDelta), Freecam.interpolatedPitch(tickDelta));
         } else if (FreeLook.isActive()) {
             setRotation(FreeLook.cameraYaw(), FreeLook.cameraPitch());
         }
