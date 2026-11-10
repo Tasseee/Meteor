@@ -15,7 +15,8 @@ public final class Freecam extends Module {
     private float savedYaw, savedPitch;
     private double lastMouseX, lastMouseY;
     private boolean mouseInitialized;
-    private final NumberSetting speed = add(new NumberSetting("Geschwindigkeit", 0.6, 0.1, 3.0, 0.1));
+    private final NumberSetting speed = add(new NumberSetting("Geschwindigkeit", 0.45, 0.1, 2.0, 0.05));
+    private final NumberSetting sensitivity = add(new NumberSetting("Kamera-Sensitivitaet", 0.15, 0.03, 0.5, 0.01));
 
     public Freecam() {
         super("Freecam", "Bewegt und dreht die Kamera unabhaengig vom Spieler durch die Welt.", Category.MOVEMENT);
@@ -60,8 +61,10 @@ public final class Freecam extends Module {
         double[] x = new double[1], y = new double[1];
         GLFW.glfwGetCursorPos(window, x, y);
         if (mouseInitialized) {
-            cameraYaw += (float) ((x[0] - lastMouseX) * 0.15);
-            cameraPitch += (float) ((y[0] - lastMouseY) * 0.15);
+            double dx = Math.max(-100.0, Math.min(100.0, x[0] - lastMouseX));
+            double dy = Math.max(-100.0, Math.min(100.0, y[0] - lastMouseY));
+            cameraYaw += (float) (dx * sensitivity.get());
+            cameraPitch += (float) (dy * sensitivity.get());
             cameraPitch = Math.max(-90.0f, Math.min(90.0f, cameraPitch));
         }
         lastMouseX = x[0];
@@ -83,8 +86,11 @@ public final class Freecam extends Module {
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS) move = move.add(0, -1, 0);
         if (move.lengthSquared() > 0) cameraPosition = cameraPosition.add(move.normalize().multiply(speed.get()));
 
-        // Keep the actual player fixed while the detached camera moves.
-        mc.player.setPosition(playerStart);
+        // Keep the player anchored independently of camera movement and placement input.
+        // Avoid needless position writes when the server/client position is already stable.
+        if (mc.player.getEntityPos().squaredDistanceTo(playerStart) > 1.0E-8) {
+            mc.player.setPosition(playerStart);
+        }
         mc.player.setVelocity(Vec3d.ZERO);
         mc.player.setYaw(savedYaw);
         mc.player.setPitch(savedPitch);
