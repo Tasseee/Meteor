@@ -28,6 +28,12 @@ public final class Config {
     public static float accentHue = 270.0f;
     public static int blurStrength = 72;
     public static String categoryOrder = "Combat,Movement,Visuals,Player,World,Misc,HUD,Config";
+    public static boolean guiAnimations = true;
+    public static float guiAnimationSpeed = 1.0f;
+    public static String guiAnimationType = "Slide";
+    public static String guiAnimationDirection = "Left";
+    public static String guiEasing = "Cubic";
+    public static int guiAnimationDuration = 220;
 
     /** Panel-Zustand je Kategorie: {x, y, offen(1/0)} */
     public static final Map<String, int[]> panels = new HashMap<>();
@@ -51,6 +57,12 @@ public final class Config {
             root.addProperty("accentHue", accentHue);
             root.addProperty("blurStrength", blurStrength);
             root.addProperty("categoryOrder", categoryOrder);
+            root.addProperty("guiAnimations", guiAnimations);
+            root.addProperty("guiAnimationSpeed", guiAnimationSpeed);
+            root.addProperty("guiAnimationType", guiAnimationType);
+            root.addProperty("guiAnimationDirection", guiAnimationDirection);
+            root.addProperty("guiEasing", guiEasing);
+            root.addProperty("guiAnimationDuration", guiAnimationDuration);
 
             JsonObject mods = new JsonObject();
             for (Module m : ModuleManager.all()) {
@@ -109,6 +121,12 @@ public final class Config {
             if (root.has("accentHue")) accentHue = Math.max(0, Math.min(360, root.get("accentHue").getAsFloat()));
             if (root.has("blurStrength")) blurStrength = Math.max(0, Math.min(150, root.get("blurStrength").getAsInt()));
             if (root.has("categoryOrder")) categoryOrder = root.get("categoryOrder").getAsString();
+            if (root.has("guiAnimations")) guiAnimations = root.get("guiAnimations").getAsBoolean();
+            if (root.has("guiAnimationSpeed")) guiAnimationSpeed = Math.max(0.1f, Math.min(5.0f, root.get("guiAnimationSpeed").getAsFloat()));
+            if (root.has("guiAnimationType")) guiAnimationType = root.get("guiAnimationType").getAsString();
+            if (root.has("guiAnimationDirection")) guiAnimationDirection = root.get("guiAnimationDirection").getAsString();
+            if (root.has("guiEasing")) guiEasing = root.get("guiEasing").getAsString();
+            if (root.has("guiAnimationDuration")) guiAnimationDuration = Math.max(50, Math.min(1000, root.get("guiAnimationDuration").getAsInt()));
 
             JsonObject mods = root.has("modules") ? root.getAsJsonObject("modules") : new JsonObject();
             for (Module m : ModuleManager.all()) {
