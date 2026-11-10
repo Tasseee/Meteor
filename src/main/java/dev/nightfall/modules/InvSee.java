@@ -24,6 +24,21 @@ public final class InvSee extends HudModule {
     private final BoolSetting showMenuData = add(new BoolSetting("Geoeffnete Menue-Slots", true));
     private final NumberSetting targetRange = add(new NumberSetting("Ziel-Reichweite", 8, 2, 32, 1));
 
+    private int refreshTicks;
+    private int crystalCount, elytraCount, maceCount, totemCount;
+    private boolean wasMenuOpen;
+
+    private void refreshItemCounts(List<ItemStack> stacks) {
+        crystalCount = elytraCount = maceCount = totemCount = 0;
+        for (ItemStack stack : stacks) {
+            if (stack.isEmpty()) continue;
+            if (stack.isOf(net.minecraft.item.Items.END_CRYSTAL)) crystalCount += stack.getCount();
+            else if (stack.isOf(net.minecraft.item.Items.ELYTRA)) elytraCount += stack.getCount();
+            else if (stack.isOf(net.minecraft.item.Items.MACE)) maceCount += stack.getCount();
+            else if (stack.isOf(net.minecraft.item.Items.TOTEM_OF_UNDYING)) totemCount += stack.getCount();
+        }
+    }
+
     private static final EquipmentSlot[] SLOTS = {
             EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.HEAD,
             EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
@@ -70,11 +85,22 @@ public final class InvSee extends HudModule {
             }
         }
 
+        if (!menuOpen || !menuMatches) {
+            wasMenuOpen = false;
+            refreshTicks = 0;
+            crystalCount = elytraCount = maceCount = totemCount = 0;
+        } else if (!wasMenuOpen || refreshTicks <= 0) {
+            refreshItemCounts(menuStacks);
+            refreshTicks = 100;
+            wasMenuOpen = true;
+        }
+
         int screenHeight = mc.getWindow().getScaledHeight();
         int rows = menuOpen && menuMatches && !menuStacks.isEmpty()
-                ? Math.min(maxEntries.getInt(), Math.max(1, (screenHeight - 132) / 12)) : 0;
-        int menuHeight = showMenuData.get() ? 27 + rows * 12 : 0;
+                ? Math.min(maxEntries.getInt(), Math.max(1, (screenHeight - 160) / 12)) : 0;
+        int menuHeight = showMenuData.get() ? 58 + rows * 12 : 0;
         h = 78 + menuHeight;
+        if (wasMenuOpen && refreshTicks > 0) refreshTicks--;
 
         ctx.fill(0, 0, w, h, 0xE510121B);
         ctx.fill(0, 0, w, 2, 0xFF65E6A5);
@@ -112,9 +138,15 @@ public final class InvSee extends HudModule {
             while (mc.textRenderer.getWidth(header) > w - 16 && header.length() > 10)
                 header = header.substring(0, header.length() - 2) + "…";
             ctx.drawText(mc.textRenderer, header, 8, top + 5, 0xFF65E6A5, false);
+            if (menuOpen && menuMatches) {
+                String summary = "CR " + crystalCount + "  Elytra " + elytraCount
+                        + "  Mace " + maceCount + "  Totem " + totemCount;
+                ctx.drawText(mc.textRenderer, summary, 8, top + 19, 0xFFE8D58A, false);
+                ctx.drawText(mc.textRenderer, "Aktualisierung alle 5 s", 8, top + 31, 0xFF9DA8BE, false);
+            }
 
             if (!menuOpen || !menuMatches) {
-                ctx.drawText(mc.textRenderer, menuStatus, 8, top + 23, 0xFFB0B5C5, false);
+                ctx.drawText(mc.textRenderer, menuStatus, 8, top + 46, 0xFFB0B5C5, false);
             } else {
                 int row = 0;
                 for (int i = 0; i < menuStacks.size() && row < rows; i++) {
