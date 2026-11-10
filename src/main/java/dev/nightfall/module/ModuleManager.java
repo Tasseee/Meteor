@@ -27,6 +27,8 @@ public final class ModuleManager {
         MODULES.add(new TriggerBot());
         MODULES.add(new AutoPvp());
         MODULES.add(new TrapperBot());
+        MODULES.add(new ObiTrapBot());
+        MODULES.add(new AutoShield());
         MODULES.add(new CrystalAura());
         MODULES.add(new AutoAnchor());
         MODULES.add(new MaceAssist());
@@ -49,6 +51,10 @@ public final class ModuleManager {
         MODULES.add(new PlayerEsp());
         MODULES.add(new EntityEsp());
         MODULES.add(new ItemEsp());
+        MODULES.add(new DroppedItemNotifier());
+        MODULES.add(new SpotifyLyricsHud());
+        MODULES.add(new WorldLyrics());
+        MODULES.add(new LootDropFinder());
         MODULES.add(new StorageEsp());
         MODULES.add(new BlockNotifier());
         MODULES.add(new ParticleTrail());
@@ -60,6 +66,8 @@ public final class ModuleManager {
         MODULES.add(new SkyVisuals());
         MODULES.add(new FirstPersonStyle());
         MODULES.add(new WeaponAnimations());
+        MODULES.add(new SlowSwing());
+        MODULES.add(new InvSee());
         MODULES.add(new GlowESP());
         MODULES.add(new GUITheme());
         MODULES.add(new CustomCrosshair());
@@ -69,14 +77,26 @@ public final class ModuleManager {
         MODULES.add(new Waypoints());
         MODULES.add(new FakeBases());
         MODULES.add(new SeedCracker());
+        MODULES.add(new FavoriteChunk());
+        MODULES.add(new AdvancedWorldOverlay());
+        MODULES.add(new AutoFarm());
+        MODULES.add(new AutoBreed());
+        MODULES.add(new AutoSmelter());
+        MODULES.add(new AutoCraftPlanner());
         // Basefinder
         MODULES.add(new BaseFinder());
         // Misc
+        MODULES.add(new AutoReconnect());
+        MODULES.add(new AutoSign());
         MODULES.add(new AutoTpa());
         MODULES.add(new AutoText());
         MODULES.add(new SpawnerProtect());
         MODULES.add(new StaffWatch());
         MODULES.add(new AntiVanishHints());
+        MODULES.add(new AntiCheatMonitor());
+        MODULES.add(new AutoRespawn());
+        MODULES.add(new AutoFish());
+        MODULES.add(new MacroManager());
         // HUD
         MODULES.add(new Watermark());
         MODULES.add(new Coordinates());

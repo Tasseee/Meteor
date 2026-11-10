@@ -1,92 +1,90 @@
 package dev.nightfall.modules;
-
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
-import dev.nightfall.util.Theme;
-import kaptainwutax.seedcrackerX.config.Config;
+import dev.nightfall.module.setting.ModeSetting;
+import dev.nightfall.util.NotificationCenter;
+import dev.nightfall.seed.SeedSearchEngine;
+import dev.nightfall.seed.SeedIntegrity;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
-
-/** Toggles SeedCrackerX background collection and displays completed results prominently. */
+import java.util.Locale;
+/** Shows collected evidence and actual SeedCrackerX search progress. */
 public final class SeedCracker extends Module {
-    private static long foundSeed;
-    private static long foundAt;
-    private static boolean hasResult;
+    private static long foundSeed,foundAt;private static boolean hasResult;
+    private static SeedIntegrity.Report lastIntegrity;
+    private final ModeSetting searchProfile = add(new ModeSetting(
+            "Suchintensitaet", "Ausgewogen", "Sparsam", "Ausgewogen", "Intensiv"
+    ));
+    private final SeedSearchEngine engine = new SeedSearchEngine();
+    private final SeedIntegrity integrity = new SeedIntegrity();
 
-    public SeedCracker() {
-        super("SeedCracker", "Sammelt Welt-Daten im Hintergrund und meldet gefundene Seeds.", Category.WORLD);
+    public SeedCracker(){super("SeedCracker","Sammelt Seed-Daten und steuert die Zuverlaessigkeit und Intensitaet der Seed-Suche.",Category.WORLD);}
+    @Override protected void onEnable(){SeedCrackerProgress.reset();SeedIntegrity.resetIncomingStats();setCrackerActive(true);hasResult=false;applySearchProfile();}
+    @Override public void onTick(){
+        applySearchProfile();
     }
 
-    @Override
-    protected void onEnable() {
-        setCrackerActive(true);
-        hasResult = false;
-    }
-
-    @Override
-    protected void onDisable() {
-        setCrackerActive(false);
-        hasResult = false;
-    }
-
-    /** Synchronize the bundled mod with the saved Nightfall module state after startup. */
-    public static void syncState() {
+    private void applySearchProfile() {
         try {
-            setCrackerActive(dev.nightfall.module.ModuleManager.get(SeedCracker.class).isEnabled());
-        } catch (Throwable ignored) {
-            // Module initialization may not be complete during early client startup.
-        }
-    }
-
-    private static void setCrackerActive(boolean active) {
-        try {
-            Config.get().active = active;
-            Config.save();
+            engine.applyProfile(searchProfile.get());
         } catch (Throwable t) {
-            dev.nightfall.Nightfall.LOGGER.error("SeedCrackerX konnte nicht umgeschaltet werden", t);
+            dev.nightfall.Nightfall.LOGGER.error("Nightfall-Seed-Suchprofil konnte nicht angewendet werden", t);
         }
     }
-
-    /** Called on the Minecraft client thread after SeedCrackerX completes a seed. */
-    public static void reportSeed(long seed) {
-        SeedCracker module;
-        try {
-            module = dev.nightfall.module.ModuleManager.get(SeedCracker.class);
-        } catch (Throwable ignored) {
-            return;
-        }
-        if (!module.isEnabled()) return;
-        foundSeed = seed;
-        foundAt = System.currentTimeMillis();
-        hasResult = true;
-        dev.nightfall.util.NotificationCenter.push("SEED GEFUNDEN", Long.toString(seed), 12_000L, 0xFF65E6A5);
+    @Override protected void onDisable(){setCrackerActive(false);SeedCrackerProgress.reset();hasResult=false;}
+    public static void syncState(){try{dev.nightfall.module.ModuleManager.get(SeedCracker.class).engine.setActive(dev.nightfall.module.ModuleManager.get(SeedCracker.class).isEnabled());}catch(Throwable ignored){}}
+    private void setCrackerActive(boolean active){
+        try{engine.setActive(active);}
+        catch(Throwable t){dev.nightfall.Nightfall.LOGGER.error("Nightfall-Seed-Suche konnte nicht umgeschaltet werden",t);}
     }
-
-    @Override
-    public void renderHud(DrawContext ctx) {
-        if (!hasResult) return;
-        long elapsed = System.currentTimeMillis() - foundAt;
-        if (elapsed >= 12_000L) {
-            hasResult = false;
+    public static void reportSeed(long seed){
+        SeedCracker module;try{module=dev.nightfall.module.ModuleManager.get(SeedCracker.class);}catch(Throwable ignored){return;}
+        if(!module.isEnabled())return;
+        SeedIntegrity.Report integrity = module.integrity.verify(seed);
+        lastIntegrity = integrity;
+        if (!integrity.accepted()) {
+            NotificationCenter.push("SEED VERWORFEN", integrity.reason(), 12_000L, 0xFFFF7777);
             return;
         }
-
-        int sw = mc.getWindow().getScaledWidth();
-        int sh = mc.getWindow().getScaledHeight();
-        int width = Math.min(420, sw - 24);
-        int height = 92;
-        int x = (sw - width) / 2;
-        int y = Math.max(12, sh / 2 - height / 2);
-        float fade = elapsed > 10_500L ? (12_000L - elapsed) / 1_500f : 1f;
-        int alpha = Math.max(0, Math.min(255, Math.round(235 * fade)));
-        int panel = (alpha << 24) | 0x10131D;
-        int accent = (alpha << 24) | 0x65E6A5;
-        int white = (alpha << 24) | 0xFFFFFF;
-
-        ctx.fill(x, y, x + width, y + height, panel);
-        ctx.fill(x, y, x + width, y + 4, accent);
-        ctx.drawCenteredTextWithShadow(mc.textRenderer, Text.literal("SEED GEFUNDEN"), sw / 2, y + 17, accent);
-        ctx.drawCenteredTextWithShadow(mc.textRenderer, Text.literal(Long.toString(foundSeed)), sw / 2, y + 39, white);
-        ctx.drawCenteredTextWithShadow(mc.textRenderer, Text.literal("Welt-Seed erfolgreich berechnet"), sw / 2, y + 66, white);
+        foundSeed=seed;foundAt=System.currentTimeMillis();hasResult=true;SeedCrackerProgress.complete();
+        NotificationCenter.push("SEED " + integrity.level().label(), Long.toString(seed) + " · " + integrity.summary(), 12_000L,
+                integrity.level() == SeedIntegrity.Level.HIGH ? 0xFF65E6A5 : 0xFFFFC46B);
+    }
+    @Override public void onWorldLeave(){hasResult=false;SeedCrackerProgress.reset();SeedIntegrity.resetIncomingStats();}
+    private record ProgressView(float progress,String label,boolean indeterminate){}
+    private ProgressView readProgress(){
+        try{
+            var instance=kaptainwutax.seedcrackerX.SeedCracker.get();
+            if(instance==null)return new ProgressView(0f,"Warte auf SeedCrackerX ...",false);
+            var data=instance.getDataStorage();double wanted=Math.max(1.0,data.getWantedBits());
+            double bits=Math.max(0.0,Math.min(wanted,data.getBaseBits()));
+            boolean running=data.getTimeMachine().isRunning;float search=SeedCrackerProgress.getSearchProgress();
+            if(running&&search>0f)return new ProgressView(Math.min(1f,search/100f),"Seed-Suche · "+Math.round(search)+"%",false);
+            if(running)return new ProgressView(0f,"Seed-Suche laeuft ...",true);
+            return new ProgressView((float)(bits/wanted),"Daten · "+String.format(Locale.ROOT,"%.1f / %.0f Bits",bits,wanted)+" · "+SeedIntegrity.rejectedIncomingCount()+" verworfen",false);
+        }catch(Throwable ignored){return new ProgressView(0f,"Seed-Daten werden gelesen ...",true);}
+    }
+    @Override public void renderHud(DrawContext ctx){
+        int sw=mc.getWindow().getScaledWidth();ProgressView view=readProgress();
+        int x=8,y=8,w=Math.min(250,sw-16);
+        ctx.fill(x,y,x+w,y+39,0xC910121B);ctx.fill(x,y,x+3,y+39,0xFF65E6A5);
+        ctx.drawText(mc.textRenderer,"SEEDCRACKER",x+10,y+6,0xFF65E6A5,true);
+        String label=view.label();while(mc.textRenderer.getWidth(label)>w-20&&label.length()>8)label=label.substring(0,label.length()-2)+"…";
+        ctx.drawText(mc.textRenderer,label,x+10,y+18,0xFFF0F2F7,false);
+        int bx=x+10,by=y+31,bw=w-20;ctx.fill(bx,by,bx+bw,by+4,0xFF323541);
+        if(view.indeterminate()){
+            int segment=Math.max(18,bw/5),offset=(int)((System.currentTimeMillis()/12L)%(bw+segment))-segment;
+            int left=Math.max(bx,bx+offset),right=Math.min(bx+bw,bx+offset+segment);
+            if(right>left)ctx.fill(left,by,right,by+4,0xFF65E6A5);
+        }else{int fill=Math.round(bw*view.progress());if(fill>0)ctx.fill(bx,by,bx+fill,by+4,0xFF65E6A5);}
+        if(!hasResult)return;
+        long elapsed=System.currentTimeMillis()-foundAt;if(elapsed>=12_000L){hasResult=false;return;}
+        int pw=Math.min(420,sw-24),ph=72,px=(sw-pw)/2,py=Math.max(54,mc.getWindow().getScaledHeight()/2-ph/2);
+        float fade=elapsed>10_500L?(12_000L-elapsed)/1_500f:1f;int alpha=Math.max(0,Math.min(255,Math.round(235*fade)));
+        int panel=(alpha<<24)|0x10131D,accent=(alpha<<24)|0x65E6A5,white=(alpha<<24)|0xFFFFFF;
+        ctx.fill(px,py,px+pw,py+ph,panel);ctx.fill(px,py,px+pw,py+3,accent);
+        String integrityLabel = lastIntegrity == null ? "UNGEPRUEFT" : lastIntegrity.level().label();
+        ctx.drawCenteredTextWithShadow(mc.textRenderer,Text.literal("SEED GEFUNDEN · " + integrityLabel),sw/2,py+13,accent);
+        ctx.drawCenteredTextWithShadow(mc.textRenderer,Text.literal(Long.toString(foundSeed)),sw/2,py+34,white);
     }
 }

@@ -8,8 +8,8 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.util.math.Vec3d;
 
 public class Fly extends Module {
-    private final NumberSetting speed = add(new NumberSetting("Speed (b/s)", 10, 1, 40, 0.5));
-    private final NumberSetting vertical = add(new NumberSetting("Vertical (b/s)", 8, 1, 30, 0.5));
+    private final NumberSetting speed = add(new NumberSetting("Speed (b/s)", 11.5, 1, 40, 0.5));
+    private final NumberSetting vertical = add(new NumberSetting("Vertical (b/s)", 9, 1, 30, 0.5));
 
     public Fly() { super("Fly", "Clientseitiger Flug: WASD, Space hoch, Shift runter.", Category.MOVEMENT); }
 

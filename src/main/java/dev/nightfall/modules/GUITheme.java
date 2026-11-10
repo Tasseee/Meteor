@@ -1,5 +1,6 @@
 package dev.nightfall.modules;
 
+import dev.nightfall.config.Config;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.ColorSetting;
@@ -44,5 +45,7 @@ public final class GUITheme extends Module {
             default -> { /* Custom: keep user supplied RGB values. */ }
         }
         Theme.apply(accent.rgb(), secondary.rgb(), panel.rgb(), text.rgb(), dimText.rgb(), overlay.rgb(), design.get());
+        int hueRgb = java.awt.Color.HSBtoRGB((Config.accentHue % 360.0f) / 360.0f, 0.78f, 1.0f) & 0xFFFFFF;
+        Theme.apply(hueRgb, secondary.rgb(), panel.rgb(), text.rgb(), dimText.rgb(), overlay.rgb(), design.get());
     }
 }

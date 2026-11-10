@@ -10,10 +10,13 @@ import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.scanner.ChunkResult;
 import dev.nightfall.scanner.ChunkResult.Status;
 import dev.nightfall.util.Storage;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.*;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.text.Text;
 import net.minecraft.world.chunk.WorldChunk;
+import net.minecraft.world.chunk.ChunkSection;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -26,17 +29,20 @@ import java.util.*;
  * (kein Blockscan). Pro Tick gilt ein festes Zeitbudget. SUS/SUS-WEG-Markierungen werden je Server+Dimension gespeichert.
  */
 public class BaseFinder extends Module {
-    private final NumberSetting range     = add(new NumberSetting("Range (Chunks)", 16, 2, 48, 1));
-    private final NumberSetting budgetMs  = add(new NumberSetting("Budget ms/Tick", 1.0, 0.2, 5.0, 0.1));
-    private final NumberSetting rescan    = add(new NumberSetting("Rescan (s)", 10, 2, 120, 1));
-    private final NumberSetting threshold = add(new NumberSetting("Min Score", 12, 3, 100, 1));
-    private final NumberSetting minSignals = add(new NumberSetting("Min. Signaltypen", 2, 1, 6, 1));
+    private final NumberSetting range     = add(new NumberSetting("Range (Chunks)", 32, 2, 48, 1));
+    private final NumberSetting budgetMs  = add(new NumberSetting("Budget ms/Tick", 2.5, 0.2, 5.0, 0.1));
+    private final NumberSetting rescan    = add(new NumberSetting("Rescan (s)", 8, 2, 120, 1));
+    private final NumberSetting threshold = add(new NumberSetting("Min Score", 6, 3, 100, 1));
+    private final NumberSetting minSignals = add(new NumberSetting("Min. Signaltypen", 1, 1, 10, 1));
     private final NumberSetting wStorage  = add(new NumberSetting("Gewicht Storage", 1.0, 0.1, 5.0, 0.1));
     private final NumberSetting wHopper   = add(new NumberSetting("Gewicht Hopper", 1.5, 0.1, 5.0, 0.1));
     private final NumberSetting wFurnace  = add(new NumberSetting("Gewicht Furnace", 0.7, 0.1, 5.0, 0.1));
     private final NumberSetting wRedstone = add(new NumberSetting("Gewicht Redstone", 1.2, 0.1, 5.0, 0.1));
     private final NumberSetting wSpawner  = add(new NumberSetting("Gewicht Spawner", 2.0, 0.1, 10.0, 0.1));
-    private final NumberSetting wCluster  = add(new NumberSetting("Gewicht Cluster", 1.5, 0.0, 5.0, 0.1));
+    private final NumberSetting wCluster  = add(new NumberSetting("Gewicht Lagerzone", 1.5, 0.0, 5.0, 0.1));
+    private final NumberSetting clusterWeight = add(new NumberSetting("Gewicht Amethyst-Cluster", 0.25, 0.0, 2.0, 0.05));
+    private final NumberSetting minClusters = add(new NumberSetting("Min. Amethyst-Cluster", 6, 1, 64, 1));
+    private final NumberSetting wSculk    = add(new NumberSetting("Gewicht Sculk", 1.2, 0.0, 8.0, 0.1));
     private final BoolSetting   chat      = add(new BoolSetting("Chat-Meldung", true));
 
     private static final Gson GSON = new Gson();
@@ -72,7 +78,6 @@ public class BaseFinder extends Module {
 
     private static long key(int cx, int cz) { return ((long) cx & 0xFFFFFFFFL) | ((long) cz << 32); }
 
-    // ---- Zugriff fuer Karte/HUD/ESP ----
     public double thresholdValue() { return threshold.get(); }
     public ChunkResult get(int cx, int cz) { return results.get(key(cx, cz)); }
     public boolean isFakeChunk(int cx, int cz) {
@@ -108,17 +113,13 @@ public class BaseFinder extends Module {
         ctxKey = null;
     }
 
-    @Override
-    public void onWorldLeave() {
-        clear();
-    }
+    @Override public void onWorldLeave() { clear(); }
 
     private void clearData() {
         results.clear(); queue.clear(); top.clear(); marks.clear(); dirty = true; marksDirty = false; candidatesLastRefill = 0; scannedSinceRefill = 0;
     }
 
     public void clearMarks() { clearData(); marksDirty = true; saveMarks(); }
-
     @Override protected void onDisable() { clear(); }
 
     @Override
@@ -165,7 +166,7 @@ public class BaseFinder extends Module {
                 long k = key(pcx + dx, pcz + dz);
                 ChunkResult res = results.get(k);
                 if (res != null && res.lastScanTick != 0 && tick - res.lastScanTick < minAge) continue;
-                if (w.getChunkManager().getWorldChunk(pcx + dx, pcz + dz) == null) continue; // nur geladene Chunks
+                if (w.getChunkManager().getWorldChunk(pcx + dx, pcz + dz) == null) continue;
                 cand.add(new long[]{d2, k});
             }
         }
@@ -186,6 +187,7 @@ public class BaseFinder extends Module {
         if (ch == null) return;
 
         int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0, spawner = 0;
+        int buddingAmethyst = 0, amethystClusters = 0, geodeShell = 0, sculk = 0;
         Map<Integer, Integer> cells = new HashMap<>();
 
         for (BlockEntity be : ch.getBlockEntities().values()) {
@@ -202,23 +204,46 @@ public class BaseFinder extends Module {
                 cells.merge((px >> 2) | ((pz >> 2) << 2) | (((py >> 2) + 32) << 4), 1, Integer::sum);
             }
         }
+
+        for (ChunkSection section : ch.getSectionArray()) {
+            if (section == null || section.isEmpty()) continue;
+            for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+                BlockState state = section.getBlockState(x, y, z);
+                if (state.isOf(Blocks.BUDDING_AMETHYST)) buddingAmethyst++;
+                if (state.isOf(Blocks.AMETHYST_CLUSTER) || state.isOf(Blocks.LARGE_AMETHYST_BUD)
+                        || state.isOf(Blocks.MEDIUM_AMETHYST_BUD) || state.isOf(Blocks.SMALL_AMETHYST_BUD))
+                    amethystClusters++;
+                if (state.isOf(Blocks.CALCITE) || state.isOf(Blocks.SMOOTH_BASALT)
+                        || state.isOf(Blocks.AMETHYST_BLOCK)) geodeShell++;
+                if (state.isOf(Blocks.SCULK_SENSOR) || state.isOf(Blocks.CALIBRATED_SCULK_SENSOR)
+                        || state.isOf(Blocks.SCULK_SHRIEKER) || state.isOf(Blocks.SCULK_CATALYST)) sculk++;
+            }
+        }
+
         int maxCell = 0;
         for (int v : cells.values()) maxCell = Math.max(maxCell, v);
-
         double cluster = maxCell >= 6 ? (maxCell - 5) * wCluster.get() : 0;
+        boolean geodeSignature = buddingAmethyst > 0 && amethystClusters > 0 && geodeShell >= 8;
+        // Amethyst is a supporting clue, never a standalone base detector: natural geodes
+        // receive a much smaller bonus than clusters without a strong natural-geode signature.
+        double amethystScore = amethystClusters >= minClusters.getInt()
+                ? Math.min(8.0, amethystClusters * clusterWeight.get()) * (geodeSignature ? 0.15 : 1.0) : 0.0;
+        double sculkScore = sculk >= 3 ? (sculk - 2) * wSculk.get() : 0;
+        double naturalSignalScore = amethystScore + sculkScore;
         double score = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + redstone * wRedstone.get()
-                + spawner * wSpawner.get() + cluster;
+                + spawner * wSpawner.get() + cluster + naturalSignalScore;
         int signalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
-                + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (spawner > 0 ? 1 : 0) + (cluster > 0 ? 1 : 0);
+                + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (spawner > 0 ? 1 : 0)
+                + (cluster > 0 ? 1 : 0) + (amethystScore > 0 ? 1 : 0) + (sculkScore > 0 ? 1 : 0);
 
         ChunkResult old = results.get(k);
         ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
         Status prev = res.status;
         res.score = score;
+        res.naturalSignalScore = naturalSignalScore;
         res.lastScanTick = tick;
         res.reasons.clear();
-        // Expose the weighted contributions so a score can be inspected and tuned.
         if (storage > 0) res.reasons.add(storage + " Chest/Barrel (" + fmt(storage * wStorage.get()) + ")");
         if (shulker > 0) res.reasons.add(shulker + " Shulker (" + fmt(shulker * wStorage.get() * 1.5) + ")");
         if (hopper > 0) res.reasons.add(hopper + " Hopper (" + fmt(hopper * wHopper.get()) + ")");
@@ -226,15 +251,15 @@ public class BaseFinder extends Module {
         if (redstone > 0) res.reasons.add(redstone + " Dispenser/Comparator/Crafter (" + fmt(redstone * wRedstone.get()) + ")");
         if (spawner > 0) res.reasons.add(spawner + " Mob-Spawner (" + fmt(spawner * wSpawner.get()) + ")");
         if (cluster > 0) res.reasons.add("Lagerzone (" + maxCell + " in 4x4x4, +" + fmt(cluster) + ")");
+        if (amethystClusters > 0) res.reasons.add("Amethyst-Cluster/Buds (" + amethystClusters + ", +" + fmt(amethystScore)
+                + (geodeSignature ? ", natürliche Geoden-Signatur abgewertet" : "") + ")");
+        if (buddingAmethyst > 0) res.reasons.add("Budding Amethyst (" + buddingAmethyst + ")");
+        if (geodeSignature) res.reasons.add("Geoden-Merkmale erkannt (Calcit/Smooth Basalt/Amethystblock)");
+        if (sculkScore > 0) res.reasons.add("Sculk-Cluster (" + sculk + ", +" + fmt(sculkScore) + ")");
 
+        // Don't suppress a candidate just because several chunks have similar storage layouts.
+        // Repeated layouts can be legitimate player bases, so keep each candidate independently.
         if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
-            if (isRepeatedFakePattern(storage, shulker, hopper, furnace, redstone, spawner, cx, cz)) {
-                res.status = Status.CLEAN;
-                res.reasons.clear();
-                results.put(k, res);
-                dirty = true;
-                return;
-            }
             res.status = Status.SUS;
             if (prev != Status.SUS) {
                 res.foundAtMillis = System.currentTimeMillis();
@@ -300,32 +325,23 @@ public class BaseFinder extends Module {
     }
 
     private Path fakePatternsFile() { return Storage.dir().resolve("fake_patterns_" + ctxKey + ".json"); }
-
     private void saveFakePatterns() {
         if (ctxKey == null) return;
-        try {
-            Files.writeString(fakePatternsFile(), GSON.toJson(fakePatterns));
-        } catch (IOException e) {
-            Nightfall.LOGGER.error("Fake-Base-Fingerprints konnten nicht gespeichert werden", e);
-        }
+        try { Files.writeString(fakePatternsFile(), GSON.toJson(fakePatterns)); }
+        catch (IOException e) { Nightfall.LOGGER.error("Fake-Base-Fingerprints konnten nicht gespeichert werden", e); }
     }
-
     private void loadFakePatterns() {
         fakePatterns.clear();
         Path f = fakePatternsFile();
         if (!Files.exists(f)) return;
         try {
             List<FakePattern> loaded = GSON.fromJson(Files.readString(f), FAKE_LIST);
-            if (loaded != null) {
-                for (FakePattern pattern : loaded) {
-                    if (pattern == null) continue;
-                    if (pattern.seenChunks == null) pattern.seenChunks = new ArrayList<>();
-                    fakePatterns.add(pattern);
-                }
+            if (loaded != null) for (FakePattern pattern : loaded) {
+                if (pattern == null) continue;
+                if (pattern.seenChunks == null) pattern.seenChunks = new ArrayList<>();
+                fakePatterns.add(pattern);
             }
-        } catch (Exception e) {
-            Nightfall.LOGGER.error("Fake-Base-Fingerprints defekt: {}", f, e);
-        }
+        } catch (Exception e) { Nightfall.LOGGER.error("Fake-Base-Fingerprints defekt: {}", f, e); }
     }
 
     private static String fmt(double value) { return String.format(Locale.ROOT, "%.1f", value); }
@@ -340,9 +356,7 @@ public class BaseFinder extends Module {
         dirty = false;
     }
 
-    // ---- Persistenz ----
     private Path marksFile() { return Storage.dir().resolve("marks_" + ctxKey + ".json"); }
-
     public void saveMarks() {
         if (ctxKey == null) return;
         try {
@@ -358,11 +372,8 @@ public class BaseFinder extends Module {
             if (out.isEmpty() && !Files.exists(f)) return;
             Files.writeString(f, GSON.toJson(out));
             marksDirty = false;
-        } catch (IOException e) {
-            Nightfall.LOGGER.error("Markierungen konnten nicht gespeichert werden", e);
-        }
+        } catch (IOException e) { Nightfall.LOGGER.error("Markierungen konnten nicht gespeichert werden", e); }
     }
-
     private void loadMarks() {
         Path f = marksFile();
         if (!Files.exists(f)) return;
@@ -371,16 +382,12 @@ public class BaseFinder extends Module {
             if (in == null) return;
             for (Mark m : in) {
                 ChunkResult r = new ChunkResult(m.cx, m.cz);
-                r.score = m.score;
-                r.status = Status.valueOf(m.status);
-                r.foundAtMillis = m.found;
+                r.score = m.score; r.status = Status.valueOf(m.status); r.foundAtMillis = m.found;
                 if (m.reasons != null) r.reasons.addAll(m.reasons);
                 r.lastScanTick = 0;
                 results.put(key(m.cx, m.cz), r);
             }
             dirty = true;
-        } catch (Exception e) {
-            Nightfall.LOGGER.error("Markierungsdatei defekt: {}", f, e);
-        }
+        } catch (Exception e) { Nightfall.LOGGER.error("Markierungsdatei defekt: {}", f, e); }
     }
 }

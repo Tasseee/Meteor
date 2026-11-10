@@ -3,7 +3,7 @@ plugins {
     id 'maven-publish'
 }
 
-version = '0.5.12'
+version = '0.5.15'
 group = 'dev.nightfall'
 base { archivesName = 'nightfall' }
 

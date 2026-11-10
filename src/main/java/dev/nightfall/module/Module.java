@@ -15,6 +15,7 @@ public abstract class Module {
     private final String name, description;
     private final Category category;
     private boolean enabled;
+    private boolean favorite;
     private int key = -1;
     private final List<Setting<?>> settings = new ArrayList<>();
 
@@ -28,6 +29,8 @@ public abstract class Module {
     public String getDescription() { return description; }
     public Category getCategory() { return category; }
     public boolean isEnabled() { return enabled; }
+    public boolean isFavorite() { return favorite; }
+    public void setFavorite(boolean value) { favorite = value; }
     public List<Setting<?>> getSettings() { return Collections.unmodifiableList(settings); }
 
     public int getKey() { return key; }

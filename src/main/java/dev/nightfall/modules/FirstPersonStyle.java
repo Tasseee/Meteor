@@ -2,13 +2,16 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.item.ItemStack;
 import org.joml.Quaternionf;
 
 /** Changes the local first-person arm/item model transform. The arm itself remains Minecraft's 3D player model. */
 public final class FirstPersonStyle extends Module {
+    private final BoolSetting swapHands = add(new BoolSetting("Items linke/rechte Hand tauschen", false));
     private final ModeSetting pose = add(new ModeSetting("Handhaltung", "Vanilla", "Vanilla", "Katana", "Heavy", "Floating", "Compact"));
     private final NumberSetting x = add(new NumberSetting("X-Position", 0, -0.8, 0.8, 0.01));
     private final NumberSetting y = add(new NumberSetting("Y-Position", 0, -0.8, 0.8, 0.01));
@@ -20,6 +23,14 @@ public final class FirstPersonStyle extends Module {
 
     public FirstPersonStyle() {
         super("ViewModel", "Arme und gehaltenes Item frei auf dem Bildschirm positionieren, drehen und skalieren.", Category.VISUALS);
+    }
+
+    /** Swaps only the stack passed to first-person rendering; inventory and gameplay remain unchanged. */
+    public ItemStack swapRenderedStack(ItemStack original) {
+        if (!swapHands.get() || mc.player == null || original == null) return original;
+        if (original == mc.player.getMainHandStack()) return mc.player.getOffHandStack();
+        if (original == mc.player.getOffHandStack()) return mc.player.getMainHandStack();
+        return original;
     }
 
     public void transform(MatrixStack matrices, boolean leftHand) {

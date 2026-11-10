@@ -8,6 +8,7 @@ public final class ChunkResult {
 
     public final int cx, cz;
     public double score;
+    public double naturalSignalScore;
     public Status status = Status.CLEAN;
     public long foundAtMillis;
     public long lastScanTick;
