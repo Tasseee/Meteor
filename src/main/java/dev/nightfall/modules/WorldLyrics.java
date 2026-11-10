@@ -58,7 +58,7 @@ public final class WorldLyrics extends Module {
     }
 
     public WorldLyrics() {
-        super("WorldLyrics", "Lyrics erscheinen an wechselnden Orten, bleiben kurz stehen und verblassen.");
+        super("WorldLyrics", "Lyrics erscheinen an wechselnden Orten, bleiben kurz stehen und verblassen.", Category.VISUALS);
     }
 
     @Override protected void onEnable() {
