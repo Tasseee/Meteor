@@ -2,7 +2,6 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
-import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.InvUtil;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -25,8 +24,6 @@ import java.util.List;
  * then places cobwebs in the target's feet and head blocks.
  */
 public final class ObiTrapBot extends Module {
-    private final NumberSetting placeDelay = add(new NumberSetting("Bau-Intervall (Ticks)", 1, 1, 10, 1));
-
     private PlayerEntity target;
     private BlockPos anchor;
     private String phase = "obsidian";
@@ -44,11 +41,15 @@ public final class ObiTrapBot extends Module {
 
     @Override
     protected void onDisable() {
-        stop("Manuell gestoppt.");
+        resetState();
     }
 
     @Override
     public void onWorldLeave() {
+        resetState();
+    }
+
+    private void resetState() {
         restoreSlot();
         target = null;
         anchor = null;
