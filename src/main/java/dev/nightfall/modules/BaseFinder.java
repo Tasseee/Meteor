@@ -201,7 +201,8 @@ public class BaseFinder extends Module {
 
         int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0, spawner = 0;
         int amethystCluster = 0, amethystLarge = 0, amethystMedium = 0, amethystSmall = 0;
-        int sculk = 0, matureCrops = 0, matureKelp = 0;\n        int sugarCane = 0, bamboo = 0, cactus = 0, melonsAndPumpkins = 0, matureNetherWart = 0;
+        int sculk = 0, matureCrops = 0, matureKelp = 0;
+        int sugarCane = 0, bamboo = 0, cactus = 0, melonsAndPumpkins = 0, matureNetherWart = 0;
         Map<Integer, Integer> cells = new HashMap<>();
 
         for (BlockEntity be : ch.getBlockEntities().values()) {
@@ -269,7 +270,12 @@ public class BaseFinder extends Module {
         double areaBonus = Math.min(1.0, neighboringNaturalScore * naturalAreaBonusSetting.get());
         double score = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + redstone * wRedstone.get()
-                + spawner * wSpawner.get() + cluster + naturalSignalScore + areaBonus + farmScore;\n        boolean hasStorageOrHoppers = storage + shulker + hopper > 0;\n        boolean hasFarmSignal = farmScore > 0 || cropScore > 0 || kelpScore > 0;\n        double farmStorageCombo = hasFarmSignal && hasStorageOrHoppers ? farmComboBonus.get() : 0;\n        double farmRedstoneCombo = hasFarmSignal && redstone > 0 ? redstoneComboBonus.get() : 0;\n        score += farmStorageCombo + farmRedstoneCombo;
+                + spawner * wSpawner.get() + cluster + naturalSignalScore + areaBonus + farmScore;
+        boolean hasStorageOrHoppers = storage + shulker + hopper > 0;
+        boolean hasFarmSignal = farmScore > 0 || cropScore > 0 || kelpScore > 0;
+        double farmStorageCombo = hasFarmSignal && hasStorageOrHoppers ? farmComboBonus.get() : 0;
+        double farmRedstoneCombo = hasFarmSignal && redstone > 0 ? redstoneComboBonus.get() : 0;
+        score += farmStorageCombo + farmRedstoneCombo;
         int signalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
                 + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (spawner > 0 ? 1 : 0)
                 + (cluster > 0 ? 1 : 0) + (amethyst > 0 ? 1 : 0) + (sculkScore > 0 ? 1 : 0)
