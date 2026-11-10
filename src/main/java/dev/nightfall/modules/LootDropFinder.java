@@ -279,7 +279,7 @@ public final class LootDropFinder extends Module {
                 minY = Math.min(minY, targetY);
                 maxY = Math.max(maxY, targetY);
             }
-            markerHeights.put(key, new int[]{Math.max(mc.world.getBottomY(), minY - 4), Math.min(mc.world.getTopY(), maxY + 5)});
+            markerHeights.put(key, new int[]{Math.max(mc.world.getBottomY(), minY - 4), Math.min((mc.world.getBottomY() + mc.world.getHeight()), maxY + 5)});
             totalDetections += items.size();
             lastFoundLabel = items.size() + " Hinweis(e) · Chunk " + chunkX(key) + " / " + chunkZ(key);
             lastFoundAt = System.currentTimeMillis();
