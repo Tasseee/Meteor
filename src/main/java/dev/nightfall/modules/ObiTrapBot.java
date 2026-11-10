@@ -170,8 +170,13 @@ public final class ObiTrapBot extends Module {
         if (!enclosed(target)) {
             int obsidian = InvUtil.ensureHotbar(Items.OBSIDIAN);
             if (obsidian < 0) {
-                if (timer == 0) p.sendMessage(Text.literal("[Nightfall] ObiTrapBot: Kein Obsidian im Inventar/Hotbar."), false);
-                timer = Math.max(timer, 40);
+                restoreSlot();
+                if (timer > 0) {
+                    timer--;
+                    return;
+                }
+                p.sendMessage(Text.literal("[Nightfall] ObiTrapBot: Kein Obsidian im Inventar/Hotbar."), false);
+                timer = 40;
                 return;
             }
             if (timer > 0) { timer--; return; }
@@ -195,7 +200,11 @@ public final class ObiTrapBot extends Module {
             int cobweb = InvUtil.ensureHotbar(Items.COBWEB);
             if (cobweb < 0) {
                 restoreSlot();
-                if (timer == 0) p.sendMessage(Text.literal("[Nightfall] ObiTrapBot: Kein Cobweb im Inventar/Hotbar."), false);
+                if (timer > 0) {
+                    timer--;
+                    return;
+                }
+                p.sendMessage(Text.literal("[Nightfall] ObiTrapBot: Kein Cobweb im Inventar/Hotbar."), false);
                 timer = 40;
                 return;
             }
