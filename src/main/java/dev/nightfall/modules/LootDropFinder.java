@@ -306,7 +306,7 @@ public final class LootDropFinder extends Module {
         }));
         int drawn = 0;
         int minY = mc.world.getBottomY();
-        int maxY = mc.world.getTopY();
+        int maxY = mc.world.getBottomY() + mc.world.getHeight();
         for (long key : keys) {
             if (drawn >= 64) break;
             int x = chunkX(key) << 4;
