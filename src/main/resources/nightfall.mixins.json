@@ -9,7 +9,8 @@
     "AbstractSignEditScreenMixin",
     "SlowSwingMixin",
     "SeedCrackerProgressMixin",
-    "SeedCrackerDataIntegrityMixin"
+    "SeedCrackerDataIntegrityMixin",
+    "AutoShieldNetworkMixin"
   ],
   "injectors": {
     "defaultRequire": 1
