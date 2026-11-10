@@ -44,6 +44,7 @@ public final class SpotifyLyricsHud extends HudModule {
     private final StringSetting clientId = add(new StringSetting("Spotify Client ID", "", 120));
     private final BoolSetting showLyrics = add(new BoolSetting("Synchronisierte Lyrics", true));
     private final BoolSetting showNextLine = add(new BoolSetting("Naechste Zeile anzeigen", true));
+    private final BoolSetting showVisualizer = add(new BoolSetting("Animierter Equalizer", true));
     private final NumberSetting hudWidth = add(new NumberSetting("HUD-Breite", 220, 180, 320, 10));
 
     private volatile String accessToken;
@@ -314,6 +315,7 @@ public final class SpotifyLyricsHud extends HudModule {
     }
 
     @Override protected void draw(DrawContext ctx) {
+        long now = System.currentTimeMillis();
         int width = hudWidth.getInt();
         w = width;
         Track current = track;
@@ -323,47 +325,83 @@ public final class SpotifyLyricsHud extends HudModule {
         int lyricIndex = -1;
         if (hasTrack) {
             progress = current.progressMs();
-            if (current.playing()) progress += Math.max(0, System.currentTimeMillis() - trackReceivedAt);
+            if (current.playing()) progress += Math.max(0, now - trackReceivedAt);
             progress = Math.min(current.durationMs(), progress);
             for (int i = 0; i < lines.size(); i++) {
                 if (lines.get(i).timeMs() <= progress) lyricIndex = i;
                 else break;
             }
         }
+
         boolean showLyricPanel = showLyrics.get();
-        h = 72 + (showLyricPanel ? (showNextLine.get() ? 42 : 28) : 0);
-        ctx.fill(0, 0, w, h, Theme.HUD_PANEL);
-        ctx.fill(0, 0, w, 3, 0xFF1DB954);
-        ctx.fill(0, 3, 3, h, 0xFF16853D);
-        ctx.drawText(mc.textRenderer, "SPOTIFY  /  NIGHTFALL", 10, 9, 0xFF1ED760, true);
-        String state = hasTrack ? (current.playing() ? "PLAYING" : "PAUSED") : status;
-        ctx.drawText(mc.textRenderer, trim(state, 26), w - 10 - mc.textRenderer.getWidth(trim(state, 26)), 9, Theme.TEXT_DIM, false);
+        boolean visualizer = showVisualizer.get();
+        h = 82 + (visualizer ? 18 : 0) + (showLyricPanel ? (showNextLine.get() ? 48 : 32) : 0);
+
+        // Glass-like dark card with a moving Spotify-green accent.
+        ctx.fill(0, 0, w, h, 0xE810131B);
+        ctx.fill(0, 0, w, 2, 0xFF1ED760);
+        ctx.fill(0, 2, 3, h, 0xFF16853D);
+        ctx.fill(8, 7, 31, 29, 0xFF172B22);
+        ctx.drawText(mc.textRenderer, "♫", 14, 12, 0xFF1ED760, true);
+        ctx.drawText(mc.textRenderer, "NIGHTFALL  /  SPOTIFY", 37, 9, 0xFF1ED760, true);
+
+        String state = hasTrack ? (current.playing() ? "● LIVE" : "Ⅱ PAUSED") : status;
+        String stateText = trim(state, 22);
+        ctx.drawText(mc.textRenderer, stateText, w - 9 - mc.textRenderer.getWidth(stateText), 10,
+                hasTrack && current.playing() ? 0xFF8BFFC0 : Theme.TEXT_DIM, false);
+
         if (hasTrack) {
-            ctx.drawText(mc.textRenderer, trim(current.title(), 32), 10, 24, Theme.TEXT, true);
-            ctx.drawText(mc.textRenderer, trim(current.artist(), 38), 10, 37, Theme.TEXT_DIM, false);
+            ctx.drawText(mc.textRenderer, trim(current.title(), 34), 10, 32, Theme.TEXT, true);
+            ctx.drawText(mc.textRenderer, trim(current.artist(), 38), 10, 45, 0xFFB4BBC8, false);
             long duration = Math.max(1, current.durationMs());
-            int barX = 10, barY = 53, barW = w - 20;
-            ctx.fill(barX, barY, barX + barW, barY + 3, 0xFF303743);
-            ctx.fill(barX, barY, barX + (int) (barW * Math.min(1.0, progress / (double) duration)), barY + 3, 0xFF1ED760);
-            String times = fmt(progress) + " / " + fmt(duration);
-            ctx.drawText(mc.textRenderer, times, 10, 60, Theme.TEXT_DIM, false);
+            int barX = 10, barY = 62, barW = w - 20;
+            ctx.fill(barX, barY, barX + barW, barY + 4, 0xFF303743);
+            int filled = (int) (barW * Math.min(1.0, progress / (double) duration));
+            if (filled > 0) {
+                ctx.fill(barX, barY, barX + filled, barY + 4, 0xFF1ED760);
+                ctx.fill(Math.max(barX, barX + filled - 2), barY - 1, barX + filled, barY + 5, 0xFF9BFFC0);
+            }
+            String times = fmt(progress) + "  /  " + fmt(duration);
+            ctx.drawText(mc.textRenderer, times, 10, 69, 0xFF929BAA, false);
         } else {
-            ctx.drawText(mc.textRenderer, trim(status, 34), 10, 29, Theme.TEXT_DIM, false);
-            ctx.drawText(mc.textRenderer, "Client ID in den Mod-Einstellungen", 10, 46, Theme.TEXT_DIM, false);
+            ctx.drawText(mc.textRenderer, trim(status, 34), 10, 34, Theme.TEXT, false);
+            ctx.drawText(mc.textRenderer, "Setze deine Spotify Client ID in den Einstellungen", 10, 49, 0xFF929BAA, false);
         }
+
+        int contentY = 82;
+        if (visualizer) {
+            int bars = Math.min(36, Math.max(20, (w - 20) / 5));
+            int gap = 2;
+            int totalWidth = bars * 3 + (bars - 1) * gap;
+            int startX = Math.max(10, (w - totalWidth) / 2);
+            int baseY = contentY + 13;
+            for (int i = 0; i < bars; i++) {
+                double wave = Math.abs(Math.sin(now / 180.0 + i * 0.62));
+                double pulse = Math.abs(Math.sin(now / 420.0 - i * 0.21));
+                int barHeight = hasTrack && current.playing() ? 3 + (int) (wave * (4 + pulse * 8)) : 3;
+                int x = startX + i * (3 + gap);
+                int color = i % 4 == 0 ? 0xFF8BFFC0 : 0xFF1ED760;
+                ctx.fill(x, baseY - barHeight, x + 3, baseY, color);
+            }
+            contentY += 19;
+        }
+
         if (showLyricPanel) {
-            int y = 77;
-            ctx.fill(8, y, w - 8, y + (showNextLine.get() ? 38 : 24), 0x55000000);
+            int lyricY = contentY + 2;
+            int lyricHeight = showNextLine.get() ? 43 : 27;
+            ctx.fill(8, lyricY, w - 8, lyricY + lyricHeight, 0xAA080B10);
+            ctx.fill(8, lyricY, 10, lyricY + lyricHeight, 0xFF1ED760);
             if (!hasTrack || lines.isEmpty()) {
                 String msg = lyricsLoading ? "Liedtext wird geladen..." : "Keine synchronisierten Lyrics gefunden";
-                ctx.drawText(mc.textRenderer, trim(msg, 36), 12, y + 8, Theme.TEXT_DIM, false);
+                ctx.drawText(mc.textRenderer, trim(msg, 36), 14, lyricY + 10, 0xFF929BAA, false);
             } else {
                 String prev = lyricIndex > 0 ? lines.get(lyricIndex - 1).text() : "";
-                String now = lyricIndex >= 0 ? lines.get(lyricIndex).text() : "♪ ... ♪";
+                String line = lyricIndex >= 0 ? lines.get(lyricIndex).text() : "♪  …  ♪";
                 String next = lyricIndex + 1 < lines.size() ? lines.get(lyricIndex + 1).text() : "";
-                if (!prev.isBlank()) ctx.drawText(mc.textRenderer, trim(prev, 38), 12, y + 3, Theme.TEXT_DIM, false);
-                ctx.drawText(mc.textRenderer, trim(now, 38), 12, y + (showNextLine.get() ? 14 : 8), 0xFF1ED760, true);
-                if (showNextLine.get() && !next.isBlank()) ctx.drawText(mc.textRenderer, trim(next, 38), 12, y + 27, Theme.TEXT_DIM, false);
+                if (!prev.isBlank()) ctx.drawText(mc.textRenderer, trim(prev, 38), 14, lyricY + 3, 0xFF7F8998, false);
+                int pulseColor = 0xFF1ED760;
+                ctx.drawText(mc.textRenderer, trim(line, 38), 14, lyricY + (showNextLine.get() ? 15 : 9), pulseColor, true);
+                if (showNextLine.get() && !next.isBlank()) ctx.drawText(mc.textRenderer, trim(next, 38), 14, lyricY + 29, 0xFF9AA3B1, false);
             }
         }
     }
