@@ -8,7 +8,10 @@
     "GameRendererAccessor",
     "AbstractSignEditScreenMixin",
     "SlowSwingMixin",
-    "SeedCrackerProgressMixin"
+    "SeedCrackerProgressMixin",
+    "SeedCrackerDataIntegrityMixin"
   ],
-  "injectors": { "defaultRequire": 1 }
+  "injectors": {
+    "defaultRequire": 1
+  }
 }
