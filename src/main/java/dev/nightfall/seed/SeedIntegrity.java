@@ -72,7 +72,7 @@ public final class SeedIntegrity {
                 }
             }
 
-            Object configClass = Class.forName("kaptainwutax.seedcrackerX.config.Config");
+            Class<?> configClass = Class.forName("kaptainwutax.seedcrackerX.config.Config");
             Object config = configClass.getMethod("get").invoke(null);
             Object version = config.getClass().getMethod("getVersion").invoke(config);
             Class<?> biomeSourceClass = Class.forName("com.seedfinding.mcbiome.source.OverworldBiomeSource");
