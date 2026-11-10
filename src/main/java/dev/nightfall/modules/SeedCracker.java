@@ -40,26 +40,26 @@ public final class SeedCracker extends Module {
             config.trialChambers.set(true);
             config.endPillars.set(true);
 
-            // Keep experimental/known-problematic finders disabled in every profile.
-            config.dungeon.set(false);
-            config.emeraldOre.set(false);
-            config.warpedFungus.set(false);
-
             boolean balanced = profile.equals("Ausgewogen") || profile.equals("Intensiv");
             boolean intensive = profile.equals("Intensiv");
 
-            // Additional supported decorators are enabled progressively.
+            // Balanced adds the extra decorators; Intensive enables every finder
+            // provided by this SeedCrackerX version, including lower-confidence
+            // block/decorator signals and dense biome sampling.
             config.endGateway.set(balanced);
             config.desertWell.set(balanced);
             config.biome.set(intensive);
+            config.dungeon.set(intensive);
+            config.emeraldOre.set(intensive);
+            config.warpedFungus.set(intensive);
 
             Finder.Type.END_PILLARS.enabled.set(true);
             Finder.Type.END_GATEWAY.enabled.set(balanced);
             Finder.Type.DESERT_WELL.enabled.set(balanced);
             Finder.Type.BIOME.enabled.set(intensive);
-            Finder.Type.DUNGEON.enabled.set(false);
-            Finder.Type.EMERALD_ORE.enabled.set(false);
-            Finder.Type.WARPED_FUNGUS.enabled.set(false);
+            Finder.Type.DUNGEON.enabled.set(intensive);
+            Finder.Type.EMERALD_ORE.enabled.set(intensive);
+            Finder.Type.WARPED_FUNGUS.enabled.set(intensive);
 
             appliedProfile = profile;
             Config.save();
