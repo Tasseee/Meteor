@@ -38,7 +38,10 @@ public final class Freecam extends Module {
         savedPitch = mc.player.getPitch();
         cameraYaw = savedYaw;
         cameraPitch = savedPitch;
-        cameraPosition = mc.player.getEyePos();
+        // Start just behind the player so the local model is visible immediately.
+        Vec3d lookDirection = new Vec3d(-Math.sin(Math.toRadians(cameraYaw)), 0,
+                Math.cos(Math.toRadians(cameraYaw)));
+        cameraPosition = mc.player.getEyePos().subtract(lookDirection.multiply(2.5));
         mouseInitialized = false;
         active = true;
         return true;
