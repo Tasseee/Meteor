@@ -9,6 +9,7 @@ import kaptainwutax.seedcrackerX.cracker.BiomeData;
 import kaptainwutax.seedcrackerX.cracker.PillarData;
 import kaptainwutax.seedcrackerX.cracker.decorator.Decorator;
 import kaptainwutax.seedcrackerX.cracker.storage.DataStorage;
+import com.seedfinding.mcfeature.structure.PillagerOutpost;
 import kaptainwutax.seedcrackerX.SeedCracker;
 import net.minecraft.world.level.levelgen.WorldgenRandom;
 import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
@@ -68,7 +69,12 @@ public final class SeedIntegrity {
             for (DataStorage.Entry<Feature.Data<?>> entry : storage.baseSeedData) {
                 Feature.Data<?> data = entry.data;
                 boolean matches;
-                if (data.feature instanceof Decorator) {
+                if (data.feature instanceof PillagerOutpost) {
+                    // SeedCrackerX deliberately excludes outposts from its seed verification path.
+                    continue;
+                }
+                if (data.feature instanceof Decorator
+                        && !data.feature.getVersion().isOlderThan(MCVersion.v1_18)) {
                     matches = ((Decorator.Data<?>) data).testStart(worldSeed, decoratorRand);
                     decorators++;
                 } else {
