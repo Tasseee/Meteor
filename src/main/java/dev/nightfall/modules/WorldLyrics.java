@@ -55,7 +55,7 @@ public final class WorldLyrics extends Module {
         if (current < 0) current = 0;
 
         String active = lines[current];
-        if (wordReveal && current + 1 < times.length) {
+        if (wordReveal.get() && current + 1 < times.length) {
             long span = Math.max(500, times[current + 1] - times[current]);
             double fraction = Math.max(0, Math.min(1, (progress - times[current]) / (double) span));
             String[] words = active.split("\\s+");
@@ -68,7 +68,7 @@ public final class WorldLyrics extends Module {
         Vector3f forward = camera.getRotation().transform(new Vector3f(0, 0, -1));
         Vec3d cameraPos = camera.getCameraPos();
         long now = System.currentTimeMillis();
-        double bob = floating ? Math.sin(now / 520.0) * 0.12 : 0.0;
+        double bob = floating.get() ? Math.sin(now / 520.0) * 0.12 : 0.0;
         double d = distance.get();
         double worldX = cameraPos.x + forward.x * d;
         double worldY = cameraPos.y + forward.y * d + bob;
