@@ -30,8 +30,8 @@ public final class WorldLyrics extends Module {
     private final NumberSetting lifetime = add(new NumberSetting("Sichtdauer (Sek.)", 4.0, 1.0, 10.0, 0.5));
     private final BoolSetting wordReveal = add(new BoolSetting("Wort fuer Wort", true));
     private final BoolSetting floating = add(new BoolSetting("Schwebe-Animation", true));
-    private final BoolSetting background = add(new BoolSetting("Lesbarer Hintergrund", false));
-    private final BoolSetting glow = add(new BoolSetting("Spotify-Glow", true));
+    private final BoolSetting background = add(new BoolSetting("Neon-Glas-Karten", true));
+    private final BoolSetting glow = add(new BoolSetting("Mehrfacher Neon-Glow", true));
 
     private final List<LyricWord> activeWords = new ArrayList<>();
     private final Random random = new Random();
@@ -214,11 +214,14 @@ public final class WorldLyrics extends Module {
             y = (float) projected[1];
         }
 
-        float scale = word.scale * (float) (0.88 + 0.12 * Math.min(1, age / 0.25));
+        float entrance = (float) Math.min(1.0, age / 0.28);
+        float pulse = (float) (1.0 + Math.sin(now / 190.0 + word.x * 2.1 + word.z) * 0.025);
+        float scale = word.scale * (0.78f + 0.22f * entrance) * pulse;
         int rgb = word.color & 0x00FFFFFF;
         int color = ((int) (alpha * 255) << 24) | rgb;
-        int glowColor = ((int) (alpha * 70) << 24) | 0x00FFFFFF;
-        int shadowColor = ((int) (alpha * 170) << 24);
+        int halo = ((int) (alpha * 42) << 24) | rgb;
+        int glowColor = ((int) (alpha * 95) << 24) | rgb;
+        int shadowColor = ((int) (alpha * 190) << 24) | 0x00101820;
         int width = mc.textRenderer.getWidth(word.text);
 
         var matrices = ctx.getMatrices();
@@ -227,15 +230,37 @@ public final class WorldLyrics extends Module {
         matrices.rotate(word.angle);
         matrices.scale(scale, scale);
         int left = -width / 2;
+
+        // Layered translucent glass plate, colored edge and tiny light accents.
         if (background.get()) {
-            int pad = 5;
-            ctx.fill(left - pad, -7, left + width + pad, 8, shadowColor | 0x00101820);
+            int padX = 8;
+            ctx.fill(left - padX - 2, -10, left + width + padX + 2, 11, halo);
+            ctx.fill(left - padX, -8, left + width + padX, 9, shadowColor);
+            ctx.fill(left - padX, -8, left - padX + 2, 9, color);
+            ctx.fill(left - padX + 5, 8, left + width + padX - 5, 9, glowColor);
+            ctx.fill(left - padX + 4, -6, left - padX + 5, -4, color);
+            ctx.fill(left + width + padX - 5, 4, left + width + padX - 4, 6, color);
         }
+
         if (glow.get()) {
-            ctx.drawText(mc.textRenderer, word.text, left - 1, -4, glowColor, false);
-            ctx.drawText(mc.textRenderer, word.text, left + 1, -4, glowColor, false);
+            // Soft multi-pass glow gives the lyric a neon sign appearance.
+            ctx.drawText(mc.textRenderer, word.text, left - 2, -5, halo, false);
+            ctx.drawText(mc.textRenderer, word.text, left + 2, -5, halo, false);
+            ctx.drawText(mc.textRenderer, word.text, left, -6, glowColor, false);
+            ctx.drawText(mc.textRenderer, word.text, left, -2, glowColor, false);
         }
+        ctx.drawText(mc.textRenderer, word.text, left + 1, -3, 0xAAFFFFFF, false);
         ctx.drawText(mc.textRenderer, word.text, left, -4, color, true);
+
+        // Small animated sparkles orbit the word without requiring textures.
+        if (glow.get()) {
+            double phase = now / 260.0 + word.spawnAt * 0.001;
+            int sparkle = ((int) (alpha * (110 + 70 * Math.abs(Math.sin(phase)))) << 24) | 0x00FFFFFF;
+            int sx = left - 4 + (int) ((Math.sin(phase) + 1.0) * 2.0);
+            int sy = -9 + (int) (Math.cos(phase * 0.8) * 2.0);
+            ctx.fill(sx, sy, sx + 2, sy + 2, sparkle);
+            ctx.fill(left + width + 2, 5 + (int) (Math.sin(phase * 1.2) * 2), left + width + 4, 7 + (int) (Math.sin(phase * 1.2) * 2), sparkle);
+        }
         matrices.popMatrix();
     }
 }
