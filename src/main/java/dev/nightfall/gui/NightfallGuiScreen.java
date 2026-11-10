@@ -36,10 +36,14 @@ public final class NightfallGuiScreen extends Screen {
         prevLeft = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
         prevRight = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
         restoreTabs();
-        panel("Combat", SIDE + 34, 105)[2] = 1;
+        for (String tab : TABS) panel(tab, SIDE + 34, 105)[2] = tab.equals(activeTab) ? 1 : 0;
     }
     @Override public boolean shouldPause() { return false; }
     @Override public void removed() { Config.save(); }
+    @Override public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        scroll = Math.max(0, Math.min(5000, scroll - (int)Math.round(verticalAmount * 28.0)));
+        return true;
+    }
     @Override public boolean keyPressed(net.minecraft.client.input.KeyInput input) {
         if (input.key() == Config.guiKey || input.key() == GLFW.GLFW_KEY_ESCAPE) { close(); return true; }
         return super.keyPressed(input);
@@ -201,10 +205,10 @@ public final class NightfallGuiScreen extends Screen {
         if (bodyH == 0) return;
         if (tab.equals("Config")) { drawConfig(ctx,x,y,w,mx,my,click); return; }
 
-        int rowY = y + HEAD + 5;
+        int rowY = y + HEAD + 5 - scroll;
         ctx.enableScissor(x + 3, y + HEAD, x + w - 3, y + HEAD + bodyH);
         for (Module mod : mods) {
-            if (rowY > y + HEAD + bodyH - ROW) break;
+            if (rowY > y + HEAD + bodyH - ROW) { rowY += ROW; continue; }
             boolean over = inside(mx,my,x+4,rowY,w-8,ROW);
             if (over) ctx.fill(x+4,rowY,x+w-4,rowY+ROW-1,0x283F3B50);
             ctx.drawText(mc.textRenderer, mod.getName(), x+10,rowY+7,mod.isEnabled()?Theme.TEXT:Theme.TEXT_DIM,false);
@@ -218,7 +222,7 @@ public final class NightfallGuiScreen extends Screen {
             if (rightClick && over && !mod.getSettings().isEmpty()) { if(!expanded.add(mod.getName())) expanded.remove(mod.getName()); }
             rowY += ROW;
             if (expanded.contains(mod.getName())) for (Setting<?> setting : mod.getSettings()) {
-                if (rowY > y + HEAD + bodyH - ROW) break;
+                if (rowY > y + HEAD + bodyH - ROW) { rowY += ROW; continue; }
                 drawSetting(ctx,setting,x+8,rowY,w-16,mx,my,click);
                 rowY += ROW;
             }
