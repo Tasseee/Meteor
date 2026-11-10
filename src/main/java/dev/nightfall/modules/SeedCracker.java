@@ -3,8 +3,7 @@ import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.util.NotificationCenter;
-import kaptainwutax.seedcrackerX.config.Config;
-import kaptainwutax.seedcrackerX.finder.Finder;
+import dev.nightfall.seed.SeedSearchEngine;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 import java.util.Locale;
@@ -14,7 +13,7 @@ public final class SeedCracker extends Module {
     private final ModeSetting searchProfile = add(new ModeSetting(
             "Suchintensitaet", "Ausgewogen", "Sparsam", "Ausgewogen", "Intensiv"
     ));
-    private String appliedProfile = "";
+    private final SeedSearchEngine engine = new SeedSearchEngine();
 
     public SeedCracker(){super("SeedCracker","Sammelt Seed-Daten und steuert die Zuverlaessigkeit und Intensitaet der Seed-Suche.",Category.WORLD);}
     @Override protected void onEnable(){SeedCrackerProgress.reset();setCrackerActive(true);hasResult=false;applySearchProfile();}
@@ -24,54 +23,16 @@ public final class SeedCracker extends Module {
 
     private void applySearchProfile() {
         try {
-            Config config = Config.get();
-            String profile = searchProfile.get();
-
-            // Core structure finders and End pillars are the stable baseline in every profile.
-            config.buriedTreasure.set(true);
-            config.desertTemple.set(true);
-            config.endCity.set(true);
-            config.jungleTemple.set(true);
-            config.monument.set(true);
-            config.swampHut.set(true);
-            config.shipwreck.set(true);
-            config.outpost.set(true);
-            config.igloo.set(true);
-            config.trialChambers.set(true);
-            config.endPillars.set(true);
-
-            boolean balanced = profile.equals("Ausgewogen") || profile.equals("Intensiv");
-            boolean intensive = profile.equals("Intensiv");
-
-            // Balanced adds the extra decorators; Intensive enables every finder
-            // provided by this SeedCrackerX version, including lower-confidence
-            // block/decorator signals and dense biome sampling.
-            config.endGateway.set(balanced);
-            config.desertWell.set(balanced);
-            config.biome.set(intensive);
-            config.dungeon.set(intensive);
-            config.emeraldOre.set(intensive);
-            config.warpedFungus.set(intensive);
-
-            Finder.Type.END_PILLARS.enabled.set(true);
-            Finder.Type.END_GATEWAY.enabled.set(balanced);
-            Finder.Type.DESERT_WELL.enabled.set(balanced);
-            Finder.Type.BIOME.enabled.set(intensive);
-            Finder.Type.DUNGEON.enabled.set(intensive);
-            Finder.Type.EMERALD_ORE.enabled.set(intensive);
-            Finder.Type.WARPED_FUNGUS.enabled.set(intensive);
-
-            appliedProfile = profile;
-            Config.save();
+            engine.applyProfile(searchProfile.get());
         } catch (Throwable t) {
-            dev.nightfall.Nightfall.LOGGER.error("SeedCracker-Suchprofil konnte nicht angewendet werden", t);
+            dev.nightfall.Nightfall.LOGGER.error("Nightfall-Seed-Suchprofil konnte nicht angewendet werden", t);
         }
     }
     @Override protected void onDisable(){setCrackerActive(false);SeedCrackerProgress.reset();hasResult=false;}
-    public static void syncState(){try{setCrackerActive(dev.nightfall.module.ModuleManager.get(SeedCracker.class).isEnabled());}catch(Throwable ignored){}}
-    private static void setCrackerActive(boolean active){
-        try{Config.get().active=active;Config.save();}
-        catch(Throwable t){dev.nightfall.Nightfall.LOGGER.error("SeedCrackerX konnte nicht umgeschaltet werden",t);}
+    public static void syncState(){try{dev.nightfall.module.ModuleManager.get(SeedCracker.class).engine.setActive(dev.nightfall.module.ModuleManager.get(SeedCracker.class).isEnabled());}catch(Throwable ignored){}}
+    private void setCrackerActive(boolean active){
+        try{engine.setActive(active);}
+        catch(Throwable t){dev.nightfall.Nightfall.LOGGER.error("Nightfall-Seed-Suche konnte nicht umgeschaltet werden",t);}
     }
     public static void reportSeed(long seed){
         SeedCracker module;try{module=dev.nightfall.module.ModuleManager.get(SeedCracker.class);}catch(Throwable ignored){return;}
