@@ -29,6 +29,8 @@ public final class ModuleManager {
         MODULES.add(new TrapperBot());
         MODULES.add(new ObiTrapBot());
         MODULES.add(new AutoShield());
+        MODULES.add(new TargetStrafe());
+        MODULES.add(new ShieldBreaker());
         MODULES.add(new CrystalAura());
         MODULES.add(new AutoAnchor());
         MODULES.add(new MaceAssist());
@@ -46,6 +48,7 @@ public final class ModuleManager {
         MODULES.add(new Jesus());
         MODULES.add(new WaterWalk());
         MODULES.add(new Freecam());
+        MODULES.add(new NoFall());
         // Visuals
         MODULES.add(new FreeLook());
         MODULES.add(new PlayerEsp());
@@ -73,6 +76,8 @@ public final class ModuleManager {
         MODULES.add(new CustomCrosshair());
         MODULES.add(new SpawnerEsp());
         MODULES.add(new ChunkEsp());
+        MODULES.add(new BlockESP());
+        MODULES.add(new StructureESP());
         // World
         MODULES.add(new Waypoints());
         MODULES.add(new FakeBases());

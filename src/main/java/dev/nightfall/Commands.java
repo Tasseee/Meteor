@@ -73,7 +73,25 @@ public final class Commands {
 
         // ---- Freunde (KillAura) ----
         root.then(literal("friend")
-                .then(listCmd("x", ModuleManager.get(dev.nightfall.modules.KillAura.class).friends, "Freunde")));
+                .then(literal("add").then(argument("name", StringArgumentType.word()).executes(c -> {
+                    String name = str(c, "name");
+                    boolean added = ModuleManager.get(dev.nightfall.modules.FriendManager.class).addFriend(name);
+                    if (added) ModuleManager.get(dev.nightfall.modules.KillAura.class).friends.add(name);
+                    Config.save();
+                    return say(c, added ? "Freund hinzugefuegt: " + name : "Ungueltiger Name oder bereits vorhanden");
+                })))
+                .then(literal("del").then(argument("name", StringArgumentType.word()).executes(c -> {
+                    String name = str(c, "name");
+                    boolean removed = ModuleManager.get(dev.nightfall.modules.FriendManager.class).removeFriend(name);
+                    ModuleManager.get(dev.nightfall.modules.KillAura.class).friends.remove(name);
+                    Config.save();
+                    return say(c, removed ? "Freund entfernt: " + name : "Freund nicht gefunden");
+                })))
+                .then(literal("list").executes(c -> {
+                    var friends = ModuleManager.get(dev.nightfall.modules.FriendManager.class).friends.get();
+                    for (String name : friends) say(c, "• " + name);
+                    return say(c, friends.size() + " Freund(e)");
+                })));
 
         // ---- TrapperBot ----
         TrapperBot trapper = ModuleManager.get(TrapperBot.class);

@@ -29,7 +29,9 @@ public final class CombatUtil {
     public static double effectiveHealth(LivingEntity e) { return e.getHealth() + e.getAbsorptionAmount(); }
 
     public static boolean isFriend(PlayerEntity p) {
-        return ModuleManager.get(KillAura.class).friends.has(p.getName().getString());
+        String name = p.getName().getString();
+        return ModuleManager.get(KillAura.class).friends.has(name)
+                || ModuleManager.get(dev.nightfall.modules.FriendManager.class).isFriend(name);
     }
 
     public static PlayerEntity nearestPlayer(double range) {
