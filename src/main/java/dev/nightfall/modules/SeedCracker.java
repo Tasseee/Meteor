@@ -19,7 +19,7 @@ public final class SeedCracker extends Module {
     private final SeedIntegrity integrity = new SeedIntegrity();
 
     public SeedCracker(){super("SeedCracker","Sammelt Seed-Daten und steuert die Zuverlaessigkeit und Intensitaet der Seed-Suche.",Category.WORLD);}
-    @Override protected void onEnable(){SeedCrackerProgress.reset();setCrackerActive(true);hasResult=false;applySearchProfile();}
+    @Override protected void onEnable(){SeedCrackerProgress.reset();SeedIntegrity.resetIncomingStats();setCrackerActive(true);hasResult=false;applySearchProfile();}
     @Override public void onTick(){
         applySearchProfile();
     }
@@ -50,7 +50,7 @@ public final class SeedCracker extends Module {
         NotificationCenter.push("SEED " + integrity.level().label(), Long.toString(seed) + " · " + integrity.summary(), 12_000L,
                 integrity.level() == SeedIntegrity.Level.HIGH ? 0xFF65E6A5 : 0xFFFFC46B);
     }
-    @Override public void onWorldLeave(){hasResult=false;SeedCrackerProgress.reset();}
+    @Override public void onWorldLeave(){hasResult=false;SeedCrackerProgress.reset();SeedIntegrity.resetIncomingStats();}
     private record ProgressView(float progress,String label,boolean indeterminate){}
     private ProgressView readProgress(){
         try{
@@ -61,7 +61,7 @@ public final class SeedCracker extends Module {
             boolean running=data.getTimeMachine().isRunning;float search=SeedCrackerProgress.getSearchProgress();
             if(running&&search>0f)return new ProgressView(Math.min(1f,search/100f),"Seed-Suche · "+Math.round(search)+"%",false);
             if(running)return new ProgressView(0f,"Seed-Suche laeuft ...",true);
-            return new ProgressView((float)(bits/wanted),"Daten gesammelt · "+String.format(Locale.ROOT,"%.1f / %.0f Bits",bits,wanted),false);
+            return new ProgressView((float)(bits/wanted),"Daten · "+String.format(Locale.ROOT,"%.1f / %.0f Bits",bits,wanted)+" · "+SeedIntegrity.rejectedIncomingCount()+" verworfen",false);
         }catch(Throwable ignored){return new ProgressView(0f,"Seed-Daten werden gelesen ...",true);}
     }
     @Override public void renderHud(DrawContext ctx){
