@@ -45,6 +45,7 @@ public final class SpotifyLyricsHud extends HudModule {
     private final BoolSetting showLyrics = add(new BoolSetting("Synchronisierte Lyrics", true));
     private final BoolSetting showNextLine = add(new BoolSetting("Naechste Zeile anzeigen", true));
     private final BoolSetting showVisualizer = add(new BoolSetting("Animierter Equalizer", true));
+    private final BoolSetting playerHudVisible = add(new BoolSetting("Player-HUD anzeigen", false));
     private final NumberSetting hudWidth = add(new NumberSetting("HUD-Breite", 220, 180, 320, 10));
 
     private volatile String accessToken;
@@ -315,6 +316,7 @@ public final class SpotifyLyricsHud extends HudModule {
     }
 
     @Override protected void draw(DrawContext ctx) {
+        if (!playerHudVisible.get()) { w = 0; h = 0; return; }
         long now = System.currentTimeMillis();
         int width = hudWidth.getInt();
         w = width;
