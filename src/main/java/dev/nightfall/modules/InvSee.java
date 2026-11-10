@@ -151,7 +151,7 @@ public final class InvSee extends HudModule {
                 for (int i = 0; i < menuStacks.size() && row < rows; i++) {
                     ItemStack stack = menuStacks.get(i);
                     if (stack.isEmpty()) continue;
-                    int y = top + 22 + row * 12;
+                    int y = top + 46 + row * 12;
                     String line = i + ": " + stack.getName().getString() + " x" + stack.getCount();
                     while (mc.textRenderer.getWidth(line) > w - 16 && line.length() > 8)
                         line = line.substring(0, line.length() - 2) + "…";
@@ -160,11 +160,11 @@ public final class InvSee extends HudModule {
                     row++;
                 }
                 if (menuStacks.isEmpty())
-                    ctx.drawText(mc.textRenderer, "Menue geoeffnet · keine Slots", 8, top + 23, 0xFFB0B5C5, false);
+                    ctx.drawText(mc.textRenderer, "Menue geoeffnet · keine Slots", 8, top + 46, 0xFFB0B5C5, false);
                 else if (row == 0)
-                    ctx.drawText(mc.textRenderer, "Keine belegten Slots", 8, top + 23, 0xFFB0B5C5, false);
+                    ctx.drawText(mc.textRenderer, "Keine belegten Slots", 8, top + 46, 0xFFB0B5C5, false);
                 else if (menuStacks.stream().filter(stack -> !stack.isEmpty()).count() > row)
-                    ctx.drawText(mc.textRenderer, "… weitere Slots vorhanden", 8, top + 22 + row * 12,
+                    ctx.drawText(mc.textRenderer, "… weitere Slots vorhanden", 8, top + 46 + row * 12,
                             0xFFB0B5C5, false);
             }
         }
