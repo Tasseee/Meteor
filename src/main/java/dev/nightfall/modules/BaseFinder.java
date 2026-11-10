@@ -39,8 +39,9 @@ public class BaseFinder extends Module {
     private final NumberSetting wFurnace  = add(new NumberSetting("Gewicht Furnace", 0.7, 0.1, 5.0, 0.1));
     private final NumberSetting wRedstone = add(new NumberSetting("Gewicht Redstone", 1.2, 0.1, 5.0, 0.1));
     private final NumberSetting wSpawner  = add(new NumberSetting("Gewicht Spawner", 2.0, 0.1, 10.0, 0.1));
-    private final NumberSetting wCluster  = add(new NumberSetting("Gewicht Cluster", 1.5, 0.0, 5.0, 0.1));
-    private final NumberSetting wAmethyst = add(new NumberSetting("Gewicht Amethyst", 1.5, 0.0, 8.0, 0.1));
+    private final NumberSetting wCluster  = add(new NumberSetting("Gewicht Lagerzone", 1.5, 0.0, 5.0, 0.1));
+    private final NumberSetting clusterWeight = add(new NumberSetting("Gewicht Amethyst-Cluster", 0.25, 0.0, 2.0, 0.05));
+    private final NumberSetting minClusters = add(new NumberSetting("Min. Amethyst-Cluster", 6, 1, 64, 1));
     private final NumberSetting wSculk    = add(new NumberSetting("Gewicht Sculk", 1.2, 0.0, 8.0, 0.1));
     private final BoolSetting   chat      = add(new BoolSetting("Chat-Meldung", true));
 
@@ -186,7 +187,7 @@ public class BaseFinder extends Module {
         if (ch == null) return;
 
         int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0, spawner = 0;
-        int amethystGeode = 0, sculk = 0;
+        int buddingAmethyst = 0, amethystClusters = 0, geodeShell = 0, sculk = 0;
         Map<Integer, Integer> cells = new HashMap<>();
 
         for (BlockEntity be : ch.getBlockEntities().values()) {
@@ -208,7 +209,12 @@ public class BaseFinder extends Module {
             if (section == null || section.isEmpty()) continue;
             for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
                 BlockState state = section.getBlockState(x, y, z);
-                if (state.isOf(Blocks.BUDDING_AMETHYST)) amethystGeode = 1;
+                if (state.isOf(Blocks.BUDDING_AMETHYST)) buddingAmethyst++;
+                if (state.isOf(Blocks.AMETHYST_CLUSTER) || state.isOf(Blocks.LARGE_AMETHYST_BUD)
+                        || state.isOf(Blocks.MEDIUM_AMETHYST_BUD) || state.isOf(Blocks.SMALL_AMETHYST_BUD))
+                    amethystClusters++;
+                if (state.isOf(Blocks.CALCITE) || state.isOf(Blocks.SMOOTH_BASALT)
+                        || state.isOf(Blocks.AMETHYST_BLOCK)) geodeShell++;
                 if (state.isOf(Blocks.SCULK_SENSOR) || state.isOf(Blocks.CALIBRATED_SCULK_SENSOR)
                         || state.isOf(Blocks.SCULK_SHRIEKER) || state.isOf(Blocks.SCULK_CATALYST)) sculk++;
             }
@@ -217,15 +223,19 @@ public class BaseFinder extends Module {
         int maxCell = 0;
         for (int v : cells.values()) maxCell = Math.max(maxCell, v);
         double cluster = maxCell >= 6 ? (maxCell - 5) * wCluster.get() : 0;
-        double amethyst = amethystGeode * 2.0;
+        boolean geodeSignature = buddingAmethyst > 0 && amethystClusters > 0 && geodeShell >= 8;
+        // Amethyst is a supporting clue, never a standalone base detector: natural geodes
+        // receive a much smaller bonus than clusters without a strong natural-geode signature.
+        double amethystScore = amethystClusters >= minClusters.getInt()
+                ? Math.min(8.0, amethystClusters * clusterWeight.get()) * (geodeSignature ? 0.15 : 1.0) : 0.0;
         double sculkScore = sculk >= 3 ? (sculk - 2) * wSculk.get() : 0;
-        double naturalSignalScore = amethyst + sculkScore;
+        double naturalSignalScore = amethystScore + sculkScore;
         double score = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + redstone * wRedstone.get()
                 + spawner * wSpawner.get() + cluster + naturalSignalScore;
         int signalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
                 + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (spawner > 0 ? 1 : 0)
-                + (cluster > 0 ? 1 : 0) + (amethystGeode > 0 ? 1 : 0) + (sculkScore > 0 ? 1 : 0);
+                + (cluster > 0 ? 1 : 0) + (amethystScore > 0 ? 1 : 0) + (sculkScore > 0 ? 1 : 0);
 
         ChunkResult old = results.get(k);
         ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
@@ -241,7 +251,10 @@ public class BaseFinder extends Module {
         if (redstone > 0) res.reasons.add(redstone + " Dispenser/Comparator/Crafter (" + fmt(redstone * wRedstone.get()) + ")");
         if (spawner > 0) res.reasons.add(spawner + " Mob-Spawner (" + fmt(spawner * wSpawner.get()) + ")");
         if (cluster > 0) res.reasons.add("Lagerzone (" + maxCell + " in 4x4x4, +" + fmt(cluster) + ")");
-        if (amethystGeode > 0) res.reasons.add("Amethystgeode (+2.0, einmal pro Chunk)");
+        if (amethystClusters > 0) res.reasons.add("Amethyst-Cluster/Buds (" + amethystClusters + ", +" + fmt(amethystScore)
+                + (geodeSignature ? ", natürliche Geoden-Signatur abgewertet" : "") + ")");
+        if (buddingAmethyst > 0) res.reasons.add("Budding Amethyst (" + buddingAmethyst + ")");
+        if (geodeSignature) res.reasons.add("Geoden-Merkmale erkannt (Calcit/Smooth Basalt/Amethystblock)");
         if (sculkScore > 0) res.reasons.add("Sculk-Cluster (" + sculk + ", +" + fmt(sculkScore) + ")");
 
         // Don't suppress a candidate just because several chunks have similar storage layouts.
