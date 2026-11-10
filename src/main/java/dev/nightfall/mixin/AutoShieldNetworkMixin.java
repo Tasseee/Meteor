@@ -19,6 +19,8 @@ abstract class AutoShieldNetworkMixin {
     private void nightfall$onEntityAnimation(EntityAnimationS2CPacket packet, CallbackInfo ci) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) return;
+        int animation = packet.getAnimationId();
+        if (animation != 0 && animation != 3) return; // Main-hand or off-hand swing only.
         Entity entity = client.world.getEntityById(packet.getEntityId());
         if (!(entity instanceof PlayerEntity attacker)) return;
         try {
