@@ -9,6 +9,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Applies independent camera state after Minecraft updates its normal camera. */
@@ -16,6 +17,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class CameraMixin {
     @Shadow public abstract void setPos(double x, double y, double z);
     @Shadow public abstract void setRotation(float yaw, float pitch);
+
+    /** Keep the local player model visible while the detached camera is active. */
+    @ModifyVariable(method = "update", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    private boolean nightfall$renderLocalPlayer(boolean thirdPerson) {
+        return thirdPerson || Freecam.isActive();
+    }
 
     @Inject(method = "update", at = @At("TAIL"))
     private void nightfall$applyCameraState(World area, Entity focusedEntity, boolean thirdPerson,
