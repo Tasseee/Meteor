@@ -13,6 +13,7 @@ import dev.nightfall.util.Storage;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.CropBlock;
 import net.minecraft.block.KelpBlock;
+import net.minecraft.block.NetherWartBlock;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.*;
 import net.minecraft.client.world.ClientWorld;
@@ -46,6 +47,9 @@ public class BaseFinder extends Module {
     private final NumberSetting wSculk    = add(new NumberSetting("Gewicht Sculk", 1.2, 0.0, 8.0, 0.1));
     private final NumberSetting wCrops    = add(new NumberSetting("Gewicht Reife Felder", 0.5, 0.0, 5.0, 0.1));
     private final NumberSetting wKelp     = add(new NumberSetting("Gewicht Kelp", 0.7, 0.0, 5.0, 0.1));
+    private final NumberSetting wFarm     = add(new NumberSetting("Gewicht Spezial-Farmen", 0.8, 0.0, 5.0, 0.1));
+    private final NumberSetting farmComboBonus = add(new NumberSetting("Bonus Farm + Storage", 2.5, 0.0, 10.0, 0.5));
+    private final NumberSetting redstoneComboBonus = add(new NumberSetting("Bonus Farm + Redstone", 1.0, 0.0, 5.0, 0.5));
     private final NumberSetting naturalAreaBonusSetting = add(new NumberSetting("Umgebungsbonus Natur-Signale", 0.15, 0.0, 0.5, 0.05));
     private final BoolSetting   chat      = add(new BoolSetting("Chat-Meldung", true));
 
@@ -197,7 +201,7 @@ public class BaseFinder extends Module {
 
         int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0, spawner = 0;
         int amethystCluster = 0, amethystLarge = 0, amethystMedium = 0, amethystSmall = 0;
-        int sculk = 0, matureCrops = 0, matureKelp = 0;
+        int sculk = 0, matureCrops = 0, matureKelp = 0;\n        int sugarCane = 0, bamboo = 0, cactus = 0, melonsAndPumpkins = 0, matureNetherWart = 0;
         Map<Integer, Integer> cells = new HashMap<>();
 
         for (BlockEntity be : ch.getBlockEntities().values()) {
@@ -265,11 +269,11 @@ public class BaseFinder extends Module {
         double areaBonus = Math.min(1.0, neighboringNaturalScore * naturalAreaBonusSetting.get());
         double score = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + redstone * wRedstone.get()
-                + spawner * wSpawner.get() + cluster + naturalSignalScore + areaBonus;
+                + spawner * wSpawner.get() + cluster + naturalSignalScore + areaBonus + farmScore;\n        boolean hasStorageOrHoppers = storage + shulker + hopper > 0;\n        boolean hasFarmSignal = farmScore > 0 || cropScore > 0 || kelpScore > 0;\n        double farmStorageCombo = hasFarmSignal && hasStorageOrHoppers ? farmComboBonus.get() : 0;\n        double farmRedstoneCombo = hasFarmSignal && redstone > 0 ? redstoneComboBonus.get() : 0;\n        score += farmStorageCombo + farmRedstoneCombo;
         int signalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
                 + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (spawner > 0 ? 1 : 0)
                 + (cluster > 0 ? 1 : 0) + (amethyst > 0 ? 1 : 0) + (sculkScore > 0 ? 1 : 0)
-                + (cropScore > 0 ? 1 : 0) + (kelpScore > 0 ? 1 : 0);
+                + (cropScore > 0 ? 1 : 0) + (kelpScore > 0 ? 1 : 0) + (farmScore > 0 ? 1 : 0);
 
         ChunkResult old = results.get(k);
         ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
