@@ -14,12 +14,22 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Local first-person-only transform hook for the player's 3D arm and held item. */
 @Mixin(HeldItemRenderer.class)
 public abstract class HeldItemRendererMixin {
     @Unique private int nightfall$matrixDepth;
+
+    @ModifyVariable(method = "renderFirstPersonItem", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    private ItemStack nightfall$swapRenderedItem(ItemStack original) {
+        try {
+            FirstPersonStyle style = ModuleManager.get(FirstPersonStyle.class);
+            if (style != null && style.isEnabled()) return style.swapRenderedStack(original);
+        } catch (Throwable ignored) { }
+        return original;
+    }
 
     @Inject(method = "renderFirstPersonItem", at = @At("HEAD"), cancellable = true)
     private void nightfall$beforeFirstPersonItem(AbstractClientPlayerEntity player, float tickProgress, float pitch,
