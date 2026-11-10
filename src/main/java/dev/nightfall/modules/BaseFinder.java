@@ -10,10 +10,14 @@ import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.scanner.ChunkResult;
 import dev.nightfall.scanner.ChunkResult.Status;
 import dev.nightfall.util.Storage;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.CropBlock;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.*;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.text.Text;
 import net.minecraft.world.chunk.WorldChunk;
+import net.minecraft.world.chunk.ChunkSection;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -30,13 +34,16 @@ public class BaseFinder extends Module {
     private final NumberSetting budgetMs  = add(new NumberSetting("Budget ms/Tick", 1.2, 0.2, 5.0, 0.1));
     private final NumberSetting rescan    = add(new NumberSetting("Rescan (s)", 8, 2, 120, 1));
     private final NumberSetting threshold = add(new NumberSetting("Min Score", 12, 3, 100, 1));
-    private final NumberSetting minSignals = add(new NumberSetting("Min. Signaltypen", 2, 1, 6, 1));
+    private final NumberSetting minSignals = add(new NumberSetting("Min. Signaltypen", 2, 1, 9, 1));
     private final NumberSetting wStorage  = add(new NumberSetting("Gewicht Storage", 1.0, 0.1, 5.0, 0.1));
     private final NumberSetting wHopper   = add(new NumberSetting("Gewicht Hopper", 1.5, 0.1, 5.0, 0.1));
     private final NumberSetting wFurnace  = add(new NumberSetting("Gewicht Furnace", 0.7, 0.1, 5.0, 0.1));
     private final NumberSetting wRedstone = add(new NumberSetting("Gewicht Redstone", 1.2, 0.1, 5.0, 0.1));
     private final NumberSetting wSpawner  = add(new NumberSetting("Gewicht Spawner", 2.0, 0.1, 10.0, 0.1));
     private final NumberSetting wCluster  = add(new NumberSetting("Gewicht Cluster", 1.5, 0.0, 5.0, 0.1));
+    private final NumberSetting wAmethyst = add(new NumberSetting("Gewicht Amethyst", 1.5, 0.0, 8.0, 0.1));
+    private final NumberSetting wSculk    = add(new NumberSetting("Gewicht Sculk", 1.2, 0.0, 8.0, 0.1));
+    private final NumberSetting wCrops    = add(new NumberSetting("Gewicht Reife Felder", 0.5, 0.0, 5.0, 0.1));
     private final BoolSetting   chat      = add(new BoolSetting("Chat-Meldung", true));
 
     private static final Gson GSON = new Gson();
@@ -186,6 +193,8 @@ public class BaseFinder extends Module {
         if (ch == null) return;
 
         int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0, spawner = 0;
+        int amethystCluster = 0, amethystLarge = 0, amethystMedium = 0, amethystSmall = 0;
+        int sculk = 0, matureCrops = 0;
         Map<Integer, Integer> cells = new HashMap<>();
 
         for (BlockEntity be : ch.getBlockEntities().values()) {
@@ -202,15 +211,45 @@ public class BaseFinder extends Module {
                 cells.merge((px >> 2) | ((pz >> 2) << 2) | (((py >> 2) + 32) << 4), 1, Integer::sum);
             }
         }
+        // Block-Entities alone miss ordinary block-state signals such as amethyst growth and crops.
+        // Scan non-empty chunk sections and count only the three opt-in signal families.
+        for (ChunkSection section : ch.getSectionArray()) {
+            if (section == null || section.isEmpty()) continue;
+            for (int y = 0; y < 16; y++) {
+                for (int z = 0; z < 16; z++) {
+                    for (int x = 0; x < 16; x++) {
+                        BlockState state = section.getBlockState(x, y, z);
+                        if (state.isOf(Blocks.AMETHYST_CLUSTER)) amethystCluster++;
+                        else if (state.isOf(Blocks.LARGE_AMETHYST_BUD)) amethystLarge++;
+                        else if (state.isOf(Blocks.MEDIUM_AMETHYST_BUD)) amethystMedium++;
+                        else if (state.isOf(Blocks.SMALL_AMETHYST_BUD)) amethystSmall++;
+
+                        if (state.isOf(Blocks.SCULK_SENSOR) || state.isOf(Blocks.CALIBRATED_SCULK_SENSOR)
+                                || state.isOf(Blocks.SCULK_SHRIEKER) || state.isOf(Blocks.SCULK_CATALYST)) sculk++;
+
+                        if (state.getBlock() instanceof CropBlock && state.get(CropBlock.AGE) == CropBlock.MAX_AGE)
+                            matureCrops++;
+                    }
+                }
+            }
+        }
+
         int maxCell = 0;
         for (int v : cells.values()) maxCell = Math.max(maxCell, v);
 
         double cluster = maxCell >= 6 ? (maxCell - 5) * wCluster.get() : 0;
+        // Mature amethyst clusters carry the strongest weight; buds contribute progressively less.
+        double amethyst = (amethystCluster * 3.0 + amethystLarge * 1.5
+                + amethystMedium * 0.75 + amethystSmall * 0.25) * wAmethyst.get();
+        double sculkScore = sculk >= 3 ? (sculk - 2) * wSculk.get() : 0;
+        double cropScore = matureCrops >= 16 ? (matureCrops / 16.0) * wCrops.get() : 0;
         double score = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + redstone * wRedstone.get()
-                + spawner * wSpawner.get() + cluster;
+                + spawner * wSpawner.get() + cluster + amethyst + sculkScore + cropScore;
         int signalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
-                + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (spawner > 0 ? 1 : 0) + (cluster > 0 ? 1 : 0);
+                + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (spawner > 0 ? 1 : 0)
+                + (cluster > 0 ? 1 : 0) + (amethyst > 0 ? 1 : 0) + (sculkScore > 0 ? 1 : 0)
+                + (cropScore > 0 ? 1 : 0);
 
         ChunkResult old = results.get(k);
         ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
@@ -226,6 +265,11 @@ public class BaseFinder extends Module {
         if (redstone > 0) res.reasons.add(redstone + " Dispenser/Comparator/Crafter (" + fmt(redstone * wRedstone.get()) + ")");
         if (spawner > 0) res.reasons.add(spawner + " Mob-Spawner (" + fmt(spawner * wSpawner.get()) + ")");
         if (cluster > 0) res.reasons.add("Lagerzone (" + maxCell + " in 4x4x4, +" + fmt(cluster) + ")");
+        if (amethyst > 0) res.reasons.add("Amethyst-Wachstum (" + amethystCluster + " Cluster, "
+                + amethystLarge + " groß, " + amethystMedium + " mittel, " + amethystSmall
+                + " klein, +" + fmt(amethyst) + ")");
+        if (sculkScore > 0) res.reasons.add("Sculk-Cluster (" + sculk + ", +" + fmt(sculkScore) + ")");
+        if (cropScore > 0) res.reasons.add("Reife Feldfrüchte (" + matureCrops + ", +" + fmt(cropScore) + ")");
 
         if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
             if (isRepeatedFakePattern(storage, shulker, hopper, furnace, redstone, spawner, cx, cz)) {
