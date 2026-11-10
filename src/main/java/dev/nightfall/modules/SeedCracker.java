@@ -3,17 +3,17 @@ import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.util.NotificationCenter;
-import dev.nightfall.seed.SeedSearchEngine;
+import dev.nightfall.seed.SeedSearchEngine;\nimport dev.nightfall.seed.SeedIntegrity;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 import java.util.Locale;
 /** Shows collected evidence and actual SeedCrackerX search progress. */
 public final class SeedCracker extends Module {
-    private static long foundSeed,foundAt;private static boolean hasResult;
+    private static long foundSeed,foundAt;private static boolean hasResult;\n    private static SeedIntegrity.Report lastIntegrity;
     private final ModeSetting searchProfile = add(new ModeSetting(
             "Suchintensitaet", "Ausgewogen", "Sparsam", "Ausgewogen", "Intensiv"
     ));
-    private final SeedSearchEngine engine = new SeedSearchEngine();
+    private final SeedSearchEngine engine = new SeedSearchEngine();\n    private final SeedIntegrity integrity = new SeedIntegrity();
 
     public SeedCracker(){super("SeedCracker","Sammelt Seed-Daten und steuert die Zuverlaessigkeit und Intensitaet der Seed-Suche.",Category.WORLD);}
     @Override protected void onEnable(){SeedCrackerProgress.reset();setCrackerActive(true);hasResult=false;applySearchProfile();}
@@ -73,7 +73,7 @@ public final class SeedCracker extends Module {
         float fade=elapsed>10_500L?(12_000L-elapsed)/1_500f:1f;int alpha=Math.max(0,Math.min(255,Math.round(235*fade)));
         int panel=(alpha<<24)|0x10131D,accent=(alpha<<24)|0x65E6A5,white=(alpha<<24)|0xFFFFFF;
         ctx.fill(px,py,px+pw,py+ph,panel);ctx.fill(px,py,px+pw,py+3,accent);
-        ctx.drawCenteredTextWithShadow(mc.textRenderer,Text.literal("SEED GEFUNDEN"),sw/2,py+13,accent);
+        String integrityLabel = lastIntegrity == null ? "UNGEPRUEFT" : lastIntegrity.level().label();\n        ctx.drawCenteredTextWithShadow(mc.textRenderer,Text.literal("SEED GEFUNDEN · " + integrityLabel),sw/2,py+13,accent);
         ctx.drawCenteredTextWithShadow(mc.textRenderer,Text.literal(Long.toString(foundSeed)),sw/2,py+34,white);
     }
 }
