@@ -108,7 +108,7 @@ public final class NightfallGuiScreen extends Screen {
             }
             if (left && over && dragTab == null && !draggingWindow) { dragTab = tab; tabStart = i; }
         }
-        if (release) dragTab = null;
+        if (left && dragTab != null) {\n            int overIndex = (my - sy) / 38;\n            if (my >= sy && overIndex >= 0 && overIndex < TABS.size()) {\n                String overTab = TABS.get(overIndex);\n                if (!overTab.equals(dragTab)) {\n                    int from = TABS.indexOf(dragTab);\n                    if (from >= 0) { TABS.remove(from); TABS.add(Math.max(0, Math.min(TABS.size(), overIndex)), dragTab); saveTabs(); }\n                }\n            }\n        }\n        if (release) dragTab = null;
 
         // The selected category opens as a movable module window; other open windows remain on screen.
         if (click && inside(mx,my,14,sy + TABS.indexOf(activeTab)*38,SIDE,32)) setOpen(activeTab,true);
