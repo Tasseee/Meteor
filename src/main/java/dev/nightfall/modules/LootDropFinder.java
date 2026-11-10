@@ -73,6 +73,11 @@ public final class LootDropFinder extends Module {
     private final Map<Long, Long> lastChunkScan = new HashMap<>();
     private final Map<String, Target> entityTargets = new HashMap<>();
     private final Map<Long, Long> markedChunks = new HashMap<>();
+    private final Map<Long, int[]> markerHeights = new HashMap<>();
+    private int scannedChunks;
+    private int totalDetections;
+    private String lastFoundLabel = "Noch keine Funde";
+    private long lastFoundAt;
     private final ArrayDeque<Long> chunkQueue = new ArrayDeque<>();
     private final Set<Long> queuedChunks = new HashSet<>();
 
@@ -103,6 +108,11 @@ public final class LootDropFinder extends Module {
         lastChunkScan.clear();
         entityTargets.clear();
         markedChunks.clear();
+        markerHeights.clear();
+        scannedChunks = 0;
+        totalDetections = 0;
+        lastFoundLabel = "Noch keine Funde";
+        lastFoundAt = 0L;
         chunkQueue.clear();
         queuedChunks.clear();
         tick = 0L;
@@ -175,12 +185,12 @@ public final class LootDropFinder extends Module {
             double dz = chunkZ(key) * 16.0 + 8.0 - mc.player.getZ();
             return dx * dx + dz * dz;
         }));
-        if (!initialPassStarted) initialPassStarted = true;
+        if (!initialPassStarted && !candidates.isEmpty()) initialPassStarted = true;
         for (long key : candidates) {
             chunkQueue.addLast(key);
             queuedChunks.add(key);
         }
-        if (chunkQueue.isEmpty() && !initialPassComplete) initialPassComplete = true;
+        // Wait for the first actually loaded chunk before completing the baseline scan.
     }
 
     private void scanChunk(long key, List<Target> found) {
@@ -222,6 +232,7 @@ public final class LootDropFinder extends Module {
         }
         blockTargetsByChunk.put(key, next);
         lastChunkScan.put(key, tick);
+        scannedChunks++;
     }
 
     private void refreshEntities(List<Target> found) {
@@ -262,6 +273,16 @@ public final class LootDropFinder extends Module {
             if (markedChunks.containsKey(key)) continue;
             markedChunks.put(key, tick);
             List<Target> items = entry.getValue();
+            int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
+            for (Target item : items) {
+                int targetY = item.pos != null ? item.pos.getY() : (int) Math.floor(item.center().y);
+                minY = Math.min(minY, targetY);
+                maxY = Math.max(maxY, targetY);
+            }
+            markerHeights.put(key, new int[]{Math.max(mc.world.getBottomY(), minY - 4), Math.min(mc.world.getTopY(), maxY + 5)});
+            totalDetections += items.size();
+            lastFoundLabel = items.size() + " Hinweis(e) · Chunk " + chunkX(key) + " / " + chunkZ(key);
+            lastFoundAt = System.currentTimeMillis();
             if (chatAlert.get() && mc.player != null) {
                 mc.player.sendMessage(Text.literal("[Nightfall] LOOTDROP FOUND! Chunk "
                         + chunkX(key) + " / " + chunkZ(key) + " · " + items.size() + " Treffer"), false);
@@ -275,6 +296,7 @@ public final class LootDropFinder extends Module {
     @Override
     public void renderHud(DrawContext ctx) {
         if (mc.world == null || mc.player == null || !Projection.valid()) return;
+        renderRadarPanel(ctx);
         List<Long> keys = new ArrayList<>(markedChunks.keySet());
         keys.sort(Comparator.comparingDouble(key -> {
             double x = chunkX(key) * 16.0 + 8.0 - Projection.eyeX();
@@ -288,8 +310,40 @@ public final class LootDropFinder extends Module {
             if (drawn >= 64) break;
             int x = chunkX(key) << 4;
             int z = chunkZ(key) << 4;
-            Box chunkBox = new Box(x, minY, z, x + 16, maxY, z + 16);
+            int[] height = markerHeights.getOrDefault(key, new int[]{minY, maxY});
+            Box chunkBox = new Box(x, height[0], z, x + 16, height[1], z + 16);
+            Draw.box(ctx, chunkBox, 0x3038BDF8, 5, true, true);
             if (Draw.box(ctx, chunkBox, MARKER_COLOR, 2, true, true)) drawn++;
+        }
+    }
+
+    private void renderRadarPanel(DrawContext ctx) {
+        int sw = mc.getWindow().getScaledWidth();
+        int x = 10, y = 10, w = Math.min(214, sw - 20), h = 76;
+        int accent = 0xFF38BDF8;
+        ctx.fill(x, y, x + w, y + h, 0xD90B1220);
+        ctx.fill(x, y, x + w, y + 2, accent);
+        ctx.fill(x, y + 2, x + 3, y + h, 0xFF2563A8);
+        ctx.drawText(mc.textRenderer, "NIGHTFALL", x + 10, y + 7, 0xFF91D9FF, true);
+        ctx.drawText(mc.textRenderer, "LOOT RADAR", x + 10, y + 19, 0xFFFFFFFF, true);
+        String state = initialPassComplete ? "LIVE SCAN" : (initialPassStarted ? "INITIAL SCAN" : "WAITING FOR CHUNKS");
+        int stateColor = initialPassComplete ? 0xFF65E6A5 : 0xFFFFC46B;
+        ctx.fill(x + w - 72, y + 9, x + w - 10, y + 21, 0xAA18283A);
+        ctx.drawCenteredTextWithShadow(mc.textRenderer, Text.literal(state), x + w - 41, y + 11, stateColor);
+        ctx.fill(x + 10, y + 34, x + w - 10, y + 35, 0x553F5368);
+        String left = "RANGE " + range.getInt() + "m";
+        String right = "QUEUE " + chunkQueue.size();
+        ctx.drawText(mc.textRenderer, left, x + 10, y + 42, 0xFFD5E8F5, false);
+        ctx.drawText(mc.textRenderer, right, x + w - 10 - mc.textRenderer.getWidth(right), y + 42, 0xFFD5E8F5, false);
+        String stats = "SCANNED " + scannedChunks + "   MARKED " + markedChunks.size();
+        ctx.drawText(mc.textRenderer, stats, x + 10, y + 55, 0xFF91A9BC, false);
+        if (lastFoundAt > 0L && System.currentTimeMillis() - lastFoundAt < 6000L) {
+            String recent = "FOUND  " + lastFoundLabel;
+            int rw = Math.min(sw - 20, mc.textRenderer.getWidth(recent) + 20);
+            int rx = 10, ry = y + h + 6;
+            ctx.fill(rx, ry, rx + rw, ry + 19, 0xE6102535);
+            ctx.fill(rx, ry, rx + 2, ry + 19, 0xFF65E6A5);
+            ctx.drawText(mc.textRenderer, recent, rx + 9, ry + 6, 0xFFB9F6D0, true);
         }
     }
 }
