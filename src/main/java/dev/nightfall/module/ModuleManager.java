@@ -52,6 +52,7 @@ public final class ModuleManager {
         MODULES.add(new EntityEsp());
         MODULES.add(new ItemEsp());
         MODULES.add(new DroppedItemNotifier());
+        MODULES.add(new SpotifyLyricsHud());
         MODULES.add(new LootDropFinder());
         MODULES.add(new StorageEsp());
         MODULES.add(new BlockNotifier());
