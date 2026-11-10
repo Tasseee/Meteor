@@ -10,6 +10,8 @@ import dev.nightfall.util.Projection;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.Camera;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.world.RaycastContext;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
@@ -144,8 +146,8 @@ public final class WorldLyrics extends Module {
         for (int i = 0; i < words.length; i++) {
             String word = words[i].replaceAll("[\\p{Cntrl}]", "");
             if (word.isBlank()) continue;
-            long intendedAt = lineStart + (wordReveal.get() ? span * i / Math.max(1, words.length) : 0);
-            long delay = Math.max(0, intendedAt - progress);
+            // Stagger from the moment the line is detected, even when the lyrics API poll arrives late.
+            long delay = wordReveal.get() ? Math.min(1800, 115L * i) : 0;
             long spawnAt = now + delay;
             long expireAt = spawnAt + life;
             double x, y, z;
@@ -178,6 +180,21 @@ public final class WorldLyrics extends Module {
         while (activeWords.size() > 180) activeWords.remove(0);
     }
 
+    private boolean isOccluded(double x, double y, double z) {
+        if (mc.world == null || mc.player == null) return false;
+        Camera camera = mc.gameRenderer.getCamera();
+        if (camera == null || !camera.isReady()) return false;
+        Vec3d start = camera.getCameraPos();
+        Vec3d end = new Vec3d(x, y, z);
+        if (start.squaredDistanceTo(end) < 0.01) return false;
+        return mc.world.raycast(new RaycastContext(
+                start, end,
+                RaycastContext.ShapeType.COLLIDER,
+                RaycastContext.FluidHandling.NONE,
+                mc.player
+        )).getType() != HitResult.Type.MISS;
+    }
+
     private void drawWord(DrawContext ctx, LyricWord word, long now) {
         double remaining = (word.expireAt - now) / Math.max(1.0, (double) (word.expireAt - word.spawnAt));
         double age = (now - word.spawnAt) / 1000.0;
@@ -191,6 +208,8 @@ public final class WorldLyrics extends Module {
         } else {
             double bob = floating.get() ? Math.sin(now / 360.0 + word.x * 0.17 + word.z * 0.13) * 0.12 : 0;
             if (!Projection.project(word.x, word.y + bob, word.z, projected)) return;
+            // Floating words stay at fixed world positions and are hidden by terrain/buildings.
+            if (mode.is("Floating") && isOccluded(word.x, word.y + bob, word.z)) return;
             x = (float) projected[0];
             y = (float) projected[1];
         }
