@@ -2,7 +2,7 @@ package dev.nightfall;
 
 import dev.nightfall.config.Config;
 import net.minecraft.sound.SoundEvents;
-import dev.nightfall.gui.ClickGuiScreen;
+import dev.nightfall.gui.NightfallGuiScreen;
 import dev.nightfall.gui.HudEditorScreen;
 import dev.nightfall.gui.MapScreen;
 import dev.nightfall.module.ModuleManager;
@@ -94,7 +94,7 @@ public class Nightfall implements ClientModInitializer {
             boolean hu = GLFW.glfwGetKey(h, Config.hudKey) == GLFW.GLFW_PRESS;
             boolean m = GLFW.glfwGetKey(h, Config.mapKey) == GLFW.GLFW_PRESS;
             if (mc.currentScreen == null && mc.player != null) {
-                if (g && !prevGui) open(mc, new ClickGuiScreen());
+                if (g && !prevGui) open(mc, new NightfallGuiScreen());
                 else if (hu && !prevHud) open(mc, new HudEditorScreen());
                 else if (m && !prevMap) open(mc, new MapScreen());
             }
