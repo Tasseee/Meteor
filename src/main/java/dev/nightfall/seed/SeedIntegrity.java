@@ -1,32 +1,20 @@
 package dev.nightfall.seed;
 
-import com.seedfinding.mcbiome.source.OverworldBiomeSource;
-import com.seedfinding.mccore.rand.ChunkRand;
-import com.seedfinding.mcfeature.Feature;
-import com.seedfinding.mccore.version.MCVersion;
-import kaptainwutax.seedcrackerX.config.Config;
-import kaptainwutax.seedcrackerX.cracker.BiomeData;
-import kaptainwutax.seedcrackerX.cracker.PillarData;
-import kaptainwutax.seedcrackerX.cracker.decorator.Decorator;
-import kaptainwutax.seedcrackerX.cracker.storage.DataStorage;
-import com.seedfinding.mcfeature.structure.PillagerOutpost;
 import kaptainwutax.seedcrackerX.SeedCracker;
-import net.minecraft.world.level.levelgen.WorldgenRandom;
-import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 /**
- * Independently replays SeedCrackerX's collected evidence against a proposed
- * world seed before Nightfall displays it as a valid result.
+ * Replays the evidence already collected by SeedCrackerX before Nightfall
+ * accepts a proposed seed. Reflection keeps SeedCrackerX's bundled libraries
+ * out of Nightfall's compile-time dependency graph.
  */
 public final class SeedIntegrity {
     public enum Level {
-        HIGH("HOCH"),
-        MEDIUM("MITTEL"),
-        LOW("NIEDRIG"),
-        REJECTED("WIDERSPRUCH"),
-        INSUFFICIENT("ZU WENIG DATEN");
+        HIGH("HOCH"), MEDIUM("MITTEL"), LOW("NIEDRIG"),
+        REJECTED("WIDERSPRUCH"), INSUFFICIENT("ZU WENIG DATEN");
 
         private final String label;
         Level(String label) { this.label = label; }
@@ -50,53 +38,64 @@ public final class SeedIntegrity {
     }
 
     public Report verify(long worldSeed) {
-        var cracker = SeedCracker.get();
-        if (cracker == null) {
-            return empty(Level.INSUFFICIENT, "SeedCrackerX nicht bereit");
-        }
-
-        DataStorage storage = cracker.getDataStorage();
-        int structures = 0;
-        int decorators = 0;
-        int biomes = 0;
-        int pillars = 0;
-        int verified = 0;
-
         try {
-            ChunkRand structureRand = new ChunkRand();
-            WorldgenRandom decoratorRand = new WorldgenRandom(new XoroshiroRandomSource(0L));
+            Object cracker = SeedCracker.get();
+            if (cracker == null) return empty(Level.INSUFFICIENT, "SeedCrackerX nicht bereit");
 
-            for (DataStorage.Entry<Feature.Data<?>> entry : storage.baseSeedData) {
-                Feature.Data<?> data = entry.data;
-                boolean matches;
-                if (data.feature instanceof PillagerOutpost) {
-                    // SeedCrackerX deliberately excludes outposts from its seed verification path.
-                    continue;
+            Object storage = cracker.getClass().getMethod("getDataStorage").invoke(cracker);
+            Object scheduled = readField(storage, "baseSeedData");
+            Object baseSet = scheduled.getClass().getMethod("getBaseSet").invoke(scheduled);
+
+            int structures = 0, decorators = 0, biomes = 0, pillars = 0, verified = 0;
+            if (baseSet instanceof Iterable<?> entries) {
+                for (Object entry : entries) {
+                    Object data = readField(entry, "data");
+                    Object feature = readField(data, "feature");
+                    String featureName = feature.getClass().getName();
+
+                    // Match SeedCrackerX's own candidate-verification rules.
+                    if (featureName.contains("PillagerOutpost")) continue;
+
+                    boolean decorator = featureName.contains(".decorator.")
+                            && !isPre118Feature(feature);
+                    Method test = findMethod(data.getClass(), "testStart", 2);
+                    Object random = createRandom(test.getParameterTypes()[1]);
+                    boolean matches = (Boolean) test.invoke(data, worldSeed, random);
+
+                    if (decorator) decorators++;
+                    else structures++;
+                    if (!matches) {
+                        return new Report(Level.REJECTED, structures, decorators, biomes,
+                                pillars, verified, "Struktur-/Dekorationsdaten widersprechen dem Seed");
+                    }
+                    verified++;
                 }
-                if (data.feature instanceof Decorator
-                        && !data.feature.getVersion().isOlderThan(MCVersion.v1_18)) {
-                    matches = ((Decorator.Data<?>) data).testStart(worldSeed, decoratorRand);
-                    decorators++;
-                } else {
-                    matches = data.testStart(worldSeed, structureRand);
-                    structures++;
-                }
-                if (!matches) {
-                    return new Report(Level.REJECTED, structures, decorators, biomes,
-                            pillars, verified, "Struktur-/Dekorationsdaten widersprechen dem Seed");
-                }
-                verified++;
             }
 
-            MCVersion version = Config.get().getVersion();
-            OverworldBiomeSource biomeSource = new OverworldBiomeSource(version, worldSeed);
-            Iterable<?> biomeEntries = readIterable(storage, "biomeSeedData");
-            if (biomeEntries != null) {
-                for (Object value : biomeEntries) {
-                    if (!(value instanceof DataStorage.Entry<?> entry)
-                            || !(entry.data instanceof BiomeData biomeData)) continue;
+            Object configClass = Class.forName("kaptainwutax.seedcrackerX.config.Config");
+            Object config = configClass.getMethod("get").invoke(null);
+            Object version = config.getClass().getMethod("getVersion").invoke(config);
+            Class<?> biomeSourceClass = Class.forName("com.seedfinding.mcbiome.source.OverworldBiomeSource");
+            Object biomeSource = null;
+            for (Constructor<?> constructor : biomeSourceClass.getConstructors()) {
+                if (constructor.getParameterCount() == 2
+                        && constructor.getParameterTypes()[0].isInstance(version)
+                        && (constructor.getParameterTypes()[1] == long.class
+                        || constructor.getParameterTypes()[1] == Long.class)) {
+                    biomeSource = constructor.newInstance(version, worldSeed);
+                    break;
+                }
+            }
+
+            Object biomeScheduled = readField(storage, "biomeSeedData");
+            Object biomeSet = biomeScheduled.getClass().getMethod("getBaseSet").invoke(biomeScheduled);
+            if (biomeSet instanceof Iterable<?> biomeEntries && biomeSource != null) {
+                for (Object entry : biomeEntries) {
+                    Object biomeData = readField(entry, "data");
+                    Method test = findCompatibleMethod(biomeData.getClass(), "test", biomeSource.getClass());
+                    if (test == null) continue;
                     biomes++;
-                    if (!biomeData.test(biomeSource)) {
+                    if (!(Boolean) test.invoke(biomeData, biomeSource)) {
                         return new Report(Level.REJECTED, structures, decorators, biomes,
                                 pillars, verified, "Biome-Daten widersprechen dem Seed");
                     }
@@ -104,46 +103,87 @@ public final class SeedIntegrity {
                 }
             }
 
-            Object pillarValue = readField(storage, "pillarData");
-            if (pillarValue instanceof PillarData pillarData) {
+            Object pillarData = readField(storage, "pillarData");
+            if (pillarData != null) {
                 pillars = 1;
-                if (!pillarData.test((int) worldSeed)) {
+                Method test = findMethod(pillarData.getClass(), "test", 1);
+                if (!(Boolean) test.invoke(pillarData, (int) worldSeed)) {
                     return new Report(Level.REJECTED, structures, decorators, biomes,
                             pillars, verified, "End-Säulendaten widersprechen dem Seed");
                 }
                 verified++;
             }
-        } catch (Throwable error) {
-            return new Report(Level.LOW, structures, decorators, biomes, pillars,
-                    verified, "Prüfung unvollständig: " + error.getClass().getSimpleName());
-        }
 
-        int sources = (structures > 0 ? 1 : 0) + (decorators > 0 ? 1 : 0)
-                + (biomes > 0 ? 1 : 0) + (pillars > 0 ? 1 : 0);
-        if (verified == 0) {
-            return empty(Level.INSUFFICIENT, "Keine gespeicherten Hinweise zum Gegenprüfen");
+            int sources = (structures > 0 ? 1 : 0) + (decorators > 0 ? 1 : 0)
+                    + (biomes > 0 ? 1 : 0) + (pillars > 0 ? 1 : 0);
+            if (verified == 0) return empty(Level.INSUFFICIENT, "Keine gespeicherten Hinweise zum Gegenprüfen");
+            if (sources >= 3) return new Report(Level.HIGH, structures, decorators, biomes,
+                    pillars, verified, "Mehrere unabhängige Datenquellen stimmen überein");
+            if (sources == 2) return new Report(Level.MEDIUM, structures, decorators, biomes,
+                    pillars, verified, "Zwei unabhängige Datenquellen stimmen überein");
+            return new Report(Level.LOW, structures, decorators, biomes,
+                    pillars, verified, "Nur eine unabhängige Datenquelle verfügbar");
+        } catch (Throwable error) {
+            return empty(Level.LOW, "Prüfung unvollständig: " + error.getClass().getSimpleName());
         }
-        if (sources >= 3) {
-            return new Report(Level.HIGH, structures, decorators, biomes, pillars,
-                    verified, "Mehrere unabhängige Datenquellen stimmen überein");
+    }
+
+    private static boolean isPre118Feature(Object feature) throws ReflectiveOperationException {
+        Object version = feature.getClass().getMethod("getVersion").invoke(feature);
+        Class<?> versionClass = Class.forName("com.seedfinding.mccore.version.MCVersion");
+        Object v118 = versionClass.getField("v1_18").get(null);
+        return (Boolean) versionClass.getMethod("isOlderThan", versionClass).invoke(version, v118);
+    }
+
+    private static Object createRandom(Class<?> randomClass) throws ReflectiveOperationException {
+        for (Constructor<?> constructor : randomClass.getDeclaredConstructors()) {
+            constructor.setAccessible(true);
+            if (constructor.getParameterCount() == 0) return constructor.newInstance();
+            if (constructor.getParameterCount() == 1) {
+                Class<?> sourceClass = constructor.getParameterTypes()[0];
+                for (Constructor<?> sourceConstructor : sourceClass.getDeclaredConstructors()) {
+                    sourceConstructor.setAccessible(true);
+                    if (sourceConstructor.getParameterCount() == 1
+                            && (sourceConstructor.getParameterTypes()[0] == long.class
+                            || sourceConstructor.getParameterTypes()[0] == Long.class)) {
+                        Object source = sourceConstructor.newInstance(0L);
+                        return constructor.newInstance(source);
+                    }
+                }
+            }
         }
-        if (sources == 2) {
-            return new Report(Level.MEDIUM, structures, decorators, biomes, pillars,
-                    verified, "Zwei unabhängige Datenquellen stimmen überein");
+        throw new NoSuchMethodException("Kein unterstützbarer RNG-Konstruktor: " + randomClass.getName());
+    }
+
+    private static Method findMethod(Class<?> type, String name, int parameterCount)
+            throws NoSuchMethodException {
+        for (Method method : type.getMethods()) {
+            if (method.getName().equals(name) && method.getParameterCount() == parameterCount) return method;
         }
-        return new Report(Level.LOW, structures, decorators, biomes, pillars,
-                verified, "Nur eine unabhängige Datenquelle verfügbar");
+        throw new NoSuchMethodException(type.getName() + "." + name);
+    }
+
+    private static Method findCompatibleMethod(Class<?> type, String name, Class<?> argumentType) {
+        for (Method method : type.getMethods()) {
+            if (method.getName().equals(name) && method.getParameterCount() == 1
+                    && method.getParameterTypes()[0].isAssignableFrom(argumentType)) return method;
+        }
+        return null;
     }
 
     private static Object readField(Object owner, String name) throws ReflectiveOperationException {
-        Field field = owner.getClass().getDeclaredField(name);
-        field.setAccessible(true);
-        return field.get(owner);
-    }
-
-    private static Iterable<?> readIterable(Object owner, String name) throws ReflectiveOperationException {
-        Object value = readField(owner, name);
-        return value instanceof Iterable<?> iterable ? iterable : null;
+        if (owner == null) return null;
+        Class<?> type = owner.getClass();
+        while (type != null) {
+            try {
+                Field field = type.getDeclaredField(name);
+                field.setAccessible(true);
+                return field.get(owner);
+            } catch (NoSuchFieldException ignored) {
+                type = type.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(owner.getClass().getName() + "." + name);
     }
 
     private static Report empty(Level level, String reason) {
