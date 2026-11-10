@@ -11,9 +11,6 @@ import dev.nightfall.scanner.ChunkResult;
 import dev.nightfall.scanner.ChunkResult.Status;
 import dev.nightfall.util.Storage;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.CropBlock;
-import net.minecraft.block.KelpBlock;
-import net.minecraft.block.NetherWartBlock;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.*;
 import net.minecraft.client.world.ClientWorld;
@@ -32,7 +29,7 @@ import java.util.*;
  * (kein Blockscan). Pro Tick gilt ein festes Zeitbudget. SUS/SUS-WEG-Markierungen werden je Server+Dimension gespeichert.
  */
 public class BaseFinder extends Module {
-    private final NumberSetting range     = add(new NumberSetting("Range (Chunks)", 18, 2, 48, 1));
+    private final NumberSetting range     = add(new NumberSetting("Range (Chunks)", 32, 2, 48, 1));
     private final NumberSetting budgetMs  = add(new NumberSetting("Budget ms/Tick", 1.2, 0.2, 5.0, 0.1));
     private final NumberSetting rescan    = add(new NumberSetting("Rescan (s)", 8, 2, 120, 1));
     private final NumberSetting threshold = add(new NumberSetting("Min Score", 12, 3, 100, 1));
@@ -45,12 +42,6 @@ public class BaseFinder extends Module {
     private final NumberSetting wCluster  = add(new NumberSetting("Gewicht Cluster", 1.5, 0.0, 5.0, 0.1));
     private final NumberSetting wAmethyst = add(new NumberSetting("Gewicht Amethyst", 1.5, 0.0, 8.0, 0.1));
     private final NumberSetting wSculk    = add(new NumberSetting("Gewicht Sculk", 1.2, 0.0, 8.0, 0.1));
-    private final NumberSetting wCrops    = add(new NumberSetting("Gewicht Reife Felder", 0.5, 0.0, 5.0, 0.1));
-    private final NumberSetting wKelp     = add(new NumberSetting("Gewicht Kelp", 0.7, 0.0, 5.0, 0.1));
-    private final NumberSetting wFarm     = add(new NumberSetting("Gewicht Spezial-Farmen", 0.8, 0.0, 5.0, 0.1));
-    private final NumberSetting farmComboBonus = add(new NumberSetting("Bonus Farm + Storage", 2.5, 0.0, 10.0, 0.5));
-    private final NumberSetting redstoneComboBonus = add(new NumberSetting("Bonus Farm + Redstone", 1.0, 0.0, 5.0, 0.5));
-    private final NumberSetting naturalAreaBonusSetting = add(new NumberSetting("Umgebungsbonus Natur-Signale", 0.15, 0.0, 0.5, 0.05));
     private final BoolSetting   chat      = add(new BoolSetting("Chat-Meldung", true));
 
     private static final Gson GSON = new Gson();
@@ -200,9 +191,8 @@ public class BaseFinder extends Module {
         if (ch == null) return;
 
         int storage = 0, shulker = 0, hopper = 0, furnace = 0, redstone = 0, spawner = 0;
-        int amethystCluster = 0, amethystLarge = 0, amethystMedium = 0, amethystSmall = 0;
-        int sculk = 0, matureCrops = 0, matureKelp = 0;
-        int sugarCane = 0, bamboo = 0, cactus = 0, melonsAndPumpkins = 0, matureNetherWart = 0;
+        int amethystGeode = 0;
+        int sculk = 0;
         Map<Integer, Integer> cells = new HashMap<>();
 
         for (BlockEntity be : ch.getBlockEntities().values()) {
@@ -227,27 +217,13 @@ public class BaseFinder extends Module {
                 for (int z = 0; z < 16; z++) {
                     for (int x = 0; x < 16; x++) {
                         BlockState state = section.getBlockState(x, y, z);
-                        if (state.isOf(Blocks.AMETHYST_CLUSTER)) amethystCluster++;
-                        else if (state.isOf(Blocks.LARGE_AMETHYST_BUD)) amethystLarge++;
-                        else if (state.isOf(Blocks.MEDIUM_AMETHYST_BUD)) amethystMedium++;
-                        else if (state.isOf(Blocks.SMALL_AMETHYST_BUD)) amethystSmall++;
+                        // Budding amethyst identifies the geode; isolated crystals and buds do not count.
+                        if (state.isOf(Blocks.BUDDING_AMETHYST)) amethystGeode = 1;
+
 
                         if (state.isOf(Blocks.SCULK_SENSOR) || state.isOf(Blocks.CALIBRATED_SCULK_SENSOR)
                                 || state.isOf(Blocks.SCULK_SHRIEKER) || state.isOf(Blocks.SCULK_CATALYST)) sculk++;
 
-                        if (state.getBlock() instanceof CropBlock && state.get(CropBlock.AGE) == CropBlock.MAX_AGE)
-                            matureCrops++;
-
-                        if (state.isOf(Blocks.SUGAR_CANE)) sugarCane++;
-                        else if (state.isOf(Blocks.BAMBOO)) bamboo++;
-                        else if (state.isOf(Blocks.CACTUS)) cactus++;
-                        else if (state.isOf(Blocks.MELON) || state.isOf(Blocks.PUMPKIN)) melonsAndPumpkins++;
-                        else if (state.isOf(Blocks.NETHER_WART)
-                                && state.get(NetherWartBlock.AGE) == NetherWartBlock.MAX_AGE) matureNetherWart++;
-
-                        // Only mature top KELP blocks have the age property; stalk blocks are KELP_PLANT.
-                        if (state.getBlock() instanceof KelpBlock && state.get(KelpBlock.AGE) >= 20)
-                            matureKelp++;
                     }
                 }
             }
@@ -257,40 +233,16 @@ public class BaseFinder extends Module {
         for (int v : cells.values()) maxCell = Math.max(maxCell, v);
 
         double cluster = maxCell >= 6 ? (maxCell - 5) * wCluster.get() : 0;
-        // Mature amethyst clusters carry the strongest weight; buds contribute progressively less.
-        double amethyst = (amethystCluster * 3.0 + amethystLarge * 1.5
-                + amethystMedium * 0.75 + amethystSmall * 0.25) * wAmethyst.get();
+        // One +2 signal per chunk containing budding amethyst; extra blocks/geodes never stack.
+        double amethyst = amethystGeode * 2.0;
         double sculkScore = sculk >= 3 ? (sculk - 2) * wSculk.get() : 0;
-        double cropScore = matureCrops >= 16 ? (matureCrops / 16.0) * wCrops.get() : 0;
-        double kelpScore = matureKelp >= 4 ? (matureKelp / 4.0) * wKelp.get() : 0;
-        double farmScore = (Math.max(0, sugarCane - 8) / 8.0
-                + Math.max(0, bamboo - 8) / 8.0 + Math.max(0, cactus - 8) / 8.0
-                + Math.max(0, melonsAndPumpkins - 4) / 4.0
-                + Math.max(0, matureNetherWart - 8) / 8.0) * wFarm.get();
-        // Only amethyst, sculk, mature crops and kelp receive a small neighboring-chunk bonus.
-        double naturalSignalScore = amethyst + sculkScore + cropScore + kelpScore;
-        double neighboringNaturalScore = 0;
-        for (int dz = -1; dz <= 1; dz++) {
-            for (int dx = -1; dx <= 1; dx++) {
-                if (dx == 0 && dz == 0) continue;
-                ChunkResult neighbor = results.get(key(cx + dx, cz + dz));
-                if (neighbor != null && neighbor.lastScanTick > 0)
-                    neighboringNaturalScore += neighbor.naturalSignalScore;
-            }
-        }
-        double areaBonus = Math.min(1.0, neighboringNaturalScore * naturalAreaBonusSetting.get());
+        double naturalSignalScore = amethyst + sculkScore;
         double score = storage * wStorage.get() + shulker * wStorage.get() * 1.5
                 + hopper * wHopper.get() + furnace * wFurnace.get() + redstone * wRedstone.get()
-                + spawner * wSpawner.get() + cluster + naturalSignalScore + areaBonus + farmScore;
-        boolean hasStorageOrHoppers = storage + shulker + hopper > 0;
-        boolean hasFarmSignal = farmScore > 0 || cropScore > 0 || kelpScore > 0;
-        double farmStorageCombo = hasFarmSignal && hasStorageOrHoppers ? farmComboBonus.get() : 0;
-        double farmRedstoneCombo = hasFarmSignal && redstone > 0 ? redstoneComboBonus.get() : 0;
-        score += farmStorageCombo + farmRedstoneCombo;
+                + spawner * wSpawner.get() + cluster + naturalSignalScore;
         int signalKinds = (storage + shulker > 0 ? 1 : 0) + (hopper > 0 ? 1 : 0)
                 + (furnace > 0 ? 1 : 0) + (redstone > 0 ? 1 : 0) + (spawner > 0 ? 1 : 0)
-                + (cluster > 0 ? 1 : 0) + (amethyst > 0 ? 1 : 0) + (sculkScore > 0 ? 1 : 0)
-                + (cropScore > 0 ? 1 : 0) + (kelpScore > 0 ? 1 : 0) + (farmScore > 0 ? 1 : 0);
+                + (cluster > 0 ? 1 : 0) + (amethystGeode > 0 ? 1 : 0) + (sculkScore > 0 ? 1 : 0);
 
         ChunkResult old = results.get(k);
         ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
@@ -307,16 +259,8 @@ public class BaseFinder extends Module {
         if (redstone > 0) res.reasons.add(redstone + " Dispenser/Comparator/Crafter (" + fmt(redstone * wRedstone.get()) + ")");
         if (spawner > 0) res.reasons.add(spawner + " Mob-Spawner (" + fmt(spawner * wSpawner.get()) + ")");
         if (cluster > 0) res.reasons.add("Lagerzone (" + maxCell + " in 4x4x4, +" + fmt(cluster) + ")");
-        if (amethyst > 0) res.reasons.add("Amethyst-Wachstum (" + amethystCluster + " Cluster, "
-                + amethystLarge + " groß, " + amethystMedium + " mittel, " + amethystSmall
-                + " klein, +" + fmt(amethyst) + ")");
+        if (amethystGeode > 0) res.reasons.add("Amethystgeode (+2.0, einmal pro Chunk)");
         if (sculkScore > 0) res.reasons.add("Sculk-Cluster (" + sculk + ", +" + fmt(sculkScore) + ")");
-        if (cropScore > 0) res.reasons.add("Reife Feldfrüchte (" + matureCrops + ", +" + fmt(cropScore) + ")");
-        if (kelpScore > 0) res.reasons.add("Reifer Kelp (" + matureKelp + " ausgewachsene Pflanzen, +" + fmt(kelpScore) + ")");
-        if (farmScore > 0) res.reasons.add("Spezial-Farm (Zuckerrohr " + sugarCane + ", Bambus " + bamboo
-                + ", Kakteen " + cactus + ", Melonen/Kürbisse " + melonsAndPumpkins
-                + ", Netherwarzen " + matureNetherWart + ", +" + fmt(farmScore) + ")");
-        if (areaBonus > 0.01) res.reasons.add("Natur-Signale in Nachbar-Chunks (+" + fmt(areaBonus) + ")");
 
         if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
             if (isRepeatedFakePattern(storage, shulker, hopper, furnace, redstone, spawner, cx, cz)) {
