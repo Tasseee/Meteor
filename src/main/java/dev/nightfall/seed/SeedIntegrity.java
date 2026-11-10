@@ -37,6 +37,90 @@ public final class SeedIntegrity {
         }
     }
 
+    private static volatile int rejectedIncoming;
+    private static volatile String lastRejectedReason = "";
+
+    /**
+     * Called before SeedCrackerX stores a newly observed structure/decorator.
+     * Unknown feature metadata is allowed through: the filter must never
+     * discard evidence merely because an API detail could not be inspected.
+     */
+    public static boolean acceptIncoming(Object data, Object storage) {
+        try {
+            Object feature = readField(data, "feature");
+            String featureName = feature.getClass().getName();
+            if (!featureName.contains(".structure.")) return true;
+
+            Integer spacing = readIntMethod(feature, "getSpacing");
+            Integer separation = readIntMethod(feature, "getSeparation");
+            if (spacing == null || separation == null || spacing <= 1) return true;
+
+            int x = readIntField(data, "chunkX");
+            int z = readIntField(data, "chunkZ");
+            Object scheduled = readField(storage, "baseSeedData");
+            Object base = scheduled.getClass().getMethod("getBaseSet").invoke(scheduled);
+            Object pending = readField(scheduled, "scheduledSet");
+
+            if (isSpatialConflict(base, feature.getClass(), x, z, spacing, separation)
+                    || isSpatialConflict(pending, feature.getClass(), x, z, spacing, separation)) {
+                rejectedIncoming++;
+                lastRejectedReason = "Unplausibler Abstand bei " + feature.getClass().getSimpleName()
+                        + " an Chunk " + x + ", " + z;
+                return false;
+            }
+            return true;
+        } catch (Throwable ignored) {
+            // Fail open for compatibility with SeedCrackerX internals.
+            return true;
+        }
+    }
+
+    private static boolean isSpatialConflict(Object entries, Class<?> featureType, int x, int z,
+                                             int spacing, int separation) throws ReflectiveOperationException {
+        if (!(entries instanceof Iterable<?> iterable)) return false;
+        int regionX = Math.floorDiv(x, spacing);
+        int regionZ = Math.floorDiv(z, spacing);
+        for (Object entry : iterable) {
+            Object oldData = readField(entry, "data");
+            Object oldFeature = readField(oldData, "feature");
+            if (oldFeature.getClass() != featureType) continue;
+            int oldX = readIntField(oldData, "chunkX");
+            int oldZ = readIntField(oldData, "chunkZ");
+            if (Math.floorDiv(oldX, spacing) == regionX
+                    && Math.floorDiv(oldZ, spacing) == regionZ) return true;
+            if (Math.max(Math.abs((long) x - oldX), Math.abs((long) z - oldZ)) <= separation) return true;
+        }
+        return false;
+    }
+
+    public static int rejectedIncomingCount() {
+        return rejectedIncoming;
+    }
+
+    public static String lastRejectedReason() {
+        return lastRejectedReason;
+    }
+
+    public static void resetIncomingStats() {
+        rejectedIncoming = 0;
+        lastRejectedReason = "";
+    }
+
+    private static Integer readIntMethod(Object owner, String name) {
+        try {
+            Object value = owner.getClass().getMethod(name).invoke(owner);
+            return value instanceof Number number ? number.intValue() : null;
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static int readIntField(Object owner, String name) throws ReflectiveOperationException {
+        Object value = readField(owner, name);
+        if (!(value instanceof Number number)) throw new NoSuchFieldException(name);
+        return number.intValue();
+    }
+
     public Report verify(long worldSeed) {
         try {
             Object cracker = SeedCracker.get();
