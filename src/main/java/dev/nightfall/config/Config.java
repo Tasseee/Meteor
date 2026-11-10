@@ -25,6 +25,9 @@ public final class Config {
     /** Soft keyboard click feedback while Nightfall GUI/editor is open. */
     public static boolean keySounds = true;
     public static int gridSize = 4;
+    public static float accentHue = 270.0f;
+    public static int blurStrength = 72;
+    public static String categoryOrder = "Combat,Movement,Visuals,Player,World,Misc,HUD,Config";
 
     /** Panel-Zustand je Kategorie: {x, y, offen(1/0)} */
     public static final Map<String, int[]> panels = new HashMap<>();
@@ -45,6 +48,9 @@ public final class Config {
             root.addProperty("snapGrid", snapGrid);
             root.addProperty("keySounds", keySounds);
             root.addProperty("gridSize", gridSize);
+            root.addProperty("accentHue", accentHue);
+            root.addProperty("blurStrength", blurStrength);
+            root.addProperty("categoryOrder", categoryOrder);
 
             JsonObject mods = new JsonObject();
             for (Module m : ModuleManager.all()) {
@@ -100,6 +106,9 @@ public final class Config {
             if (root.has("snapGrid")) snapGrid = root.get("snapGrid").getAsBoolean();
             if (root.has("keySounds")) keySounds = root.get("keySounds").getAsBoolean();
             if (root.has("gridSize")) gridSize = Math.max(1, root.get("gridSize").getAsInt());
+            if (root.has("accentHue")) accentHue = Math.max(0, Math.min(360, root.get("accentHue").getAsFloat()));
+            if (root.has("blurStrength")) blurStrength = Math.max(0, Math.min(150, root.get("blurStrength").getAsInt()));
+            if (root.has("categoryOrder")) categoryOrder = root.get("categoryOrder").getAsString();
 
             JsonObject mods = root.has("modules") ? root.getAsJsonObject("modules") : new JsonObject();
             for (Module m : ModuleManager.all()) {
