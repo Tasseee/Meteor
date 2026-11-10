@@ -24,7 +24,7 @@ public final class InvSee extends HudModule {
     private final BoolSetting showMenuData = add(new BoolSetting("Geoeffnete Menue-Slots", true));
     private final NumberSetting targetRange = add(new NumberSetting("Ziel-Reichweite", 8, 2, 32, 1));
 
-    private int refreshTicks;
+    private long nextRefreshAt;
     private int crystalCount, elytraCount, maceCount, totemCount;
     private boolean wasMenuOpen;
 
@@ -87,11 +87,11 @@ public final class InvSee extends HudModule {
 
         if (!menuOpen || !menuMatches) {
             wasMenuOpen = false;
-            refreshTicks = 0;
+            nextRefreshAt = 0L;
             crystalCount = elytraCount = maceCount = totemCount = 0;
-        } else if (!wasMenuOpen || refreshTicks <= 0) {
+        } else if (!wasMenuOpen || System.currentTimeMillis() >= nextRefreshAt) {
             refreshItemCounts(menuStacks);
-            refreshTicks = 100;
+            nextRefreshAt = System.currentTimeMillis() + 5000L;
             wasMenuOpen = true;
         }
 
@@ -100,7 +100,6 @@ public final class InvSee extends HudModule {
                 ? Math.min(maxEntries.getInt(), Math.max(1, (screenHeight - 160) / 12)) : 0;
         int menuHeight = showMenuData.get() ? 58 + rows * 12 : 0;
         h = 78 + menuHeight;
-        if (wasMenuOpen && refreshTicks > 0) refreshTicks--;
 
         ctx.fill(0, 0, w, h, 0xE510121B);
         ctx.fill(0, 0, w, 2, 0xFF65E6A5);
