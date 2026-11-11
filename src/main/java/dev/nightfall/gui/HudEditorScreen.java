@@ -112,14 +112,14 @@ public class HudEditorScreen extends Screen {
         for (HudModule e : elements) {
             int[] p = e.pos(width, height);
             int ew = Math.max(24, e.width()), eh = Math.max(10, e.height());
-            if (e.isEnabled()) e.drawForEditor(ctx);
-            int baseCol = e.isEnabled() ? 0x88FFFFFF : 0x44FFFFFF;
+            e.drawForEditor(ctx);
+            int baseCol = e.isEnabled() ? 0x88FFFFFF : 0x66AAB0C0;
             int col = e == hovered ? Theme.ACCENT : baseCol;
             ctx.fill(p[0] - 1, p[1] - 1, p[0] + ew + 1, p[1], col);
             ctx.fill(p[0] - 1, p[1] + eh, p[0] + ew + 1, p[1] + eh + 1, col);
             ctx.fill(p[0] - 1, p[1], p[0], p[1] + eh, col);
             ctx.fill(p[0] + ew, p[1], p[0] + ew + 1, p[1] + eh, col);
-            if (!e.isEnabled()) ctx.drawText(mc.textRenderer, e.getName() + " (aus)", p[0] + 2, p[1] + 2, 0x88FFFFFF, false);
+            if (!e.isEnabled()) ctx.drawText(mc.textRenderer, e.getName() + " · AUS", p[0] + 2, p[1] + 2, 0xFFB8B8C8, false);
             if (e.isLocked()) ctx.drawText(mc.textRenderer, "L", p[0] + ew - 7, p[1] + 1, 0xFFFFD27A, false);
         }
 
