@@ -255,70 +255,68 @@ public final class NightfallGuiScreen extends Screen {
     private void drawWindow(DrawContext ctx, String tab, int x, int y, int w, int mx, int my,
                             boolean click, boolean rightClick, MinecraftClient mc) {
         List<Module> mods = modules(tab);
+        if (!searchQuery.isBlank()) { String q = searchQuery.toLowerCase(Locale.ROOT); mods.removeIf(m -> !m.getName().toLowerCase(Locale.ROOT).contains(q) && !m.getDescription().toLowerCase(Locale.ROOT).contains(q)); }
+        if (favoritesOnly) mods.removeIf(m -> !m.isFavorite());
         Set<String> expanded = EXPANDED.computeIfAbsent(tab, k -> new HashSet<>());
         int visible = 0;
         for (Module m : mods) visible += ROW + (expanded.contains(m.getName()) ? m.getSettings().size() * ROW : 0);
-        int bodyH = pMinimized(tab) ? 0 : Math.max(0, Math.min(Math.max(64, height - y - HEAD - 12), tab.equals("Config") ? 340 : Math.max(50, visible + 8)));
+        int bodyH = pMinimized(tab) ? 0 : Math.max(0, Math.min(Math.max(64, height - y - HEAD - 12), tab.equals("Config") ? 340 : Math.max(82, visible + 34)));
         panel(ctx, x, y, w, HEAD + bodyH);
         ctx.fill(x, y, x + w, y + HEAD, 0xEE100D19);
         ctx.fill(x, y, x + 2, y + HEAD, Theme.ACCENT);
         ctx.drawText(mc.textRenderer, icon(tab) + "  " + tab, x + 10, y + 9, Theme.TEXT, true);
         ctx.drawText(mc.textRenderer, "_", x + w - 35, y + 8, Theme.TEXT_DIM, true);
-        ctx.drawText(mc.textRenderer, "×", x + w - 17, y + 8, Theme.TEXT, true);
-        if (click && inside(mx,my,x,y,w,HEAD)) {
-            if (mx >= x+w-22) { setOpen(tab,false); return; }
-            if (mx >= x+w-43) { pMin(tab); return; }
-            draggingWindow = true; dragPanel = tab; dragX = mx-x; dragY = my-y;
-        }
+        ctx.drawText(mc.textRenderer, "x", x + w - 17, y + 8, Theme.TEXT, true);
+        if (click && inside(mx,my,x,y,w,HEAD)) { if (mx >= x+w-22) { setOpen(tab,false); return; } if (mx >= x+w-43) { pMin(tab); return; } draggingWindow = true; dragPanel = tab; dragX = mx-x; dragY = my-y; }
         if (bodyH == 0) return;
         if (tab.equals("Config")) { drawConfig(ctx,x,y,w,mx,my,click); return; }
-
-        int rowY = y + HEAD + 5 - scroll;
-        ctx.enableScissor(x + 3, y + HEAD, x + w - 3, y + HEAD + bodyH);
+        int controlY = y + HEAD + 5;
+        boolean searchOver = inside(mx,my,x+8,controlY,w-82,19);
+        int searchAlpha = Math.round(85 * hoverValue("search", searchOver || searchFocused));
+        ctx.fill(x+8,controlY,x+w-74,controlY+19,0xA51A1722);
+        if (searchAlpha > 0) ctx.fill(x+8,controlY,x+w-74,controlY+19,Theme.withAlpha(Theme.ACCENT,searchAlpha));
+        ctx.drawText(mc.textRenderer, (searchQuery.isEmpty() ? "Search modules..." : searchQuery) + (searchFocused ? "_" : ""), x+14,controlY+6,searchQuery.isEmpty()?Theme.TEXT_DIM:Theme.TEXT,false);
+        boolean favOver = inside(mx,my,x+w-68,controlY,60,19);
+        int favAlpha = Math.round(85 * hoverValue("favorites", favOver || favoritesOnly));
+        ctx.fill(x+w-68,controlY,x+w-8,controlY+19,0xA51A1722);
+        if (favAlpha > 0) ctx.fill(x+w-68,controlY,x+w-8,controlY+19,Theme.withAlpha(Theme.ACCENT,favAlpha));
+        ctx.drawText(mc.textRenderer,favoritesOnly?"FAV ON":"FAV",x+w-61,controlY+6,favoritesOnly?Theme.ACCENT:Theme.TEXT_DIM,true);
+        if (click && searchOver) searchFocused = true; else if (click && favOver) { favoritesOnly = !favoritesOnly; searchFocused = false; } else if (click && !searchOver) searchFocused = false;
+        int rowY = y + HEAD + 29 - scroll;
+        ctx.enableScissor(x + 3, y + HEAD + 27, x + w - 3, y + HEAD + bodyH);
         for (Module mod : mods) {
             if (rowY > y + HEAD + bodyH - ROW) { rowY += ROW; continue; }
             boolean over = inside(mx,my,x+4,rowY,w-8,ROW);
-            if (over) ctx.fill(x+4,rowY,x+w-4,rowY+ROW-1,0x283F3B50);
+            int rowHover = Math.round(75 * hoverValue("module:" + tab + ":" + mod.getName(), over));
+            if (rowHover > 0) ctx.fill(x+4,rowY,x+w-4,rowY+ROW-1,Theme.withAlpha(Theme.ACCENT,rowHover));
             ctx.drawText(mc.textRenderer, mod.getName(), x+10,rowY+7,mod.isEnabled()?Theme.TEXT:Theme.TEXT_DIM,false);
-            int tx=x+w-34, ty=rowY+6;
+            int starX=x+w-112, keyX=x+w-88, tx=x+w-34, ty=rowY+6;
+            ctx.drawText(mc.textRenderer,mod.isFavorite()?"*":"+",starX,rowY+7,mod.isFavorite()?0xFFFFD66B:Theme.TEXT_DIM,true);
+            String keyText = bindingModule == mod ? "PRESS..." : keyLabel(mod.getKey()); if (keyText.length()>8) keyText=keyText.substring(0,8);
+            ctx.fill(keyX,rowY+4,tx-5,rowY+18,bindingModule==mod?Theme.withAlpha(Theme.ACCENT,170):0x663C3748);
+            ctx.drawText(mc.textRenderer,keyText,keyX+3,rowY+7,bindingModule==mod?Theme.TEXT:Theme.TEXT_DIM,false);
             ctx.fill(tx,ty,tx+24,ty+12,mod.isEnabled()?Theme.ACCENT:0xFF45434E);
             ctx.fill(mod.isEnabled()?tx+14:tx+2,ty+2,mod.isEnabled()?tx+22:tx+10,ty+10,0xFFF5F4FA);
-            if (click && over) {
-                if (mx >= tx-3) { mod.toggle(); Config.save(); }
-                else if (!mod.getSettings().isEmpty()) { if(!expanded.add(mod.getName())) expanded.remove(mod.getName()); }
-            }
+            if (click && over) { if (mx >= tx-3) { mod.toggle(); Config.save(); } else if (mx >= keyX-2 && mx < tx-4) { bindingModule=mod; searchFocused=false; } else if (mx >= starX-3 && mx < keyX-3) { mod.setFavorite(!mod.isFavorite()); Config.save(); } else if (!mod.getSettings().isEmpty()) { if(!expanded.add(mod.getName())) expanded.remove(mod.getName()); } }
             if (rightClick && over && !mod.getSettings().isEmpty()) { if(!expanded.add(mod.getName())) expanded.remove(mod.getName()); }
             rowY += ROW;
-            if (expanded.contains(mod.getName())) for (Setting<?> setting : mod.getSettings()) {
-                if (rowY > y + HEAD + bodyH - ROW) { rowY += ROW; continue; }
-                drawSetting(ctx,setting,x+8,rowY,w-16,mx,my,click);
-                rowY += ROW;
-            }
+            if (expanded.contains(mod.getName())) for (Setting<?> setting : mod.getSettings()) { if (rowY > y + HEAD + bodyH - ROW) { rowY += ROW; continue; } drawSetting(ctx,setting,x+8,rowY,w-16,mx,my,click,rightClick); rowY += ROW; }
         }
         ctx.disableScissor();
     }
 
-    private void drawSetting(DrawContext ctx, Setting<?> s, int x, int y, int w, int mx, int my, boolean click) {
+    private void drawSetting(DrawContext ctx, Setting<?> s, int x, int y, int w, int mx, int my, boolean click, boolean rightClick) {
         MinecraftClient mc=MinecraftClient.getInstance();
         boolean over=inside(mx,my,x,y,w,ROW);
+        int hover = Math.round(50 * hoverValue("setting:" + s.getName(), over));
         ctx.fill(x,y,x+w,y+ROW-1,0x261B1924);
+        if (hover > 0) ctx.fill(x,y,x+w,y+ROW-1,Theme.withAlpha(Theme.ACCENT,hover));
         ctx.drawText(mc.textRenderer,s.getName(),x+5,y+7,Theme.TEXT_DIM,false);
-        if(s instanceof BoolSetting b) {
-            int bx=x+w-28; ctx.fill(bx,y+5,bx+22,y+16,b.get()?Theme.ACCENT:0xFF45434E);
-            ctx.fill(b.get()?bx+13:bx+2,y+7,b.get()?bx+20:bx+9,y+14,0xFFFFFFFF);
-            if(click&&over){b.toggle();Config.save();}
-        } else if(s instanceof ModeSetting m) {
-            String v="‹ "+m.get()+" ›"; ctx.drawText(mc.textRenderer,v,x+w-8-mc.textRenderer.getWidth(v),y+7,Theme.ACCENT,false);
-            if(click&&over){m.cycle(1);Config.save();}
-        } else if(s instanceof NumberSetting n) {
-            String v=n.display(); ctx.drawText(mc.textRenderer,v,x+w-8-mc.textRenderer.getWidth(v),y+7,Theme.ACCENT,false);
-            if(click&&over){n.set(n.get()+n.step);Config.save();}
-        } else if(s instanceof ColorSetting c) {
-            ctx.fill(x+w-26,y+5,x+w-8,y+17,0xFF000000|c.rgb());
-        } else if(s instanceof StringSetting st) {
-            String v=st.get(); if(v.length()>14)v=v.substring(0,13)+"…";
-            ctx.drawText(mc.textRenderer,v,x+w-8-mc.textRenderer.getWidth(v),y+7,Theme.ACCENT,false);
-        }
+        if(s instanceof BoolSetting b) { int bx=x+w-28; ctx.fill(bx,y+5,bx+22,y+16,b.get()?Theme.ACCENT:0xFF45434E); ctx.fill(b.get()?bx+13:bx+2,y+7,b.get()?bx+20:bx+9,y+14,0xFFFFFFFF); if((click||rightClick)&&over){b.toggle();Config.save();} }
+        else if(s instanceof ModeSetting m) { String v="< "+m.get()+" >"; ctx.drawText(mc.textRenderer,v,x+w-8-mc.textRenderer.getWidth(v),y+7,Theme.ACCENT,false); if(click&&over){m.cycle(1);Config.save();} else if(rightClick&&over){m.cycle(-1);Config.save();} }
+        else if(s instanceof NumberSetting n) { String v=n.display(); ctx.drawText(mc.textRenderer,v,x+w-8-mc.textRenderer.getWidth(v),y+7,Theme.ACCENT,false); if(click&&over){n.set(n.get()+n.step*10.0);Config.save();} else if(rightClick&&over){n.set(n.get()-n.step*10.0);Config.save();} }
+        else if(s instanceof ColorSetting c) { ctx.fill(x+w-26,y+5,x+w-8,y+17,0xFF000000|c.rgb()); }
+        else if(s instanceof StringSetting st) { String v=st.get(); if(v.length()>14)v=v.substring(0,13)+"..."; ctx.drawText(mc.textRenderer,v,x+w-8-mc.textRenderer.getWidth(v),y+7,Theme.ACCENT,false); }
     }
 
     private void drawConfig(DrawContext ctx,int x,int y,int w,int mx,int my,boolean click) {
@@ -366,6 +364,6 @@ public final class NightfallGuiScreen extends Screen {
     private boolean pMinimized(String tab) { return panel(tab, 0, 0)[2] == 2; }
     private void pMin(String tab){int[] p=panel(tab,0,0);p[2]=p[2]==2?1:2;Config.save();}
     private void panel(DrawContext c,int x,int y,int w,int h){c.fill(x-1,y-1,x+w+1,y+h+1,Theme.withAlpha(Theme.ACCENT,190));c.fill(x,y,x+w,y+h,0xD90B0A11);}
-    private static String icon(String s){return switch(s){case "Combat"->"⚔";case "Movement"->"⌁";case "Visuals"->"◉";case "Player"->"●";case "World"->"◇";case "Misc"->"⚙";case "HUD"->"▣";default->"☷";};}
+    private static String icon(String s){return switch(s){case "Combat"->"[C]";case "Movement"->"[M]";case "Visuals"->"[V]";case "Player"->"[P]";case "World"->"[W]";case "Misc"->"[X]";case "HUD"->"[H]";default->"[CFG]";};}
     private static boolean inside(int mx,int my,int x,int y,int w,int h){return mx>=x&&mx<x+w&&my>=y&&my<y+h;}
 }
