@@ -7,7 +7,9 @@ import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.item.HeldItemRenderer;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.SwordItem;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Arm;
 import org.spongepowered.asm.mixin.Mixin;
@@ -46,6 +48,17 @@ public abstract class HeldItemRendererMixin {
         boolean leftHand = hand == Hand.MAIN_HAND ? mainArmLeft : !mainArmLeft;
         try {
             if (styleEnabled) ModuleManager.get(FirstPersonStyle.class).transform(matrices, leftHand);
+
+            // Small first-person-only adjustments requested for blocks and swords.
+            // These affect only the rendered hand/item pose, not the actual item or gameplay.
+            if (item != null && !item.isEmpty()) {
+                if (item.getItem() instanceof BlockItem) {
+                    matrices.scale(0.92f, 0.92f, 0.92f);
+                } else if (item.getItem() instanceof SwordItem) {
+                    matrices.translate(0.0, 0.045, 0.0);
+                }
+            }
+
             if (weaponEnabled) ModuleManager.get(WeaponAnimations.class).transform(matrices, swingProgress, leftHand);
         } catch (Throwable ignored) {
             // Never let cosmetic transforms interfere with vanilla item rendering.
