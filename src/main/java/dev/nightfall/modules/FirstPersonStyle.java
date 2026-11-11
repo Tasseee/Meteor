@@ -12,10 +12,10 @@ import org.joml.Quaternionf;
 /** Changes the local first-person arm/item model transform. The arm itself remains Minecraft's 3D player model. */
 public final class FirstPersonStyle extends Module {
     private final BoolSetting swapHands = add(new BoolSetting("Items linke/rechte Hand tauschen", false));
-    private final ModeSetting pose = add(new ModeSetting("Handhaltung", "Vanilla", "Vanilla", "Katana", "Heavy", "Floating", "Compact"));
+    private final ModeSetting pose = add(new ModeSetting("Handhaltung", "Anubis", "Vanilla", "Katana", "Heavy", "Floating", "Compact", "Anubis"));
     private final NumberSetting x = add(new NumberSetting("X-Position", 0, -0.8, 0.8, 0.01));
-    private final NumberSetting y = add(new NumberSetting("Y-Position", 0, -0.8, 0.8, 0.01));
-    private final NumberSetting z = add(new NumberSetting("Z-Position", 0, -0.8, 0.8, 0.01));
+    private final NumberSetting y = add(new NumberSetting("Y-Position", -0.08, -0.8, 0.8, 0.01));
+    private final NumberSetting z = add(new NumberSetting("Z-Position", -0.12, -0.8, 0.8, 0.01));
     private final NumberSetting pitch = add(new NumberSetting("X-Rotation", 0, -45, 45, 1));
     private final NumberSetting yaw = add(new NumberSetting("Y-Rotation", 0, -45, 45, 1));
     private final NumberSetting roll = add(new NumberSetting("Z-Rotation", 0, -90, 90, 1));
@@ -42,6 +42,7 @@ public final class FirstPersonStyle extends Module {
             case "Heavy" -> { tx -= 0.025 * side; ty += 0.035; rz += 15 * side; rx += 12; }
             case "Floating" -> { ty -= 0.07; rz += 8 * side; }
             case "Compact" -> { tx += 0.045 * side; ty += 0.025; }
+            case "Anubis" -> { tx += 0.035 * side; ty -= 0.045; tz -= 0.075; rx -= 12; ry += 18 * side; rz += 10 * side; }
         }
         matrices.translate(tx * side, ty, tz);
         matrices.multiply(new Quaternionf().rotateX((float)Math.toRadians(rx))
