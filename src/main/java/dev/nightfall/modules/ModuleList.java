@@ -1,5 +1,6 @@
 package dev.nightfall.modules;
 
+import dev.nightfall.config.Config;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.HudModule;
 import dev.nightfall.module.Module;
@@ -15,7 +16,18 @@ public class ModuleList extends HudModule {
 
     public ModuleList() { super("ModuleList", "Liste aktiver Module."); setEnabled(true); }
 
-    @Override protected int[] defaultPos(int sw, int sh) { return new int[]{sw - w - 4, 112}; }
+    @Override protected int[] defaultPos(int sw, int sh) { return new int[]{sw - w - 4, 4}; }
+
+    @Override
+    public int[] pos(int sw, int sh) {
+        int[] saved = Config.hud.get(getName());
+        // Move the old default placement (112 px from the top) to the top-right.
+        // Custom positions selected in the HUD editor remain untouched.
+        if (saved != null && saved[1] == 112 && saved[0] >= sw - Math.max(w, 60) - 8) {
+            saved[1] = 4;
+        }
+        return super.pos(sw, sh);
+    }
 
     @Override
     protected void draw(DrawContext ctx) {
