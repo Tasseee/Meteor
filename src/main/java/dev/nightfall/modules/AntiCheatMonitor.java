@@ -1,8 +1,9 @@
 package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
-import dev.nightfall.module.Module;
+import dev.nightfall.module.HudModule;
 import dev.nightfall.module.setting.BoolSetting;
+import dev.nightfall.util.Theme;
 import net.minecraft.client.gui.DrawContext;
 
 import java.util.Locale;
@@ -12,7 +13,7 @@ import java.util.regex.Pattern;
  * Reports explicit anti-cheat state announcements received as game/system messages.
  * It deliberately never infers that an anti-cheat is disabled from lag or corrections.
  */
-public final class AntiCheatMonitor extends Module {
+public final class AntiCheatMonitor extends HudModule {
     public enum Status { UNKNOWN, ACTIVE, INACTIVE }
 
     private static final Pattern ENABLED = Pattern.compile(
@@ -28,7 +29,7 @@ public final class AntiCheatMonitor extends Module {
     private long lastSignalAt = 0L;
 
     public AntiCheatMonitor() {
-        super("AntiCheatMonitor", "Erkennt ausdrueckliche Anti-Cheat-Statusmeldungen des Servers.", Category.MISC);
+        super("AntiCheatMonitor", "Zeigt erkannte Servermeldungen zum Anti-Cheat-Status als verschiebbares HUD-Panel.", Category.MISC);
     }
 
     /** Called only for game/system messages, not ordinary player chat. */
@@ -42,7 +43,7 @@ public final class AntiCheatMonitor extends Module {
         } else {
             return;
         }
-        lastSignal = raw.length() > 100 ? raw.substring(0, 100) + "..." : raw;
+        lastSignal = raw.length() > 180 ? raw.substring(0, 180) + "..." : raw;
         lastSignalAt = System.currentTimeMillis();
     }
 
@@ -54,24 +55,60 @@ public final class AntiCheatMonitor extends Module {
     }
 
     @Override
-    public void renderHud(DrawContext ctx) {
-        if (!showOverlay.get()) return;
+    protected int[] defaultPos(int sw, int sh) {
+        return new int[]{8, 116};
+    }
+
+    @Override
+    protected void draw(DrawContext ctx) {
+        if (!showOverlay.get()) {
+            w = 0;
+            h = 0;
+            return;
+        }
+
         String label = switch (status) {
-            case ACTIVE -> "Anti-Cheat: ACTIVE (Servermeldung)";
-            case INACTIVE -> "Anti-Cheat: INACTIVE (Servermeldung)";
-            case UNKNOWN -> "Anti-Cheat: UNKNOWN";
+            case ACTIVE -> "Anti-Cheat  ·  ACTIVE";
+            case INACTIVE -> "Anti-Cheat  ·  INACTIVE";
+            case UNKNOWN -> "Anti-Cheat  ·  UNKNOWN";
         };
         int color = switch (status) {
             case ACTIVE -> 0xFF55D68B;
             case INACTIVE -> 0xFFFF657A;
             case UNKNOWN -> 0xFFFFC66D;
         };
-        int x = 8;
-        int y = 72;
-        ctx.drawText(mc.textRenderer, label, x, y, color, true);
-        if (showLastSignal.get() && lastSignalAt > 0L) {
-            long seconds = Math.max(0L, (System.currentTimeMillis() - lastSignalAt) / 1000L);
-            ctx.drawText(mc.textRenderer, "Letztes Signal vor " + seconds + " s", x, y + 11, 0xFFE8EAF2, true);
+
+        String message = showLastSignal.get() ? fit(lastSignal, 224) : null;
+        String age = showLastSignal.get() && lastSignalAt > 0L
+                ? "Signal vor " + Math.max(0L, (System.currentTimeMillis() - lastSignalAt) / 1000L) + " s"
+                : null;
+
+        w = Math.max(164, mc.textRenderer.getWidth(label) + 18);
+        if (message != null) w = Math.max(w, mc.textRenderer.getWidth(message) + 18);
+        if (age != null) w = Math.max(w, mc.textRenderer.getWidth(age) + 18);
+        h = 20 + (message == null ? 0 : 12) + (age == null ? 0 : 11);
+
+        ctx.fill(0, 0, w, h, Theme.HUD_PANEL);
+        ctx.fill(0, 0, 2, h, color);
+        ctx.fill(2, 0, w, 1, Theme.withAlpha(color, 150));
+        ctx.drawText(mc.textRenderer, label, 9, 5, color, true);
+
+        int y = 19;
+        if (message != null) {
+            ctx.drawText(mc.textRenderer, message, 9, y, Theme.TEXT, false);
+            y += 12;
         }
+        if (age != null) {
+            ctx.drawText(mc.textRenderer, age, 9, y, Theme.TEXT_DIM, false);
+        }
+    }
+
+    private String fit(String text, int maxWidth) {
+        if (mc.textRenderer.getWidth(text) <= maxWidth) return text;
+        String shortened = text;
+        while (shortened.length() > 1 && mc.textRenderer.getWidth(shortened + "…") > maxWidth) {
+            shortened = shortened.substring(0, shortened.length() - 1);
+        }
+        return shortened + "…";
     }
 }
