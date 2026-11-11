@@ -32,6 +32,10 @@ public final class NightfallGuiScreen extends Screen {
     private int ninoSecretClicks;
     private long lastNinoSecretClick;
     private boolean ninoSecretUnlocked;
+    private String searchQuery = "";
+    private boolean searchFocused, favoritesOnly;
+    private Module bindingModule;
+    private final Map<String, Float> hoverValues = new HashMap<>();
 
     public NightfallGuiScreen() {
         super(Text.literal("Nightfall"));
@@ -48,8 +52,52 @@ public final class NightfallGuiScreen extends Screen {
         return true;
     }
     @Override public boolean keyPressed(net.minecraft.client.input.KeyInput input) {
-        if (input.key() == Config.guiKey || input.key() == GLFW.GLFW_KEY_ESCAPE) { close(); return true; }
+        int key = input.key();
+        if (bindingModule != null) {
+            if (key == GLFW.GLFW_KEY_ESCAPE) bindingModule.setKey(-1);
+            else ModuleManager.assignKey(bindingModule, key);
+            bindingModule = null;
+            Config.save();
+            return true;
+        }
+        if (searchFocused) {
+            if (key == GLFW.GLFW_KEY_ESCAPE || key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) { searchFocused = false; return true; }
+            if (key == GLFW.GLFW_KEY_BACKSPACE) { if (!searchQuery.isEmpty()) searchQuery = searchQuery.substring(0, searchQuery.length() - 1); return true; }
+            String typed = keyText(key);
+            if (typed != null && searchQuery.length() < 40) searchQuery += typed;
+            return true;
+        }
+        if (key == Config.guiKey || key == GLFW.GLFW_KEY_ESCAPE) { close(); return true; }
         return super.keyPressed(input);
+    }
+    private static String keyText(int key) {
+        if (key >= GLFW.GLFW_KEY_A && key <= GLFW.GLFW_KEY_Z) return String.valueOf((char)('a' + key - GLFW.GLFW_KEY_A));
+        if (key >= GLFW.GLFW_KEY_0 && key <= GLFW.GLFW_KEY_9) return String.valueOf((char)('0' + key - GLFW.GLFW_KEY_0));
+        if (key == GLFW.GLFW_KEY_SPACE) return " ";
+        if (key == GLFW.GLFW_KEY_MINUS) return "-";
+        if (key == GLFW.GLFW_KEY_PERIOD) return ".";
+        return null;
+    }
+    private float hoverValue(String id, boolean over) {
+        float value = hoverValues.getOrDefault(id, 0.0f);
+        value += ((over ? 1.0f : 0.0f) - value) * 0.28f;
+        hoverValues.put(id, value);
+        return value;
+    }
+    private static String keyLabel(int key) {
+        if (key < 0) return "UNBOUND";
+        if (key >= GLFW.GLFW_KEY_A && key <= GLFW.GLFW_KEY_Z) return String.valueOf((char)('A' + key - GLFW.GLFW_KEY_A));
+        if (key >= GLFW.GLFW_KEY_0 && key <= GLFW.GLFW_KEY_9) return String.valueOf((char)('0' + key - GLFW.GLFW_KEY_0));
+        return switch (key) {
+            case GLFW.GLFW_KEY_SPACE -> "SPACE";
+            case GLFW.GLFW_KEY_LEFT_SHIFT -> "L-SHIFT";
+            case GLFW.GLFW_KEY_RIGHT_SHIFT -> "R-SHIFT";
+            case GLFW.GLFW_KEY_LEFT_CONTROL -> "L-CTRL";
+            case GLFW.GLFW_KEY_RIGHT_CONTROL -> "R-CTRL";
+            case GLFW.GLFW_KEY_LEFT_ALT -> "L-ALT";
+            case GLFW.GLFW_KEY_RIGHT_ALT -> "R-ALT";
+            default -> "KEY " + key;
+        };
     }
 
     private static void restoreTabs() {
@@ -121,7 +169,10 @@ public final class NightfallGuiScreen extends Screen {
             if (tab.equals(activeTab)) {
                 ctx.fill(14, y, SIDE + 14, y + 32, 0xD52C1552);
                 ctx.fill(14, y, 17, y + 32, Theme.ACCENT);
-            } else if (over) ctx.fill(14, y, SIDE + 14, y + 32, 0x553B2A59);
+            } else {
+                int hoverAlpha = Math.round(75 * hoverValue("tab:" + tab, over));
+                if (hoverAlpha > 0) ctx.fill(14, y, SIDE + 14, y + 32, Theme.withAlpha(Theme.ACCENT, hoverAlpha));
+            }
             ctx.drawText(mc.textRenderer, icon(tab) + "  " + tab, 27, y + 11, tab.equals(activeTab) ? Theme.TEXT : Theme.TEXT_DIM, true);
             if (click && over) {
                 if (draggingTab && dragTab != null) {
