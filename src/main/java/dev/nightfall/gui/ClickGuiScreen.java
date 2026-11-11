@@ -60,6 +60,8 @@ public class ClickGuiScreen extends Screen {
     private String messageDraft = "";
     private float scroll;
     private int panelX, panelW, viewportTop, viewportBottom;
+    private int panelOffsetX;
+    private boolean draggingPanel;
 
     public ClickGuiScreen() {
         super(Text.literal("Nightfall"));
@@ -195,7 +197,11 @@ public class ClickGuiScreen extends Screen {
         ctx.fill(0, 0, width, 2, Theme.ACCENT);
         ctx.fill(0, height - 2, width, height, Theme.ACCENT_DIM);
         panelW = Math.min(860, width - 36);
-        panelX = (width - panelW) / 2;
+        if (draggingPanel && l) panelOffsetX = mx - width / 2;
+        if (!l) draggingPanel = false;
+        int maxOffset = Math.max(0, (width - panelW) / 2 - 8);
+        panelOffsetX = Math.max(-maxOffset, Math.min(maxOffset, panelOffsetX));
+        panelX = (width - panelW) / 2 + panelOffsetX;
         viewportTop = HEADER_TOP;
         viewportBottom = Math.max(viewportTop + 40, height - FOOTER_H - 8);
 
@@ -213,7 +219,8 @@ public class ClickGuiScreen extends Screen {
         ctx.fill(searchX, 30, searchX + searchW, 31, searchFocus ? Theme.ACCENT : Theme.ACCENT_DIM);
         String searchText = search.isEmpty() && !searchFocus ? "Module suchen..." : search + (searchFocus && (System.currentTimeMillis() / 500) % 2 == 0 ? "_" : "");
         ctx.drawText(mc.textRenderer, searchText, searchX + 9, 17, search.isEmpty() ? Theme.TEXT_DIM : Theme.TEXT, false);
-        if (clickL && in(mx, my, searchX, 9, searchW, 22)) { searchFocus = true; clickL = false; }
+        if (clickL && in(mx, my, searchX, 9, searchW, 22)) { searchFocus = true; draggingPanel = false; clickL = false; }
+        else if (clickL && in(mx, my, panelX, 5, panelW, 37)) { searchFocus = false; draggingPanel = true; clickL = false; }
         else if (clickL && searchFocus) searchFocus = false;
 
         if (!l) slider = null;
