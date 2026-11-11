@@ -4,6 +4,7 @@ import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.ModeSetting;
+import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Theme;
 
 /** Persistent ClickGUI theme editor. Custom mode exposes all RGB colors in the ClickGUI. */
@@ -20,6 +21,16 @@ public final class GUITheme extends Module {
     public GUITheme() {
         super("GUITheme", "ClickGUI-Presets, Design und frei einstellbare RGB-Farben.", Category.VISUALS);
         setEnabled(true);
+    }
+
+    public double getGuiScale() { return guiScale.get(); }
+
+    public double getAnimationSpeed() {
+        return switch (animations.get()) {
+            case "Fast" -> 20.0;
+            case "Aus" -> 1000.0;
+            default -> 10.0;
+        };
     }
 
     public boolean prepareColorEdit(ColorSetting selected) {
