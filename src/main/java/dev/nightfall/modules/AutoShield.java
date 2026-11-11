@@ -14,7 +14,7 @@ import net.minecraft.util.Hand;
 public final class AutoShield extends Module {
     private final NumberSetting range = add(new NumberSetting("Erkennungsreichweite", 5.0, 2.0, 8.0, 0.5));
     private final NumberSetting holdTicks = add(new NumberSetting("Blockdauer (Ticks)", 7, 2, 15, 1));
-    private final BoolSetting requireVisible = add(new BoolSetting("Nur sichtbare Gegner", true));
+    private final BoolSetting requireVisible = add(new BoolSetting("Nur sichtbare Gegner", false));
 
     private int ticksRemaining;
     private boolean ownsUseKey;
