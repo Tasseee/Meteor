@@ -77,6 +77,15 @@ tasks.named("compileJava") {
     dependsOn tasks.named("downloadSeedCracker")
 }
 
+// Include SeedCrackerX at the exact path declared in fabric.mod.json so Fabric can load
+// the nested mod and its API at runtime, not just compile against it.
+tasks.named("jar") {
+    dependsOn tasks.named("downloadSeedCracker")
+    from(seedCrackerJar) {
+        into "META-INF/jars"
+    }
+}
+
 tasks.named("remapSourcesJar") {
     dependsOn tasks.named("downloadSeedCracker")
 }
