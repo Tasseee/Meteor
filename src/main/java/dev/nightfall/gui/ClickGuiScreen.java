@@ -233,6 +233,10 @@ public class ClickGuiScreen extends Screen {
             slider.set(slider.min + Math.max(0, Math.min(1, t)) * (slider.max - slider.min));
         }
 
+        Module hovered = null;
+        boolean modalOpen = editingMessages != null || editingString != null || editingColor != null;
+        if (modalOpen) { clickL = false; clickM = false; }
+
         List<Module> displayedModules = selectedCategory == null ? List.of() : visible(selectedCategory);
         int contentX = panelX + SIDEBAR_W + 8;
         int contentW = Math.max(120, panelW - SIDEBAR_W - 16);
