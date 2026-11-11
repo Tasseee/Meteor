@@ -30,7 +30,7 @@ import java.util.Set;
  * reveals its settings in-place. There is deliberately no secondary/side settings pane.
  */
 public class ClickGuiScreen extends Screen {
-    private static final int HEADER_TOP = 48;
+    private static final int HEADER_TOP = 52;
     private static final int CATEGORY_H = 32;
     private static final int MODULE_H = 29;
     private static final int SETTING_H = 23;
@@ -194,16 +194,18 @@ public class ClickGuiScreen extends Screen {
         ctx.fill(0, 0, width, height, Theme.BG_DIM);
         ctx.fill(0, 0, width, 2, Theme.ACCENT);
         ctx.fill(0, height - 2, width, height, Theme.ACCENT_DIM);
-        panelW = Math.min(720, width - 36);
+        panelW = Math.min(860, width - 36);
         panelX = (width - panelW) / 2;
         viewportTop = HEADER_TOP;
         viewportBottom = Math.max(viewportTop + 40, height - FOOTER_H - 8);
 
         // Fixed app-style top bar with a clear brand lockup.
-        ctx.fill(panelX, 5, panelX + panelW, 39, Theme.PANEL);
-        ctx.fill(panelX, 5, panelX + 3, 39, Theme.ACCENT);
+        ctx.fill(panelX - 1, 4, panelX + panelW + 1, 42, Theme.withAlpha(Theme.ACCENT, 65));
+        ctx.fill(panelX, 5, panelX + panelW, 41, Theme.HUD_PANEL);
+        ctx.fill(panelX, 5, panelX + 3, 41, Theme.ACCENT);
+        ctx.fill(panelX + 3, 5, panelX + panelW, 6, Theme.withAlpha(Theme.ACCENT, 130));
         ctx.drawText(mc.textRenderer, "NIGHTFALL", panelX + 13, 10, Theme.TEXT, true);
-        ctx.drawText(mc.textRenderer, "CLIENT  /  MODULES", panelX + 13, 24, Theme.TEXT_DIM, false);
+        ctx.drawText(mc.textRenderer, "PREMIUM CLIENT  /  MODULE CONTROL", panelX + 13, 24, Theme.TEXT_DIM, false);
         ctx.drawText(mc.textRenderer, Nightfall.VERSION, panelX + 132, 11, Theme.ACCENT, false);
         int searchW = Math.min(240, panelW - 170);
         int searchX = panelX + panelW - searchW - 10;
@@ -239,7 +241,8 @@ public class ClickGuiScreen extends Screen {
         float maxScroll = Math.max(0, totalHeight - (viewportBottom - viewportTop));
         scroll = Math.max(0, Math.min(maxScroll, scroll));
 
-        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportBottom, Theme.PANEL);
+        ctx.fill(panelX - 1, viewportTop - 5, panelX + panelW + 1, viewportBottom + 1, Theme.withAlpha(Theme.ACCENT, 48));
+        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportBottom, Theme.HUD_PANEL);
         ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportTop - 2, Theme.ACCENT_DIM);
         ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportTop - 2, Theme.ACCENT_DIM);
         ctx.enableScissor(panelX, viewportTop, panelX + panelW, viewportBottom);
@@ -327,7 +330,8 @@ public class ClickGuiScreen extends Screen {
         } else if (System.currentTimeMillis() < noticeUntil) drawNotice(ctx, notice, 0xFFFFD27A);
 
         String footer = "L Optionen  ·  R Einstellungen  ·  M Keybind  ·  Mausrad Scroll";
-        ctx.fill(panelX, height - 22, panelX + panelW, height - 4, Theme.PANEL);
+        ctx.fill(panelX - 1, height - 23, panelX + panelW + 1, height - 3, Theme.withAlpha(Theme.ACCENT, 60));
+        ctx.fill(panelX, height - 22, panelX + panelW, height - 4, Theme.HUD_PANEL);
         ctx.drawText(mc.textRenderer, footer, panelX + 10, height - 16, Theme.TEXT_DIM, false);
         ctx.drawText(mc.textRenderer, Nightfall.VERSION, panelX + panelW - 10 - mc.textRenderer.getWidth(Nightfall.VERSION), height - 16, Theme.ACCENT, false);
     }
