@@ -1,35 +1,35 @@
 package dev.nightfall.util;
 
 public final class Theme {
-    public static int BG_DIM      = 0x8C000000;
-    public static int PANEL       = 0xE6141418;
-    public static int HEADER_TOP  = 0xF00B2025;
-    public static int HEADER_BOT  = 0xF010111A;
-    public static int ROW_HOVER   = 0x30FFFFFF;
-    public static int ACCENT      = 0xFF35E0D0;
-    public static int ACCENT_DIM  = 0xFF6941C6;
-    public static int ACCENT_BG   = 0x5535E0D0;
-    public static int TEXT        = 0xFFE8E8F0;
-    public static int TEXT_DIM    = 0xFF9A9AAE;
-    public static int MAP_BG      = 0x0E0E12;
-    public static int HUD_PANEL   = 0xC910121B;
-    public static int HUD_EDGE    = 0xFF35E0D0;
+    public static int BG_DIM      = 0x8C08060D;
+    public static int PANEL       = 0xD9171222;
+    public static int HEADER_TOP  = 0xF05B35B8;
+    public static int HEADER_BOT  = 0xF0171222;
+    public static int ROW_HOVER   = 0x30B66CFF;
+    public static int ACCENT      = 0xFFB66CFF;
+    public static int ACCENT_DIM  = 0xFF5B35B8;
+    public static int ACCENT_BG   = 0x55B66CFF;
+    public static int TEXT        = 0xFFF1EAFE;
+    public static int TEXT_DIM    = 0xFFB2A4CC;
+    public static int MAP_BG      = 0x171222;
+    public static int HUD_PANEL   = 0xC9171222;
+    public static int HUD_EDGE    = 0xFFB66CFF;
 
-    public static final int[] PALETTE = {0x35E0D0, 0x8B5CF6, 0xEF4444, 0x22C55E, 0x3B82F6, 0xF59E0B, 0xEC4899, 0xFFFFFF};
+    public static final int[] PALETTE = {0xB66CFF, 0x8B5CF6, 0xEF4444, 0x22C55E, 0x3B82F6, 0xF59E0B, 0xEC4899, 0xFFFFFF};
 
-    public static String DESIGN = "Gradient";
+    public static String DESIGN = "Glass";
 
-    private static final int DEFAULT_BG_DIM = 0x8C000000;
-    private static final int DEFAULT_PANEL = 0xE6141418;
-    private static final int DEFAULT_HEADER_TOP = 0xF00B2025;
-    private static final int DEFAULT_HEADER_BOT = 0xF010111A;
-    private static final int DEFAULT_ROW_HOVER = 0x30FFFFFF;
-    private static final int DEFAULT_ACCENT = 0xFF35E0D0;
-    private static final int DEFAULT_ACCENT_DIM = 0xFF6941C6;
-    private static final int DEFAULT_ACCENT_BG = 0x5535E0D0;
-    private static final int DEFAULT_TEXT = 0xFFE8E8F0;
-    private static final int DEFAULT_TEXT_DIM = 0xFF9A9AAE;
-    private static final int DEFAULT_MAP_BG = 0x0E0E12;
+    private static final int DEFAULT_BG_DIM = 0x8C08060D;
+    private static final int DEFAULT_PANEL = 0xD9171222;
+    private static final int DEFAULT_HEADER_TOP = 0xF05B35B8;
+    private static final int DEFAULT_HEADER_BOT = 0xF0171222;
+    private static final int DEFAULT_ROW_HOVER = 0x30B66CFF;
+    private static final int DEFAULT_ACCENT = 0xFFB66CFF;
+    private static final int DEFAULT_ACCENT_DIM = 0xFF5B35B8;
+    private static final int DEFAULT_ACCENT_BG = 0x55B66CFF;
+    private static final int DEFAULT_TEXT = 0xFFF1EAFE;
+    private static final int DEFAULT_TEXT_DIM = 0xFFB2A4CC;
+    private static final int DEFAULT_MAP_BG = 0x171222;
 
     public static void apply(int accent, int secondary, int panel, int text, int dim, int overlay, String design) {
         ACCENT = 0xFF000000 | (accent & 0xFFFFFF);
@@ -46,14 +46,14 @@ public final class Theme {
         MAP_BG = panel & 0xFFFFFF;
         HUD_PANEL = ("Glass".equals(design) ? 0xA8000000 : 0xD9000000) | (panel & 0xFFFFFF);
         HUD_EDGE = 0xFF000000 | (accent & 0xFFFFFF);
-        DESIGN = design == null ? "Gradient" : design;
+        DESIGN = design == null ? "Glass" : design;
     }
 
     public static void reset() {
         BG_DIM = DEFAULT_BG_DIM; PANEL = DEFAULT_PANEL; HEADER_TOP = DEFAULT_HEADER_TOP;
         HEADER_BOT = DEFAULT_HEADER_BOT; ROW_HOVER = DEFAULT_ROW_HOVER; ACCENT = DEFAULT_ACCENT;
         ACCENT_DIM = DEFAULT_ACCENT_DIM; ACCENT_BG = DEFAULT_ACCENT_BG; TEXT = DEFAULT_TEXT;
-        TEXT_DIM = DEFAULT_TEXT_DIM; MAP_BG = DEFAULT_MAP_BG; HUD_PANEL = 0xC910121B; HUD_EDGE = DEFAULT_ACCENT; DESIGN = "Gradient";
+        TEXT_DIM = DEFAULT_TEXT_DIM; MAP_BG = DEFAULT_MAP_BG; HUD_PANEL = 0xC9171222; HUD_EDGE = DEFAULT_ACCENT; DESIGN = "Glass";
     }
 
     private Theme() {}
