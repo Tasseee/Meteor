@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 public class Nightfall implements ClientModInitializer {
     public static final String NAME = "Nightfall";
-    public static final String VERSION = "0.5.15";
+    public static final String VERSION = "0.5.18";
     public static final Logger LOGGER = LoggerFactory.getLogger("nightfall");
 
     private boolean prevGui, prevHud, prevMap;
