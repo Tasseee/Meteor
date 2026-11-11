@@ -22,7 +22,7 @@ import net.minecraft.util.math.Vec3d;
  */
 public class AutoPvp extends Module {
     private final NumberSetting follow = add(new NumberSetting("Verfolgen bis (Bloecke)", 14, 4, 32, 1));
-    private final NumberSetting stop = add(new NumberSetting("Abstand halten", 2.6, 1.5, 5, 0.1));
+    private final NumberSetting stop = add(new NumberSetting("Abstand halten", 0.9, 0.8, 2.5, 0.1));
     private final NumberSetting reach = add(new NumberSetting("Angriffsreichweite", 3.2, 1.0, 6.0, 0.1));
     private final NumberSetting turnSpeed = add(new NumberSetting("Drehgeschwindigkeit", 16, 3, 35, 1));
     private final BoolSetting smoothLook = add(new BoolSetting("Smooth Rotation", true));
@@ -31,6 +31,8 @@ public class AutoPvp extends Module {
     private final NumberSetting doubleTapWindow = add(new NumberSetting("DTap-Zeitfenster (Ticks)", 18, 6, 40, 1));
     private final BoolSetting strafe = add(new BoolSetting("Strafen", true));
     private final BoolSetting jump = add(new BoolSetting("Springen bei Hindernis", true));
+    private final BoolSetting sprintJump = add(new BoolSetting("Sprint-Jumps beim Verfolgen", true));
+    private final BoolSetting preferCrits = add(new BoolSetting("Kritische Treffer bevorzugen", true));
     private final BoolSetting useStunSlam = add(new BoolSetting("Stun-Slam (Windcharge -> Mace)", true));
     private final BoolSetting useShieldBreak = add(new BoolSetting("Schild mit Axt kontern", true));
     private final BoolSetting useAutoGap = add(new BoolSetting("AutoGap integrieren", true));
@@ -321,9 +323,13 @@ public class AutoPvp extends Module {
             return;
         }
 
+        // Stay close instead of orbiting at the old 2.6-block default.
         boolean approach = distance > stop.get() && safeForward(p, target);
+        boolean targetAirborne = !target.isOnGround() || target.getVelocity().y > 0.08;
+        boolean chasing = distance > reach.get() + 0.35;
+        boolean sprintingChase = approach && (distance > stop.get() + 0.5 || targetAirborne);
         mc.options.forwardKey.setPressed(approach);
-        mc.options.sprintKey.setPressed(approach && distance > stop.get() + 1.5);
+        mc.options.sprintKey.setPressed(sprintingChase && !(preferCrits.get() && !p.isOnGround() && p.getVelocity().y < 0));
         if (strafe.get() && distance <= reach.get() + 1.5) {
             if (strafeTimer-- <= 0) {
                 strafeDir = -strafeDir;
@@ -337,12 +343,26 @@ public class AutoPvp extends Module {
         }
 
         boolean obstacle = p.horizontalCollision;
-        mc.options.jumpKey.setPressed(jump.get() && obstacle && p.isOnGround() && clearAbove(p, 2));
+        boolean chaseJump = sprintJump.get() && chasing && p.isOnGround() && clearAbove(p, 2);
+        boolean antiAirJump = sprintJump.get() && targetAirborne && distance > stop.get() + 0.25
+                && p.isOnGround() && clearAbove(p, 2);
+        mc.options.jumpKey.setPressed((jump.get() && obstacle && p.isOnGround() && clearAbove(p, 2))
+                || chaseJump || antiAirJump);
         driving = true;
 
         updateShieldAxe(target);
         if (!attack.get() || distance > reach.get() || !p.canSee(target)
                 || p.getAttackCooldownProgress(0.5f) < 0.95f) return;
+
+        // A vanilla critical hit requires a falling, non-sprinting player.
+        // Keep chasing with sprint-jumps, then briefly release sprint for the
+        // descending hit window. If no crit window is available, do a normal hit.
+        boolean critWindow = !p.isOnGround() && p.fallDistance > 0.0f
+                && p.getVelocity().y < 0.0 && !p.isSprinting()
+                && !p.isClimbing() && !p.isTouchingWater() && !p.isInLava()
+                && !p.hasVehicle();
+        if (preferCrits.get() && !p.isOnGround() && p.fallDistance <= 0.0f
+                && p.getVelocity().y >= 0.0) return;
 
         // Ordinary hits use a sword rather than punching with an empty hand.
         // Shield-break axe selection above remains the intentional exception.
