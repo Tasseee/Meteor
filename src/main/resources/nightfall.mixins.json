@@ -5,7 +5,8 @@
   "client": [
     "HeldItemRendererMixin",
     "CameraMixin",
-    "GameRendererAccessor"
+    "GameRendererAccessor",
+    "StatusEffectOverlayMixin"
   ],
   "injectors": {
     "defaultRequire": 1
