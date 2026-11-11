@@ -32,15 +32,8 @@ public final class Freecam extends Module {
     public static Vec3d interpolatedPosition(float tickDelta) {
         return previousCameraPosition.lerp(cameraPosition, Math.max(0.0f, Math.min(1.0f, tickDelta)));
     }
-    public static float interpolatedYaw(float tickDelta) {
-        float difference = (cameraYaw - previousCameraYaw) % 360.0f;
-        if (difference >= 180.0f) difference -= 360.0f;
-        if (difference < -180.0f) difference += 360.0f;
-        return previousCameraYaw + difference * Math.max(0.0f, Math.min(1.0f, tickDelta));
-    }
-    public static float interpolatedPitch(float tickDelta) {
-        return previousCameraPitch + (cameraPitch - previousCameraPitch) * Math.max(0.0f, Math.min(1.0f, tickDelta));
-    }
+    public static float interpolatedYaw(float tickDelta) { return cameraYaw; }
+    public static float interpolatedPitch(float tickDelta) { return cameraPitch; }
 
     private boolean activateIfReady() {
         if (mc.player == null || mc.world == null) return false;
@@ -92,7 +85,7 @@ public final class Freecam extends Module {
             double dx = Math.max(-100.0, Math.min(100.0, x[0] - lastMouseX));
             double dy = Math.max(-100.0, Math.min(100.0, y[0] - lastMouseY));
             cameraYaw += (float) (dx * sensitivity.get());
-            cameraPitch += (float) (dy * sensitivity.get());
+            cameraPitch -= (float) (dy * sensitivity.get());
             cameraPitch = Math.max(-90.0f, Math.min(90.0f, cameraPitch));
         }
         lastMouseX = x[0];
