@@ -3,7 +3,7 @@ plugins {
     id 'maven-publish'
 }
 
-version = '0.5.15'
+version = '0.5.16'
 group = 'dev.nightfall'
 base { archivesName = 'nightfall' }
 
@@ -68,14 +68,6 @@ tasks.register("downloadSeedCracker") {
     }
 }
 
-processResources {
-    dependsOn tasks.named("downloadSeedCracker")
-    from(seedCrackerJar) {
-        into "META-INF/jars"
-    }
-}
-
-
 // Compile against the bundled mod's public callback API; runtime is supplied by Fabric's nested-mod loader.
 dependencies {
     compileOnly files(seedCrackerJar)
@@ -89,7 +81,7 @@ tasks.named("remapSourcesJar") {
     dependsOn tasks.named("downloadSeedCracker")
 }
 
- 
+
 // Generate the mod icon as a PNG resource so Fabric-compatible launchers can display it.
 def generatedIconDir = layout.buildDirectory.dir("generated/nightfall-icon")
 sourceSets.main.resources.srcDir(generatedIconDir)
