@@ -18,7 +18,7 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
-/** Fast CrystalAura: priorisiert schnelles Platzieren und Zerstoeren ohne Schadens- oder Selbstschutzpruefung. */
+/** CrystalAura mit getrenntem Crystal-Break und zielbasiertem Placement. */
 public class CrystalAura extends Module {
     private final NumberSetting targetRange = add(new NumberSetting("Ziel-Reichweite", 10, 4, 16, 1));
     private final NumberSetting placeRange  = add(new NumberSetting("Platzier-Reichweite", 4.5, 2, 6, 0.5));
@@ -31,9 +31,10 @@ public class CrystalAura extends Module {
     private int placeT, breakT;
 
     @Override public void onWorldLeave() { placeT = 0; breakT = 0; }
+    @Override protected void onDisable() { placeT = 0; breakT = 0; }
 
     public CrystalAura() {
-        super("CrystalAura", "Platziert und zerstoert End Crystals mit maximaler Geschwindigkeit.", Category.COMBAT);
+        super("CrystalAura", "Platziert und zerstoert End Crystals.", Category.COMBAT);
     }
 
     @Override
@@ -43,16 +44,13 @@ public class CrystalAura extends Module {
         if (placeT > 0) placeT--;
         if (breakT > 0) breakT--;
 
-        PlayerEntity t = CombatUtil.nearestPlayer(targetRange.get());
-        if (t == null) return;
-
-        // Crystal breaking hat Prioritaet; im naechsten Tick kann direkt wieder platziert werden.
+        // Break darf nicht davon abhaengen, ob gerade ein Spieler als Ziel gefunden wurde.
         if (breakC.get() && breakT == 0) {
             EndCrystalEntity best = null;
             double bestDistance = Double.MAX_VALUE;
             for (Entity e : mc.world.getEntities()) {
                 if (!(e instanceof EndCrystalEntity c) || !c.isAlive() || p.distanceTo(c) > breakRange.get()) continue;
-                double distance = c.squaredDistanceTo(t);
+                double distance = c.squaredDistanceTo(p);
                 if (distance < bestDistance) {
                     bestDistance = distance;
                     best = c;
@@ -67,50 +65,53 @@ public class CrystalAura extends Module {
         }
 
         if (!place.get() || placeT > 0) return;
+        PlayerEntity target = CombatUtil.nearestPlayer(targetRange.get());
+        if (target == null) return;
 
         Hand hand = p.getOffHandStack().isOf(Items.END_CRYSTAL) ? Hand.OFF_HAND
                 : p.getMainHandStack().isOf(Items.END_CRYSTAL) ? Hand.MAIN_HAND : null;
-        int slot = -1;
         if (hand == null) {
             if (!autoSwitch.get()) return;
-            slot = InvUtil.ensureHotbar(Items.END_CRYSTAL);
+            int slot = InvUtil.ensureHotbar(Items.END_CRYSTAL);
             if (slot < 0) return;
+            InvUtil.select(slot);
+            hand = Hand.MAIN_HAND;
         }
 
-        BlockPos base = p.getBlockPos();
+        BlockPos origin = p.getBlockPos();
         int r = (int) Math.ceil(placeRange.get());
         BlockPos bestPos = null;
         double bestDistance = Double.MAX_VALUE;
-        for (int x = -r; x <= r; x++) for (int y = -r; y <= r; y++) for (int z = -r; z <= r; z++) {
-            BlockPos bp = base.add(x, y, z);
-            var st = mc.world.getBlockState(bp);
-            if (!(st.isOf(Blocks.OBSIDIAN) || st.isOf(Blocks.BEDROCK))) continue;
-            BlockPos up = bp.up();
-            if (!mc.world.getBlockState(up).isAir() || !mc.world.getBlockState(up.up()).isAir()) continue;
+        for (int x = -r; x <= r; x++) {
+            for (int y = -r; y <= r; y++) {
+                for (int z = -r; z <= r; z++) {
+                    BlockPos bp = origin.add(x, y, z);
+                    if (p.getEyePos().distanceTo(Vec3d.ofCenter(bp)) > placeRange.get() + 1.0) continue;
+                    var state = mc.world.getBlockState(bp);
+                    if (!(state.isOf(Blocks.OBSIDIAN) || state.isOf(Blocks.BEDROCK))) continue;
+                    BlockPos up = bp.up();
+                    if (!mc.world.getBlockState(up).isAir() || !mc.world.getBlockState(up.up()).isAir()) continue;
 
-            Vec3d top = new Vec3d(bp.getX() + 0.5, bp.getY() + 1.0, bp.getZ() + 0.5);
-            if (p.getEyePos().distanceTo(top) > placeRange.get()) continue;
-            if (t.getEntityPos().distanceTo(top) > 12) continue;
+                    Box crystalSpace = new Box(bp.getX(), bp.getY() + 1, bp.getZ(),
+                            bp.getX() + 1, bp.getY() + 3, bp.getZ() + 1);
+                    if (!mc.world.getOtherEntities(null, crystalSpace).isEmpty()) continue;
 
-            Box clear = new Box(bp.getX(), bp.getY() + 1, bp.getZ(), bp.getX() + 1, bp.getY() + 3, bp.getZ() + 1);
-            if (!mc.world.getOtherEntities(null, clear).isEmpty()) continue;
-
-            double distance = t.squaredDistanceTo(top);
-            if (distance < bestDistance) {
-                bestDistance = distance;
-                bestPos = bp;
+                    Vec3d crystalPos = new Vec3d(bp.getX() + 0.5, bp.getY() + 1.0, bp.getZ() + 0.5);
+                    double targetDistance = target.squaredDistanceTo(crystalPos);
+                    if (targetDistance > 12.0 * 12.0) continue;
+                    if (targetDistance < bestDistance) {
+                        bestDistance = targetDistance;
+                        bestPos = bp.toImmutable();
+                    }
+                }
             }
         }
 
-        if (bestPos != null) {
-            if (hand == null) {
-                InvUtil.select(slot);
-                hand = Hand.MAIN_HAND;
-            }
-            Vec3d hit = new Vec3d(bestPos.getX() + 0.5, bestPos.getY() + 1.0, bestPos.getZ() + 0.5);
-            mc.interactionManager.interactBlock(p, hand, new BlockHitResult(hit, Direction.UP, bestPos, false));
-            p.swingHand(hand);
-            placeT = placeDelay.getInt();
-        }
+        if (bestPos == null) return;
+        Vec3d hit = new Vec3d(bestPos.getX() + 0.5, bestPos.getY() + 1.0, bestPos.getZ() + 0.5);
+        BlockHitResult hitResult = new BlockHitResult(hit, Direction.UP, bestPos, false);
+        mc.interactionManager.interactBlock(p, hand, hitResult);
+        p.swingHand(hand);
+        placeT = placeDelay.getInt();
     }
 }
