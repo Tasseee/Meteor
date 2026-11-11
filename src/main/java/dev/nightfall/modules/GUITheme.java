@@ -8,7 +8,7 @@ import dev.nightfall.util.Theme;
 
 /** Persistent ClickGUI theme editor. Custom mode exposes all RGB colors in the ClickGUI. */
 public final class GUITheme extends Module {
-    private final ModeSetting preset = add(new ModeSetting("Preset", "Violet", "Nightfall", "Violet", "Crimson", "Emerald", "Ocean", "Mono", "Custom"));
+    private final ModeSetting preset = add(new ModeSetting("Preset", "Nightfall", "Nightfall", "Violet", "Crimson", "Emerald", "Ocean", "Mono", "Custom"));
     private final ModeSetting design = add(new ModeSetting("Design", "Glass", "Gradient", "Flat", "Glass"));
     private final ColorSetting accent = add(new ColorSetting("Akzentfarbe", 0xB66CFF));
     private final ColorSetting secondary = add(new ColorSetting("Sekundärfarbe", 0x5B35B8));
