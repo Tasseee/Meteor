@@ -11,6 +11,8 @@ import dev.nightfall.util.Theme;
 public final class GUITheme extends Module {
     private final ModeSetting preset = add(new ModeSetting("Preset", "Nightfall", "Nightfall", "Violet", "Crimson", "Emerald", "Ocean", "Mono", "Custom"));
     private final ModeSetting design = add(new ModeSetting("Design", "Glass", "Gradient", "Flat", "Glass"));
+    private final NumberSetting guiScale = add(new NumberSetting("GUI-Skalierung", 1.0, 0.75, 1.25, 0.05));
+    private final ModeSetting animations = add(new ModeSetting("Animationen", "Smooth", "Smooth", "Fast", "Aus"));
     private final ColorSetting accent = add(new ColorSetting("Akzentfarbe", 0xB66CFF));
     private final ColorSetting secondary = add(new ColorSetting("Sekundärfarbe", 0x5B35B8));
     private final ColorSetting panel = add(new ColorSetting("Panel-Farbe", 0x171222));
