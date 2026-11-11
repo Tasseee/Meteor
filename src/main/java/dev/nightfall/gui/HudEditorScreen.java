@@ -69,18 +69,14 @@ public class HudEditorScreen extends Screen {
         if (keyG) Config.snapGrid = !Config.snapGrid;
 
         ctx.fill(0, 0, width, height, Theme.BG_DIM);
-        ctx.fill(0, 0, width, 3, Theme.ACCENT);
-        ctx.fill(0, height - 3, width, height, Theme.ACCENT_DIM);
-        ctx.fill(12, 10, 238, 43, Theme.PANEL);
-        ctx.fill(12, 10, 15, 43, Theme.ACCENT);
-        ctx.drawText(mc.textRenderer, "NIGHTFALL  /  HUD STUDIO", 23, 17, Theme.TEXT, true);
-        ctx.drawText(mc.textRenderer, "LAYOUT EDITOR", 23, 29, Theme.TEXT_DIM, false);
-        ctx.fill(0, 0, width, 3, Theme.ACCENT);
-        ctx.fill(0, height - 3, width, height, Theme.ACCENT_DIM);
-        ctx.fill(12, 10, 238, 43, Theme.PANEL);
-        ctx.fill(12, 10, 15, 43, Theme.ACCENT);
-        // Subtle shared accent wash keeps the editor visually consistent with ClickGUI.
-        ctx.fill(0, 0, width, 2, Theme.withAlpha(Theme.ACCENT, 110));
+        ctx.fill(0, 0, width, 2, Theme.ACCENT);
+        ctx.fill(0, height - 2, width, height, Theme.ACCENT_DIM);
+        // Compact glass-style editor header with consistent NIGHTFALL branding.
+        ctx.fill(12, 10, 244, 46, Theme.HUD_PANEL);
+        ctx.fill(12, 10, 15, 46, Theme.ACCENT);
+        ctx.fill(15, 10, 244, 11, Theme.withAlpha(Theme.ACCENT, 150));
+        ctx.drawText(mc.textRenderer, "NIGHTFALL", 24, 16, Theme.TEXT, true);
+        ctx.drawText(mc.textRenderer, "HUD STUDIO  /  LAYOUT EDITOR", 24, 29, Theme.TEXT_DIM, false);
         if (Config.snapGrid) {
             int g = Math.max(2, Config.gridSize * 4);
             for (int x = 0; x < width; x += g) ctx.fill(x, 0, x + 1, height, 0x14FFFFFF);
@@ -127,7 +123,7 @@ public class HudEditorScreen extends Screen {
             if (e.isLocked()) ctx.drawText(mc.textRenderer, "L", p[0] + ew - 7, p[1] + 1, 0xFFFFD27A, false);
         }
 
-        String help = "Ziehen: verschieben | Rechtsklick: ein/aus | Mausrad: Groesse | Mittelklick: sperren | R: reset | G: Raster "
+        String help = "DRAG: MOVE  |  RIGHT CLICK: TOGGLE  |  SCROLL: SCALE  |  MIDDLE: LOCK  |  R: RESET  |  G: GRID "
                 + (Config.snapGrid ? "an" : "aus");
         int helpW = Math.min(width - 24, mc.textRenderer.getWidth(help) + 22);
         int helpX = (width - helpW) / 2;
