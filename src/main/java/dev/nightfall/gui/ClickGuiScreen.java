@@ -330,6 +330,8 @@ public class ClickGuiScreen extends Screen {
                 int cardY = Math.round(y) + offset[1];
                 float mp = MODULE_PROGRESS.getOrDefault(mod, 0f);
                 int cardH = (int) Math.ceil(cardHeights.get(first + col));
+                cardX = Math.max(contentX, Math.min(contentX + contentW - cardW, cardX));
+                cardY = Math.max(cardsTop, Math.min(viewportBottom - MODULE_H, cardY));
                 boolean cardVisible = cardY + cardH >= cardsTop && cardY <= viewportBottom;
                 if (!cardVisible) continue;
                 boolean cardHovered = in(mx, my, cardX, cardY, cardW, cardH) && my >= cardsTop && my < viewportBottom;
