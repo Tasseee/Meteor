@@ -19,6 +19,8 @@ import net.minecraft.util.Hand;
  */
 public class MaceAssist extends Module {
     private final NumberSetting minFall   = add(new NumberSetting("Min. Fallhoehe", 1.5, 1.5, 20, 0.5));
+    private final NumberSetting range     = add(new NumberSetting("Angriffs-Reichweite", 3.2, 1.0, 6.0, 0.1));
+    private final BoolSetting visibleOnly = add(new BoolSetting("Nur sichtbares Ziel", true));
     private final BoolSetting autoSwitch  = add(new BoolSetting("Auto-Switch zur Mace", true));
     private final BoolSetting switchBack  = add(new BoolSetting("Zurueckwechseln", true));
     private final BoolSetting autoAttack  = add(new BoolSetting("Auto-Angriff", true));
@@ -73,6 +75,8 @@ public class MaceAssist extends Module {
         if (!autoAttack.get() || !(t instanceof LivingEntity le) || !le.isAlive()) return;
         if (le instanceof PlayerEntity pe) { if (!players.get() || CombatUtil.isFriend(pe)) return; }
         else if (!mobs.get()) return;
+        if (p.distanceTo(le) > range.get()) return;
+        if (visibleOnly.get() && !p.canSee(le)) return;
         if (p.getAttackCooldownProgress(0.5f) < 0.95f) return;
         mc.interactionManager.attackEntity(p, le);
         p.swingHand(Hand.MAIN_HAND);

@@ -17,7 +17,7 @@ public final class CooldownHud extends HudModule {
         setEnabled(true);
     }
 
-    @Override protected int[] defaultPos(int sw, int sh) { return new int[]{sw - 126, sh - 72}; }
+    @Override protected int[] defaultPos(int sw, int sh) { return new int[]{sw - 126, Math.max(4, sh - 166)}; }
 
     @Override protected void draw(DrawContext ctx) {
         if (mc.player == null) return;

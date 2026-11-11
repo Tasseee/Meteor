@@ -15,7 +15,7 @@ public class ModuleList extends HudModule {
 
     public ModuleList() { super("ModuleList", "Liste aktiver Module."); setEnabled(true); }
 
-    @Override protected int[] defaultPos(int sw, int sh) { return new int[]{sw - w - 4, 4}; }
+    @Override protected int[] defaultPos(int sw, int sh) { return new int[]{sw - w - 4, 112}; }
 
     @Override
     protected void draw(DrawContext ctx) {

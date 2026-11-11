@@ -26,14 +26,27 @@ public class WaypointHud extends HudModule {
         double px = mc.player.getX(), pz = mc.player.getZ();
         tmp.sort((a, b) -> Double.compare(Math.hypot(a.x - px, a.z - pz), Math.hypot(b.x - px, b.z - pz)));
         int n = Math.min(5, tmp.size());
-        w = 120; h = 12 + n * 10;
+        String[] lines = new String[n];
+        int widest = mc.textRenderer.getWidth("Waypoints");
+        for (int i = 0; i < n; i++) {
+            Waypoint waypoint = tmp.get(i);
+            lines[i] = waypoint.name + " " + (int) Math.hypot(waypoint.x - px, waypoint.z - pz) + "m";
+            widest = Math.max(widest, mc.textRenderer.getWidth(lines[i]));
+        }
+        w = Math.max(120, Math.min(210, widest + 12));
+        h = 12 + n * 10;
         ctx.fill(0, 0, w, h, Theme.HUD_PANEL);
         ctx.fill(0, 0, 2, h, Theme.ACCENT);
         ctx.drawText(mc.textRenderer, "Waypoints", 6, 2, Theme.TEXT_DIM, false);
         for (int i = 0; i < n; i++) {
-            Waypoint wp = tmp.get(i);
-            String s = wp.name + " " + (int) Math.hypot(wp.x - px, wp.z - pz) + "m";
-            ctx.drawText(mc.textRenderer, s, 6, 12 + i * 10, 0xFF000000 | wp.color, false);
+            Waypoint waypoint = tmp.get(i);
+            String line = trim(lines[i], w - 12);
+            ctx.drawText(mc.textRenderer, line, 6, 12 + i * 10, 0xFF000000 | waypoint.color, false);
         }
+    }
+
+    private String trim(String text, int maxWidth) {
+        while (mc.textRenderer.getWidth(text) > maxWidth && text.length() > 1) text = text.substring(0, text.length() - 2) + "…";
+        return text;
     }
 }

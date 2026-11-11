@@ -33,11 +33,19 @@ public class TrapCrit extends Module {
 
     public TrapCrit() { super("TrapCrit", "Treffer-Assistent fuer eingeschlossene Ziele (Crit/Cooldown).", Category.COMBAT); }
 
-    @Override protected void onDisable() { target = null; }
+    @Override protected void onDisable() { resetState(); }
+    @Override public void onWorldLeave() { resetState(); }
+
+    private void resetState() {
+        target = null;
+        trapped = false;
+        critReady = false;
+        cooldownProgress = 0.0f;
+    }
 
     @Override
     public void onTick() {
-        target = null;
+        resetState();
         ClientPlayerEntity p = mc.player;
         if (p == null || mc.world == null || mc.currentScreen != null || mc.interactionManager == null) return;
         Entity t = mc.targetedEntity;

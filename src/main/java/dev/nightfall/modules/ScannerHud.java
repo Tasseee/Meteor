@@ -21,7 +21,9 @@ public class ScannerHud extends HudModule {
         int gone = 0;
         for (ChunkResult r : bf.marks()) if (r.status == ChunkResult.Status.GONE) gone++;
         int shown = Math.min(top.size(), 5);
-        w = 190; h = 22 + shown * 10 + (gone > 0 ? 10 : 0);
+        w = 190;
+        // Header ends at y=25; entries start at y=27 and need their glyph height too.
+        h = 28 + shown * 10 + (gone > 0 ? 10 : 0);
         ctx.fill(0, 0, w, h, Theme.HUD_PANEL);
         ctx.fill(0, 0, 2, h, Theme.ACCENT);
         ctx.drawText(mc.textRenderer, "BaseFinder" + (bf.isPaused() ? "  PAUSE" : "")

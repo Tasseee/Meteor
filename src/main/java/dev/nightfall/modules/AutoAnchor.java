@@ -29,6 +29,7 @@ public class AutoAnchor extends Module {
     private int timer;
 
     @Override public void onWorldLeave() { timer = 0; }
+    @Override protected void onDisable() { timer = 0; }
 
     public AutoAnchor() { super("AutoAnchor", "Setzt, laedt und zuendet Respawn-Anker ueber dem Gegner.", Category.COMBAT); }
 
