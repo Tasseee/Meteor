@@ -18,7 +18,7 @@ public final class NotificationsHud extends HudModule {
         setEnabled(true);
     }
 
-    @Override protected int[] defaultPos(int sw, int sh) { return new int[]{sw - 184, Math.max(8, sh - 145)}; }
+    @Override protected int[] defaultPos(int sw, int sh) { return new int[]{sw - 184, Math.max(8, sh - (maxVisible.getInt() * 34 + 8))}; }
 
     @Override protected void draw(DrawContext ctx) {
         List<NotificationCenter.Toast> toasts = NotificationCenter.active(System.currentTimeMillis());
