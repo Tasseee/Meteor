@@ -19,8 +19,8 @@ import java.util.List;
 
 /** Selectable block highlighter. Only scans already-loaded blocks around the player. */
 public final class BlockESP extends Module {
-    private final NumberSetting range = add(new NumberSetting("Reichweite", 24, 8, 64, 4));
-    private final NumberSetting maxBlocks = add(new NumberSetting("Max Markierungen", 180, 20, 600, 20));
+    private final NumberSetting range = add(new NumberSetting("Reichweite", 64, 8, 64, 4));
+    private final NumberSetting maxBlocks = add(new NumberSetting("Max Markierungen", 600, 20, 600, 20));
     private final BoolSetting diamonds = add(new BoolSetting("Diamanterz", true));
     private final BoolSetting ancient = add(new BoolSetting("Antiker Schrott", true));
     private final BoolSetting chests = add(new BoolSetting("Kisten", true));
