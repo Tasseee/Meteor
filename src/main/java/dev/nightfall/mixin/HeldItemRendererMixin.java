@@ -51,7 +51,7 @@ public abstract class HeldItemRendererMixin {
 
             // Slightly shrink held blocks in first person only.
             if (item != null && !item.isEmpty() && item.getItem() instanceof BlockItem) {
-                matrices.scale(0.86f, 0.86f, 0.86f);
+                matrices.scale(0.50f, 0.50f, 0.50f);
             }
             // Lower swords slightly without changing other held items.
             if (item != null && !item.isEmpty() && Registries.ITEM.getId(item.getItem()).getPath().endsWith("_sword")) {
