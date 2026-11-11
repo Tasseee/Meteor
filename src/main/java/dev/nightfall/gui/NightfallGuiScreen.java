@@ -243,11 +243,16 @@ public final class NightfallGuiScreen extends Screen {
         }
         if (!left) slider = "";
         if (ninoSecretUnlocked) {
-            int ex = Math.max(SIDE + 24, width - 190), ey = Math.max(12, height - 78);
-            ctx.fill(ex - 2, ey - 2, ex + 176, ey + 52, Theme.withAlpha(0xA020F0, 220));
-            ctx.fill(ex, ey, ex + 172, ey + 48, 0xEE120D1D);
-            ctx.drawText(mc.textRenderer, "NINO SECRET UNLOCKED", ex + 8, ey + 8, 0xFFFFB8E8, true);
-            ctx.drawText(mc.textRenderer, "Nino > Miku  ♥", ex + 8, ey + 26, 0xFFFFFFFF, false);
+            int ex = Math.max(SIDE + 24, width - 224), ey = Math.max(12, height - 102);
+            float pulse = (float)(0.5 + 0.5 * Math.sin(System.currentTimeMillis() * 0.006));
+            int glow = Theme.withAlpha(0xA020F0, Math.round(150 + pulse * 90));
+            ctx.fill(ex - 3, ey - 3, ex + 210, ey + 76, glow);
+            ctx.fill(ex, ey, ex + 204, ey + 70, 0xF0100B1B);
+            ctx.fill(ex + 6, ey + 6, ex + 198, ey + 8, Theme.withAlpha(0xFF75E6, Math.round(150 + pulse * 100)));
+            ctx.drawText(mc.textRenderer, "N I N O   S E C R E T", ex + 12, ey + 16, 0xFFFFB8E8, true);
+            ctx.drawText(mc.textRenderer, "NINO SUPREMACY", ex + 12, ey + 32, 0xFFFFFFFF, true);
+            ctx.drawText(mc.textRenderer, "Miku fans may leave now.", ex + 12, ey + 48, 0xFFD9C7F2, false);
+            ctx.drawText(mc.textRenderer, "*  *  *", ex + 164, ey + 32, 0xFFFFD66B, true);
         }
         ctx.drawText(mc.textRenderer, "Nightfall  •  Ziehen: Fenster | Tabs per Drag & Drop sortieren | Rechtsklick: Einstellungen", SIDE + 28, height - 22, Theme.TEXT_DIM, false);
     }
