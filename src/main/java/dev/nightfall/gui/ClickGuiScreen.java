@@ -332,7 +332,8 @@ public class ClickGuiScreen extends Screen {
                 int cardH = (int) Math.ceil(cardHeights.get(first + col));
                 boolean cardVisible = cardY + cardH >= cardsTop && cardY <= viewportBottom;
                 if (!cardVisible) continue;
-                ctx.fill(cardX - 1, cardY - 1, cardX + cardW + 1, cardY + cardH + 1, Theme.withAlpha(Theme.ACCENT, 52));
+                boolean cardHovered = in(mx, my, cardX, cardY, cardW, cardH) && my >= cardsTop && my < viewportBottom;
+                ctx.fill(cardX - 1, cardY - 1, cardX + cardW + 1, cardY + cardH + 1, Theme.withAlpha(Theme.ACCENT, cardHovered ? 112 : 52));
                 ctx.fill(cardX, cardY, cardX + cardW, cardY + cardH, Theme.withAlpha(Theme.PANEL, 248));
                 ctx.fill(cardX, cardY, cardX + cardW, cardY + 1, Theme.withAlpha(Theme.ACCENT, 165));
                 int savedX = panelX, savedW = panelW;
