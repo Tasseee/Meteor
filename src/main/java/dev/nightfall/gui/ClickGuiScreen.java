@@ -44,6 +44,7 @@ public class ClickGuiScreen extends Screen {
     private static final Map<Category, Float> CATEGORY_PROGRESS = new EnumMap<>(Category.class);
     private static final Map<Module, Float> MODULE_PROGRESS = new HashMap<>();
     private static final Map<Module, Float> ENABLE_PROGRESS = new HashMap<>();
+    private static final Map<Module, int[]> CARD_OFFSETS = new HashMap<>();
     private static String search = "";
 
     private final List<Category> cats = new ArrayList<>();
@@ -65,6 +66,8 @@ public class ClickGuiScreen extends Screen {
     private int panelX, panelW, viewportTop, viewportBottom;
     private int panelOffsetX;
     private boolean draggingPanel;
+    private Module draggingCard;
+    private int dragMouseX, dragMouseY;
 
     public ClickGuiScreen() {
         super(Text.literal("Nightfall"));
@@ -202,6 +205,7 @@ public class ClickGuiScreen extends Screen {
         boolean m = GLFW.glfwGetMouseButton(handle, GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
         clickL = l && !prevL; clickR = r && !prevR; clickM = m && !prevM;
         prevL = l; prevR = r; prevM = m;
+        if (!l) draggingCard = null;
 
         ctx.fill(0, 0, width, height, Theme.BG_DIM);
         ctx.fill(0, 0, width, 2, Theme.ACCENT);
@@ -315,8 +319,15 @@ public class ClickGuiScreen extends Screen {
             int first = rowStarts.get(ri);
             for (int col = 0; col < columns && first + col < displayedModules.size(); col++) {
                 Module mod = displayedModules.get(first + col);
-                int cardX = contentX + col * (cardW + CARD_GAP);
-                int cardY = Math.round(y);
+                int[] offset = CARD_OFFSETS.computeIfAbsent(mod, key -> new int[]{0, 0});
+                if (draggingCard == mod && l) {
+                    offset[0] += mx - dragMouseX;
+                    offset[1] += my - dragMouseY;
+                    dragMouseX = mx;
+                    dragMouseY = my;
+                }
+                int cardX = contentX + col * (cardW + CARD_GAP) + offset[0];
+                int cardY = Math.round(y) + offset[1];
                 float mp = MODULE_PROGRESS.getOrDefault(mod, 0f);
                 int cardH = (int) Math.ceil(cardHeights.get(first + col));
                 boolean cardVisible = cardY + cardH >= cardsTop && cardY <= viewportBottom;
@@ -329,6 +340,13 @@ public class ClickGuiScreen extends Screen {
                 panelW = cardW;
                 boolean rowHovered = in(mx, my, cardX, cardY, cardW, MODULE_H) && my >= cardsTop && my < viewportBottom;
                 drawModuleRow(ctx, mod, cardY, mx, my, rowHovered, delta);
+                ctx.fill(cardX + cardW - 19, cardY + 3, cardX + cardW - 8, cardY + 5, Theme.withAlpha(Theme.ACCENT, 190));
+                if (clickL && in(mx, my, cardX, cardY, cardW, 7) && !modalOpen) {
+                    draggingCard = mod;
+                    dragMouseX = mx;
+                    dragMouseY = my;
+                    clickL = false;
+                }
                 if (rowHovered && !modalOpen) {
                     int toggleX = cardX + cardW - 47;
                     if (clickL && mx >= toggleX) { mod.toggle(); Config.save(); clickL = false; }
