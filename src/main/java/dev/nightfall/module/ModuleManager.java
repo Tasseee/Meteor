@@ -121,7 +121,10 @@ public final class ModuleManager {
         MODULES.add(new TextHuds.Ping());
         MODULES.add(new TextHuds.Clock());
         MODULES.add(new TextHuds.Direction());
-        MODULES.add(new TextHuds.BiomeHud());\n\n        // Native enchantment glint is enabled by default; an existing config can still override it.\n        get(ItemGlint.class).setEnabled(true);
+        MODULES.add(new TextHuds.BiomeHud());
+
+        // Native enchantment glint is enabled by default; an existing config can still override it.
+        get(ItemGlint.class).setEnabled(true);
     }
 
     public static List<Module> all() { return Collections.unmodifiableList(MODULES); }
