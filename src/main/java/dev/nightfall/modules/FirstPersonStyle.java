@@ -20,6 +20,7 @@ public final class FirstPersonStyle extends Module {
     private final NumberSetting yaw = add(new NumberSetting("Y-Rotation", 0, -45, 45, 1));
     private final NumberSetting roll = add(new NumberSetting("Z-Rotation", 0, -90, 90, 1));
     private final NumberSetting scale = add(new NumberSetting("3D-Skalierung", 1.0, 0.65, 1.35, 0.01));
+    private final NumberSetting blockScale = add(new NumberSetting("Block-Skalierung", 0.50, 0.10, 1.00, 0.01));
 
     public FirstPersonStyle() {
         super("ViewModel", "Arme und gehaltenes Item frei auf dem Bildschirm positionieren, drehen und skalieren.", Category.VISUALS);
@@ -33,7 +34,7 @@ public final class FirstPersonStyle extends Module {
         return original;
     }
 
-    public void transform(MatrixStack matrices, boolean leftHand) {
+    public void transform(MatrixStack matrices, boolean leftHand, ItemStack item) {
         float side = leftHand ? -1f : 1f;
         double tx = x.get(), ty = y.get(), tz = z.get();
         float rx = pitch.get().floatValue(), ry = yaw.get().floatValue(), rz = roll.get().floatValue();
@@ -49,5 +50,10 @@ public final class FirstPersonStyle extends Module {
                 .rotateY((float)Math.toRadians(ry * side)).rotateZ((float)Math.toRadians(rz * side)));
         float s = scale.get().floatValue();
         matrices.scale(s, s, s);
+        // Held blocks get their own ViewModel scale, independent of the arm/item scale.
+        if (item != null && !item.isEmpty() && item.getItem() instanceof net.minecraft.item.BlockItem) {
+            float bs = blockScale.get().floatValue();
+            matrices.scale(bs, bs, bs);
+        }
     }
 }
