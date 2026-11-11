@@ -15,7 +15,7 @@ public final class NotificationsHud extends HudModule {
 
     public NotificationsHud() {
         super("Notifications", "Animierte Status- und Warnmeldungen.");
-        setEnabled(true);
+        setEnabled(false);
     }
 
     @Override protected int[] defaultPos(int sw, int sh) { return new int[]{sw - 184, 8}; }
