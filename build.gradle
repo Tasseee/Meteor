@@ -119,6 +119,30 @@ tasks.register("generateNightfallIcon") {
         g.fillOval(82, 91, 6, 6)
         g.dispose()
         javax.imageio.ImageIO.write(image, "png", new File(outDir, "icon.png"))
+
+        // Ship a custom grayscale glint texture. The selected Item Glint color can tint
+        // this neutral texture without inheriting Minecraft's purple baked-in artwork.
+        def glintDir = generatedIconDir.get().dir("assets/minecraft/textures/misc").asFile
+        glintDir.mkdirs()
+        def glint = new java.awt.image.BufferedImage(64, 64, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        def gg = glint.createGraphics()
+        gg.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
+        gg.setComposite(java.awt.AlphaComposite.Clear)
+        gg.fillRect(0, 0, 64, 64)
+        gg.setComposite(java.awt.AlphaComposite.SrcOver)
+        gg.setColor(new java.awt.Color(255, 255, 255, 150))
+        gg.setStroke(new java.awt.BasicStroke(5f, java.awt.BasicStroke.CAP_ROUND))
+        for (int offset = -64; offset < 128; offset += 16) {
+            gg.drawLine(offset, 64, offset + 64, 0)
+        }
+        gg.setColor(new java.awt.Color(255, 255, 255, 220))
+        for (int i = 0; i < 16; i++) {
+            int px = (i * 29 + 7) % 64
+            int py = (i * 43 + 13) % 64
+            gg.fillOval(px, py, (i % 3 == 0) ? 5 : 2, (i % 3 == 0) ? 5 : 2)
+        }
+        gg.dispose()
+        javax.imageio.ImageIO.write(glint, "png", new File(glintDir, "enchanted_item_glint.png"))
     }
 }
 
