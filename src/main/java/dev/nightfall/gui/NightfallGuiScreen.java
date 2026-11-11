@@ -494,7 +494,7 @@ public final class NightfallGuiScreen extends Screen {
         ctx.drawText(mc.textRenderer,"Akzentfarbe · Farbton",x+10,y+185,Theme.TEXT,false);
         drawSlider(ctx,x+10,y+207,w-20,Config.accentHue/360f);
         ctx.drawText(mc.textRenderer,String.format(Locale.ROOT,"%.0f°",Config.accentHue),x+w-42,y+192,Theme.ACCENT,false);
-        ctx.drawText(mc.textRenderer,"Hintergrund · Blur-Stärke",x+10,y+232,Theme.TEXT,false);
+        ctx.drawText(mc.textRenderer,"Hintergrund · Abdunklung",x+10,y+232,Theme.TEXT,false);
         drawSlider(ctx,x+10,y+254,w-20,Config.blurStrength/150f);
         ctx.drawText(mc.textRenderer,Config.blurStrength==0?"Aus":Config.blurStrength<60?"Leicht":Config.blurStrength<110?"Mittel":"Stark",x+w-48,y+239,Theme.ACCENT,false);
         ctx.fill(x+10,y+278,x+w-10,y+307,Theme.withAlpha(Theme.ACCENT,40));
