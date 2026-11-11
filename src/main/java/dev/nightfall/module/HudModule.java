@@ -10,7 +10,10 @@ public abstract class HudModule extends Module {
     protected int w = 60, h = 12;
     protected boolean scalable = true;
 
-    protected HudModule(String name, String desc) { super(name, desc, Category.HUD); }
+    protected HudModule(String name, String desc) { this(name, desc, Category.HUD); }
+
+    /** Allows HUD-rendered modules to keep their functional category in the ClickGUI. */
+    protected HudModule(String name, String desc, Category category) { super(name, desc, category); }
 
     protected abstract int[] defaultPos(int sw, int sh);
     protected abstract void draw(DrawContext ctx);
