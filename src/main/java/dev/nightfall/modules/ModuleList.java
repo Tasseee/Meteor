@@ -21,6 +21,7 @@ public class ModuleList extends HudModule {
     @Override
     public int[] pos(int sw, int sh) {
         int[] saved = Config.hud.get(getName());
+        if (saved == null) return new int[]{Math.max(0, sw - width() - 4), 4};
         // Move the old default placement (112 px from the top) to the top-right.
         // Custom positions selected in the HUD editor remain untouched.
         if (saved != null && saved[1] == 112) {
