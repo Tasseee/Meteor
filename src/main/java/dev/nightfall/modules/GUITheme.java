@@ -52,6 +52,8 @@ public final class GUITheme extends Module {
             case "Nightfall" -> { overlay.set(0x08080D); accent.set(0x35E0D0); secondary.set(0x6941C6); panel.set(0x141418); text.set(0xE8E8F0); dimText.set(0x9A9AAE); }
             default -> { /* Custom: keep user supplied RGB values. */ }
         }
+        float[] hue = java.awt.Color.RGBtoHSB((accent.rgb() >> 16) & 255, (accent.rgb() >> 8) & 255, accent.rgb() & 255, null);
+        Config.accentHue = hue[0] * 360.0f;
         Theme.apply(accent.rgb(), secondary.rgb(), panel.rgb(), text.rgb(), dimText.rgb(), overlay.rgb(), design.get());
     }
 }
