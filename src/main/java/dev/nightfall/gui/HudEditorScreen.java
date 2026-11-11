@@ -75,10 +75,6 @@ public class HudEditorScreen extends Screen {
         ctx.fill(12, 10, 15, 43, Theme.ACCENT);
         ctx.drawText(mc.textRenderer, "NIGHTFALL  /  HUD STUDIO", 23, 17, Theme.TEXT, true);
         ctx.drawText(mc.textRenderer, "LAYOUT EDITOR", 23, 29, Theme.TEXT_DIM, false);
-        ctx.fill(0, 0, width, 3, Theme.ACCENT);
-        ctx.fill(0, height - 3, width, height, Theme.ACCENT_DIM);
-        ctx.fill(12, 10, 238, 43, Theme.PANEL);
-        ctx.fill(12, 10, 15, 43, Theme.ACCENT);
         // Subtle shared accent wash keeps the editor visually consistent with ClickGUI.
         ctx.fill(0, 0, width, 2, Theme.withAlpha(Theme.ACCENT, 110));
         if (Config.snapGrid) {
