@@ -125,6 +125,7 @@ public final class ModuleManager {
 
         // Native enchantment glint is enabled by default; an existing config can still override it.
         get(ItemGlint.class).setEnabled(true);
+        get(FirstPersonStyle.class).setEnabled(true);
     }
 
     public static List<Module> all() { return Collections.unmodifiableList(MODULES); }
