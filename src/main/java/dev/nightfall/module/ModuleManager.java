@@ -25,6 +25,7 @@ public final class ModuleManager {
         MODULES.add(new TrapCrit());
         MODULES.add(new KillAura());
         MODULES.add(new TriggerBot());
+        MODULES.add(new FriendManager());
         MODULES.add(new AutoPvp());
         MODULES.add(new TrapperBot());
         MODULES.add(new ObiTrapBot());
