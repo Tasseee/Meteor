@@ -25,8 +25,13 @@ public abstract class HudModule extends Module {
     public int height() { return Math.round(h * scale()); }
 
     public int[] pos(int sw, int sh) {
-        int[] s = Config.hud.get(getName());
-        return s != null ? new int[]{s[0], s[1]} : defaultPos(sw, sh);
+        int[] saved = Config.hud.get(getName());
+        int[] p = saved != null ? new int[]{saved[0], saved[1]} : defaultPos(sw, sh);
+        int maxX = Math.max(0, sw - Math.max(8, width()));
+        int maxY = Math.max(0, sh - Math.max(8, height()));
+        p[0] = Math.max(0, Math.min(maxX, p[0]));
+        p[1] = Math.max(0, Math.min(maxY, p[1]));
+        return p;
     }
 
     public int[] ensureState(int sw, int sh) {
@@ -51,5 +56,5 @@ public abstract class HudModule extends Module {
     }
 
     /** Zeichnet das Element im Editor auch dann, wenn es deaktiviert ist (Geisterrahmen). */
-    public void drawForEditor(DrawContext ctx) { if (isEnabled()) renderHud(ctx); }
+    public void drawForEditor(DrawContext ctx) { renderHud(ctx); }
 }
