@@ -11,7 +11,8 @@
     "SeedCrackerProgressMixin",
     "SeedCrackerDataIntegrityMixin",
     "AutoShieldNetworkMixin",
-    "ItemStackGlintMixin"
+    "ItemStackGlintMixin",
+    "ItemRendererGlintColorMixin"
   ],
   "injectors": {
     "defaultRequire": 1
