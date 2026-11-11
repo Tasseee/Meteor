@@ -15,6 +15,7 @@ import dev.nightfall.modules.SeedCracker;
 import dev.nightfall.seed.SeedResultListener;
 import dev.nightfall.scanner.WaypointManager;
 import dev.nightfall.render.SkyVisualRenderer;
+import dev.nightfall.render.HatsRenderer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
@@ -41,6 +42,7 @@ public class Nightfall implements ClientModInitializer {
         ModuleManager.init();
         Config.load();
         SkyVisualRenderer.register();
+        HatsRenderer.register();
 
         // Match SeedCrackerX's background collection to the saved Nightfall module toggle.
         ClientLifecycleEvents.CLIENT_STARTED.register(client -> SeedCracker.syncState());

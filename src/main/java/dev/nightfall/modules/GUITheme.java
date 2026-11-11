@@ -30,6 +30,14 @@ public final class GUITheme extends Module {
         return true;
     }
 
+    /** Apply the dashboard hue control to the selected theme without resetting it every tick. */
+    public void setAccentHue(float hue) {
+        float normalized = ((hue % 360.0f) + 360.0f) % 360.0f;
+        accent.set(java.awt.Color.HSBtoRGB(normalized / 360.0f, 0.78f, 1.0f) & 0xFFFFFF);
+        preset.set("Custom");
+        applyTheme();
+    }
+
     @Override protected void onEnable() { applyTheme(); }
     @Override protected void onDisable() { Theme.reset(); }
     @Override public void onTick() { applyTheme(); }
@@ -45,7 +53,5 @@ public final class GUITheme extends Module {
             default -> { /* Custom: keep user supplied RGB values. */ }
         }
         Theme.apply(accent.rgb(), secondary.rgb(), panel.rgb(), text.rgb(), dimText.rgb(), overlay.rgb(), design.get());
-        int hueRgb = java.awt.Color.HSBtoRGB((Config.accentHue % 360.0f) / 360.0f, 0.78f, 1.0f) & 0xFFFFFF;
-        Theme.apply(hueRgb, secondary.rgb(), panel.rgb(), text.rgb(), dimText.rgb(), overlay.rgb(), design.get());
     }
 }

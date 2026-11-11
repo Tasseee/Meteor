@@ -67,6 +67,7 @@ public final class ModuleManager {
         MODULES.add(new TargetMarker());
         MODULES.add(new Atmosphere());
         MODULES.add(new SkyVisuals());
+        MODULES.add(new Hats());
         MODULES.add(new FirstPersonStyle());
         MODULES.add(new WeaponAnimations());
         MODULES.add(new SlowSwing());
@@ -124,7 +125,6 @@ public final class ModuleManager {
         MODULES.add(new TextHuds.BiomeHud());
 
         // Native enchantment glint is enabled by default; an existing config can still override it.
-        get(ItemGlint.class).setEnabled(true);
         get(FirstPersonStyle.class).setEnabled(true);
     }
 

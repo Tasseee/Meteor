@@ -35,6 +35,15 @@ public final class NightfallGuiScreen extends Screen {
     private String searchQuery = "";
     private boolean searchFocused, favoritesOnly;
     private Module bindingModule;
+    private NumberSetting numberSlider;
+    private int numberSliderX, numberSliderW;
+    private ColorSetting editingColor;
+    private StringSetting editingString;
+    private MessageListSetting editingMessages;
+    private ListSetting editingList;
+    private String messageDraft = "";
+    private String feedback = "";
+    private long feedbackUntil;
     private final Map<String, Float> hoverValues = new HashMap<>();
 
     public NightfallGuiScreen() {
@@ -54,17 +63,69 @@ public final class NightfallGuiScreen extends Screen {
     @Override public boolean keyPressed(net.minecraft.client.input.KeyInput input) {
         int key = input.key();
         if (bindingModule != null) {
-            if (key == GLFW.GLFW_KEY_ESCAPE) bindingModule.setKey(-1);
-            else ModuleManager.assignKey(bindingModule, key);
+            if (key == GLFW.GLFW_KEY_ESCAPE) { bindingModule = null; return true; }
+            if (key == GLFW.GLFW_KEY_BACKSPACE || key == GLFW.GLFW_KEY_DELETE) {
+                bindingModule.setKey(-1);
+                bindingModule = null;
+                Config.save();
+                showFeedback("Keybind entfernt");
+                return true;
+            }
+            String error = ModuleManager.assignKey(bindingModule, key);
+            if (error == null) {
+                showFeedback(bindingModule.getName() + " · " + keyLabel(key));
+                Config.save();
+            } else showFeedback(error);
             bindingModule = null;
-            Config.save();
+            return true;
+        }
+        if (editingColor != null || editingString != null || editingMessages != null || editingList != null) {
+            if (key == GLFW.GLFW_KEY_ESCAPE) { closeEditor(); return true; }
+            if (key == GLFW.GLFW_KEY_BACKSPACE) {
+                if (!messageDraft.isEmpty()) messageDraft = messageDraft.substring(0, messageDraft.length() - 1);
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
+                if (editingColor != null) {
+                    String hex = messageDraft.replace("#", "").trim();
+                    try {
+                        if (hex.length() != 6) throw new NumberFormatException();
+                        editingColor.set(Integer.parseInt(hex, 16));
+                        Config.save();
+                        showFeedback("Farbe gespeichert");
+                        closeEditor();
+                    } catch (NumberFormatException ex) { showFeedback("Farbe als sechs Hex-Zeichen eingeben"); }
+                } else if (editingString != null) {
+                    editingString.set(messageDraft);
+                    Config.save();
+                    showFeedback("Einstellung gespeichert");
+                    closeEditor();
+                } else if (!messageDraft.isBlank()) {
+                    boolean added = editingMessages != null
+                            ? editingMessages.addMessage(messageDraft.trim())
+                            : editingList.add(messageDraft.trim());
+                    if (added) {
+                        Config.save();
+                        showFeedback("Eintrag hinzugefügt");
+                        messageDraft = "";
+                    } else showFeedback("Leer oder bereits vorhanden");
+                }
+                return true;
+            }
+            String typed = keyText(key);
+            if (typed != null && messageDraft.length() < 256) {
+                boolean shift = GLFW.glfwGetKey(MinecraftClient.getInstance().getWindow().getHandle(), GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
+                        || GLFW.glfwGetKey(MinecraftClient.getInstance().getWindow().getHandle(), GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
+                if (shift && typed.length() == 1 && Character.isLetter(typed.charAt(0))) typed = typed.toUpperCase(Locale.ROOT);
+                messageDraft += typed;
+            }
             return true;
         }
         if (searchFocused) {
             if (key == GLFW.GLFW_KEY_ESCAPE || key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) { searchFocused = false; return true; }
-            if (key == GLFW.GLFW_KEY_BACKSPACE) { if (!searchQuery.isEmpty()) searchQuery = searchQuery.substring(0, searchQuery.length() - 1); return true; }
+            if (key == GLFW.GLFW_KEY_BACKSPACE) { if (!searchQuery.isEmpty()) searchQuery = searchQuery.substring(0, searchQuery.length() - 1); scroll = 0; return true; }
             String typed = keyText(key);
-            if (typed != null && searchQuery.length() < 40) searchQuery += typed;
+            if (typed != null && searchQuery.length() < 40) { searchQuery += typed; scroll = 0; }
             return true;
         }
         if (key == Config.guiKey || key == GLFW.GLFW_KEY_ESCAPE) { close(); return true; }
@@ -158,7 +219,7 @@ public final class NightfallGuiScreen extends Screen {
         ctx.drawText(mc.textRenderer, "NIGHTFALL", 29, 24, Theme.TEXT, true);
         ctx.drawText(mc.textRenderer, "CLIENT  /  CONTROL CENTER", 29, 43, Theme.TEXT_DIM, false);
         ctx.drawText(mc.textRenderer, "FPS " + mc.getCurrentFps(), width - 190, 24, Theme.ACCENT, true);
-        ctx.drawText(mc.textRenderer, "TPS 20.0", width - 100, 24, Theme.TEXT, false);
+        ctx.drawText(mc.textRenderer, "1.21.11", width - 100, 24, Theme.TEXT, false);
 
         // Sidebar and draggable category order
         int sy = 100;
@@ -229,6 +290,13 @@ public final class NightfallGuiScreen extends Screen {
             }
         }
         drawWindow(ctx, activeTab, x + offsetX, y + offsetY, w, mx, my, click, rightClick, mc);
+        if (numberSlider != null) {
+            float amount = Math.max(0.0f, Math.min(1.0f, (mx - numberSliderX) / (float) Math.max(1, numberSliderW)));
+            numberSlider.set(numberSlider.min + amount * (numberSlider.max - numberSlider.min));
+            if (release) { Config.save(); numberSlider = null; }
+        }
+        if (editingColor != null || editingString != null || editingMessages != null || editingList != null) drawTextEditor(ctx);
+        if (System.currentTimeMillis() < feedbackUntil) drawFeedback(ctx);
         if (draggingWindow && activeTab.equals(dragPanel)) {
             if (left) {
                 p[0] = Math.max(minX, Math.min(maxX, mx - dragX));
@@ -287,6 +355,10 @@ public final class NightfallGuiScreen extends Screen {
         if (favAlpha > 0) ctx.fill(x+w-68,controlY,x+w-8,controlY+19,Theme.withAlpha(Theme.ACCENT,favAlpha));
         ctx.drawText(mc.textRenderer,favoritesOnly?"FAV ON":"FAV",x+w-61,controlY+6,favoritesOnly?Theme.ACCENT:Theme.TEXT_DIM,true);
         if (click && searchOver) searchFocused = true; else if (click && favOver) { favoritesOnly = !favoritesOnly; searchFocused = false; } else if (click && !searchOver) searchFocused = false;
+        int contentHeight = 0;
+        for (Module mod : mods) contentHeight += ROW + (expanded.contains(mod.getName()) ? mod.getSettings().size() * ROW : 0);
+        int maxScroll = Math.max(0, contentHeight - Math.max(0, bodyH - 29));
+        scroll = Math.max(0, Math.min(scroll, maxScroll));
         int rowY = y + HEAD + 29 - scroll;
         ctx.enableScissor(x + 3, y + HEAD + 27, x + w - 3, y + HEAD + bodyH);
         for (Module mod : mods) {
@@ -319,9 +391,95 @@ public final class NightfallGuiScreen extends Screen {
         ctx.drawText(mc.textRenderer,s.getName(),x+5,y+7,Theme.TEXT_DIM,false);
         if(s instanceof BoolSetting b) { int bx=x+w-28; ctx.fill(bx,y+5,bx+22,y+16,b.get()?Theme.ACCENT:0xFF45434E); ctx.fill(b.get()?bx+13:bx+2,y+7,b.get()?bx+20:bx+9,y+14,0xFFFFFFFF); if((click||rightClick)&&over){b.toggle();Config.save();} }
         else if(s instanceof ModeSetting m) { String v="< "+m.get()+" >"; ctx.drawText(mc.textRenderer,v,x+w-8-mc.textRenderer.getWidth(v),y+7,Theme.ACCENT,false); if(click&&over){m.cycle(1);Config.save();} else if(rightClick&&over){m.cycle(-1);Config.save();} }
-        else if(s instanceof NumberSetting n) { String v=n.display(); ctx.drawText(mc.textRenderer,v,x+w-8-mc.textRenderer.getWidth(v),y+7,Theme.ACCENT,false); if(click&&over){n.set(n.get()+n.step*10.0);Config.save();} else if(rightClick&&over){n.set(n.get()-n.step*10.0);Config.save();} }
-        else if(s instanceof ColorSetting c) { ctx.fill(x+w-26,y+5,x+w-8,y+17,0xFF000000|c.rgb()); }
-        else if(s instanceof StringSetting st) { String v=st.get(); if(v.length()>14)v=v.substring(0,13)+"..."; ctx.drawText(mc.textRenderer,v,x+w-8-mc.textRenderer.getWidth(v),y+7,Theme.ACCENT,false); }
+        else if(s instanceof NumberSetting n) {
+            String label = n.getName();
+            while (mc.textRenderer.getWidth(label) > 92 && label.length() > 5) label = label.substring(0, label.length() - 2) + "…";
+            ctx.drawText(mc.textRenderer, label, x + 5, y + 7, Theme.TEXT_DIM, false);
+            String value = n.display();
+            ctx.drawText(mc.textRenderer, value, x + w - 8 - mc.textRenderer.getWidth(value), y + 7, Theme.ACCENT, false);
+            int trackX = x + 102, trackW = Math.max(24, x + w - 38 - trackX);
+            double t = n.max == n.min ? 0.0 : (n.get() - n.min) / (n.max - n.min);
+            int fillW = (int) Math.round(trackW * Math.max(0.0, Math.min(1.0, t)));
+            ctx.fill(trackX, y + 17, trackX + trackW, y + 19, 0xFF403B4A);
+            if (fillW > 0) ctx.fill(trackX, y + 17, trackX + fillW, y + 19, Theme.ACCENT);
+            int knobX = trackX + fillW;
+            ctx.fill(knobX - 2, y + 14, knobX + 3, y + 22, 0xFFF4F3FA);
+            if (click && over) {
+                if (mx >= trackX - 4 && mx <= trackX + trackW + 4) {
+                    numberSlider = n; numberSliderX = trackX; numberSliderW = trackW;
+                } else { n.set(n.get() + n.step); Config.save(); }
+            } else if (rightClick && over) { n.set(n.get() - n.step); Config.save(); }
+        }
+        else if(s instanceof ColorSetting c) {
+            ctx.drawText(mc.textRenderer, c.getName(), x + 5, y + 7, Theme.TEXT_DIM, false);
+            ctx.fill(x + w - 42, y + 5, x + w - 24, y + 18, 0xFF000000 | c.rgb());
+            ctx.drawText(mc.textRenderer, "HEX", x + w - 21, y + 7, Theme.ACCENT, false);
+            if (click && over) {
+                try { ModuleManager.get(GUITheme.class).prepareColorEdit(c); } catch (Throwable ignored) { }
+                editingColor = c; messageDraft = String.format(Locale.ROOT, "%06X", c.rgb()); searchFocused = false;
+            } else if (rightClick && over) {
+                try { ModuleManager.get(GUITheme.class).prepareColorEdit(c); } catch (Throwable ignored) { }
+                c.cycle(-1); Config.save();
+            }
+        }
+        else if(s instanceof StringSetting st) {
+            String value = st.get();
+            if (value.length() > 18) value = value.substring(0, 17) + "…";
+            ctx.drawText(mc.textRenderer, st.getName(), x + 5, y + 7, Theme.TEXT_DIM, false);
+            ctx.drawText(mc.textRenderer, value, x + w - 8 - mc.textRenderer.getWidth(value), y + 7, Theme.ACCENT, false);
+            if (click && over) { editingString = st; messageDraft = st.get(); searchFocused = false; }
+        }
+        else if(s instanceof MessageListSetting messages) {
+            String value = messages.get().size() + " · bearbeiten";
+            ctx.drawText(mc.textRenderer, messages.getName(), x + 5, y + 7, Theme.TEXT_DIM, false);
+            ctx.drawText(mc.textRenderer, value, x + w - 8 - mc.textRenderer.getWidth(value), y + 7, Theme.ACCENT, false);
+            if (click && over) { editingMessages = messages; messageDraft = ""; searchFocused = false; }
+            else if (rightClick && over && !messages.get().isEmpty()) {
+                messages.removeMessage(messages.get().get(messages.get().size() - 1)); Config.save(); showFeedback("Letzter Eintrag entfernt");
+            }
+        }
+        else if(s instanceof ListSetting list) {
+            String value = list.get().size() + " · bearbeiten";
+            ctx.drawText(mc.textRenderer, list.getName(), x + 5, y + 7, Theme.TEXT_DIM, false);
+            ctx.drawText(mc.textRenderer, value, x + w - 8 - mc.textRenderer.getWidth(value), y + 7, Theme.ACCENT, false);
+            if (click && over) { editingList = list; messageDraft = ""; searchFocused = false; }
+            else if (rightClick && over && !list.get().isEmpty()) {
+                List<String> values = new ArrayList<>(list.get());
+                list.remove(values.get(values.size() - 1)); Config.save(); showFeedback("Letzter Eintrag entfernt");
+            }
+        }
+    }
+
+    private void closeEditor() {
+        editingColor = null; editingString = null; editingMessages = null; editingList = null; messageDraft = "";
+    }
+
+    private void showFeedback(String message) { feedback = message; feedbackUntil = System.currentTimeMillis() + 2400L; }
+
+    private void drawTextEditor(DrawContext ctx) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        int modalW = Math.min(360, Math.max(200, width - 24)), modalH = 112;
+        int x = (width - modalW) / 2, y = (height - modalH) / 2;
+        String title = editingColor != null ? "FARBE · RGB HEX" : editingString != null ? "TEXT BEARBEITEN"
+                : editingMessages != null ? "NACHRICHT HINZUFÜGEN" : "LISTENEINTRAG HINZUFÜGEN";
+        ctx.fill(x - 2, y - 2, x + modalW + 2, y + modalH + 2, 0xB0000000);
+        ctx.fill(x, y, x + modalW, y + modalH, 0xF014121D);
+        ctx.fill(x, y, x + modalW, y + 2, Theme.ACCENT);
+        ctx.drawText(mc.textRenderer, title, x + 12, y + 12, Theme.TEXT, true);
+        ctx.fill(x + 12, y + 33, x + modalW - 12, y + 55, 0xFF08080D);
+        String draft = (editingColor != null ? "#" : "") + messageDraft + ((System.currentTimeMillis() / 500) % 2 == 0 ? "_" : "");
+        ctx.drawText(mc.textRenderer, draft, x + 18, y + 41, Theme.ACCENT, false);
+        String instruction = editingString != null || editingColor != null ? "Enter speichert · Esc bricht ab"
+                : "Enter fügt hinzu · Rechtsklick entfernt den letzten Eintrag";
+        ctx.drawText(mc.textRenderer, instruction, x + 12, y + 72, Theme.TEXT_DIM, false);
+    }
+
+    private void drawFeedback(DrawContext ctx) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        int w = Math.min(width - 24, mc.textRenderer.getWidth(feedback) + 20), x = (width - w) / 2, y = height - 40;
+        ctx.fill(x, y, x + w, y + 22, 0xE6111219);
+        ctx.fill(x, y, x + 2, y + 22, Theme.ACCENT);
+        ctx.drawText(mc.textRenderer, feedback, x + 9, y + 7, Theme.TEXT, false);
     }
 
     private void drawConfig(DrawContext ctx,int x,int y,int w,int mx,int my,boolean click) {
@@ -363,8 +521,8 @@ public final class NightfallGuiScreen extends Screen {
     }
     private void drawSlider(DrawContext ctx,int x,int y,int w,float t){ctx.fill(x,y,x+w,y+4,0xFF403B4A);ctx.fill(x,y,x+(int)(w*Math.max(0,Math.min(1,t))),y+4,Theme.ACCENT);ctx.fill(x+(int)(w*t)-3,y-3,x+(int)(w*t)+3,y+7,0xFFFFFFFF);}
     private void applyHue() {
-        int rgb=java.awt.Color.HSBtoRGB((Config.accentHue%360f)/360f,0.78f,1f)&0xFFFFFF;
-        Theme.apply(rgb,Theme.ACCENT_DIM&0xFFFFFF,Theme.PANEL&0xFFFFFF,Theme.TEXT&0xFFFFFF,Theme.TEXT_DIM&0xFFFFFF,Theme.BG_DIM&0xFFFFFF,Theme.DESIGN);
+        try { ModuleManager.get(GUITheme.class).setAccentHue(Config.accentHue); }
+        catch (IllegalStateException ignored) { }
     }
     private boolean pMinimized(String tab) { return panel(tab, 0, 0)[2] == 2; }
     private void pMin(String tab){int[] p=panel(tab,0,0);p[2]=p[2]==2?1:2;Config.save();}

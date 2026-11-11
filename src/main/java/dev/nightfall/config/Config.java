@@ -25,7 +25,7 @@ public final class Config {
     /** Soft keyboard click feedback while Nightfall GUI/editor is open. */
     public static boolean keySounds = true;
     public static int gridSize = 4;
-    public static float accentHue = 270.0f;
+    public static float accentHue = 174.0f;
     public static int blurStrength = 72;
     public static String categoryOrder = "Combat,Movement,Visuals,Player,World,Misc,HUD,Config";
     public static boolean guiAnimations = true;
