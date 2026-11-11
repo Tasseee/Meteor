@@ -19,12 +19,12 @@ public abstract class EspBase extends Module {
     public static int drawn;
 
     protected final NumberSetting range;
-    protected final NumberSetting maxObjects = add(new NumberSetting("Max Objekte", 64, 4, 512, 4));
-    protected final NumberSetting thickness  = add(new NumberSetting("Linienstaerke", 1, 1, 4, 1));
-    protected final NumberSetting opacity    = add(new NumberSetting("Transparenz", 0.9, 0.2, 1.0, 0.05));
+    protected final NumberSetting maxObjects = add(new NumberSetting("Max Objekte", 512, 4, 512, 4));
+    protected final NumberSetting thickness  = add(new NumberSetting("Linienstaerke", 4, 1, 4, 1));
+    protected final NumberSetting opacity    = add(new NumberSetting("Transparenz", 1.0, 0.2, 1.0, 0.05));
     protected final BoolSetting   smoothing  = add(new BoolSetting("Linien-Antialiasing", true));
-    protected final BoolSetting   distanceFade = add(new BoolSetting("Distanz-Fade", true));
-    protected final NumberSetting fadeStart = add(new NumberSetting("Fade ab (Anteil)", 0.55, 0.1, 0.9, 0.05));
+    protected final BoolSetting   distanceFade = add(new BoolSetting("Distanz-Fade", false));
+    protected final NumberSetting fadeStart = add(new NumberSetting("Fade ab (Anteil)", 0.9, 0.1, 0.9, 0.05));
     protected final ModeSetting   style      = add(new ModeSetting("Box", "3D", "3D", "2D", "Aus"));
     protected final BoolSetting   tracers    = add(new BoolSetting("Tracer", false));
     protected final ModeSetting   origin     = add(new ModeSetting("Tracer-Start", "Mitte", "Mitte", "Unten"));
@@ -36,7 +36,7 @@ public abstract class EspBase extends Module {
 
     protected EspBase(String name, String desc, int defRange, int maxRange, int rgb) {
         super(name, desc, Category.VISUALS);
-        range = add(new NumberSetting("Reichweite", defRange, 8, maxRange, 8));
+        range = add(new NumberSetting("Reichweite", maxRange, 8, maxRange, 8));
         color = add(new ColorSetting("Farbe", rgb));
     }
 
