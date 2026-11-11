@@ -50,10 +50,15 @@ public final class FirstPersonStyle extends Module {
                 .rotateY((float)Math.toRadians(ry * side)).rotateZ((float)Math.toRadians(rz * side)));
         float s = scale.get().floatValue();
         matrices.scale(s, s, s);
-        // Held blocks get their own ViewModel scale, independent of the arm/item scale.
-        if (item != null && !item.isEmpty() && item.getItem() instanceof net.minecraft.item.BlockItem) {
-            float bs = blockScale.get().floatValue();
-            matrices.scale(bs, bs, bs);
-        }
+    }
+
+    /** Separate scale for the rendered block model; never applied to the arm. */
+    public float blockScaleValue() {
+        return blockScale.get().floatValue();
+    }
+
+    public boolean scalesHeldBlock(ItemStack item) {
+        return item != null && !item.isEmpty()
+                && item.getItem() instanceof net.minecraft.item.BlockItem;
     }
 }
