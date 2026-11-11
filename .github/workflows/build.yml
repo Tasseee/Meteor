@@ -45,6 +45,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import glob
+          import io
           import json
           import zipfile
 
@@ -62,7 +63,13 @@ jobs:
                       raise SystemExit(f"{path} has unexpected mod id: {metadata.get('id')!r}")
                   if "dev.nightfall.Nightfall" not in metadata.get("entrypoints", {}).get("client", []):
                       raise SystemExit(f"{path} is missing the Nightfall client entrypoint")
-                  print(f"Verified Fabric mod: {path} (version {metadata.get('version')})")
+                  nested_path = "META-INF/jars/seedcrackerX-2.15.6.jar"
+                  if nested_path not in names:
+                      raise SystemExit(f"{path} is missing bundled {nested_path}")
+                  with zipfile.ZipFile(io.BytesIO(jar.read(nested_path))) as nested:
+                      if "kaptainwutax/seedcrackerX/api/SeedCrackerAPI.class" not in nested.namelist():
+                          raise SystemExit(f"{path} bundled SeedCrackerX JAR is missing SeedCrackerAPI.class")
+                  print(f"Verified Fabric mod and bundled SeedCrackerX: {path} (version {metadata.get('version')})")
           PY
 
       - name: Upload build artifacts
