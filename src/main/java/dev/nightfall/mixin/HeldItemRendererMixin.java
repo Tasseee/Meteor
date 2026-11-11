@@ -9,6 +9,7 @@ import net.minecraft.client.render.item.HeldItemRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.SwordItem;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Arm;
 import org.spongepowered.asm.mixin.Mixin;
@@ -51,6 +52,10 @@ public abstract class HeldItemRendererMixin {
             // Slightly shrink held blocks in first person only.
             if (item != null && !item.isEmpty() && item.getItem() instanceof BlockItem) {
                 matrices.scale(0.92f, 0.92f, 0.92f);
+            }
+            // Lower swords slightly without changing other held items.
+            if (item != null && !item.isEmpty() && item.getItem() instanceof SwordItem) {
+                matrices.translate(0.0, -0.045, 0.0);
             }
 
             if (weaponEnabled) ModuleManager.get(WeaponAnimations.class).transform(matrices, swingProgress, leftHand);
