@@ -142,7 +142,7 @@ tasks.register("generateNightfallIcon") {
             gg.fillOval(px, py, (i % 3 == 0) ? 5 : 2, (i % 3 == 0) ? 5 : 2)
         }
         gg.dispose()
-        javax.imageio.ImageIO.write(glint, "png", new File(glintDir, "enchanted_item_glint.png"))
+        javax.imageio.ImageIO.write(glint, "png", new File(glintDir, "enchanted_glint_item.png"))
     }
 }
 
