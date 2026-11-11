@@ -102,7 +102,9 @@ public class ClickGuiScreen extends Screen {
     private <K> float ease(Map<K, Float> values, K key, boolean target, float delta) {
         float wanted = target ? 1.0f : 0.0f;
         float current = values.getOrDefault(key, wanted);
-        float factor = Math.min(1.0f, Math.max(0.04f, delta * 10.0f));
+        double speed = 10.0;
+        try { speed = ModuleManager.get(GUITheme.class).getAnimationSpeed(); } catch (Throwable ignored) { }
+        float factor = speed >= 100.0 ? 1.0f : Math.min(1.0f, Math.max(0.04f, delta * (float) speed));
         current += (wanted - current) * factor;
         if (Math.abs(wanted - current) < 0.008f) current = wanted;
         values.put(key, current);
@@ -200,7 +202,9 @@ public class ClickGuiScreen extends Screen {
         ctx.fill(0, 0, width, height, Theme.BG_DIM);
         ctx.fill(0, 0, width, 2, Theme.ACCENT);
         ctx.fill(0, height - 2, width, height, Theme.ACCENT_DIM);
-        panelW = Math.min(860, width - 36);
+        double guiScale = 1.0;
+        try { guiScale = ModuleManager.get(GUITheme.class).getGuiScale(); } catch (Throwable ignored) { }
+        panelW = Math.min(width - 36, Math.max(Math.min(540, width - 36), (int) (860 * guiScale)));
         if (draggingPanel && l) panelOffsetX = mx - width / 2;
         if (!l) draggingPanel = false;
         int maxOffset = Math.max(0, (width - panelW) / 2 - 8);
