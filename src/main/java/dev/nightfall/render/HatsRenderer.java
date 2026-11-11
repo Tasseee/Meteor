@@ -34,7 +34,7 @@ public final class HatsRenderer {
 
         Camera camera = mc.gameRenderer.getCamera();
         Vec3d cameraPos = camera.getCameraPos();
-        Vec3d playerPos = mc.player.getPos();
+        Vec3d playerPos = new Vec3d(mc.player.getX(), mc.player.getY(), mc.player.getZ());
         double scale = hats.size();
         double baseY = mc.player.getY() + mc.player.getHeight() + hats.height();
         double phase = System.nanoTime() * 1.0e-9 * hats.rotationSpeed() * Math.PI * 2.0;
