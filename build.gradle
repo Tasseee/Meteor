@@ -131,7 +131,7 @@ tasks.register("generateNightfallIcon") {
         gg.fillRect(0, 0, 64, 64)
         gg.setComposite(java.awt.AlphaComposite.SrcOver)
         gg.setColor(new java.awt.Color(255, 255, 255, 150))
-        gg.setStroke(new java.awt.BasicStroke(5f, java.awt.BasicStroke.CAP_ROUND))
+        gg.setStroke(new java.awt.BasicStroke(5f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND))
         for (int offset = -64; offset < 128; offset += 16) {
             gg.drawLine(offset, 64, offset + 64, 0)
         }
