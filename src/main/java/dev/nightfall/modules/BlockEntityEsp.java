@@ -22,7 +22,7 @@ public abstract class BlockEntityEsp extends EspBase {
     protected BlockEntityEsp(String n, String d, int r, int mr, int rgb) { super(n, d, r, mr, rgb); }
 
     protected abstract boolean accept(BlockEntity be);
-    protected abstract String nameOf(BlockEntity be);
+    protected abstract String nameOf(BlockEntity be);\n\n    /** Optional per-chunk gate, evaluated before individual block entities are cached. */\n    protected boolean acceptChunk(WorldChunk chunk) { return true; }
 
     @Override protected void onDisable() { cache.clear(); boxes.clear(); }
     @Override public void onWorldLeave() { cache.clear(); boxes.clear(); timer = 0; }
