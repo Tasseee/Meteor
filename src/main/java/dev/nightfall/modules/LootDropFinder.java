@@ -9,10 +9,6 @@ import dev.nightfall.util.Projection;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.ItemEntity;
-import net.minecraft.entity.decoration.ArmorStandEntity;
-import net.minecraft.entity.decoration.ItemFrameEntity;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
@@ -36,15 +32,10 @@ public final class LootDropFinder extends Module {
     private final BoolSetting heavyCore = add(new BoolSetting("Heavy Core", true));
     private final BoolSetting netheriteGoldBlocks = add(new BoolSetting("Netherite-/Goldblock", true));
     private final BoolSetting gildedBlackstone = add(new BoolSetting("Gilded Blackstone", true));
-    private final BoolSetting spawners = add(new BoolSetting("Spawner", true));
-    private final BoolSetting droppedItems = add(new BoolSetting("Item-Drops", true));
-    private final BoolSetting itemFrames = add(new BoolSetting("Itemframes", true));
-    private final BoolSetting armorStands = add(new BoolSetting("Ruestungsstaender", true));
     private final BoolSetting soundAlert = add(new BoolSetting("Sound bei Fund", true));
     private final BoolSetting chatAlert = add(new BoolSetting("Nachricht bei Fund", true));
 
     private static final int CHUNK_REFRESH_TICKS = 100;
-    private static final int ENTITY_REFRESH_TICKS = 10;
     private static final int CHUNKS_PER_TICK = 2;
     private static final int MARKER_COLOR = 0xE638BDF8;
 
@@ -52,27 +43,17 @@ public final class LootDropFinder extends Module {
         final String id;
         final String label;
         final BlockPos pos;
-        final Entity entity;
-
-        Target(String id, String label, BlockPos pos, Entity entity) {
+        Target(String id, String label, BlockPos pos) {
             this.id = id;
             this.label = label;
-            this.pos = pos == null ? null : pos.toImmutable();
-            this.entity = entity;
+            this.pos = pos.toImmutable();
         }
 
-        Vec3d center() {
-            if (entity != null) {
-                Box b = entity.getBoundingBox();
-                return new Vec3d((b.minX + b.maxX) * 0.5, (b.minY + b.maxY) * 0.5, (b.minZ + b.maxZ) * 0.5);
-            }
-            return Vec3d.ofCenter(pos);
-        }
+        Vec3d center() { return Vec3d.ofCenter(pos); }
     }
 
     private final Map<Long, List<Target>> blockTargetsByChunk = new HashMap<>();
     private final Map<Long, Long> lastChunkScan = new HashMap<>();
-    private final Map<String, Target> entityTargets = new HashMap<>();
     private final Map<Long, Long> markedChunks = new HashMap<>();
     private final Map<Long, int[]> markerHeights = new HashMap<>();
     private int scannedChunks;
@@ -107,7 +88,6 @@ public final class LootDropFinder extends Module {
     private void clearState() {
         blockTargetsByChunk.clear();
         lastChunkScan.clear();
-        entityTargets.clear();
         markedChunks.clear();
         markerHeights.clear();
         scannedChunks = 0;
@@ -133,7 +113,6 @@ public final class LootDropFinder extends Module {
         markedChunks.entrySet().removeIf(e -> tick - e.getValue() > markerSeconds.get() * 20.0);
 
         List<Target> found = new ArrayList<>();
-        if (tick % ENTITY_REFRESH_TICKS == 0) refreshEntities(found);
         if (chunkQueue.isEmpty() && tick - lastRefillTick >= 20L) refillChunkQueue();
         for (int i = 0; i < CHUNKS_PER_TICK && !chunkQueue.isEmpty(); i++) {
             long key = chunkQueue.pollFirst();
@@ -222,11 +201,10 @@ public final class LootDropFinder extends Module {
                 else if (heavyCore.get() && state.isOf(Blocks.HEAVY_CORE)) name = "Heavy Core";
                 else if (netheriteGoldBlocks.get() && (state.isOf(Blocks.NETHERITE_BLOCK) || state.isOf(Blocks.GOLD_BLOCK))) name = "Netherite-/Goldblock";
                 else if (gildedBlackstone.get() && state.isOf(Blocks.GILDED_BLACKSTONE)) name = "Gilded Blackstone";
-                else if (spawners.get() && state.isOf(Blocks.SPAWNER)) name = "Spawner";
                 if (name == null) continue;
                 BlockPos pos = new BlockPos((cx << 4) + x, baseY + y, (cz << 4) + z);
                 String id = "block:" + pos.asLong() + ":" + name;
-                Target target = new Target(id, name, pos, null);
+                Target target = new Target(id, name, pos);
                 next.add(target);
                 if (initialPassComplete && !oldIds.contains(id)) found.add(target);
             }
@@ -234,32 +212,6 @@ public final class LootDropFinder extends Module {
         blockTargetsByChunk.put(key, next);
         lastChunkScan.put(key, tick);
         scannedChunks++;
-    }
-
-    private void refreshEntities(List<Target> found) {
-        if (mc.world == null || mc.player == null) return;
-        Map<String, Target> next = new HashMap<>();
-        double maxDistanceSq = range.get() * range.get();
-        Vec3d playerPos = new Vec3d(mc.player.getX(), mc.player.getY(), mc.player.getZ());
-        for (Entity entity : mc.world.getEntities()) {
-            if (entity == mc.player || entity.squaredDistanceTo(playerPos) > maxDistanceSq) continue;
-            Target target = null;
-            if (droppedItems.get() && entity instanceof ItemEntity item) {
-                target = new Target("entity:" + entity.getUuidAsString(),
-                        "Item-Drop: " + item.getStack().getName().getString() + " x" + item.getStack().getCount(), null, entity);
-            } else if (itemFrames.get() && entity instanceof ItemFrameEntity frame) {
-                String held = frame.getHeldItemStack().isEmpty() ? "leer" : frame.getHeldItemStack().getName().getString();
-                target = new Target("entity:" + entity.getUuidAsString(), "Itemframe: " + held, null, entity);
-            } else if (armorStands.get() && entity instanceof ArmorStandEntity) {
-                target = new Target("entity:" + entity.getUuidAsString(), "Ruestungsstaender", null, entity);
-            }
-            if (target != null) {
-                next.put(target.id, target);
-                if (initialPassComplete && !entityTargets.containsKey(target.id)) found.add(target);
-            }
-        }
-        entityTargets.clear();
-        entityTargets.putAll(next);
     }
 
     private void alertByChunk(List<Target> found) {
@@ -271,6 +223,9 @@ public final class LootDropFinder extends Module {
         }
         for (Map.Entry<Long, List<Target>> entry : grouped.entrySet()) {
             long key = entry.getKey();
+            // LootDropFinder marks a chunk only when it contains at least ten valuable blocks.
+            // Dropped item entities and spawners are intentionally excluded from this count.
+            if (blockTargetsByChunk.getOrDefault(key, List.of()).size() < 10) continue;
             if (markedChunks.containsKey(key)) continue;
             markedChunks.put(key, tick);
             List<Target> items = entry.getValue();
