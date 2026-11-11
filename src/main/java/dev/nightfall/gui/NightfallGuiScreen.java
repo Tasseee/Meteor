@@ -281,7 +281,7 @@ public final class NightfallGuiScreen extends Screen {
         }
         int offsetX = 0, offsetY = 0;
         float panelScale = 1.0f;
-        float fadeAlpha = 1.0f;
+        
         if (Config.guiAnimations) {
             switch (Config.guiAnimationType) {
                 case "Slide" -> {
@@ -294,8 +294,10 @@ public final class NightfallGuiScreen extends Screen {
                     }
                 }
                 case "Fade" -> {
-                    fadeAlpha = anim;
-                    offsetY = Math.round((1.0f - anim) * 7.0f);
+                    // A tiny scale-and-rise transition keeps the panel motion unobtrusive.
+                    // DrawContext in this Minecraft version has no global alpha stack.
+                    panelScale = 0.985f + 0.015f * anim;
+                    offsetY = Math.round((1.0f - anim) * 4.0f);
                 }
                 case "Scale" -> panelScale = 0.88f + 0.12f * anim;
                 case "Zoom" -> panelScale = 0.68f + 0.32f * anim;
@@ -311,16 +313,14 @@ public final class NightfallGuiScreen extends Screen {
         float translateY = drawY * (1.0f - panelScale);
         int hitMouseX = Math.round((mx - translateX) / panelScale);
         int hitMouseY = Math.round((my - translateY) / panelScale);
-        ctx.getMatrices().push();
-        ctx.getMatrices().translate(translateX, translateY, 0.0f);
-        ctx.getMatrices().scale(panelScale, panelScale, 1.0f);
-        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, fadeAlpha);
+        ctx.getMatrices().pushMatrix();
+        ctx.getMatrices().translate(translateX, translateY);
+        ctx.getMatrices().scale(panelScale, panelScale);
         try {
             drawWindow(ctx, activeTab, Math.round(drawX), Math.round(drawY), w,
                     hitMouseX, hitMouseY, click, rightClick, mc);
         } finally {
-            com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
-            ctx.getMatrices().pop();
+            ctx.getMatrices().popMatrix();
         }
         if (numberSlider != null) {
             float amount = Math.max(0.0f, Math.min(1.0f, (mx - numberSliderX) / (float) Math.max(1, numberSliderW)));
