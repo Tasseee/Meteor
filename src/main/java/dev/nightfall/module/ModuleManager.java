@@ -80,6 +80,7 @@ public final class ModuleManager {
         MODULES.add(new SpawnerEsp());
         MODULES.add(new ChunkEsp());
         MODULES.add(new BlockESP());
+        MODULES.add(new AmethystEsp());
         MODULES.add(new StructureESP());
         // World
         MODULES.add(new Waypoints());
