@@ -25,6 +25,12 @@ public final class GlintColorVertexConsumer implements VertexConsumer {
     }
 
     @Override
+    public VertexConsumer color(int color) {
+        delegate.color(color);
+        return this;
+    }
+
+    @Override
     public VertexConsumer color(int red, int green, int blue, int alpha) {
         int rgb = rgb();
         delegate.color((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF, alpha);
