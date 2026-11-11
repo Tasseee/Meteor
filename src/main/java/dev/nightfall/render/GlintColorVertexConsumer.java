@@ -26,7 +26,11 @@ public final class GlintColorVertexConsumer implements VertexConsumer {
 
     @Override
     public VertexConsumer color(int color) {
-        delegate.color(color);
+        int rgb = rgb();
+        int alpha = (color >>> 24) & 0xFF;
+        // Item renderers may use the packed-ARGB overload instead of RGBA.
+        // Tint that path too, otherwise the selected glint color is silently ignored.
+        delegate.color((alpha << 24) | rgb);
         return this;
     }
 
