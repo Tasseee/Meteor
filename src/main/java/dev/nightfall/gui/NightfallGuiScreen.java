@@ -204,7 +204,7 @@ public final class NightfallGuiScreen extends Screen {
         // Easter egg: click the NIGHTFALL brand five times quickly.
         if (click && inside(mx, my, 12, 10, SIDE + 10, 78)) {
             long now = System.currentTimeMillis();
-            if (now - lastNinoSecretClick > 1200L) ninoSecretClicks = 0;
+            if (now - lastNinoSecretClick > 2500L) ninoSecretClicks = 0;
             lastNinoSecretClick = now;
             if (++ninoSecretClicks >= 5) { ninoSecretUnlocked = true; ninoSecretClicks = 0; }
         }
@@ -343,16 +343,38 @@ public final class NightfallGuiScreen extends Screen {
         }
         if (!left) slider = "";
         if (ninoSecretUnlocked) {
-            int ex = Math.max(SIDE + 24, width - 224), ey = Math.max(12, height - 102);
-            float pulse = (float)(0.5 + 0.5 * Math.sin(System.currentTimeMillis() * 0.006));
-            int glow = Theme.withAlpha(0xA020F0, Math.round(150 + pulse * 90));
-            ctx.fill(ex - 3, ey - 3, ex + 210, ey + 76, glow);
-            ctx.fill(ex, ey, ex + 204, ey + 70, 0xF0100B1B);
-            ctx.fill(ex + 6, ey + 6, ex + 198, ey + 8, Theme.withAlpha(0xFF75E6, Math.round(150 + pulse * 100)));
-            ctx.drawText(mc.textRenderer, "N I N O   S E C R E T", ex + 12, ey + 16, 0xFFFFB8E8, true);
-            ctx.drawText(mc.textRenderer, "NINO SUPREMACY", ex + 12, ey + 32, 0xFFFFFFFF, true);
-            ctx.drawText(mc.textRenderer, "Miku fans may leave now.", ex + 12, ey + 48, 0xFFD9C7F2, false);
-            ctx.drawText(mc.textRenderer, "*  *  *", ex + 164, ey + 32, 0xFFFFD66B, true);
+            // Hidden anime ranking: five quick clicks on the Nightfall brand unlock this panel.
+            int ex = Math.max(8, width - 326), ey = Math.max(8, height - 166);
+            float pulse = (float)(0.5 + 0.5 * Math.sin(System.currentTimeMillis() * 0.0045));
+            int glow = Theme.withAlpha(0x8B5CF6, Math.round(145 + pulse * 75));
+            ctx.fill(ex - 3, ey - 3, ex + 318, ey + 158, glow);
+            ctx.fill(ex, ey, ex + 312, ey + 152, 0xF0100D1B);
+            ctx.fill(ex + 7, ey + 7, ex + 305, ey + 9,
+                    Theme.withAlpha(0xFF8B5CF6, Math.round(175 + pulse * 75)));
+            ctx.drawText(mc.textRenderer, "TOP 5 PEAK ANIME", ex + 13, ey + 15, 0xFFFFD66B, true);
+            ctx.drawText(mc.textRenderer, "NIGHTFALL SECRET  //  YOUR TASTE IS VALID", ex + 13, ey + 28, 0xFFB9A9D8, false);
+            String[] anime = {
+                    "The Quintessential Quintuplets",
+                    "Rascal Does Not Dream of a Bunny Girl Senpai",
+                    "My Dress-Up Darling",
+                    "My Teen Romantic Comedy SNAFU",
+                    "Sword Art Online"
+            };
+            int[] accents = {0xFFFF8FB1, 0xFF82C9FF, 0xFFFFB86B, 0xFFB69CFF, 0xFF75E6C2};
+            for (int i = 0; i < anime.length; i++) {
+                int rowY = ey + 43 + i * 20;
+                int accent = accents[i];
+                ctx.fill(ex + 10, rowY, ex + 302, rowY + 17, 0x77302A40);
+                ctx.fill(ex + 10, rowY, ex + 13, rowY + 17, accent);
+                // Tiny abstract cover tile, drawn in-game so no external assets are needed.
+                ctx.fill(ex + 18, rowY + 3, ex + 37, rowY + 14, Theme.withAlpha(accent, 90));
+                ctx.fill(ex + 21, rowY + 5, ex + 24, rowY + 12, accent);
+                ctx.fill(ex + 27, rowY + 4, ex + 34, rowY + 6, Theme.withAlpha(0xFFFFFFFF, 190));
+                ctx.fill(ex + 27, rowY + 8, ex + 34, rowY + 10, Theme.withAlpha(0xFFFFFFFF, 130));
+                ctx.drawText(mc.textRenderer, Integer.toString(i + 1) + ".", ex + 44, rowY + 5, accent, true);
+                ctx.drawText(mc.textRenderer, anime[i], ex + 60, rowY + 5, 0xFFF3EFFA, false);
+            }
+            ctx.drawText(mc.textRenderer, "UNLOCKED: 5 BRAND CLICKS", ex + 13, ey + 146, 0xFF9A8DAF, false);
         }
         ctx.drawText(mc.textRenderer, "Nightfall  •  Ziehen: Fenster | Tabs per Drag & Drop sortieren | Rechtsklick: Einstellungen", SIDE + 28, height - 22, Theme.TEXT_DIM, false);
     }
