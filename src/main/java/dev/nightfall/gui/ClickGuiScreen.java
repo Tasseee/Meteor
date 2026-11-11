@@ -68,7 +68,9 @@ public class ClickGuiScreen extends Screen {
 
     public ClickGuiScreen() {
         super(Text.literal("Nightfall"));
-        for (Category c : Category.values()) if (!ModuleManager.byCategory(c).isEmpty()) cats.add(c);
+        for (Category c : Category.values()) {
+            if (c != Category.COMBAT && !ModuleManager.byCategory(c).isEmpty()) cats.add(c);
+        }
         if (!cats.isEmpty()) selectedCategory = cats.get(0);
         long h = MinecraftClient.getInstance().getWindow().getHandle();
         prevL = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
@@ -92,6 +94,8 @@ public class ClickGuiScreen extends Screen {
         if (search.isEmpty()) return all;
         List<Module> out = new ArrayList<>();
         for (Module m : all) {
+            // Keep combat/weapon controls outside this UI redesign.
+            if (m.getName().equals("WeaponAnimations")) continue;
             String q = search.toLowerCase(Locale.ROOT);
             if (m.getName().toLowerCase(Locale.ROOT).contains(q)
                     || m.getDescription().toLowerCase(Locale.ROOT).contains(q)) out.add(m);
