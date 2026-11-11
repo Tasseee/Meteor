@@ -280,16 +280,48 @@ public final class NightfallGuiScreen extends Screen {
             };
         }
         int offsetX = 0, offsetY = 0;
-        if (Config.guiAnimations && Config.guiAnimationType.equals("Slide")) {
-            int distance = Math.round((1.0f - anim) * 24.0f);
-            switch (Config.guiAnimationDirection) {
-                case "Right" -> offsetX = distance;
-                case "Up" -> offsetY = -distance;
-                case "Down" -> offsetY = distance;
-                default -> offsetX = -distance;
+        float panelScale = 1.0f;
+        float fadeAlpha = 1.0f;
+        if (Config.guiAnimations) {
+            switch (Config.guiAnimationType) {
+                case "Slide" -> {
+                    int distance = Math.round((1.0f - anim) * 30.0f);
+                    switch (Config.guiAnimationDirection) {
+                        case "Right" -> offsetX = distance;
+                        case "Up" -> offsetY = -distance;
+                        case "Down" -> offsetY = distance;
+                        default -> offsetX = -distance;
+                    }
+                }
+                case "Fade" -> {
+                    fadeAlpha = anim;
+                    offsetY = Math.round((1.0f - anim) * 7.0f);
+                }
+                case "Scale" -> panelScale = 0.88f + 0.12f * anim;
+                case "Zoom" -> panelScale = 0.68f + 0.32f * anim;
+                default -> { }
             }
         }
-        drawWindow(ctx, activeTab, x + offsetX, y + offsetY, w, mx, my, click, rightClick, mc);
+
+        // Animate the complete window (including text and controls) around its top-left.
+        // Mouse coordinates are inverse-transformed so hitboxes stay aligned while animating.
+        float drawX = x + offsetX;
+        float drawY = y + offsetY;
+        float translateX = drawX * (1.0f - panelScale);
+        float translateY = drawY * (1.0f - panelScale);
+        int hitMouseX = Math.round((mx - translateX) / panelScale);
+        int hitMouseY = Math.round((my - translateY) / panelScale);
+        ctx.getMatrices().push();
+        ctx.getMatrices().translate(translateX, translateY, 0.0f);
+        ctx.getMatrices().scale(panelScale, panelScale, 1.0f);
+        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, fadeAlpha);
+        try {
+            drawWindow(ctx, activeTab, Math.round(drawX), Math.round(drawY), w,
+                    hitMouseX, hitMouseY, click, rightClick, mc);
+        } finally {
+            com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+            ctx.getMatrices().pop();
+        }
         if (numberSlider != null) {
             float amount = Math.max(0.0f, Math.min(1.0f, (mx - numberSliderX) / (float) Math.max(1, numberSliderW)));
             numberSlider.set(numberSlider.min + amount * (numberSlider.max - numberSlider.min));
