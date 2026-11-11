@@ -14,9 +14,9 @@ import dev.nightfall.module.setting.NumberSetting;
 public final class ItemGlint extends Module {
     private final ColorSetting color = add(new ColorSetting("Neon Color", 0xA020F0));
     private final BoolSetting rainbow = add(new BoolSetting("Rainbow Mode", false));
-    private final NumberSetting intensity = add(new NumberSetting("Glow Intensity", 70, 0, 100, 1));
-    private final NumberSetting radius = add(new NumberSetting("Glow Radius", 8, 1, 20, 1));
-    private final NumberSetting opacity = add(new NumberSetting("Glow Opacity", 85, 0, 100, 1));
+    private final NumberSetting intensity = add(new NumberSetting("Glow Intensity", 100, 0, 100, 1));
+    private final NumberSetting radius = add(new NumberSetting("Glow Radius", 20, 1, 20, 1));
+    private final NumberSetting opacity = add(new NumberSetting("Glow Opacity", 100, 0, 100, 1));
     private final NumberSetting speed = add(new NumberSetting("Glow Speed", 1.0, 0.1, 5.0, 0.1));
     private final BoolSetting particles = add(new BoolSetting("Particle Effects", false));
     private final BoolSetting animated = add(new BoolSetting("Animated Glow", true));
