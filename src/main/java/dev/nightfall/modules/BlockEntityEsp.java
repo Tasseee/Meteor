@@ -48,7 +48,7 @@ public abstract class BlockEntityEsp extends EspBase {
         for (int dz = -cr; dz <= cr; dz++) {
             for (int dx = -cr; dx <= cr; dx++) {
                 WorldChunk ch = mc.world.getChunkManager().getWorldChunk(pcx + dx, pcz + dz);
-                if (ch == null) continue;
+                if (ch == null || !acceptChunk(ch)) continue;
                 for (BlockEntity be : ch.getBlockEntities().values()) {
                     if (!accept(be)) continue;
                     BlockPos bp = be.getPos();
