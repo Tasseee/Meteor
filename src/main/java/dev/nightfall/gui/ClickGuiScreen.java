@@ -343,7 +343,8 @@ public class ClickGuiScreen extends Screen {
         int top = Theme.DESIGN.equals("Flat") ? Theme.HEADER_BOT : Theme.HEADER_TOP;
         ctx.fillGradient(panelX, y, panelX + panelW, y + CATEGORY_H - 1, top, Theme.HEADER_BOT);
         if (hover) ctx.fill(panelX, y, panelX + panelW, y + CATEGORY_H - 1, Theme.ROW_HOVER);
-        ctx.fill(panelX, y + CATEGORY_H - 2, panelX + panelW, y + CATEGORY_H - 1, Theme.withAlpha(Theme.ACCENT, open ? 210 : 90));
+        ctx.fill(panelX, y + CATEGORY_H - 2, panelX + panelW, y + CATEGORY_H - 1, Theme.withAlpha(Theme.ACCENT, open ? 235 : 105));
+        if (open) ctx.fill(panelX, y, panelX + 2, y + CATEGORY_H - 1, Theme.ACCENT);
         String icon = categoryIcon(c);
         ctx.fill(panelX + 9, y + 8, panelX + 27, y + 25, Theme.withAlpha(Theme.ACCENT, 45));
         ctx.drawText(mc.textRenderer, icon, panelX + 15, y + 13, Theme.ACCENT, true);
@@ -373,6 +374,7 @@ public class ClickGuiScreen extends Screen {
         float enabled = ease(ENABLE_PROGRESS, mod, mod.isEnabled(), delta);
         int rowBg = hover ? Theme.ROW_HOVER : (0x18000000);
         ctx.fill(panelX + 3, y, panelX + panelW - 3, y + MODULE_H - 1, rowBg);
+        if (hover) ctx.fill(panelX + 3, y, panelX + panelW - 3, y + 1, Theme.withAlpha(Theme.ACCENT, 120));
         if (enabled > 0.01f) {
             int alpha = Math.max(0, Math.min(155, (int) (enabled * 155)));
             ctx.fill(panelX + 3, y, panelX + 5, y + MODULE_H - 1, Theme.withAlpha(Theme.ACCENT, alpha));
@@ -391,6 +393,7 @@ public class ClickGuiScreen extends Screen {
         // Compact toggle at the far right: independent from the row's expand/collapse action.
         int tx = panelX + panelW - 43;
         int ty = y + 8;
+        ctx.fill(tx - 1, ty - 1, tx + 30, ty + 14, Theme.withAlpha(mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, 70));
         ctx.fill(tx, ty, tx + 29, ty + 13, mod.isEnabled() ? Theme.ACCENT : 0xFF343440);
         int knobX = mod.isEnabled() ? tx + 18 : tx + 3;
         ctx.fill(knobX, ty + 2, knobX + 8, ty + 11, 0xFFF7F7FA);
