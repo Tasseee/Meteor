@@ -7,7 +7,6 @@ import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.item.HeldItemRenderer;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Hand;
@@ -47,12 +46,8 @@ public abstract class HeldItemRendererMixin {
         boolean mainArmLeft = player.getMainArm() == Arm.LEFT;
         boolean leftHand = hand == Hand.MAIN_HAND ? mainArmLeft : !mainArmLeft;
         try {
-            if (styleEnabled) ModuleManager.get(FirstPersonStyle.class).transform(matrices, leftHand);
+            if (styleEnabled) ModuleManager.get(FirstPersonStyle.class).transform(matrices, leftHand, item);
 
-            // Slightly shrink held blocks in first person only.
-            if (item != null && !item.isEmpty() && item.getItem() instanceof BlockItem) {
-                matrices.scale(0.50f, 0.50f, 0.50f);
-            }
             // Lower swords slightly without changing other held items.
             if (item != null && !item.isEmpty() && Registries.ITEM.getId(item.getItem()).getPath().endsWith("_sword")) {
                 matrices.translate(0.0, -0.09, 0.0);
