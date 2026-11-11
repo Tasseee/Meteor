@@ -36,6 +36,8 @@ public class ClickGuiScreen extends Screen {
     private static final int SETTING_H = 23;
     private static final int GAP = 6;
     private static final int FOOTER_H = 26;
+    private static final int SIDEBAR_W = 126;
+    private static final int CARD_GAP = 8;
 
     private static final Set<Category> OPEN_CATEGORIES = new HashSet<>();
     private static final Set<Module> EXPANDED = new HashSet<>();
@@ -45,6 +47,7 @@ public class ClickGuiScreen extends Screen {
     private static String search = "";
 
     private final List<Category> cats = new ArrayList<>();
+    private Category selectedCategory;
     private final Keys.Poller poller = new Keys.Poller();
     private boolean prevL, prevR, prevM, clickL, clickR, clickM;
     private boolean searchFocus;
@@ -66,6 +69,7 @@ public class ClickGuiScreen extends Screen {
     public ClickGuiScreen() {
         super(Text.literal("Nightfall"));
         for (Category c : Category.values()) if (!ModuleManager.byCategory(c).isEmpty()) cats.add(c);
+        if (!cats.isEmpty()) selectedCategory = cats.get(0);
         long h = MinecraftClient.getInstance().getWindow().getHandle();
         prevL = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
         prevR = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
@@ -229,105 +233,126 @@ public class ClickGuiScreen extends Screen {
             slider.set(slider.min + Math.max(0, Math.min(1, t)) * (slider.max - slider.min));
         }
 
-        List<Category> displayedCats = new ArrayList<>();
-        for (Category c : cats) if (search.isEmpty() || !visible(c).isEmpty()) displayedCats.add(c);
-        float[] categoryBodies = new float[displayedCats.size()];
+        List<Module> displayedModules = selectedCategory == null ? List.of() : visible(selectedCategory);
+        int contentX = panelX + SIDEBAR_W + 8;
+        int contentW = Math.max(120, panelW - SIDEBAR_W - 16);
+        int columns = contentW >= 500 ? 2 : 1;
+        int cardW = (contentW - (columns - 1) * CARD_GAP) / columns;
+        List<Float> cardHeights = new ArrayList<>();
+        for (Module mod : displayedModules) {
+            float mp = ease(MODULE_PROGRESS, mod, EXPANDED.contains(mod), delta);
+            cardHeights.add(MODULE_H + mod.getSettings().size() * SETTING_H * mp);
+        }
+        List<Integer> rowStarts = new ArrayList<>();
+        List<Integer> rowHeights = new ArrayList<>();
         float totalHeight = 0;
-        for (int i = 0; i < displayedCats.size(); i++) {
-            Category c = displayedCats.get(i);
-            List<Module> mods = visible(c);
-            float cp = ease(CATEGORY_PROGRESS, c, categoryOpen(c), delta);
-            float bodyTarget = 0;
-            for (Module mod : mods) {
-                float mp = ease(MODULE_PROGRESS, mod, EXPANDED.contains(mod), delta);
-                bodyTarget += MODULE_H + mod.getSettings().size() * SETTING_H * mp;
-            }
-            categoryBodies[i] = bodyTarget * cp;
-            totalHeight += CATEGORY_H + categoryBodies[i] + GAP;
+        for (int i = 0; i < displayedModules.size(); i += columns) {
+            rowStarts.add(i);
+            float rowH = cardHeights.get(i);
+            if (i + 1 < displayedModules.size() && columns == 2) rowH = Math.max(rowH, cardHeights.get(i + 1));
+            rowHeights.add((int) Math.ceil(rowH));
+            totalHeight += rowH + CARD_GAP;
         }
         float maxScroll = Math.max(0, totalHeight - (viewportBottom - viewportTop));
         scroll = Math.max(0, Math.min(maxScroll, scroll));
 
-        ctx.fill(panelX - 1, viewportTop - 5, panelX + panelW + 1, viewportBottom + 1, Theme.withAlpha(Theme.ACCENT, 48));
-        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportBottom, Theme.HUD_PANEL);
-        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportTop - 2, Theme.ACCENT_DIM);
-        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportTop - 2, Theme.ACCENT_DIM);
-        ctx.enableScissor(panelX, viewportTop, panelX + panelW, viewportBottom);
-        float y = viewportTop - scroll;
-        Module hovered = null;
-        boolean modalOpen = editingMessages != null || editingString != null || editingColor != null;
-        if (modalOpen) { clickL = false; clickM = false; }
-
-        for (int i = 0; i < displayedCats.size(); i++) {
-            Category category = displayedCats.get(i);
-            List<Module> mods = visible(category);
-            float cp = CATEGORY_PROGRESS.getOrDefault(category, 0f);
-            int cy = Math.round(y);
-            drawCategoryHeader(ctx, category, cy, mx, my, cp);
-            if (my >= viewportTop && my < viewportBottom && in(mx, my, panelX, cy, panelW, CATEGORY_H) && clickL && !modalOpen) {
-                if (!OPEN_CATEGORIES.remove(category)) OPEN_CATEGORIES.add(category);
+        // Sidebar and module workspace: a fixed category rail plus independent glass cards.
+        int sideX = panelX;
+        ctx.fill(sideX - 1, viewportTop - 5, sideX + SIDEBAR_W + 2, viewportBottom + 1, Theme.withAlpha(Theme.ACCENT, 54));
+        ctx.fill(sideX, viewportTop - 4, sideX + SIDEBAR_W, viewportBottom, Theme.HUD_PANEL);
+        ctx.fill(sideX, viewportTop - 4, sideX + 2, viewportBottom, Theme.ACCENT_DIM);
+        ctx.drawText(mc.textRenderer, "CATEGORIES", sideX + 11, viewportTop + 7, Theme.TEXT_DIM, true);
+        int navY = viewportTop + 24;
+        for (Category category : cats) {
+            boolean active = category == selectedCategory;
+            boolean over = in(mx, my, sideX + 5, navY, SIDEBAR_W - 10, 27);
+            int navBg = active ? Theme.withAlpha(Theme.ACCENT, 76) : over ? Theme.ROW_HOVER : 0x22000000;
+            ctx.fill(sideX + 5, navY, sideX + SIDEBAR_W - 5, navY + 25, navBg);
+            if (active) ctx.fill(sideX + 5, navY, sideX + 7, navY + 25, Theme.ACCENT);
+            ctx.fill(sideX + 12, navY + 6, sideX + 29, navY + 22, Theme.withAlpha(Theme.ACCENT, active ? 90 : 35));
+            ctx.drawText(mc.textRenderer, categoryIcon(category), sideX + 18, navY + 11, active ? Theme.TEXT : Theme.ACCENT, true);
+            String label = category.display.toUpperCase(Locale.ROOT);
+            ctx.drawText(mc.textRenderer, label, sideX + 36, navY + 10, active ? Theme.TEXT : Theme.TEXT_DIM, active);
+            String count = String.valueOf(visible(category).size());
+            ctx.drawText(mc.textRenderer, count, sideX + SIDEBAR_W - 15 - mc.textRenderer.getWidth(count), navY + 10, Theme.TEXT_DIM, false);
+            if (clickL && in(mx, my, sideX + 5, navY, SIDEBAR_W - 10, 27) && !modalOpen) {
+                selectedCategory = category;
+                scroll = 0;
                 clickL = false;
             }
+            navY += 30;
+        }
+        ctx.drawText(mc.textRenderer, "NIGHTFALL", sideX + 11, viewportBottom - 25, Theme.ACCENT, true);
+        ctx.drawText(mc.textRenderer, "CLIENT UI", sideX + 11, viewportBottom - 14, Theme.TEXT_DIM, false);
 
-            float bodyH = categoryBodies[i];
-            int bodyBottom = Math.round(y + CATEGORY_H + bodyH);
-            if (bodyH > 0.5f) {
-                ctx.fill(panelX + 1, cy + CATEGORY_H, panelX + panelW - 1, bodyBottom, Theme.withAlpha(Theme.PANEL, 248));
-                ctx.fill(panelX + 1, cy + CATEGORY_H, panelX + 3, bodyBottom, Theme.withAlpha(Theme.ACCENT, 95));
-                ctx.enableScissor(panelX + 1, cy + CATEGORY_H, panelX + panelW - 1, Math.min(viewportBottom, bodyBottom));
-                float rowY = y + CATEGORY_H;
-                for (Module mod : mods) {
-                    int ry = Math.round(rowY);
-                    float mp = MODULE_PROGRESS.getOrDefault(mod, 0f);
-                    boolean rowInViewport = ry + MODULE_H >= viewportTop && ry <= viewportBottom && ry < bodyBottom;
-                    boolean rowHovered = rowInViewport && my < bodyBottom && in(mx, my, panelX + 1, ry, panelW - 2, MODULE_H);
-                    drawModuleRow(ctx, mod, ry, mx, my, rowHovered, delta);
-                    if (rowHovered && !modalOpen) {
-                        int toggleX = panelX + panelW - 47;
-                        if (clickL && mx >= toggleX) { mod.toggle(); Config.save(); clickL = false; }
-                        else if (clickL) { toggleExpanded(mod); clickL = false; }
-                        else if (clickR) { toggleExpanded(mod); clickR = false; }
-                        else if (clickM) { listening = mod; searchFocus = false; notice("Taste drücken für " + mod.getName() + " · Backspace löscht"); clickM = false; }
-                    }
-                    if (rowHovered) hovered = mod;
-                    rowY += MODULE_H;
-
-                    float settingsH = mod.getSettings().size() * SETTING_H * mp;
-                    if (settingsH > 0.5f) {
-                        int settingsBottom = Math.round(rowY + settingsH);
-                        ctx.enableScissor(panelX + 6, Math.round(rowY), panelX + panelW - 6, Math.min(bodyBottom, settingsBottom));
-                        visibleClipBottom = Math.min(bodyBottom, viewportBottom);
-                        for (int si = 0; si < mod.getSettings().size(); si++) {
-                            int sy = Math.round(rowY + si * SETTING_H);
-                            if (sy + SETTING_H >= viewportTop && sy < viewportBottom && sy < bodyBottom) {
-                                drawSetting(ctx, mod.getSettings().get(si), sy, mx, my, panelX + 8, panelW - 16, modalOpen);
-                            }
-                        }
-                        ctx.disableScissor();
-                    }
-                    rowY += settingsH;
+        ctx.fill(contentX - 1, viewportTop - 5, contentX + contentW + 1, viewportBottom + 1, Theme.withAlpha(Theme.ACCENT, 48));
+        ctx.fill(contentX, viewportTop - 4, contentX + contentW, viewportBottom, Theme.HUD_PANEL);
+        ctx.fill(contentX, viewportTop - 4, contentX + contentW, viewportTop - 2, Theme.ACCENT_DIM);
+        String categoryTitle = selectedCategory == null ? "MODULES" : selectedCategory.display.toUpperCase(Locale.ROOT);
+        ctx.drawText(mc.textRenderer, categoryTitle, contentX + 10, viewportTop + 7, Theme.TEXT, true);
+        ctx.drawText(mc.textRenderer, displayedModules.size() + " MODULE", contentX + contentW - 83, viewportTop + 7, Theme.TEXT_DIM, false);
+        int cardsTop = viewportTop + 23;
+        ctx.enableScissor(contentX, cardsTop, contentX + contentW, viewportBottom);
+        float y = cardsTop - scroll;
+        for (int ri = 0; ri < rowStarts.size(); ri++) {
+            int first = rowStarts.get(ri);
+            for (int col = 0; col < columns && first + col < displayedModules.size(); col++) {
+                Module mod = displayedModules.get(first + col);
+                int cardX = contentX + col * (cardW + CARD_GAP);
+                int cardY = Math.round(y);
+                float mp = MODULE_PROGRESS.getOrDefault(mod, 0f);
+                int cardH = (int) Math.ceil(cardHeights.get(first + col));
+                boolean cardVisible = cardY + cardH >= cardsTop && cardY <= viewportBottom;
+                if (!cardVisible) continue;
+                ctx.fill(cardX - 1, cardY - 1, cardX + cardW + 1, cardY + cardH + 1, Theme.withAlpha(Theme.ACCENT, 52));
+                ctx.fill(cardX, cardY, cardX + cardW, cardY + cardH, Theme.withAlpha(Theme.PANEL, 248));
+                ctx.fill(cardX, cardY, cardX + cardW, cardY + 1, Theme.withAlpha(Theme.ACCENT, 165));
+                int savedX = panelX, savedW = panelW;
+                panelX = cardX;
+                panelW = cardW;
+                boolean rowHovered = in(mx, my, cardX, cardY, cardW, MODULE_H) && my >= cardsTop && my < viewportBottom;
+                drawModuleRow(ctx, mod, cardY, mx, my, rowHovered, delta);
+                if (rowHovered && !modalOpen) {
+                    int toggleX = cardX + cardW - 47;
+                    if (clickL && mx >= toggleX) { mod.toggle(); Config.save(); clickL = false; }
+                    else if (clickL) { toggleExpanded(mod); clickL = false; }
+                    else if (clickR) { toggleExpanded(mod); clickR = false; }
+                    else if (clickM) { listening = mod; searchFocus = false; notice("Taste drücken für " + mod.getName() + " · Backspace löscht"); clickM = false; }
                 }
-                ctx.disableScissor();
+                if (rowHovered) hovered = mod;
+                float settingsH = mod.getSettings().size() * SETTING_H * mp;
+                if (settingsH > 0.5f) {
+                    visibleClipBottom = Math.min(cardY + cardH, viewportBottom);
+                    ctx.enableScissor(cardX + 5, cardY + MODULE_H, cardX + cardW - 5, Math.min(viewportBottom, cardY + cardH));
+                    for (int si = 0; si < mod.getSettings().size(); si++) {
+                        int sy = cardY + MODULE_H + si * SETTING_H;
+                        if (sy + SETTING_H >= cardsTop && sy < viewportBottom) {
+                            drawSetting(ctx, mod.getSettings().get(si), sy, mx, my, cardX + 6, cardW - 12, modalOpen);
+                        }
+                    }
+                    ctx.disableScissor();
+                }
+                panelX = savedX;
+                panelW = savedW;
             }
-            y += CATEGORY_H + bodyH + GAP;
+            y += rowHeights.get(ri) + CARD_GAP;
         }
         ctx.disableScissor();
 
-        // Minimal scrollbar, positioned relative to the full accordion content.
-        if (totalHeight > viewportBottom - viewportTop + 1) {
-            int trackX = panelX + panelW - 3;
-            int trackH = viewportBottom - viewportTop;
-            int thumbH = Math.max(24, (int) (trackH * (trackH / totalHeight)));
-            int thumbY = viewportTop + (int) ((trackH - thumbH) * (scroll / Math.max(1, maxScroll)));
-            ctx.fill(trackX, viewportTop, trackX + 2, viewportBottom, 0x44FFFFFF);
+        if (totalHeight > viewportBottom - cardsTop + 1) {
+            int trackX = contentX + contentW - 3;
+            int trackH = viewportBottom - cardsTop;
+            int thumbH = Math.max(24, (int) (trackH * (trackH / Math.max(1, totalHeight))));
+            int thumbY = cardsTop + (int) ((trackH - thumbH) * (scroll / Math.max(1, maxScroll)));
+            ctx.fill(trackX, cardsTop, trackX + 2, viewportBottom, 0x44FFFFFF);
             ctx.fill(trackX, thumbY, trackX + 2, thumbY + thumbH, Theme.ACCENT);
         }
 
         if (hovered != null && !modalOpen) {
             String desc = hovered.getDescription();
-            int max = panelW - 16;
+            int max = panelW - SIDEBAR_W - 24;
             while (mc.textRenderer.getWidth(desc) > max && desc.length() > 8) desc = desc.substring(0, desc.length() - 2) + "…";
-            ctx.drawText(mc.textRenderer, desc, panelX + 2, height - 17, Theme.TEXT_DIM, false);
+            ctx.drawText(mc.textRenderer, desc, panelX + SIDEBAR_W + 8, height - 17, Theme.TEXT_DIM, false);
         }
 
         if (modalOpen) drawTextModal(ctx, mx, my);
@@ -336,7 +361,7 @@ public class ClickGuiScreen extends Screen {
             drawNotice(ctx, msg, 0xFFFFD27A);
         } else if (System.currentTimeMillis() < noticeUntil) drawNotice(ctx, notice, 0xFFFFD27A);
 
-        String footer = "L Optionen  ·  R Einstellungen  ·  M Keybind  ·  Mausrad Scroll";
+        String footer = "Klick: Optionen  ·  Rechtsklick: Settings  ·  Mittelklick: Keybind  ·  Mausrad: Scroll";
         ctx.fill(panelX - 1, height - 23, panelX + panelW + 1, height - 3, Theme.withAlpha(Theme.ACCENT, 60));
         ctx.fill(panelX, height - 22, panelX + panelW, height - 4, Theme.HUD_PANEL);
         ctx.drawText(mc.textRenderer, footer, panelX + 10, height - 16, Theme.TEXT_DIM, false);
