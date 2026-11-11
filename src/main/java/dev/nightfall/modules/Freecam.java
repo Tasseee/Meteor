@@ -85,7 +85,7 @@ public final class Freecam extends Module {
             double dx = Math.max(-100.0, Math.min(100.0, x[0] - lastMouseX));
             double dy = Math.max(-100.0, Math.min(100.0, y[0] - lastMouseY));
             cameraYaw += (float) (dx * sensitivity.get());
-            cameraPitch -= (float) (dy * sensitivity.get());
+            cameraPitch += (float) (dy * sensitivity.get());
             cameraPitch = Math.max(-90.0f, Math.min(90.0f, cameraPitch));
         }
         lastMouseX = x[0];
@@ -96,7 +96,7 @@ public final class Freecam extends Module {
         float pitch = (float) Math.toRadians(cameraPitch);
         Vec3d forward = new Vec3d(-Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch),
                 Math.cos(yaw) * Math.cos(pitch));
-        Vec3d right = new Vec3d(Math.cos(yaw), 0, Math.sin(yaw));
+        Vec3d right = new Vec3d(-Math.cos(yaw), 0, -Math.sin(yaw));
         Vec3d move = Vec3d.ZERO;
 
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS) move = move.add(forward);
