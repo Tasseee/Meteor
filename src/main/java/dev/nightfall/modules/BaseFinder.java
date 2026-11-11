@@ -257,9 +257,16 @@ public class BaseFinder extends Module {
         if (geodeSignature) res.reasons.add("Geoden-Merkmale erkannt (Calcit/Smooth Basalt/Amethystblock)");
         if (sculkScore > 0) res.reasons.add("Sculk-Cluster (" + sculk + ", +" + fmt(sculkScore) + ")");
 
-        // Don't suppress a candidate just because several chunks have similar storage layouts.
-        // Repeated layouts can be legitimate player bases, so keep each candidate independently.
-        if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
+        // Repeated candidate fingerprints across three or more distinct chunks are treated
+        // as a repeated/decoy layout and hidden from BaseFinder and ESP.
+        boolean repeatedPattern = score >= threshold.get() && signalKinds >= minSignals.getInt()
+                && isRepeatedFakePattern(storage, shulker, hopper, furnace, redstone, spawner, cx, cz);
+        if (repeatedPattern) {
+            res.status = Status.CLEAN;
+            res.reasons.clear();
+            dirty = true;
+            marksDirty = true;
+        } else if (score >= threshold.get() && signalKinds >= minSignals.getInt()) {
             res.status = Status.SUS;
             if (prev != Status.SUS) {
                 res.foundAtMillis = System.currentTimeMillis();
