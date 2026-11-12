@@ -34,6 +34,7 @@ public class CrystalAura extends Module {
    private float lastTargetHealth = Float.NaN;
    private int placeT;
    private int breakT;
+   private boolean awaitingObsidian;
 
    @Override
    public void onWorldLeave() {
@@ -41,6 +42,7 @@ public class CrystalAura extends Module {
       this.breakT = 0;
       this.trackedTargetId = -1;
       this.lastTargetHealth = Float.NaN;
+      this.awaitingObsidian = false;
    }
 
    @Override
@@ -49,6 +51,7 @@ public class CrystalAura extends Module {
       this.breakT = 0;
       this.trackedTargetId = -1;
       this.lastTargetHealth = Float.NaN;
+      this.awaitingObsidian = false;
    }
 
    public CrystalAura() {
@@ -88,28 +91,43 @@ public class CrystalAura extends Module {
 
    private boolean placeObsidianAfterHit(class_746 player, class_1657 target) {
       if (!this.placeObsidianOnHit.get()) return false;
+
       class_2338 base = findHitObsidianBase(player, target);
-      if (base == null) return false;
-      if (mc.field_1687.method_8320(base).method_27852(class_2246.field_9987)) return true;
+      // No safe position yet: keep the combo blocked instead of placing a crystal.
+      if (base == null) return true;
+      if (mc.field_1687.method_8320(base).method_27852(class_2246.field_9987)) {
+         return false; // Obsidian is confirmed in the world.
+      }
+
       int slot = InvUtil.ensureHotbar(class_1802.field_8281);
-      if (slot < 0) return false;
-      InvUtil.select(slot);
-      // Place against any valid neighboring solid face. This is more reliable than
-      // assuming the block below is the only usable support/face.
-      for (class_2350 face : class_2350.values()) {
-         class_2338 neighbor = base.method_10093(face);
-         if (!mc.field_1687.method_8320(neighbor).method_26215()) {
+      if (slot < 0) return true;
+
+      int previousSlot = InvUtil.selected();
+      boolean switched = slot != previousSlot;
+      if (switched) InvUtil.select(slot);
+
+      try {
+         // Place against a valid neighboring block face.
+         for (class_2350 face : class_2350.values()) {
+            class_2338 neighbor = base.method_10093(face);
+            class_2680 neighborState = mc.field_1687.method_8320(neighbor);
+            if (!neighborState.method_26220(mc.field_1687, neighbor).method_1110()) continue;
+
             class_2350 clickedSide = face.method_10153();
             class_243 hit = class_243.method_24953(neighbor)
                .method_1031(clickedSide.method_10148() * 0.5, clickedSide.method_10164() * 0.5, clickedSide.method_10165() * 0.5);
             class_3965 result = new class_3965(hit, clickedSide, neighbor, false);
             if (mc.field_1761.method_2896(player, class_1268.field_5808, result).method_23665()) {
                player.method_6104(class_1268.field_5808);
-               return true;
+               break;
             }
          }
+      } finally {
+         if (switched) InvUtil.select(previousSlot);
       }
-      return false;
+
+      // Always wait for the server/world state update before allowing crystal placement.
+      return true;
    }
 
    @Override
@@ -151,6 +169,7 @@ public class CrystalAura extends Module {
             if (target == null) {
                this.trackedTargetId = -1;
                this.lastTargetHealth = Float.NaN;
+               this.awaitingObsidian = false;
             } else {
                int currentTargetId = target.method_5628();
                float currentHealth = target.method_6032();
@@ -161,12 +180,16 @@ public class CrystalAura extends Module {
                   boolean targetWasHit = !Float.isNaN(this.lastTargetHealth)
                      && currentHealth < this.lastTargetHealth - 0.01F;
                   this.lastTargetHealth = currentHealth;
-                  if (targetWasHit) {
-                     // On every confirmed hit, place obsidian first. Crystal placement continues on the following tick.
-                     if (this.placeObsidianAfterHit(p, target)) return;
+                  if (targetWasHit && this.placeObsidianOnHit.get()) {
+                     this.awaitingObsidian = true;
                   }
                }
             }
+            if (target != null && this.awaitingObsidian) {
+               if (this.placeObsidianAfterHit(p, target)) return;
+               this.awaitingObsidian = false;
+            }
+
             if (target != null && !target.method_24828()) {
                class_1268 hand = p.method_6079().method_31574(class_1802.field_8301)
                   ? class_1268.field_5810
