@@ -156,6 +156,59 @@ public final class Projection {
       }
    }
 
+   public static boolean projectSegment(double x0, double y0, double z0, double x1, double y1, double z1, float[] out) {
+      if (!valid || viewProjection == null || out == null || out.length < 4
+         || !Double.isFinite(x0) || !Double.isFinite(y0) || !Double.isFinite(z0)
+         || !Double.isFinite(x1) || !Double.isFinite(y1) || !Double.isFinite(z1)) {
+         return false;
+      }
+
+      float ax = (float)(x0 - ex);
+      float ay = (float)(y0 - ey);
+      float az = (float)(z0 - ez);
+      float bx = (float)(x1 - ex);
+      float by = (float)(y1 - ey);
+      float bz = (float)(z1 - ez);
+
+      float[] a = {
+         viewProjection.m00() * ax + viewProjection.m10() * ay + viewProjection.m20() * az + viewProjection.m30(),
+         viewProjection.m01() * ax + viewProjection.m11() * ay + viewProjection.m21() * az + viewProjection.m31(),
+         viewProjection.m03() * ax + viewProjection.m13() * ay + viewProjection.m23() * az + viewProjection.m33()
+      };
+      float[] b = {
+         viewProjection.m00() * bx + viewProjection.m10() * by + viewProjection.m20() * bz + viewProjection.m30(),
+         viewProjection.m01() * bx + viewProjection.m11() * by + viewProjection.m21() * bz + viewProjection.m31(),
+         viewProjection.m03() * bx + viewProjection.m13() * by + viewProjection.m23() * bz + viewProjection.m33()
+      };
+      final float near = 1.0E-4F;
+      if (!Float.isFinite(a[0]) || !Float.isFinite(a[1]) || !Float.isFinite(a[2])
+         || !Float.isFinite(b[0]) || !Float.isFinite(b[1]) || !Float.isFinite(b[2])
+         || (a[2] <= near && b[2] <= near)) {
+         return false;
+      }
+
+      if (a[2] <= near || b[2] <= near) {
+         float t = (near - a[2]) / (b[2] - a[2]);
+         float cx = a[0] + (b[0] - a[0]) * t;
+         float cy = a[1] + (b[1] - a[1]) * t;
+         if (a[2] <= near) {
+            a[0] = cx;
+            a[1] = cy;
+            a[2] = near;
+         } else {
+            b[0] = cx;
+            b[1] = cy;
+            b[2] = near;
+         }
+      }
+
+      out[0] = (a[0] / a[2] * 0.5F + 0.5F) * sw;
+      out[1] = (0.5F - a[1] / a[2] * 0.5F) * sh;
+      out[2] = (b[0] / b[2] * 0.5F + 0.5F) * sw;
+      out[3] = (0.5F - b[1] / b[2] * 0.5F) * sh;
+      return Float.isFinite(out[0]) && Float.isFinite(out[1]) && Float.isFinite(out[2]) && Float.isFinite(out[3]);
+   }
+
    public static boolean project(double x, double y, double z, double[] out) {
       if (valid && viewProjection != null && out != null && out.length >= 2 && Double.isFinite(x) && Double.isFinite(y) && Double.isFinite(z)) {
          float dx = (float)(x - ex);
