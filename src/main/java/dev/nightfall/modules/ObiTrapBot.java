@@ -22,8 +22,10 @@ import net.minecraft.class_746;
 public final class ObiTrapBot extends Module {
    private class_1657 target;
    private class_2338 anchor;
+   private class_2338 pendingPosition;
    private String phase = "obsidian";
    private int idleTicks;
+   private int pendingTicks;
    private int previousSlot = -1;
 
    public ObiTrapBot() {
@@ -49,6 +51,8 @@ public final class ObiTrapBot extends Module {
       this.restoreSlot();
       this.target = null;
       this.anchor = null;
+      this.pendingPosition = null;
+      this.pendingTicks = 0;
       this.idleTicks = 0;
       this.phase = "obsidian";
    }
@@ -56,11 +60,14 @@ public final class ObiTrapBot extends Module {
    private void start() {
       if (mc.field_1724 != null && mc.field_1687 != null) {
          if (mc.field_1765 instanceof class_3966 hit && hit.method_17782() instanceof class_1657 player && player != mc.field_1724) {
+            this.restoreSlot();
             this.target = player;
-            this.anchor = this.target.method_24515();
+            this.anchor = player.method_24515();
+            this.pendingPosition = null;
             this.phase = "obsidian";
             this.idleTicks = 0;
-            mc.field_1724.method_7353(class_2561.method_43470("[Obitrap] Baue die Box um " + this.target.method_5477().getString() + "."), false);
+            this.pendingTicks = 0;
+            mc.field_1724.method_7353(class_2561.method_43470("[Obitrap] Baue die Box um " + player.method_5477().getString() + "."), false);
          } else {
             mc.field_1724.method_7353(class_2561.method_43470("[Obitrap] Ziele mit deinem Fadenkreuz auf einen anderen Spieler und aktiviere den Bot."), false);
             this.setEnabled(false);
@@ -74,49 +81,87 @@ public final class ObiTrapBot extends Module {
       if (player == null || mc.field_1687 == null || mc.field_1761 == null || this.anchor == null || this.target == null) {
          this.stop("Abgebrochen: Kein gültiges Ziel oder keine Welt.");
          this.setEnabled(false);
-      } else if (this.target.method_5805() && !this.target.method_31481()) {
-         List<class_2338> positions = this.phase.equals("obsidian") ? this.getObsidianPositions() : this.getCobwebPositions();
-         class_1792 requiredItem = this.phase.equals("obsidian") ? class_1802.field_8281 : class_1802.field_8786;
-         class_2338 next = null;
+         return;
+      }
 
-         for (class_2338 pos : positions) {
-            class_2680 state = mc.field_1687.method_8320(pos);
-            if (state.method_26215() || state.method_45474()) {
-               next = pos;
-               break;
-            }
-         }
-
-         if (next == null) {
-            if (this.phase.equals("obsidian")) {
-               this.phase = "cobweb";
-               this.idleTicks = 0;
-               player.method_7353(class_2561.method_43470("[Obitrap] Box fertig. Platziere Cobwebs."), false);
-            } else {
-               this.stop("Fertig! Box und Cobwebs wurden platziert.");
-               this.setEnabled(false);
-            }
-         } else {
-            int slot = InvUtil.ensureHotbar(requiredItem);
-            if (slot < 0) {
-               this.stop("Abgebrochen: " + (this.phase.equals("obsidian") ? "Obsidian" : "Cobwebs") + " fehlen im Inventar.");
-               this.setEnabled(false);
-            } else {
-               if (this.previousSlot < 0) {
-                  this.previousSlot = InvUtil.selected();
-               }
-
-               InvUtil.select(slot);
-               if (this.tryPlace(next)) {
-                  this.idleTicks = 0;
-               } else if (++this.idleTicks > 100) {
-                  this.stop("Abgebrochen: Die nächsten Blöcke sind nicht erreichbar oder können nicht platziert werden.");
-                  this.setEnabled(false);
-               }
-            }
-         }
-      } else {
+      if (!this.target.method_5805() || this.target.method_31481()) {
          this.stop("Ziel nicht mehr verfügbar.");
+         this.setEnabled(false);
+         return;
+      }
+
+      // Follow the target's current block position; restart the perimeter if it moved.
+      class_2338 currentAnchor = this.target.method_24515();
+      if (!currentAnchor.equals(this.anchor)) {
+         this.anchor = currentAnchor;
+         this.pendingPosition = null;
+         this.pendingTicks = 0;
+         this.idleTicks = 0;
+         this.phase = "obsidian";
+      }
+
+      // Never assume an accepted click means the server placed the block.
+      // Wait for the client world to confirm the block before advancing.
+      if (this.pendingPosition != null) {
+         class_2680 pendingState = mc.field_1687.method_8320(this.pendingPosition);
+         if (!pendingState.method_45474() && !pendingState.method_26215()) {
+            this.pendingPosition = null;
+            this.pendingTicks = 0;
+            this.idleTicks = 0;
+         } else if (++this.pendingTicks < 5) {
+            return;
+         } else {
+            this.pendingPosition = null;
+            this.pendingTicks = 0;
+            if (++this.idleTicks > 100) {
+               this.stop("Abgebrochen: Der Server bestätigt die Blockplatzierung nicht.");
+               this.setEnabled(false);
+               return;
+            }
+         }
+      }
+
+      List<class_2338> positions = this.phase.equals("obsidian") ? this.getObsidianPositions() : this.getCobwebPositions();
+      class_1792 requiredItem = this.phase.equals("obsidian") ? class_1802.field_8281 : class_1802.field_8786;
+      class_2338 next = null;
+
+      for (class_2338 pos : positions) {
+         class_2680 state = mc.field_1687.method_8320(pos);
+         if (state.method_26215() || state.method_45474()) {
+            next = pos;
+            break;
+         }
+      }
+
+      if (next == null) {
+         if (this.phase.equals("obsidian")) {
+            this.phase = "cobweb";
+            this.idleTicks = 0;
+            player.method_7353(class_2561.method_43470("[Obitrap] Obsidian-Box fertig. Platziere Cobwebs."), false);
+         } else {
+            this.stop("Fertig! Box und Cobwebs wurden platziert.");
+            this.setEnabled(false);
+         }
+         return;
+      }
+
+      int slot = InvUtil.ensureHotbar(requiredItem);
+      if (slot < 0) {
+         this.stop("Abgebrochen: " + (this.phase.equals("obsidian") ? "Obsidian" : "Cobwebs") + " fehlen im Inventar.");
+         this.setEnabled(false);
+         return;
+      }
+
+      if (this.previousSlot < 0) {
+         this.previousSlot = InvUtil.selected();
+      }
+      InvUtil.select(slot);
+
+      if (this.tryPlace(next)) {
+         this.pendingPosition = next;
+         this.pendingTicks = 0;
+      } else if (++this.idleTicks > 100) {
+         this.stop("Abgebrochen: Keine gültige, erreichbare Blockfläche zum Platzieren gefunden.");
          this.setEnabled(false);
       }
    }
@@ -136,7 +181,6 @@ public final class ObiTrapBot extends Module {
             result.add(this.anchor.method_10069(x, y, -1));
             result.add(this.anchor.method_10069(x, y, 1));
          }
-
          result.add(this.anchor.method_10069(-1, y, 0));
          result.add(this.anchor.method_10069(1, y, 0));
       }
@@ -149,18 +193,32 @@ public final class ObiTrapBot extends Module {
    }
 
    private boolean tryPlace(class_2338 placePos) {
+      class_2680 placeState = mc.field_1687.method_8320(placePos);
+      if (!placeState.method_26215() && !placeState.method_45474()) {
+         return false;
+      }
+
       for (class_2350 face : class_2350.values()) {
          class_2338 neighbor = placePos.method_10093(face);
-         if (!mc.field_1687.method_8320(neighbor).method_26215()) {
-            class_2350 clickedSide = face.method_10153();
-            class_243 hitPosition = class_243.method_24953(neighbor)
-               .method_1031(clickedSide.method_10148() * 0.5, clickedSide.method_10164() * 0.5, clickedSide.method_10165() * 0.5);
-            class_3965 hit = new class_3965(hitPosition, clickedSide, neighbor, false);
-            class_1269 result = mc.field_1761.method_2896(mc.field_1724, class_1268.field_5808, hit);
-            if (result.method_23665()) {
-               mc.field_1724.method_6104(class_1268.field_5808);
-               return true;
-            }
+         class_2680 neighborState = mc.field_1687.method_8320(neighbor);
+
+         // Air, plants and other replaceable/non-colliding blocks are not valid supports.
+         if (neighborState.method_26220(mc.field_1687, neighbor).method_1110()) {
+            continue;
+         }
+
+         class_2350 clickedSide = face.method_10153();
+         class_243 hitPosition = class_243.method_24953(neighbor)
+            .method_1031(
+               clickedSide.method_10148() * 0.5,
+               clickedSide.method_10164() * 0.5,
+               clickedSide.method_10165() * 0.5
+            );
+         class_3965 hit = new class_3965(hitPosition, clickedSide, neighbor, false);
+         class_1269 result = mc.field_1761.method_2896(mc.field_1724, class_1268.field_5808, hit);
+         if (result.method_23665()) {
+            mc.field_1724.method_6104(class_1268.field_5808);
+            return true;
          }
       }
 
@@ -171,7 +229,6 @@ public final class ObiTrapBot extends Module {
       if (this.previousSlot >= 0 && mc.field_1724 != null) {
          InvUtil.select(this.previousSlot);
       }
-
       this.previousSlot = -1;
    }
 
@@ -180,9 +237,10 @@ public final class ObiTrapBot extends Module {
       if (mc.field_1724 != null) {
          mc.field_1724.method_7353(class_2561.method_43470("[Obitrap] " + message), false);
       }
-
       this.target = null;
       this.anchor = null;
+      this.pendingPosition = null;
+      this.pendingTicks = 0;
       this.idleTicks = 0;
       this.phase = "obsidian";
    }
