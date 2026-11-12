@@ -46,6 +46,8 @@ public final class NightfallGlintRenderer {
             image.method_4305(x, y, (alpha << 24) | 0x00FFFFFF);
          }
       }
+      // The constructor uploads an empty image. Upload again after filling the pixels.
+      dynamic.method_4524();
       class_1060 manager = class_310.method_1551().method_1531();
       textureId = class_2960.method_60655("nightfall", "item_glint");
       manager.method_4616(textureId, dynamic);
