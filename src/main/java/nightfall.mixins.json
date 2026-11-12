@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "package": "dev.nightfall.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "HeldItemRendererMixin",
+    "CameraMixin",
+    "GameRendererAccessor",
+    "CameraProjectionAccessor",
+    "AbstractSignEditScreenMixin",
+    "SlowSwingMixin",
+    "SeedCrackerProgressMixin",
+    "SeedCrackerDataIntegrityMixin",
+    "AutoShieldNetworkMixin",
+    "ItemStackGlintMixin",
+    "ItemRendererGlintColorMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

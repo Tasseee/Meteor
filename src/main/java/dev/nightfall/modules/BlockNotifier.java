@@ -4,96 +4,126 @@ import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
-import net.minecraft.block.entity.*;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.chunk.WorldChunk;
-
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
+import net.minecraft.class_2338;
+import net.minecraft.class_2561;
+import net.minecraft.class_2586;
+import net.minecraft.class_2595;
+import net.minecraft.class_2614;
+import net.minecraft.class_2627;
+import net.minecraft.class_2636;
+import net.minecraft.class_2818;
+import net.minecraft.class_3719;
 
-/**
- * Client-only notifier for block entities present in already loaded chunks.
- * It does not read server-hidden data or infer unopened container contents.
- */
 public final class BlockNotifier extends Module {
-    private final BoolSetting chests = add(new BoolSetting("Chests/Barrels", true));
-    private final BoolSetting shulkers = add(new BoolSetting("Shulker", true));
-    private final BoolSetting spawners = add(new BoolSetting("Spawner", true));
-    private final BoolSetting hoppers = add(new BoolSetting("Hopper", false));
-    private final NumberSetting range = add(new NumberSetting("Range (Blocks)", 48, 8, 128, 8));
-    private final Set<Long> seen = new HashSet<>();
-    private boolean initialized;
-    private int timer;
+   private final BoolSetting chests = this.add(new BoolSetting("Chests/Barrels", true));
+   private final BoolSetting shulkers = this.add(new BoolSetting("Shulker", true));
+   private final BoolSetting spawners = this.add(new BoolSetting("Spawner", true));
+   private final BoolSetting hoppers = this.add(new BoolSetting("Hopper", false));
+   private final NumberSetting range = this.add(new NumberSetting("Range (Blocks)", 48.0, 8.0, 128.0, 8.0));
+   private final Set<Long> seen = new HashSet<>();
+   private boolean initialized;
+   private int timer;
 
-    public BlockNotifier() {
-        super("BlockNotifier", "Meldet neue, clientseitig sichtbare Block-Entities in geladenen Chunks.", Category.VISUALS);
-    }
+   public BlockNotifier() {
+      super("BlockNotifier", "Meldet neue, clientseitig sichtbare Block-Entities in geladenen Chunks.", Category.VISUALS);
+   }
 
-    @Override protected void onEnable() {
-        seen.clear();
-        initialized = false;
-        timer = 0;
-    }
+   @Override
+   protected void onEnable() {
+      this.seen.clear();
+      this.initialized = false;
+      this.timer = 0;
+   }
 
-    @Override protected void onDisable() {
-        seen.clear();
-        initialized = false;
-    }
+   @Override
+   protected void onDisable() {
+      this.seen.clear();
+      this.initialized = false;
+   }
 
-    @Override public void onWorldLeave() {
-        seen.clear();
-        initialized = false;
-        timer = 0;
-    }
+   @Override
+   public void onWorldLeave() {
+      this.seen.clear();
+      this.initialized = false;
+      this.timer = 0;
+   }
 
-    @Override public void onTick() {
-        if (mc.world == null || mc.player == null || timer-- > 0) return;
-        timer = 20;
-        int cx = mc.player.getBlockX() >> 4;
-        int cz = mc.player.getBlockZ() >> 4;
-        int chunkRange = (range.getInt() + 15) >> 4;
-        double maxDistanceSq = (double) range.getInt() * range.getInt();
-        Set<Long> current = new HashSet<>();
+   @Override
+   public void onTick() {
+      if (mc.field_1687 != null && mc.field_1724 != null && this.timer-- <= 0) {
+         this.timer = 20;
+         int cx = mc.field_1724.method_31477() >> 4;
+         int cz = mc.field_1724.method_31479() >> 4;
+         int chunkRange = this.range.getInt() + 15 >> 4;
+         double maxDistanceSq = (double)this.range.getInt() * this.range.getInt();
+         Set<Long> current = new HashSet<>();
 
-        for (int dz = -chunkRange; dz <= chunkRange; dz++) {
+         for (int dz = -chunkRange; dz <= chunkRange; dz++) {
             for (int dx = -chunkRange; dx <= chunkRange; dx++) {
-                WorldChunk chunk = mc.world.getChunkManager().getWorldChunk(cx + dx, cz + dz);
-                if (chunk == null) continue;
-                for (BlockEntity be : chunk.getBlockEntities().values()) {
-                    if (!accept(be)) continue;
-                    BlockPos pos = be.getPos();
-                    if (pos.getSquaredDistance(mc.player.getX(), mc.player.getY(), mc.player.getZ()) > maxDistanceSq) continue;
-                    long key = pos.asLong();
-                    current.add(key);
-                    if (initialized && !seen.contains(key)) {
-                        String type = label(be);
-                        mc.player.sendMessage(net.minecraft.text.Text.literal(
-                                "[Nightfall] " + type + " entdeckt bei " + pos.getX() + " " + pos.getY() + " " + pos.getZ()
-                                + " (clientseitig sichtbar; Inhalt nicht geprüft)"), false);
-                    }
-                }
+               class_2818 chunk = mc.field_1687.method_2935().method_21730(cx + dx, cz + dz);
+               if (chunk != null) {
+                  for (class_2586 be : chunk.method_12214().values()) {
+                     if (this.accept(be)) {
+                        class_2338 pos = be.method_11016();
+                        if (!(pos.method_40081(mc.field_1724.method_23317(), mc.field_1724.method_23318(), mc.field_1724.method_23321()) > maxDistanceSq)) {
+                           long key = pos.method_10063();
+                           current.add(key);
+                           if (this.initialized && !this.seen.contains(key)) {
+                              String type = this.label(be);
+                              mc.field_1724
+                                 .method_7353(
+                                    class_2561.method_43470(
+                                       "[Nightfall] "
+                                          + type
+                                          + " entdeckt bei "
+                                          + pos.method_10263()
+                                          + " "
+                                          + pos.method_10264()
+                                          + " "
+                                          + pos.method_10260()
+                                          + " (clientseitig sichtbar; Inhalt nicht geprüft)"
+                                    ),
+                                    false
+                                 );
+                           }
+                        }
+                     }
+                  }
+               }
             }
-        }
-        seen.clear();
-        seen.addAll(current);
-        initialized = true;
-    }
+         }
 
-    private boolean accept(BlockEntity be) {
-        if (chests.get() && (be instanceof ChestBlockEntity || be instanceof BarrelBlockEntity)) return true;
-        if (shulkers.get() && be instanceof ShulkerBoxBlockEntity) return true;
-        if (spawners.get() && be instanceof MobSpawnerBlockEntity) return true;
-        return hoppers.get() && be instanceof HopperBlockEntity;
-    }
+         this.seen.clear();
+         this.seen.addAll(current);
+         this.initialized = true;
+      }
+   }
 
-    private String label(BlockEntity be) {
-        if (be instanceof ChestBlockEntity) return "Chest";
-        if (be instanceof BarrelBlockEntity) return "Barrel";
-        if (be instanceof ShulkerBoxBlockEntity) return "Shulker";
-        if (be instanceof MobSpawnerBlockEntity) return "Spawner";
-        if (be instanceof HopperBlockEntity) return "Hopper";
-        return "Block-Entity";
-    }
+   private boolean accept(class_2586 be) {
+      if (!this.chests.get() || !(be instanceof class_2595) && !(be instanceof class_3719)) {
+         if (this.shulkers.get() && be instanceof class_2627) {
+            return true;
+         } else {
+            return this.spawners.get() && be instanceof class_2636 ? true : this.hoppers.get() && be instanceof class_2614;
+         }
+      } else {
+         return true;
+      }
+   }
+
+   private String label(class_2586 be) {
+      if (be instanceof class_2595) {
+         return "Chest";
+      } else if (be instanceof class_3719) {
+         return "Barrel";
+      } else if (be instanceof class_2627) {
+         return "Shulker";
+      } else if (be instanceof class_2636) {
+         return "Spawner";
+      } else {
+         return be instanceof class_2614 ? "Hopper" : "Block-Entity";
+      }
+   }
 }

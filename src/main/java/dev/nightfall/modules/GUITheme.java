@@ -1,48 +1,118 @@
 package dev.nightfall.modules;
 
+import dev.nightfall.config.Config;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.util.Theme;
+import java.awt.Color;
 
-/** Persistent ClickGUI theme editor. Custom mode exposes all RGB colors in the ClickGUI. */
 public final class GUITheme extends Module {
-    private final ModeSetting preset = add(new ModeSetting("Preset", "Nightfall", "Nightfall", "Violet", "Crimson", "Emerald", "Ocean", "Mono", "Custom"));
-    private final ModeSetting design = add(new ModeSetting("Design", "Gradient", "Gradient", "Flat", "Glass"));
-    private final ColorSetting accent = add(new ColorSetting("Akzentfarbe", 0x35E0D0));
-    private final ColorSetting secondary = add(new ColorSetting("Sekundärfarbe", 0x6941C6));
-    private final ColorSetting panel = add(new ColorSetting("Panel-Farbe", 0x141418));
-    private final ColorSetting text = add(new ColorSetting("Textfarbe", 0xE8E8F0));
-    private final ColorSetting dimText = add(new ColorSetting("Sekundärtext", 0x9A9AAE));
-    private final ColorSetting overlay = add(new ColorSetting("Overlay-Farbe", 0x08080D));
+   private final ModeSetting preset = this.add(new ModeSetting("Preset", "Nightfall", "Nightfall", "Violet", "Crimson", "Emerald", "Ocean", "Mono", "Custom"));
+   private final ModeSetting design = this.add(new ModeSetting("Design", "Gradient", "Gradient", "Flat", "Glass"));
+   private final ColorSetting accent = this.add(new ColorSetting("Akzentfarbe", 3530960));
+   private final ColorSetting secondary = this.add(new ColorSetting("Sekundärfarbe", 6898118));
+   private final ColorSetting panel = this.add(new ColorSetting("Panel-Farbe", 1315864));
+   private final ColorSetting text = this.add(new ColorSetting("Textfarbe", 15263984));
+   private final ColorSetting dimText = this.add(new ColorSetting("Sekundärtext", 10132142));
+   private final ColorSetting overlay = this.add(new ColorSetting("Overlay-Farbe", 526349));
 
-    public GUITheme() {
-        super("GUITheme", "ClickGUI-Presets, Design und frei einstellbare RGB-Farben.", Category.VISUALS);
-        setEnabled(true);
-    }
+   public GUITheme() {
+      super("GUITheme", "ClickGUI-Presets, Design und frei einstellbare RGB-Farben.", Category.VISUALS);
+      this.setEnabled(true);
+   }
 
-    public boolean prepareColorEdit(ColorSetting selected) {
-        if (selected != accent && selected != secondary && selected != panel
-                && selected != text && selected != dimText && selected != overlay) return false;
-        preset.set("Custom");
-        return true;
-    }
+   public boolean prepareColorEdit(ColorSetting selected) {
+      if (selected != this.accent
+         && selected != this.secondary
+         && selected != this.panel
+         && selected != this.text
+         && selected != this.dimText
+         && selected != this.overlay) {
+         return false;
+      } else {
+         this.preset.set("Custom");
+         return true;
+      }
+   }
 
-    @Override protected void onEnable() { applyTheme(); }
-    @Override protected void onDisable() { Theme.reset(); }
-    @Override public void onTick() { applyTheme(); }
+   public void setAccentHue(float hue) {
+      float normalized = (hue % 360.0F + 360.0F) % 360.0F;
+      this.accent.set(Color.HSBtoRGB(normalized / 360.0F, 0.78F, 1.0F) & 16777215);
+      this.preset.set("Custom");
+      this.applyTheme();
+   }
 
-    private void applyTheme() {
-        switch (preset.get()) {
-            case "Violet" -> { overlay.set(0x08060D); accent.set(0xB66CFF); secondary.set(0x5B35B8); panel.set(0x171222); text.set(0xF1EAFE); dimText.set(0xB2A4CC); }
-            case "Crimson" -> { overlay.set(0x10060A); accent.set(0xFF526A); secondary.set(0x8C2545); panel.set(0x1B1118); text.set(0xFFF0F2); dimText.set(0xC5A8B0); }
-            case "Emerald" -> { overlay.set(0x06100B); accent.set(0x49E6A2); secondary.set(0x187B62); panel.set(0x101C19); text.set(0xE9FFF6); dimText.set(0x9BC6B5); }
-            case "Ocean" -> { overlay.set(0x050A12); accent.set(0x45B9FF); secondary.set(0x285CBB); panel.set(0x101927); text.set(0xEAF6FF); dimText.set(0x9BB8D0); }
-            case "Mono" -> { overlay.set(0x080808); accent.set(0xFFFFFF); secondary.set(0x777777); panel.set(0x151515); text.set(0xFFFFFF); dimText.set(0xAAAAAA); }
-            case "Nightfall" -> { overlay.set(0x08080D); accent.set(0x35E0D0); secondary.set(0x6941C6); panel.set(0x141418); text.set(0xE8E8F0); dimText.set(0x9A9AAE); }
-            default -> { /* Custom: keep user supplied RGB values. */ }
-        }
-        Theme.apply(accent.rgb(), secondary.rgb(), panel.rgb(), text.rgb(), dimText.rgb(), overlay.rgb(), design.get());
-    }
+   @Override
+   protected void onEnable() {
+      this.applyTheme();
+   }
+
+   @Override
+   protected void onDisable() {
+      Theme.reset();
+   }
+
+   @Override
+   public void onTick() {
+      this.applyTheme();
+   }
+
+   private void applyTheme() {
+      String hue = this.preset.get();
+      switch (hue) {
+         case "Violet":
+            this.overlay.set(525837);
+            this.accent.set(11955455);
+            this.secondary.set(5977528);
+            this.panel.set(1511970);
+            this.text.set(15854334);
+            this.dimText.set(11707596);
+            break;
+         case "Crimson":
+            this.overlay.set(1050122);
+            this.accent.set(16732778);
+            this.secondary.set(9184581);
+            this.panel.set(1773848);
+            this.text.set(16773362);
+            this.dimText.set(12953776);
+            break;
+         case "Emerald":
+            this.overlay.set(397323);
+            this.accent.set(4843170);
+            this.secondary.set(1604450);
+            this.panel.set(1055769);
+            this.text.set(15335414);
+            this.dimText.set(10208949);
+            break;
+         case "Ocean":
+            this.overlay.set(330258);
+            this.accent.set(4569599);
+            this.secondary.set(2645179);
+            this.panel.set(1055015);
+            this.text.set(15398655);
+            this.dimText.set(10205392);
+            break;
+         case "Mono":
+            this.overlay.set(526344);
+            this.accent.set(16777215);
+            this.secondary.set(7829367);
+            this.panel.set(1381653);
+            this.text.set(16777215);
+            this.dimText.set(11184810);
+            break;
+         case "Nightfall":
+            this.overlay.set(526349);
+            this.accent.set(3530960);
+            this.secondary.set(6898118);
+            this.panel.set(1315864);
+            this.text.set(15263984);
+            this.dimText.set(10132142);
+      }
+
+      float[] hsb = Color.RGBtoHSB(this.accent.rgb() >> 16 & 0xFF, this.accent.rgb() >> 8 & 0xFF, this.accent.rgb() & 0xFF, null);
+      Config.accentHue = hsb[0] * 360.0F;
+      Theme.apply(this.accent.rgb(), this.secondary.rgb(), this.panel.rgb(), this.text.rgb(), this.dimText.rgb(), this.overlay.rgb(), this.design.get());
+   }
 }

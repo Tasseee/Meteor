@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "nightfall",
+  "version": "0.5.18",
+  "name": "Nightfall",
+  "icon": "assets/nightfall/icon.png",
+  "description": "Clientseitiger Minecraft-Utility-Client mit Bewegungs-, Kampf-, ESP- und Weltwerkzeugen.",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.nightfall.Nightfall"
+    ],
+    "seedcrackerx": [
+      "dev.nightfall.seed.SeedResultListener"
+    ]
+  },
+  "mixins": [
+    "nightfall.mixins.json"
+  ],
+  "jars": [
+    { "file": "META-INF/jars/seedcrackerX-2.15.6.jar" }
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.1",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

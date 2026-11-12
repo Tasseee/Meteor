@@ -2,373 +2,443 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.ListSetting;
 import dev.nightfall.module.setting.NumberSetting;
-import dev.nightfall.module.ModuleManager;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.Hand;
-import net.minecraft.text.Text;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
-
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
+import java.util.Locale;
 import java.util.Random;
+import java.util.Set;
+import net.minecraft.class_1268;
+import net.minecraft.class_1294;
+import net.minecraft.class_1657;
+import net.minecraft.class_1747;
+import net.minecraft.class_1799;
+import net.minecraft.class_2338;
+import net.minecraft.class_2350;
+import net.minecraft.class_243;
+import net.minecraft.class_2561;
+import net.minecraft.class_2680;
+import net.minecraft.class_304;
+import net.minecraft.class_3965;
+import net.minecraft.class_640;
+import net.minecraft.class_746;
 
-/**
- * Opt-in PvP trapper flow. It warns the selected player before sending /tpahere,
- * waits for that player to arrive, builds a 1x2 interior trap from full-cube
- * blocks in the hotbar, and only attacks while the target is enclosed and a
- * vanilla critical-hit window is available.
- *
- * The server must support /msg and /tpahere. No packet spoofing or anti-cheat
- * bypass is performed; server-side placement/attack rules remain authoritative.
- */
 public final class TrapperBot extends Module {
-    private enum Phase { IDLE, WARNING, WAITING_FOR_ARRIVAL, BUILDING, FIGHTING, COOLDOWN }
+   private final NumberSetting inviteDelay = this.add(new NumberSetting("Warn-Vorlauf (Ticks)", 3.0, 1.0, 100.0, 1.0));
+   private final NumberSetting arrivalTimeout = this.add(new NumberSetting("Wartezeit (Sek.)", 60.0, 10.0, 180.0, 5.0));
+   private final NumberSetting cooldownSeconds = this.add(new NumberSetting("Spieler-Cooldown (Sek.)", 6.0, 1.0, 300.0, 1.0));
+   private final NumberSetting buildInterval = this.add(new NumberSetting("Bau-Intervall (Ticks)", 1.0, 1.0, 8.0, 1.0));
+   private final NumberSetting fightRange = this.add(new NumberSetting("Kampfreichweite", 3.1, 2.5, 4.5, 0.1));
+   private final BoolSetting sendWarning = this.add(new BoolSetting("Warnung vor TPAHere", true));
+   private final BoolSetting buildTrap = this.add(new BoolSetting("1x2-Falle bauen", true));
+   private final BoolSetting requireTrap = this.add(new BoolSetting("Nur in Falle angreifen", true));
+   private final BoolSetting criticalOnly = this.add(new BoolSetting("Nur Crits", true));
+   public final ListSetting blacklist = this.add(new ListSetting("Blacklist"));
+   private final Random random = new Random();
+   private final Set<String> attemptedThisSession = new HashSet<>();
+   private TrapperBot.Phase phase = TrapperBot.Phase.IDLE;
+   private String targetName = "";
+   private int timer;
+   private int buildIndex;
+   private int buildDelay;
+   private int buildPasses;
+   private int previousSlot = -1;
+   private int blockSlot = -1;
+   private boolean controlsCaptured;
+   private boolean previousJumpPressed;
+   private boolean previousSprintPressed;
+   private class_1657 target;
+   private List<class_2338> buildOrder = List.of();
 
-    private final NumberSetting inviteDelay = add(new NumberSetting("Warn-Vorlauf (Ticks)", 10, 5, 100, 1));
-    private final NumberSetting arrivalTimeout = add(new NumberSetting("Wartezeit (Sek.)", 60, 10, 180, 5));
-    private final NumberSetting cooldownSeconds = add(new NumberSetting("Spieler-Cooldown (Sek.)", 15, 5, 300, 5));
-    private final NumberSetting fightRange = add(new NumberSetting("Kampfreichweite", 3.0, 2.5, 4.5, 0.1));
-    private final BoolSetting sendWarning = add(new BoolSetting("Warnung vor TPAHere", true));
-    private final BoolSetting buildTrap = add(new BoolSetting("1x2-Falle bauen", true));
-    private final BoolSetting requireTrap = add(new BoolSetting("Nur in Falle angreifen", true));
-    private final BoolSetting criticalOnly = add(new BoolSetting("Nur Crits", true));
-    public final ListSetting blacklist = add(new ListSetting("Blacklist"));
+   public TrapperBot() {
+      super("TrapperBot", "Warnt Spieler, sendet /tpahere und kaempft nach Annahme mit Crits.", Category.COMBAT);
+   }
 
-    private final Random random = new Random();
-    private final Set<String> attemptedThisSession = new HashSet<>();
-    private Phase phase = Phase.IDLE;
-    private String targetName = "";
-    private int timer;
-    private int buildIndex;
-    private int buildDelay;
-    private int buildPasses;
-    private int previousSlot = -1;
-    private int blockSlot = -1;
-    private boolean controlsCaptured;
-    private boolean previousJumpPressed;
-    private boolean previousSprintPressed;
-    private PlayerEntity target;
-    private List<BlockPos> buildOrder = List.of();
+   @Override
+   protected void onEnable() {
+      this.phase = TrapperBot.Phase.IDLE;
+      this.timer = 0;
+      this.targetName = "";
+      this.attemptedThisSession.clear();
+      this.buildPasses = 0;
+   }
 
-    public TrapperBot() {
-        super("TrapperBot", "Warnt Spieler, sendet /tpahere und kaempft nach Annahme mit Crits.", Category.COMBAT);
-    }
+   @Override
+   protected void onDisable() {
+      this.releaseControls();
+      this.restoreSlot();
+      this.resetTarget();
+      this.phase = TrapperBot.Phase.IDLE;
+   }
 
-    @Override
-    protected void onEnable() {
-        phase = Phase.IDLE;
-        timer = 0;
-        targetName = "";
-        attemptedThisSession.clear();
-        buildPasses = 0;
-    }
+   @Override
+   public void onWorldLeave() {
+      this.resetSession();
+   }
 
-    @Override
-    protected void onDisable() {
-        releaseControls();
-        restoreSlot();
-        resetTarget();
-        phase = Phase.IDLE;
-    }
+   public void resetSession() {
+      this.releaseControls();
+      this.restoreSlot();
+      this.resetTarget();
+      this.attemptedThisSession.clear();
+      this.buildPasses = 0;
+      this.phase = TrapperBot.Phase.IDLE;
+   }
 
-    @Override
-    public void onWorldLeave() {
-        resetSession();
-    }
+   public String status() {
+      return this.phase.name() + (this.targetName.isEmpty() ? "" : " | " + this.targetName);
+   }
 
-    /** Clears all per-connection state when leaving a server/world. */
-    public void resetSession() {
-        releaseControls();
-        restoreSlot();
-        resetTarget();
-        attemptedThisSession.clear();
-        buildPasses = 0;
-        phase = Phase.IDLE;
-    }
+   @Override
+   public void onTick() {
+      class_746 player = mc.field_1724;
+      if (player != null && mc.field_1687 != null && mc.method_1562() != null && mc.field_1761 != null && mc.field_1755 == null && player.method_5805()) {
+         switch (this.phase) {
+            case IDLE:
+               this.chooseAndWarn();
+               break;
+            case WARNING:
+               this.sendRequest();
+               break;
+            case WAITING_FOR_ARRIVAL:
+               this.waitForArrival();
+               break;
+            case BUILDING:
+               this.buildOneBlock();
+               break;
+            case FIGHTING:
+               this.fightTarget();
+               break;
+            case COOLDOWN:
+               this.releaseControls();
+               if (--this.timer <= 0) {
+                  this.phase = TrapperBot.Phase.IDLE;
+               }
+         }
+      } else {
+         this.releaseControls();
+      }
+   }
 
-    public String status() {
-        return phase.name() + (targetName.isEmpty() ? "" : " | " + targetName);
-    }
+   private void chooseAndWarn() {
+      List<String> candidates = new ArrayList<>();
 
-    @Override
-    public void onTick() {
-        ClientPlayerEntity player = mc.player;
-        if (player == null || mc.world == null || mc.getNetworkHandler() == null || mc.interactionManager == null
-                || mc.currentScreen != null || !player.isAlive()) {
-            releaseControls();
-            return;
-        }
-
-        switch (phase) {
-            case IDLE -> chooseAndWarn();
-            case WARNING -> sendRequest();
-            case WAITING_FOR_ARRIVAL -> waitForArrival();
-            case BUILDING -> buildOneBlock();
-            case FIGHTING -> fightTarget();
-            case COOLDOWN -> {
-                releaseControls();
-                if (--timer <= 0) phase = Phase.IDLE;
-            }
-        }
-    }
-
-    private void chooseAndWarn() {
-        List<String> candidates = new ArrayList<>();
-        for (PlayerListEntry entry : mc.getNetworkHandler().getPlayerList()) {
-            String name = entry.getProfile().name();
-            if (name == null || name.isBlank() || !name.matches("[A-Za-z0-9_]{3,16}")) continue;
-            if (name.equalsIgnoreCase(mc.player.getName().getString()) || blacklist.has(name)) continue;
-            if (attemptedThisSession.contains(name.toLowerCase(java.util.Locale.ROOT))) continue;
-            if (isFriendName(name)) continue;
+      for (class_640 entry : mc.method_1562().method_2880()) {
+         String name = entry.method_2966().name();
+         if (name != null
+            && !name.isBlank()
+            && name.matches("[A-Za-z0-9_]{3,16}")
+            && !name.equalsIgnoreCase(mc.field_1724.method_5477().getString())
+            && !this.blacklist.has(name)
+            && !this.attemptedThisSession.contains(name.toLowerCase(Locale.ROOT))
+            && !this.isFriendName(name)) {
             candidates.add(name);
-        }
-        if (candidates.isEmpty()) {
-            timer = 40;
-            phase = Phase.COOLDOWN;
-            return;
-        }
-        Collections.shuffle(candidates, random);
-        targetName = candidates.get(0);
-        attemptedThisSession.add(targetName.toLowerCase(java.util.Locale.ROOT));
+         }
+      }
 
-        // Give the recipient an explicit warning before the teleport request.
-        if (sendWarning.get()) {
-            mc.getNetworkHandler().sendChatCommand("msg " + targetName
-                    + " Achtung: PvP-/Trapper-Event. Du koenntest in eine Falle geraten. Nur annehmen, wenn du kaempfen moechtest.");
-        }
-        timer = sendWarning.get() ? inviteDelay.getInt() : 0;
-        phase = Phase.WARNING;
-    }
+      if (candidates.isEmpty()) {
+         this.timer = 40;
+         this.phase = TrapperBot.Phase.COOLDOWN;
+      } else {
+         Collections.shuffle(candidates, this.random);
+         this.targetName = candidates.get(0);
+         this.attemptedThisSession.add(this.targetName.toLowerCase(Locale.ROOT));
+         if (this.sendWarning.get()) {
+            mc.method_1562()
+               .method_45730(
+                  "msg " + this.targetName + " Achtung: PvP-/Trapper-Event. Du koenntest in eine Falle geraten. Nur annehmen, wenn du kaempfen moechtest."
+               );
+         }
 
-    private void sendRequest() {
-        if (timer-- > 0) return;
-        mc.getNetworkHandler().sendChatCommand("tpahere " + targetName);
-        timer = arrivalTimeout.getInt() * 20;
-        phase = Phase.WAITING_FOR_ARRIVAL;
-    }
+         this.timer = this.sendWarning.get() ? this.inviteDelay.getInt() : 0;
+         this.phase = TrapperBot.Phase.WARNING;
+      }
+   }
 
-    private void waitForArrival() {
-        target = findWorldPlayer(targetName);
-        if (target != null && target.isAlive() && target.squaredDistanceTo(mc.player) <= 25.0) {
-            restoreSlot();
-            timer = 100;
-            buildOrder = createTrapOrder(target.getBlockPos());
-            buildIndex = 0;
-            buildDelay = 0;
-            buildPasses = 0;
-            if (buildTrap.get() && (blockSlot = findBuildBlock()) >= 0) {
-                previousSlot = mc.player.getInventory().getSelectedSlot();
-                mc.player.getInventory().setSelectedSlot(blockSlot);
-                phase = Phase.BUILDING;
+   private void sendRequest() {
+      if (this.timer-- <= 0) {
+         mc.method_1562().method_45730("tpahere " + this.targetName);
+         this.timer = this.arrivalTimeout.getInt() * 20;
+         this.phase = TrapperBot.Phase.WAITING_FOR_ARRIVAL;
+      }
+   }
+
+   private void waitForArrival() {
+      this.target = this.findWorldPlayer(this.targetName);
+      if (this.target != null && this.target.method_5805() && this.target.method_5858(mc.field_1724) <= 25.0) {
+         this.restoreSlot();
+         this.timer = 100;
+         this.buildOrder = this.createTrapOrder(this.target.method_24515());
+         this.buildIndex = 0;
+         this.buildDelay = 0;
+         this.buildPasses = 0;
+         if (this.buildTrap.get() && (this.blockSlot = this.findBuildBlock()) >= 0) {
+            this.previousSlot = mc.field_1724.method_31548().method_67532();
+            mc.field_1724.method_31548().method_61496(this.blockSlot);
+            this.phase = TrapperBot.Phase.BUILDING;
+         } else {
+            if (this.buildTrap.get() && this.requireTrap.get()) {
+               mc.field_1724
+                  .method_7353(
+                     class_2561.method_43470("[Nightfall] TrapperBot: Keine geeigneten vollen Bloecke in der Hotbar; Crit-Angriff wartet auf eine Falle."),
+                     false
+                  );
+            }
+
+            this.phase = TrapperBot.Phase.FIGHTING;
+         }
+      } else {
+         if (--this.timer <= 0) {
+            this.startCooldown(400);
+         }
+      }
+   }
+
+   private void buildOneBlock() {
+      if (this.target != null && this.target.method_5805() && this.target.method_73183() == mc.field_1687) {
+         if (this.buildDelay-- <= 0) {
+            if (this.buildIndex < this.buildOrder.size()) {
+               class_2338 place = this.buildOrder.get(this.buildIndex++);
+               if (mc.field_1687.method_8320(place).method_45474()) {
+                  this.placeAgainstNeighbour(place);
+               }
+
+               this.buildDelay = this.buildInterval.getInt();
             } else {
-                if (buildTrap.get() && requireTrap.get()) {
-                    mc.player.sendMessage(Text.literal("[Nightfall] TrapperBot: Keine geeigneten vollen Bloecke in der Hotbar; Crit-Angriff wartet auf eine Falle."), false);
-                }
-                phase = Phase.FIGHTING;
+               if (this.isEnclosed(this.target)) {
+                  this.restoreSlot();
+                  this.phase = TrapperBot.Phase.FIGHTING;
+               } else if (++this.buildPasses < 3 && this.findBuildBlock() >= 0) {
+                  this.buildOrder = this.createTrapOrder(this.target.method_24515());
+                  this.buildIndex = 0;
+                  this.buildDelay = Math.max(2, this.buildInterval.getInt() * 2);
+                  this.blockSlot = this.findBuildBlock();
+                  mc.field_1724.method_31548().method_61496(this.blockSlot);
+               } else {
+                  this.restoreSlot();
+                  mc.field_1724
+                     .method_7353(
+                        class_2561.method_43470("[Nightfall] TrapperBot: Falle konnte nicht vollstaendig gebaut werden; Ziel wird nicht angegriffen."), false
+                     );
+                  this.startCooldown(400);
+               }
             }
-            return;
-        }
-        if (--timer <= 0) startCooldown(20 * 20);
-    }
+         }
+      } else {
+         this.startCooldown(400);
+      }
+   }
 
-    private void buildOneBlock() {
-        if (target == null || !target.isAlive() || target.getEntityWorld() != mc.world) {
-            startCooldown(20 * 20);
-            return;
-        }
-        if (buildDelay-- > 0) return;
-        if (buildIndex >= buildOrder.size()) {
-            if (isEnclosed(target)) {
-                restoreSlot();
-                phase = Phase.FIGHTING;
-            } else if (++buildPasses < 3 && findBuildBlock() >= 0) {
-                buildOrder = createTrapOrder(target.getBlockPos());
-                buildIndex = 0;
-                buildDelay = 8;
-                blockSlot = findBuildBlock();
-                mc.player.getInventory().setSelectedSlot(blockSlot);
+   private boolean placeAgainstNeighbour(class_2338 place) {
+      if (this.blockSlot >= 0 && this.blockSlot <= 8) {
+         class_746 player = mc.field_1724;
+
+         for (class_2350 face : class_2350.values()) {
+            class_2338 support = place.method_10093(face.method_10153());
+            if (!mc.field_1687.method_8320(support).method_26220(mc.field_1687, support).method_1110()) {
+               class_243 hit = support.method_46558().method_1031(face.method_10148() * 0.5, face.method_10164() * 0.5, face.method_10165() * 0.5);
+               class_3965 result = new class_3965(hit, face, support, false);
+               mc.field_1761.method_2896(player, class_1268.field_5808, result);
+               player.method_6104(class_1268.field_5808);
+               return true;
+            }
+         }
+
+         return false;
+      } else {
+         return false;
+      }
+   }
+
+   private void fightTarget() {
+      if (this.target == null || !this.target.method_5805() || this.target.method_73183() != mc.field_1687) {
+         this.target = this.findWorldPlayer(this.targetName);
+      }
+
+      if (this.target != null && this.target.method_5805()) {
+         class_746 player = mc.field_1724;
+         if (player.method_5739(this.target) > this.fightRange.get() + 1.0) {
+            this.releaseControls();
+            if (--this.timer <= 0) {
+               this.startCooldown(400);
+            }
+         } else {
+            this.timer = 100;
+            class_243 eye = player.method_33571();
+            double dx = this.target.method_23317() - eye.field_1352;
+            double dy = this.target.method_23323(0.5) - eye.field_1351;
+            double dz = this.target.method_23321() - eye.field_1350;
+            player.method_36456((float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0));
+            player.method_36457((float)(-Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)))));
+            boolean trapped = this.isEnclosed(this.target);
+            if (this.requireTrap.get() && !trapped) {
+               this.buildOrder = this.createTrapOrder(this.target.method_24515());
+               this.buildIndex = 0;
+               this.buildDelay = 0;
+               this.buildPasses = 0;
+               if (this.buildTrap.get() && this.findBuildBlock() >= 0) {
+                  this.blockSlot = this.findBuildBlock();
+                  if (this.previousSlot < 0) {
+                     this.previousSlot = player.method_31548().method_67532();
+                  }
+
+                  player.method_31548().method_61496(this.blockSlot);
+                  this.phase = TrapperBot.Phase.BUILDING;
+               }
             } else {
-                restoreSlot();
-                mc.player.sendMessage(Text.literal("[Nightfall] TrapperBot: Falle konnte nicht vollstaendig gebaut werden; Ziel wird nicht angegriffen."), false);
-                startCooldown(20 * 20);
+               this.captureControls();
+               mc.field_1690.field_1867.method_23481(false);
+               player.method_5728(false);
+               if (player.method_24828()) {
+                  mc.field_1690.field_1903.method_23481(true);
+               } else {
+                  mc.field_1690.field_1903.method_23481(false);
+               }
+
+               boolean critReady = !player.method_24828()
+                  && player.field_6017 > 0.0
+                  && !player.method_6101()
+                  && !player.method_5799()
+                  && !player.method_5765()
+                  && !player.method_5624()
+                  && !player.method_6059(class_1294.field_5919);
+               if (player.method_5739(this.target) <= this.fightRange.get()
+                  && player.method_6057(this.target)
+                  && player.method_7261(0.5F) >= 0.95F
+                  && (!this.criticalOnly.get() || critReady)) {
+                  mc.field_1761.method_2918(player, this.target);
+                  player.method_6104(class_1268.field_5808);
+               }
             }
-            return;
-        }
-        BlockPos place = buildOrder.get(buildIndex++);
-        if (mc.world.getBlockState(place).isReplaceable()) placeAgainstNeighbour(place);
-        buildDelay = 3; // limit placement rate and allow the server to acknowledge blocks
-    }
+         }
+      } else {
+         this.restoreSlot();
+         this.startCooldown(this.cooldownSeconds.getInt() * 20);
+      }
+   }
 
-    private boolean placeAgainstNeighbour(BlockPos place) {
-        if (blockSlot < 0 || blockSlot > 8) return false;
-        ClientPlayerEntity player = mc.player;
-        for (Direction face : Direction.values()) {
-            BlockPos support = place.offset(face.getOpposite());
-            if (mc.world.getBlockState(support).getCollisionShape(mc.world, support).isEmpty()) continue;
-            Vec3d hit = support.toCenterPos().add(face.getOffsetX() * 0.5, face.getOffsetY() * 0.5, face.getOffsetZ() * 0.5);
-            BlockHitResult result = new BlockHitResult(hit, face, support, false);
-            mc.interactionManager.interactBlock(player, Hand.MAIN_HAND, result);
-            player.swingHand(Hand.MAIN_HAND);
-            return true;
-        }
-        return false;
-    }
+   private List<class_2338> createTrapOrder(class_2338 feet) {
+      List<class_2338> positions = new ArrayList<>(9);
+      class_2350[] sides = new class_2350[]{class_2350.field_11043, class_2350.field_11035, class_2350.field_11039, class_2350.field_11034};
 
-    private void fightTarget() {
-        if (target == null || !target.isAlive() || target.getEntityWorld() != mc.world) target = findWorldPlayer(targetName);
-        if (target == null || !target.isAlive()) {
-            restoreSlot();
-            startCooldown(cooldownSeconds.getInt() * 20);
-            return;
-        }
+      for (class_2350 side : sides) {
+         positions.add(feet.method_10093(side));
+      }
 
-        ClientPlayerEntity player = mc.player;
-        if (player.distanceTo(target) > fightRange.get() + 1.0) {
-            // The target left the trap area; do not chase across the world.
-            releaseControls();
-            if (--timer <= 0) startCooldown(20 * 20);
-            return;
-        }
-        timer = 100;
+      for (class_2350 side : sides) {
+         positions.add(feet.method_10084().method_10093(side));
+      }
 
-        Vec3d eye = player.getEyePos();
-        double dx = target.getX() - eye.x;
-        double dy = target.getBodyY(0.5) - eye.y;
-        double dz = target.getZ() - eye.z;
-        player.setYaw((float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0));
-        player.setPitch((float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz))));
+      positions.add(feet.method_10086(2));
+      return positions;
+   }
 
-        boolean trapped = isEnclosed(target);
-        if (requireTrap.get() && !trapped) {
-            // Rebuild missing pieces slowly rather than attacking an untrapped player.
-            buildOrder = createTrapOrder(target.getBlockPos());
-            buildIndex = 0;
-            buildDelay = 0;
-            buildPasses = 0;
-            if (buildTrap.get() && findBuildBlock() >= 0) {
-                blockSlot = findBuildBlock();
-                if (previousSlot < 0) previousSlot = player.getInventory().getSelectedSlot();
-                player.getInventory().setSelectedSlot(blockSlot);
-                phase = Phase.BUILDING;
+   private boolean isEnclosed(class_1657 entity) {
+      class_2338 feet = entity.method_24515();
+
+      for (class_2350 side : new class_2350[]{class_2350.field_11043, class_2350.field_11035, class_2350.field_11039, class_2350.field_11034}) {
+         if (mc.field_1687.method_8320(feet.method_10093(side)).method_26220(mc.field_1687, feet.method_10093(side)).method_1110()) {
+            return false;
+         }
+
+         class_2338 headSide = feet.method_10084().method_10093(side);
+         if (mc.field_1687.method_8320(headSide).method_26220(mc.field_1687, headSide).method_1110()) {
+            return false;
+         }
+      }
+
+      class_2338 roof = feet.method_10086(2);
+      return !mc.field_1687.method_8320(roof).method_26220(mc.field_1687, roof).method_1110();
+   }
+
+   private int findBuildBlock() {
+      for (int slot = 0; slot < 9; slot++) {
+         class_1799 stack = mc.field_1724.method_31548().method_5438(slot);
+         if (stack.method_7909() instanceof class_1747 blockItem) {
+            class_2680 state = blockItem.method_7711().method_9564();
+            if (!state.method_26220(mc.field_1687, mc.field_1724.method_24515()).method_1110()
+               && state.method_26234(mc.field_1687, mc.field_1724.method_24515())) {
+               return slot;
             }
-            return;
-        }
+         }
+      }
 
-        captureControls();
-        mc.options.sprintKey.setPressed(false);
-        player.setSprinting(false);
-        if (player.isOnGround()) {
-            mc.options.jumpKey.setPressed(true);
-        } else {
-            mc.options.jumpKey.setPressed(false);
-        }
+      return -1;
+   }
 
-        boolean critReady = !player.isOnGround() && player.fallDistance > 0.0f && !player.isClimbing()
-                && !player.isTouchingWater() && !player.hasVehicle() && !player.isSprinting()
-                && !player.hasStatusEffect(net.minecraft.entity.effect.StatusEffects.BLINDNESS);
-        if (player.distanceTo(target) <= fightRange.get() && player.canSee(target)
-                && player.getAttackCooldownProgress(0.5f) >= 0.95f
-                && (!criticalOnly.get() || critReady)) {
-            mc.interactionManager.attackEntity(player, target);
-            player.swingHand(Hand.MAIN_HAND);
-        }
-    }
+   private class_1657 findWorldPlayer(String name) {
+      if (name != null && !name.isEmpty() && mc.field_1687 != null) {
+         for (class_1657 p : mc.field_1687.method_18456()) {
+            if (p != mc.field_1724 && p.method_5477().getString().equalsIgnoreCase(name)) {
+               return p;
+            }
+         }
 
-    private List<BlockPos> createTrapOrder(BlockPos feet) {
-        List<BlockPos> positions = new ArrayList<>(9);
-        Direction[] sides = {Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST};
-        // Four walls at feet level, then four at head level, with a roof.
-        for (Direction side : sides) positions.add(feet.offset(side));
-        for (Direction side : sides) positions.add(feet.up().offset(side));
-        positions.add(feet.up(2));
-        return positions;
-    }
+         return null;
+      } else {
+         return null;
+      }
+   }
 
-    private boolean isEnclosed(PlayerEntity entity) {
-        BlockPos feet = entity.getBlockPos();
-        for (Direction side : new Direction[]{Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST}) {
-            if (mc.world.getBlockState(feet.offset(side)).getCollisionShape(mc.world, feet.offset(side)).isEmpty()) return false;
-            BlockPos headSide = feet.up().offset(side);
-            if (mc.world.getBlockState(headSide).getCollisionShape(mc.world, headSide).isEmpty()) return false;
-        }
-        BlockPos roof = feet.up(2);
-        return !mc.world.getBlockState(roof).getCollisionShape(mc.world, roof).isEmpty();
-    }
+   private boolean isFriendName(String name) {
+      return ModuleManager.get(KillAura.class).friends.has(name);
+   }
 
-    private int findBuildBlock() {
-        for (int slot = 0; slot < 9; slot++) {
-            ItemStack stack = mc.player.getInventory().getStack(slot);
-            if (!(stack.getItem() instanceof BlockItem blockItem)) continue;
-            BlockState state = blockItem.getBlock().getDefaultState();
-            if (state.getCollisionShape(mc.world, mc.player.getBlockPos()).isEmpty()) continue;
-            if (!state.isFullCube(mc.world, mc.player.getBlockPos())) continue;
-            return slot;
-        }
-        return -1;
-    }
+   private void startCooldown(int ticks) {
+      this.releaseControls();
+      this.restoreSlot();
+      this.timer = Math.max(1, ticks);
+      this.phase = TrapperBot.Phase.COOLDOWN;
+   }
 
-    private PlayerEntity findWorldPlayer(String name) {
-        if (name == null || name.isEmpty() || mc.world == null) return null;
-        for (PlayerEntity p : mc.world.getPlayers()) {
-            if (p != mc.player && p.getName().getString().equalsIgnoreCase(name)) return p;
-        }
-        return null;
-    }
+   private void resetTarget() {
+      this.target = null;
+      this.targetName = "";
+      this.buildOrder = List.of();
+      this.buildIndex = 0;
+      this.buildPasses = 0;
+      this.blockSlot = -1;
+      this.previousSlot = -1;
+      this.timer = 0;
+   }
 
-    private boolean isFriendName(String name) {
-        return ModuleManager.get(KillAura.class).friends.has(name);
-    }
+   private void restoreSlot() {
+      if (this.previousSlot >= 0 && mc.field_1724 != null) {
+         mc.field_1724.method_31548().method_61496(this.previousSlot);
+      }
 
-    private void startCooldown(int ticks) {
-        releaseControls();
-        restoreSlot();
-        timer = Math.max(1, ticks);
-        phase = Phase.COOLDOWN;
-    }
+      this.previousSlot = -1;
+      this.blockSlot = -1;
+   }
 
-    private void resetTarget() {
-        target = null;
-        targetName = "";
-        buildOrder = List.of();
-        buildIndex = 0;
-        buildPasses = 0;
-        blockSlot = -1;
-        previousSlot = -1;
-        timer = 0;
-    }
+   private void captureControls() {
+      if (!this.controlsCaptured && mc.field_1690 != null) {
+         this.previousJumpPressed = mc.field_1690.field_1903.method_1434();
+         this.previousSprintPressed = mc.field_1690.field_1867.method_1434();
+         this.controlsCaptured = true;
+      }
+   }
 
-    private void restoreSlot() {
-        if (previousSlot >= 0 && mc.player != null) mc.player.getInventory().setSelectedSlot(previousSlot);
-        previousSlot = -1;
-        blockSlot = -1;
-    }
+   private void releaseControls() {
+      if (mc.field_1690 != null && this.controlsCaptured) {
+         mc.field_1690.field_1903.method_23481(this.previousJumpPressed);
+         mc.field_1690.field_1867.method_23481(this.previousSprintPressed);
+         class_304.method_1424();
+         this.controlsCaptured = false;
+      }
+   }
 
-    private void captureControls() {
-        if (controlsCaptured || mc.options == null) return;
-        previousJumpPressed = mc.options.jumpKey.isPressed();
-        previousSprintPressed = mc.options.sprintKey.isPressed();
-        controlsCaptured = true;
-    }
-
-    private void releaseControls() {
-        if (mc.options == null || !controlsCaptured) return;
-        mc.options.jumpKey.setPressed(previousJumpPressed);
-        mc.options.sprintKey.setPressed(previousSprintPressed);
-        net.minecraft.client.option.KeyBinding.updatePressedStates();
-        controlsCaptured = false;
-    }
+   private static enum Phase {
+      IDLE,
+      WARNING,
+      WAITING_FOR_ARRIVAL,
+      BUILDING,
+      FIGHTING,
+      COOLDOWN;
+   }
 }

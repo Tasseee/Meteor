@@ -2,58 +2,69 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.util.Projection;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import net.minecraft.class_1297;
+import net.minecraft.class_1309;
+import net.minecraft.class_238;
+import net.minecraft.class_243;
+import net.minecraft.class_332;
 
-/** ESP fuer Entities: Auswahl der naechsten N Objekte, ohne Chunks zu laden. */
 public abstract class EntityScanEsp extends EspBase {
-    protected final BoolSetting health      = add(new BoolSetting("Health", true));
-    protected final BoolSetting visibleOnly = add(new BoolSetting("Nur sichtbare", false));
+   protected final BoolSetting health = this.add(new BoolSetting("Health", true));
+   protected final BoolSetting visibleOnly = this.add(new BoolSetting("Nur sichtbare", false));
+   private final List<class_1297> buf = new ArrayList<>();
+   private static double sx;
+   private static double sy;
+   private static double sz;
+   private static final Comparator<class_1297> BY_DIST = Comparator.comparingDouble(e -> e.method_5649(sx, sy, sz));
 
-    private final List<Entity> buf = new ArrayList<>();
-    private static double sx, sy, sz;
-    private static final Comparator<Entity> BY_DIST = Comparator.comparingDouble(e -> e.squaredDistanceTo(sx, sy, sz));
+   protected EntityScanEsp(String n, String d, int r, int mr, int rgb) {
+      super(n, d, r, mr, rgb);
+   }
 
-    protected EntityScanEsp(String n, String d, int r, int mr, int rgb) { super(n, d, r, mr, rgb); }
+   protected abstract boolean accept(class_1297 var1);
 
-    protected abstract boolean accept(Entity e);
-    protected String nameOf(Entity e) { return e.getName().getString(); }
+   protected String nameOf(class_1297 e) {
+      return e.method_5477().getString();
+   }
 
-    @Override
-    public void renderHud(DrawContext ctx) {
-        if (mc.world == null || mc.player == null || !Projection.valid()) return;
-        sx = Projection.eyeX(); sy = Projection.eyeY(); sz = Projection.eyeZ();
-        double r2 = range.get() * range.get();
-        buf.clear();
-        for (Entity e : mc.world.getEntities()) {
-            if (e == mc.player || !accept(e)) continue;
-            if (e.squaredDistanceTo(sx, sy, sz) > r2) continue;
-            if (visibleOnly.get() && !Projection.canSeeFromCamera(mc, e)) continue;
-            buf.add(e);
-        }
-        if (buf.size() > maxObjects.getInt()) {
-            buf.sort(BY_DIST);
-        }
-        int n = Math.min(buf.size(), maxObjects.getInt());
-        for (int i = 0; i < n && !capReached(); i++) {
-            Entity e = buf.get(i);
-            double d = Math.sqrt(e.squaredDistanceTo(sx, sy, sz));
-            String lb = label(nameOf(e), d);
-            if (health.get() && e instanceof LivingEntity le) lb += " " + Math.round(le.getHealth()) + "hp";
+   @Override
+   public void renderHud(class_332 ctx) {
+      if (mc.field_1687 != null && mc.field_1724 != null && Projection.valid()) {
+         sx = Projection.eyeX();
+         sy = Projection.eyeY();
+         sz = Projection.eyeZ();
+         double r2 = this.range.get() * this.range.get();
+         this.buf.clear();
 
-            // Match the interpolated entity position used by the rendered world,
-            // otherwise name labels and boxes lag by part of a tick.
-            var renderedPos = e.getLerpedPos(Projection.tickDelta());
-            var renderedBox = e.getBoundingBox().offset(
-                    renderedPos.x - e.getX(),
-                    renderedPos.y - e.getY(),
-                    renderedPos.z - e.getZ());
-            drawTarget(ctx, renderedBox, lb, color.rgb());
-        }
-    }
+         for (class_1297 e : mc.field_1687.method_18112()) {
+            if (e != mc.field_1724 && this.accept(e) && !(e.method_5649(sx, sy, sz) > r2) && (!this.visibleOnly.get() || Projection.canSeeFromCamera(mc, e))) {
+               this.buf.add(e);
+            }
+         }
+
+         if (this.buf.size() > this.maxObjects.getInt()) {
+            this.buf.sort(BY_DIST);
+         }
+
+         int n = Math.min(this.buf.size(), this.maxObjects.getInt());
+
+         for (int i = 0; i < n && !this.capReached(); i++) {
+            class_1297 ex = this.buf.get(i);
+            double d = Math.sqrt(ex.method_5649(sx, sy, sz));
+            String lb = this.label(this.nameOf(ex), d);
+            if (this.health.get() && ex instanceof class_1309 le) {
+               lb = lb + " " + Math.round(le.method_6032()) + "hp";
+            }
+
+            class_243 renderedPos = ex.method_30950(Projection.tickDelta());
+            double offsetX = renderedPos.field_1352 - ex.method_23317();
+            double offsetY = renderedPos.field_1351 - ex.method_23318();
+            double offsetZ = renderedPos.field_1350 - ex.method_23321();
+            this.drawTarget(ctx, ex.method_5829(), lb, this.color.rgb(), offsetX, offsetY, offsetZ);
+         }
+      }
+   }
 }

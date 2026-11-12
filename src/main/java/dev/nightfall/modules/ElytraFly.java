@@ -4,33 +4,29 @@ import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.MoveUtil;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.class_243;
+import net.minecraft.class_746;
 
-/** Client-side Elytra steering and speed control. Server movement validation still applies. */
 public final class ElytraFly extends Module {
-    private final NumberSetting horizontal = add(new NumberSetting("Horizontal (b/s)", 24, 5, 60, 1));
-    private final NumberSetting vertical = add(new NumberSetting("Vertical (b/s)", 8, 1, 25, 1));
+   private final NumberSetting horizontal = this.add(new NumberSetting("Horizontal (b/s)", 26.0, 5.0, 60.0, 1.0));
+   private final NumberSetting vertical = this.add(new NumberSetting("Vertical (b/s)", 9.0, 1.0, 25.0, 1.0));
 
-    public ElytraFly() {
-        super("ElytraFly", "Steuert den Gleitflug: WASD, Space hoch, Shift runter.", Category.MOVEMENT);
-    }
+   public ElytraFly() {
+      super("ElytraFly", "Steuert den Gleitflug: WASD, Space hoch, Shift runter.", Category.MOVEMENT);
+   }
 
-    @Override
-    public void onTick() {
-        ClientPlayerEntity player = mc.player;
-        if (player == null || !player.isGliding() || player.hasVehicle()) return;
-
-        Vec3d direction = MoveUtil.direction();
-        Vec3d velocity = player.getVelocity();
-        double horizontalSpeed = horizontal.get() / 20.0;
-        double verticalSpeed = vertical.get() / 20.0;
-
-        double x = direction.lengthSquared() > 0 ? direction.x * horizontalSpeed : velocity.x;
-        double z = direction.lengthSquared() > 0 ? direction.z * horizontalSpeed : velocity.z;
-        double y = mc.options.jumpKey.isPressed() ? verticalSpeed
-                : mc.options.sneakKey.isPressed() ? -verticalSpeed : velocity.y;
-
-        player.setVelocity(x, y, z);
-    }
+   @Override
+   public void onTick() {
+      class_746 player = mc.field_1724;
+      if (player != null && player.method_6128() && !player.method_5765()) {
+         class_243 direction = MoveUtil.direction();
+         class_243 velocity = player.method_18798();
+         double horizontalSpeed = this.horizontal.get() / 20.0;
+         double verticalSpeed = this.vertical.get() / 20.0;
+         double x = direction.method_1027() > 0.0 ? direction.field_1352 * horizontalSpeed : velocity.field_1352;
+         double z = direction.method_1027() > 0.0 ? direction.field_1350 * horizontalSpeed : velocity.field_1350;
+         double y = mc.field_1690.field_1903.method_1434() ? verticalSpeed : (mc.field_1690.field_1832.method_1434() ? -verticalSpeed : velocity.field_1351);
+         player.method_18800(x, y, z);
+      }
+   }
 }

@@ -1,37 +1,40 @@
 plugins {
-    id 'fabric-loom' version '1.14-SNAPSHOT'
+    id 'fabric-loom' version "${loom_version}"
     id 'maven-publish'
 }
 
-version = '0.5.12'
-group = 'dev.nightfall'
-base { archivesName = 'nightfall' }
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
 
 repositories {
-    maven { url = "https://maven.fabricmc.net/" }
+    maven { url = 'https://maven.fabricmc.net/' }
     mavenCentral()
 }
 
 dependencies {
-    minecraft "com.mojang:minecraft:1.21.11"
-    mappings "net.fabricmc:yarn:1.21.11+build.1:v2"
-    modImplementation "net.fabricmc:fabric-loader:0.18.1"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:0.141.6+1.21.11"
-}
-
-loom {
-    mixin {
-        defaultRefmapName = "nightfall-refmap.json"
-    }
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    // Compile the decompiled source against Fabric intermediary names (class_####).
+    mappings "net.fabricmc:intermediary:${minecraft_version}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+    // Needed on the compile classpath; fabric.mod.json nests the same jar at runtime.
+    compileOnly files("src/main/java/META-INF/jars/seedcrackerX-2.15.6.jar")
 }
 
 processResources {
-    inputs.property "version", project.version
-    filesMatching("fabric.mod.json") { expand "version": inputs.properties.version }
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 21
+    it.options.encoding = 'UTF-8'
 }
 
 java {
@@ -40,91 +43,23 @@ java {
     targetCompatibility = JavaVersion.VERSION_21
 }
 
-
-// Bundle the official SeedCrackerX Fabric mod for Minecraft 1.21.11 as a nested mod.
-def seedCrackerJar = layout.buildDirectory.file("generated/seedcracker/seedcrackerX-2.15.6.jar")
-tasks.register("downloadSeedCracker") {
-    outputs.file(seedCrackerJar)
-    doLast {
-        def output = seedCrackerJar.get().asFile
-        if (!output.parentFile.exists()) output.parentFile.mkdirs()
-        if (!output.exists()) {
-            new URL("https://github.com/19MisterX98/SeedcrackerX/releases/download/2.15.6/seedcrackerX-2.15.6.jar").withInputStream { input ->
-                output.withOutputStream { stream -> stream << input }
-            }
-        }
-        def digest = java.security.MessageDigest.getInstance("SHA-256")
-        output.withInputStream { input ->
-            byte[] buffer = new byte[8192]
-            int read
-            while ((read = input.read(buffer)) > 0) digest.update(buffer, 0, read)
-        }
-        def actual = digest.digest().collect { String.format("%02x", it & 0xff) }.join()
-        def expected = "8695edc230f832339dc53c6fe3543e6d507ac054ef775082083b819fa8b4f227"
-        if (actual != expected) {
-            output.delete()
-            throw new GradleException("SeedCrackerX checksum verification failed")
-        }
+// Configure lazily so this also works if Loom registers sourcesJar after this script.
+tasks.configureEach {
+    if (name == 'sourcesJar') {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 }
 
-processResources {
-    dependsOn tasks.named("downloadSeedCracker")
-    from(seedCrackerJar) {
-        into "META-INF/jars"
+jar {
+    from('src/main/java') {
+        include 'META-INF/jars/**'
     }
 }
 
-
-// Compile against the bundled mod's public callback API; runtime is supplied by Fabric's nested-mod loader.
-dependencies {
-    compileOnly files(seedCrackerJar)
-}
-
-tasks.named("compileJava") {
-    dependsOn tasks.named("downloadSeedCracker")
-}
-
-tasks.named("remapSourcesJar") {
-    dependsOn tasks.named("downloadSeedCracker")
-}
-
- 
-// Generate the mod icon as a PNG resource so Fabric-compatible launchers can display it.
-def generatedIconDir = layout.buildDirectory.dir("generated/nightfall-icon")
-sourceSets.main.resources.srcDir(generatedIconDir)
-
-tasks.register("generateNightfallIcon") {
-    outputs.dir(generatedIconDir)
-    doLast {
-        def outDir = generatedIconDir.get().dir("assets/nightfall").asFile
-        outDir.mkdirs()
-        def image = new java.awt.image.BufferedImage(128, 128, java.awt.image.BufferedImage.TYPE_INT_ARGB)
-        def g = image.createGraphics()
-        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
-        g.setColor(new java.awt.Color(13, 17, 32))
-        g.fillRoundRect(0, 0, 128, 128, 26, 26)
-        g.setColor(new java.awt.Color(92, 106, 230))
-        g.fillOval(22, 18, 78, 78)
-        g.setColor(new java.awt.Color(13, 17, 32))
-        g.fillOval(43, 8, 69, 69)
-        g.setColor(new java.awt.Color(101, 230, 190))
-        int[] xs = [28, 45, 54, 37] as int[]
-        int[] ys = [93, 76, 85, 102] as int[]
-        g.fillPolygon(xs, ys, 4)
-        g.setStroke(new java.awt.BasicStroke(5f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND))
-        g.drawLine(24, 106, 52, 78)
-        g.setColor(new java.awt.Color(238, 241, 255))
-        g.fillOval(82, 91, 6, 6)
-        g.dispose()
-        javax.imageio.ImageIO.write(image, "png", new File(outDir, "icon.png"))
+publishing {
+    publications {
+        create('mavenJava', MavenPublication) {
+            from components.java
+        }
     }
-}
-
-tasks.named("processResources") {
-    dependsOn tasks.named("generateNightfallIcon")
-}
-
-tasks.named("sourcesJar") {
-    dependsOn tasks.named("generateNightfallIcon")
 }

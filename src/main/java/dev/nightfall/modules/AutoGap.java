@@ -4,45 +4,80 @@ import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.InvUtil;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.item.Items;
+import net.minecraft.class_1802;
+import net.minecraft.class_746;
 
-/** Isst bei niedriger Health einen goldenen Apfel aus der Hotbar und wechselt danach zurueck. */
-public class AutoGap extends Module {
-    private final NumberSetting health = add(new NumberSetting("Health-Schwelle", 10, 2, 19, 1));
-    private boolean eating, used;
-    private int prev, ticks, cooldown;
+public final class AutoGap extends Module {
+   private final NumberSetting health = this.add(new NumberSetting("Health-Schwelle", 10.0, 2.0, 19.0, 1.0));
+   private boolean eating;
+   private boolean used;
+   private boolean previousUsePressed;
+   private int previousSlot;
+   private int ticks;
+   private int cooldown;
 
-    public AutoGap() { super("AutoGap", "Isst bei niedriger Health einen goldenen Apfel.", Category.COMBAT); }
+   public AutoGap() {
+      super("AutoGap", "Isst bei niedriger Health einen goldenen Apfel.", Category.COMBAT);
+   }
 
-    @Override protected void onDisable() { finish(); }
-    @Override public void onWorldLeave() { finish(); cooldown = 0; }
+   @Override
+   protected void onDisable() {
+      this.finish();
+   }
 
-    private void finish() {
-        if (eating) { mc.options.useKey.setPressed(false); InvUtil.select(prev); }
-        eating = false; used = false; ticks = 0;
-    }
+   @Override
+   public void onWorldLeave() {
+      this.finish();
+      this.cooldown = 0;
+   }
 
-    @Override
-    public void onTick() {
-        ClientPlayerEntity p = mc.player;
-        if (p == null) return;
-        if (cooldown > 0) cooldown--;
-        if (eating) {
-            ticks++;
-            if (p.isUsingItem()) used = true;
-            if ((used && !p.isUsingItem()) || ticks > 60) { finish(); cooldown = 40; }
-            else mc.options.useKey.setPressed(true);
-            return;
-        }
-        if (cooldown > 0 || p.isUsingItem() || mc.currentScreen != null) return;
-        if (p.getHealth() + p.getAbsorptionAmount() > health.get()) return;
-        int s = InvUtil.findHotbar(Items.ENCHANTED_GOLDEN_APPLE);
-        if (s < 0) s = InvUtil.findHotbar(Items.GOLDEN_APPLE);
-        if (s < 0) return;
-        prev = InvUtil.selected();
-        InvUtil.select(s);
-        mc.options.useKey.setPressed(true);
-        eating = true;
-    }
+   private void finish() {
+      if (this.eating) {
+         mc.field_1690.field_1904.method_23481(this.previousUsePressed);
+         InvUtil.select(this.previousSlot);
+      }
+
+      this.eating = false;
+      this.used = false;
+      this.ticks = 0;
+   }
+
+   @Override
+   public void onTick() {
+      class_746 p = mc.field_1724;
+      if (p != null) {
+         if (this.cooldown > 0) {
+            this.cooldown--;
+         }
+
+         if (this.eating) {
+            this.ticks++;
+            if (p.method_6115()) {
+               this.used = true;
+            }
+
+            if ((!this.used || p.method_6115()) && this.ticks <= 60) {
+               mc.field_1690.field_1904.method_23481(true);
+            } else {
+               this.finish();
+               this.cooldown = 32;
+            }
+         } else if (this.cooldown <= 0 && !p.method_6115() && mc.field_1755 == null) {
+            if (!(p.method_6032() + p.method_6067() > this.health.get())) {
+               int slot = InvUtil.ensureHotbar(class_1802.field_8367);
+               if (slot < 0) {
+                  slot = InvUtil.ensureHotbar(class_1802.field_8463);
+               }
+
+               if (slot >= 0) {
+                  this.previousSlot = InvUtil.selected();
+                  this.previousUsePressed = mc.field_1690.field_1904.method_1434();
+                  InvUtil.select(slot);
+                  mc.field_1690.field_1904.method_23481(true);
+                  this.eating = true;
+               }
+            }
+         }
+      }
+   }
 }

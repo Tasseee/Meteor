@@ -3,57 +3,85 @@ package dev.nightfall.modules;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
-import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.module.setting.MessageListSetting;
+import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.NotificationCenter;
-import net.minecraft.text.Text;
-
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.class_2561;
 
-/** Sends user-configured chat lines at a conservative, configurable interval. */
 public final class AutoText extends Module {
-    public final MessageListSetting messages = add(new MessageListSetting("Nachrichten"));
-    private final NumberSetting interval = add(new NumberSetting("Intervall (Sek.)", 30, 5, 600, 5));
-    private final BoolSetting rotate = add(new BoolSetting("Nachrichten rotieren", true));
-    private final BoolSetting showInfo = add(new BoolSetting("Statusmeldung", true));
-    private int ticks;
-    private int nextIndex;
+   public final MessageListSetting messages = this.add(new MessageListSetting("Nachrichten"));
+   private final NumberSetting interval = this.add(new NumberSetting("Intervall (Sek.)", 30.0, 5.0, 600.0, 5.0));
+   private final BoolSetting rotate = this.add(new BoolSetting("Nachrichten rotieren", true));
+   private final BoolSetting showInfo = this.add(new BoolSetting("Statusmeldung", true));
+   private int ticks;
+   private int nextIndex;
 
-    public AutoText() {
-        super("AutoText", "Sendet eigene Chatnachrichten in einem einstellbaren Intervall (mind. 5 Sekunden).", Category.MISC);
-    }
+   public AutoText() {
+      super("AutoText", "Sendet eigene Chatnachrichten in einem einstellbaren Intervall (mind. 5 Sekunden).", Category.MISC);
+   }
 
-    public int intervalSeconds() { return interval.getInt(); }
-    public boolean addMessage(String message) {
-        String clean = message == null ? "" : message.trim();
-        if (clean.isEmpty() || clean.length() > 256) return false;
-        return messages.addMessage(clean);
-    }
-    public boolean removeMessage(String message) { return messages.removeMessage(message); }
-    public List<String> messageList() { return new ArrayList<>(messages.get()); }
+   public int intervalSeconds() {
+      return this.interval.getInt();
+   }
 
-    @Override protected void onEnable() {
-        ticks = 0;
-        nextIndex = 0;
-        if (messages.get().isEmpty()) {
-            NotificationCenter.push("AutoText", "Zuerst /nf autotext add <Nachricht> verwenden");
-        }
-    }
+   public boolean addMessage(String message) {
+      String clean = message == null ? "" : message.trim();
+      return !clean.isEmpty() && clean.length() <= 256 ? this.messages.addMessage(clean) : false;
+   }
 
-    @Override protected void onDisable() { ticks = 0; }
-    @Override public void onWorldLeave() { ticks = 0; nextIndex = 0; }
+   public boolean removeMessage(String message) {
+      return this.messages.removeMessage(message);
+   }
 
-    @Override public void onTick() {
-        if (mc.player == null || mc.player.networkHandler == null) return;
-        List<String> list = messageList();
-        if (list.isEmpty()) return;
-        ticks++;
-        if (ticks < interval.getInt() * 20) return;
-        ticks = 0;
-        String message = list.get(Math.floorMod(nextIndex, list.size()));
-        mc.player.networkHandler.sendChatMessage(message);
-        if (rotate.get()) nextIndex++;
-        if (showInfo.get()) mc.player.sendMessage(Text.literal("[Nightfall] AutoText gesendet (" + (nextIndex % Math.max(1, list.size()) + 1) + "/" + list.size() + ")"), true);
-    }
+   public List<String> messageList() {
+      return new ArrayList<>(this.messages.get());
+   }
+
+   @Override
+   protected void onEnable() {
+      this.ticks = 0;
+      this.nextIndex = 0;
+      if (this.messages.get().isEmpty()) {
+         NotificationCenter.push("AutoText", "Zuerst /nf autotext add <Nachricht> verwenden");
+      }
+   }
+
+   @Override
+   protected void onDisable() {
+      this.ticks = 0;
+   }
+
+   @Override
+   public void onWorldLeave() {
+      this.ticks = 0;
+      this.nextIndex = 0;
+   }
+
+   @Override
+   public void onTick() {
+      if (mc.field_1724 != null && mc.field_1724.field_3944 != null) {
+         List<String> list = this.messageList();
+         if (!list.isEmpty()) {
+            this.ticks++;
+            if (this.ticks >= this.interval.getInt() * 20) {
+               this.ticks = 0;
+               String message = list.get(Math.floorMod(this.nextIndex, list.size()));
+               mc.field_1724.field_3944.method_45729(message);
+               if (this.rotate.get()) {
+                  this.nextIndex++;
+               }
+
+               if (this.showInfo.get()) {
+                  mc.field_1724
+                     .method_7353(
+                        class_2561.method_43470("[Nightfall] AutoText gesendet (" + (this.nextIndex % Math.max(1, list.size()) + 1) + "/" + list.size() + ")"),
+                        true
+                     );
+               }
+            }
+         }
+      }
+   }
 }

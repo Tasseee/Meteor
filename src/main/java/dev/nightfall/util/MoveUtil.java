@@ -1,27 +1,36 @@
 package dev.nightfall.util;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.GameOptions;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.class_243;
+import net.minecraft.class_310;
+import net.minecraft.class_315;
 
 public final class MoveUtil {
-    private MoveUtil() {}
+   private MoveUtil() {
+   }
 
-    /** Normalisierte XZ-Bewegungsrichtung aus den WASD-Tasten; Vec3d.ZERO wenn keine Taste gedrueckt. */
-    public static Vec3d direction() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) return Vec3d.ZERO;
-        GameOptions o = mc.options;
-        float f = (o.forwardKey.isPressed() ? 1 : 0) - (o.backKey.isPressed() ? 1 : 0);
-        float s = (o.leftKey.isPressed() ? 1 : 0) - (o.rightKey.isPressed() ? 1 : 0);
-        if (f == 0 && s == 0) return Vec3d.ZERO;
-        double yaw = Math.toRadians(mc.player.getYaw());
-        double sin = Math.sin(yaw), cos = Math.cos(yaw);
-        double x = -sin * f + cos * s;
-        double z = cos * f + sin * s;
-        double len = Math.sqrt(x * x + z * z);
-        return new Vec3d(x / len, 0, z / len);
-    }
+   public static class_243 direction() {
+      class_310 mc = class_310.method_1551();
+      if (mc.field_1724 == null) {
+         return class_243.field_1353;
+      } else {
+         class_315 o = mc.field_1690;
+         float f = (o.field_1894.method_1434() ? 1 : 0) - (o.field_1881.method_1434() ? 1 : 0);
+         float s = (o.field_1913.method_1434() ? 1 : 0) - (o.field_1849.method_1434() ? 1 : 0);
+         if (f == 0.0F && s == 0.0F) {
+            return class_243.field_1353;
+         } else {
+            double yaw = Math.toRadians(mc.field_1724.method_36454());
+            double sin = Math.sin(yaw);
+            double cos = Math.cos(yaw);
+            double x = -sin * f + cos * s;
+            double z = cos * f + sin * s;
+            double len = Math.sqrt(x * x + z * z);
+            return new class_243(x / len, 0.0, z / len);
+         }
+      }
+   }
 
-    public static boolean isMoving() { return direction() != Vec3d.ZERO; }
+   public static boolean isMoving() {
+      return direction() != class_243.field_1353;
+   }
 }

@@ -1,17 +1,16 @@
 package dev.nightfall.mixin;
 
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.GameRenderer;
+import net.minecraft.class_4184;
+import net.minecraft.class_757;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
-/** Access to the exact FOV and projection matrix used by Minecraft's world renderer. */
-@Mixin(GameRenderer.class)
+@Mixin({class_757.class})
 public interface GameRendererAccessor {
-    @Invoker("getFov")
-    float nightfall$invokeGetFov(Camera camera, float tickProgress, boolean changingFov);
+   @Invoker("method_3196")
+   float nightfall$invokeGetFov(class_4184 var1, float var2, boolean var3);
 
-    @Invoker("getProjectionMatrix")
-    Matrix4f nightfall$invokeGetProjectionMatrix(float fov);
+   @Invoker("method_74751")
+   Matrix4f nightfall$invokeGetProjectionMatrix(float var1);
 }

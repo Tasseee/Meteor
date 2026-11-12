@@ -1,0 +1,4 @@
+Dekompilierter Code aus nightfall-0_5_18.jar (Vineflower).
+Das ist NICHT der Originalquellcode: Kommentare, Variablennamen und Projektstruktur fehlen,
+Minecraft-Klassen heissen class_xxx (Intermediary-Namen). Es gibt kein build.gradle.
+Die eingebettete SeedCrackerX-Jar (META-INF/jars) ist nicht enthalten.

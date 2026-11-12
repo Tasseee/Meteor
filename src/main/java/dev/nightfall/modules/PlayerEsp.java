@@ -2,59 +2,62 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.util.Projection;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
+import net.minecraft.class_1297;
+import net.minecraft.class_1657;
+import net.minecraft.class_638;
 
 public class PlayerEsp extends EntityScanEsp {
-    private final BoolSetting autoInvsee = add(new BoolSetting("Auto Invsee", true));
-    private final Set<String> inspectedPlayers = new HashSet<>();
-    private net.minecraft.client.world.ClientWorld trackedWorld;
+   private final BoolSetting autoInvsee = this.add(new BoolSetting("Auto Invsee", true));
+   private final Set<String> inspectedPlayers = new HashSet<>();
+   private class_638 trackedWorld;
 
-    public PlayerEsp() {
-        super("PlayerESP", "Markiert andere Spieler und kann sie automatisch mit /invsee öffnen.", 256, 512, 0xEF4444);
-    }
+   public PlayerEsp() {
+      super("PlayerESP", "Markiert andere Spieler und kann sie automatisch mit /invsee öffnen.", 256, 512, 15680580);
+   }
 
-    @Override
-    protected boolean accept(Entity e) {
-        return e instanceof PlayerEntity;
-    }
+   @Override
+   protected boolean accept(class_1297 e) {
+      return e instanceof class_1657;
+   }
 
-    @Override
-    public void onTick() {
-        if (mc.world == null || mc.player == null || mc.getNetworkHandler() == null) {
-            inspectedPlayers.clear();
-            trackedWorld = null;
-            return;
-        }
+   @Override
+   public void onTick() {
+      if (mc.field_1687 != null && mc.field_1724 != null && mc.method_1562() != null) {
+         if (this.trackedWorld != mc.field_1687) {
+            this.inspectedPlayers.clear();
+            this.trackedWorld = mc.field_1687;
+         }
 
-        if (trackedWorld != mc.world) {
-            inspectedPlayers.clear();
-            trackedWorld = mc.world;
-        }
+         if (this.autoInvsee.get()) {
+            double rangeSquared = this.range.get() * this.range.get();
 
-        if (!autoInvsee.get()) return;
+            for (class_1657 player : mc.field_1687.method_18456()) {
+               if (player != mc.field_1724) {
+                  String name = player.method_7334().name();
+                  if (name != null && name.matches("[A-Za-z0-9_]{3,16}")) {
+                     String key = name.toLowerCase(Locale.ROOT);
+                     if (!this.inspectedPlayers.contains(key)
+                        && !(player.method_5858(mc.field_1724) > rangeSquared)
+                        && (!this.visibleOnly.get() || Projection.canSeeFromCamera(mc, player))) {
+                        this.inspectedPlayers.add(key);
+                        mc.method_1562().method_45730("invsee " + name);
+                     }
+                  }
+               }
+            }
+         }
+      } else {
+         this.inspectedPlayers.clear();
+         this.trackedWorld = null;
+      }
+   }
 
-        double rangeSquared = range.get() * range.get();
-        for (PlayerEntity player : mc.world.getPlayers()) {
-            if (player == mc.player) continue;
-            String name = player.getGameProfile().name();
-            if (name == null || !name.matches("[A-Za-z0-9_]{3,16}")) continue;
-            String key = name.toLowerCase(java.util.Locale.ROOT);
-            if (inspectedPlayers.contains(key)) continue;
-            if (player.squaredDistanceTo(mc.player) > rangeSquared) continue;
-            if (visibleOnly.get() && !Projection.canSeeFromCamera(mc, player)) continue;
-
-            inspectedPlayers.add(key);
-            mc.getNetworkHandler().sendChatCommand("invsee " + name);
-        }
-    }
-
-    @Override
-    protected void onDisable() {
-        inspectedPlayers.clear();
-        trackedWorld = null;
-    }
+   @Override
+   protected void onDisable() {
+      this.inspectedPlayers.clear();
+      this.trackedWorld = null;
+   }
 }

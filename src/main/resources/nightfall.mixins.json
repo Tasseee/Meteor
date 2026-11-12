@@ -5,7 +5,15 @@
   "client": [
     "HeldItemRendererMixin",
     "CameraMixin",
-    "GameRendererAccessor"
+    "GameRendererAccessor",
+    "CameraProjectionAccessor",
+    "AbstractSignEditScreenMixin",
+    "SlowSwingMixin",
+    "SeedCrackerProgressMixin",
+    "SeedCrackerDataIntegrityMixin",
+    "AutoShieldNetworkMixin",
+    "ItemStackGlintMixin",
+    "ItemRendererGlintColorMixin"
   ],
   "injectors": {
     "defaultRequire": 1

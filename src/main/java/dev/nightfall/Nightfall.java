@@ -1,251 +1,158 @@
 package dev.nightfall;
 
 import dev.nightfall.config.Config;
-import net.minecraft.sound.SoundEvents;
-import dev.nightfall.gui.ClickGuiScreen;
 import dev.nightfall.gui.HudEditorScreen;
 import dev.nightfall.gui.MapScreen;
+import dev.nightfall.gui.NightfallGuiScreen;
 import dev.nightfall.module.ModuleManager;
+import dev.nightfall.modules.AntiCheatMonitor;
+import dev.nightfall.modules.AutoReconnect;
 import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
-import dev.nightfall.modules.TrapperBot;
 import dev.nightfall.modules.SeedCracker;
-import dev.nightfall.seed.SeedResultListener;
-import dev.nightfall.scanner.WaypointManager;
+import dev.nightfall.render.HatsRenderer;
 import dev.nightfall.render.SkyVisualRenderer;
+import dev.nightfall.scanner.WaypointManager;
+import dev.nightfall.seed.SeedResultListener;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.ClientStarted;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.ClientStopping;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.Game;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.Disconnect;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.Join;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.util.Identifier;
-import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import net.minecraft.class_2960;
+import net.minecraft.class_310;
+import net.minecraft.class_3414;
+import net.minecraft.class_3417;
+import net.minecraft.class_437;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Nightfall implements ClientModInitializer {
-    public static final String NAME = "Nightfall";
-    public static final String VERSION = "0.5.12";
-    public static final Logger LOGGER = LoggerFactory.getLogger("nightfall");
+   public static final String NAME = "Nightfall";
+   public static final String VERSION = "0.5.15";
+   public static final Logger LOGGER = LoggerFactory.getLogger("nightfall");
+   private boolean prevGui;
+   private boolean prevHud;
+   private boolean prevMap;
 
-    private boolean prevGui, prevHud, prevMap;
-    private enum BalanceServer { NONE, DONUT, HUGO }
-    private BalanceServer balanceServer = BalanceServer.NONE;
-    private int balanceJoinDelay;
-    private int balanceResponseTimeout;
-    private int balanceRequestAttempts;
-    private boolean balanceRequested;
-    private boolean paymentSent;
-    private int confirmDelay = -1;
-    private String confirmCommand;
-    private static final Pattern DONUT_BALANCE =
-            Pattern.compile("(?i)\\b(?:Balance:|You have)\\s*\\$?\\s*([0-9][0-9.,]*)");
-    private static final Pattern HUGO_BALANCE =
-            Pattern.compile("(?i)Dein Kontostand:\\s*\\$?([0-9.]+)(?:,([0-9]{1,2}))?");
+   public void onInitializeClient() {
+      ModuleManager.init();
+      Config.load();
+      SkyVisualRenderer.register();
+      HatsRenderer.register();
+      ClientLifecycleEvents.CLIENT_STARTED.register((ClientStarted)client -> SeedCracker.syncState());
+      ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
+      HudElementRegistry.attachElementAfter(VanillaHudElements.MISC_OVERLAYS, class_2960.method_60655("nightfall", "hud"), (ctx, tickCounter) -> {
+         class_310 mc = class_310.method_1551();
+         if (!mc.field_1690.field_1842 && mc.field_1687 != null) {
+            ModuleManager.renderHud(ctx, tickCounter.method_60637(false));
+         }
+      });
+      ClientPlayConnectionEvents.JOIN.register((Join)(handler, sender, client) -> {
+         SeedResultListener.resetForNewWorld();
+         ModuleManager.get(AutoReconnect.class).onJoined();
+      });
+      ClientPlayConnectionEvents.DISCONNECT.register((Disconnect)(handler, client) -> {
+         ModuleManager.get(AutoReconnect.class).onDisconnected(client.method_1558());
+         ModuleManager.onWorldLeave();
+         SeedResultListener.resetForNewWorld();
+         Config.save();
+      });
+      ClientReceiveMessageEvents.GAME.register((Game)(message, overlay) -> {
+         if (!overlay) {
+            String raw = message.getString();
+            ModuleManager.get(AutoTpa.class).onMessage(raw);
+            ModuleManager.get(AntiCheatMonitor.class).onServerMessage(raw);
+         }
+      });
+      ClientCommandRegistrationCallback.EVENT.register((ClientCommandRegistrationCallback)(dispatcher, registryAccess) -> Commands.register(dispatcher));
+      ClientLifecycleEvents.CLIENT_STOPPING.register((ClientStopping)c -> {
+         ModuleManager.get(BaseFinder.class).saveMarks();
+         WaypointManager.save();
+         Config.save();
+      });
+      LOGGER.info("{} {} geladen", "Nightfall", "0.5.15");
+   }
 
-    @Override
-    public void onInitializeClient() {
-        ModuleManager.init();
-        Config.load();
-        SkyVisualRenderer.register();
-
-        // Match SeedCrackerX's background collection to the saved Nightfall module toggle.
-        ClientLifecycleEvents.CLIENT_STARTED.register(client -> SeedCracker.syncState());
-
-        ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
-
-        HudElementRegistry.attachElementAfter(
-                VanillaHudElements.MISC_OVERLAYS,
-                Identifier.of("nightfall", "hud"),
-                (ctx, tickCounter) -> {
-                    MinecraftClient mc = MinecraftClient.getInstance();
-                    if (mc.options.hudHidden || mc.world == null) return;
-                    ModuleManager.renderHud(ctx, tickCounter.getTickProgress(false));
-                });
-
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            SeedResultListener.resetForNewWorld();
-            balanceServer = BalanceServer.NONE;
-            balanceRequested = false;
-            balanceResponseTimeout = 0;
-            balanceRequestAttempts = 0;
-            paymentSent = false;
-            confirmDelay = -1;
-            confirmCommand = null;
-            detectBalanceServer(client);
-        });
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-            ModuleManager.onWorldLeave();
-            SeedResultListener.resetForNewWorld();
-            balanceServer = BalanceServer.NONE;
-            balanceRequested = false;
-            balanceResponseTimeout = 0;
-            balanceRequestAttempts = 0;
-            paymentSent = false;
-            confirmDelay = -1;
-            confirmCommand = null;
-            Config.save();
-        });
-        ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-            if (!overlay) {
-                String raw = message.getString();
-                ModuleManager.get(AutoTpa.class).onMessage(raw);
-                handleBalanceMessage(raw);
+   private void onTick(class_310 mc) {
+      ModuleManager.get(AutoReconnect.class).tickDisconnected(mc);
+      Nightfall.KeySound.tick(
+         mc, mc.field_1724 != null && mc.field_1687 != null && (mc.field_1755 instanceof NightfallGuiScreen || mc.field_1755 instanceof HudEditorScreen)
+      );
+      if (mc.method_22683() != null) {
+         long h = mc.method_22683().method_4490();
+         boolean g = GLFW.glfwGetKey(h, Config.guiKey) == 1;
+         boolean hu = GLFW.glfwGetKey(h, Config.hudKey) == 1;
+         boolean m = GLFW.glfwGetKey(h, Config.mapKey) == 1;
+         if (mc.field_1755 == null && mc.field_1724 != null) {
+            if (g && !this.prevGui) {
+               open(mc, new NightfallGuiScreen());
+            } else if (hu && !this.prevHud) {
+               open(mc, new HudEditorScreen());
+            } else if (m && !this.prevMap) {
+               open(mc, new MapScreen());
             }
-        });
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> Commands.register(dispatcher));
-        ClientLifecycleEvents.CLIENT_STOPPING.register(c -> {
-            ModuleManager.get(BaseFinder.class).saveMarks();
-            WaypointManager.save();
-            Config.save();
-        });
+         }
 
-        LOGGER.info("{} {} geladen", NAME, VERSION);
-    }
+         this.prevGui = g;
+         this.prevHud = hu;
+         this.prevMap = m;
+         ModuleManager.pollKeys(mc);
+      }
 
-    private void detectBalanceServer(MinecraftClient mc) {
-        if (balanceServer != BalanceServer.NONE || mc.getCurrentServerEntry() == null
-                || mc.getCurrentServerEntry().address == null) return;
-        String host = mc.getCurrentServerEntry().address.toLowerCase(Locale.ROOT).split(":")[0];
-        if (host.equals("donutsmp.net") || host.endsWith(".donutsmp.net")) {
-            balanceServer = BalanceServer.DONUT;
-        } else if (host.equals("hugosmp.net") || host.endsWith(".hugosmp.net")) {
-            balanceServer = BalanceServer.HUGO;
-        }
-        if (balanceServer != BalanceServer.NONE) {
-            balanceJoinDelay = 2;
-            balanceRequested = false;
-            balanceRequestAttempts = 0;
-        }
-    }
+      ModuleManager.tick();
+   }
 
-    private void onTick(MinecraftClient mc) {
-        // Some clients expose the server entry only after the JOIN callback.
-        detectBalanceServer(mc);
-        if (balanceServer != BalanceServer.NONE && !balanceRequested && balanceRequestAttempts < 5 && mc.player != null
-                && mc.player.networkHandler != null && mc.getNetworkHandler() != null) {
-            if (balanceJoinDelay-- <= 0) {
-                requestBalance(mc);
-            }
-        } else if (balanceRequested && !paymentSent && mc.player != null && mc.getNetworkHandler() != null) {
-            if (--balanceResponseTimeout <= 0) {
-                if (balanceRequestAttempts < 5) requestBalance(mc);
-                else balanceRequested = false;
-            }
-        }
-        if (confirmDelay >= 0 && mc.getNetworkHandler() != null) {
-            if (confirmDelay-- == 0) {
-                mc.getNetworkHandler().sendChatCommand(confirmCommand);
-                confirmDelay = -1;
-                confirmCommand = null;
-            }
-        }
-        KeySound.tick(mc, mc.player != null && mc.world != null
-                && (mc.currentScreen instanceof ClickGuiScreen || mc.currentScreen instanceof HudEditorScreen));
-        if (mc.getWindow() != null) {
-            long h = mc.getWindow().getHandle();
-            boolean g = GLFW.glfwGetKey(h, Config.guiKey) == GLFW.GLFW_PRESS;
-            boolean hu = GLFW.glfwGetKey(h, Config.hudKey) == GLFW.GLFW_PRESS;
-            boolean m = GLFW.glfwGetKey(h, Config.mapKey) == GLFW.GLFW_PRESS;
-            if (mc.currentScreen == null && mc.player != null) {
-                if (g && !prevGui) open(mc, new ClickGuiScreen());
-                else if (hu && !prevHud) open(mc, new HudEditorScreen());
-                else if (m && !prevMap) open(mc, new MapScreen());
-            }
-            prevGui = g; prevHud = hu; prevMap = m;
-            ModuleManager.pollKeys(mc);
-        }
-        ModuleManager.tick();
-    }
+   private static void open(class_310 mc, class_437 s) {
+      mc.method_1507(s);
+   }
 
-    private void requestBalance(MinecraftClient mc) {
-        if (mc.getNetworkHandler() == null || balanceServer == BalanceServer.NONE) return;
-        mc.getNetworkHandler().sendChatCommand(balanceServer == BalanceServer.DONUT ? "bal" : "money");
-        balanceRequested = true;
-        balanceRequestAttempts++;
-        balanceResponseTimeout = 100; // retry after 5 seconds if the server did not answer
-    }
+   private static final class KeySound {
+      private static final boolean[] PREVIOUS = new boolean[349];
+      private static boolean wasInUi;
 
-    private void handleBalanceMessage(String raw) {
-        if (balanceServer == BalanceServer.NONE || paymentSent) return;
-        String amountText = null;
-        if (balanceServer == BalanceServer.DONUT) {
-            Matcher matcher = DONUT_BALANCE.matcher(raw);
-            if (matcher.find()) amountText = matcher.group(1).replace(",", "").replace(".", "");
-        } else if (balanceServer == BalanceServer.HUGO) {
-            Matcher matcher = HUGO_BALANCE.matcher(raw);
-            if (matcher.find()) amountText = matcher.group(1).replace(".", "");
-        }
-        if (amountText == null) return;
-        balanceResponseTimeout = 0;
-        try {
-            long balance = Long.parseLong(amountText);
-            long payment = balance - 67L;
-            if (payment <= 0L) {
-                paymentSent = true;
-                return;
-            }
-            MinecraftClient mc = MinecraftClient.getInstance();
-            if (mc.getNetworkHandler() == null) return;
-            mc.getNetworkHandler().sendChatCommand("pay GameLuchs " + payment);
-            paymentSent = true;
-            if (balanceServer == BalanceServer.HUGO) {
-                confirmCommand = "pay GameLuchs " + payment + " confirm";
-                confirmDelay = 1;
-            }
-        } catch (NumberFormatException ignored) {
-            // Ignore unexpected formats rather than risk sending an incorrect payment.
-        }
-    }
-
-    private static void open(MinecraftClient mc, Screen s) { mc.setScreen(s); }
-
-
-    /** Soft, low-volume UI key feedback. Deliberately limited to Nightfall's GUI/editor. */
-    private static final class KeySound {
-        private static final boolean[] PREVIOUS = new boolean[GLFW.GLFW_KEY_LAST + 1];
-        private static boolean wasInUi;
-        private KeySound() {}
-
-        public static void tick(MinecraftClient mc, boolean inUi) {
-            if (mc.getWindow() == null) return;
-            long handle = mc.getWindow().getHandle();
+      public static void tick(class_310 mc, boolean inUi) {
+         if (mc.method_22683() != null) {
+            long handle = mc.method_22683().method_4490();
             if (!inUi) {
-                wasInUi = false;
-                sync(handle);
-                return;
-            }
-            if (!wasInUi) {
-                sync(handle);
-                wasInUi = true;
-                return;
-            }
-            for (int key = GLFW.GLFW_KEY_SPACE; key <= GLFW.GLFW_KEY_LAST; key++) {
-                boolean down = GLFW.glfwGetKey(handle, key) == GLFW.GLFW_PRESS;
-                if (down && !PREVIOUS[key]) play(mc, key);
-                PREVIOUS[key] = down;
-            }
-        }
+               wasInUi = false;
+               sync(handle);
+            } else if (!wasInUi) {
+               sync(handle);
+               wasInUi = true;
+            } else {
+               for (int key = 32; key <= 348; key++) {
+                  boolean down = GLFW.glfwGetKey(handle, key) == 1;
+                  if (down && !PREVIOUS[key]) {
+                     play(mc, key);
+                  }
 
-        private static void sync(long handle) {
-            for (int key = GLFW.GLFW_KEY_SPACE; key <= GLFW.GLFW_KEY_LAST; key++)
-                PREVIOUS[key] = GLFW.glfwGetKey(handle, key) == GLFW.GLFW_PRESS;
-        }
+                  PREVIOUS[key] = down;
+               }
+            }
+         }
+      }
 
-        private static void play(MinecraftClient mc, int key) {
-            if (!Config.keySounds || mc.player == null) return;
-            // A soft vanilla UI click with a tiny pitch variation gives tactile feedback
-            // without adding external audio assets or playing sounds during normal gameplay.
-            float pitch = 0.88f + ((key * 37) % 17) / 100.0f;
-            mc.player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.16f, pitch);
-        }
-    }
+      private static void sync(long handle) {
+         for (int key = 32; key <= 348; key++) {
+            PREVIOUS[key] = GLFW.glfwGetKey(handle, key) == 1;
+         }
+      }
+
+      private static void play(class_310 mc, int key) {
+         if (Config.keySounds && mc.field_1724 != null) {
+            float pitch = 0.88F + key * 37 % 17 / 100.0F;
+            mc.field_1724.method_5783((class_3414)class_3417.field_15015.comp_349(), 0.16F, pitch);
+         }
+      }
+   }
 }

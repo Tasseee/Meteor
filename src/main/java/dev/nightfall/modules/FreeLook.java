@@ -1,89 +1,104 @@
 package dev.nightfall.modules;
 
-import dev.nightfall.module.Module;
 import dev.nightfall.module.Category;
+import dev.nightfall.module.Module;
+import dev.nightfall.module.ModuleManager;
 import org.lwjgl.glfw.GLFW;
 
-/**
- * Entkoppelt die Renderkamera von der Spielerausrichtung.
- * Die Maus bewegt nur die Kamera; die gespeicherte Spielerausrichtung wird gehalten.
- */
 public final class FreeLook extends Module {
-    private static boolean active;
-    private static float cameraYaw, cameraPitch;
-    private float playerYaw, playerPitch;
-    private double lastMouseX, lastMouseY;
-    private boolean mouseInitialized;
+   private static boolean active;
+   private static float cameraYaw;
+   private static float cameraPitch;
+   private float playerYaw;
+   private float playerPitch;
+   private double lastMouseX;
+   private double lastMouseY;
+   private boolean mouseInitialized;
 
-    public FreeLook() {
-        super("FreeLook", "Mit der Maus umsehen, ohne die Blickrichtung des Spielers zu aendern.", Category.VISUALS);
-    }
+   public FreeLook() {
+      super("FreeLook", "Mit der Maus umsehen, ohne die Blickrichtung des Spielers zu aendern.", Category.VISUALS);
+   }
 
-    public static boolean isActive() { return active; }
-    public static float cameraYaw() { return cameraYaw; }
-    public static float cameraPitch() { return cameraPitch; }
+   public static boolean isActive() {
+      return active;
+   }
 
-    private boolean activateIfReady() {
-        if (mc.player == null || mc.world == null) return false;
-        Freecam freecam = null;
-        try { freecam = dev.nightfall.module.ModuleManager.get(Freecam.class); }
-        catch (IllegalStateException ignored) {}
-        if (freecam != null && freecam.isEnabled()) freecam.setEnabled(false);
+   public static float cameraYaw() {
+      return cameraYaw;
+   }
 
-        playerYaw = mc.player.getYaw();
-        playerPitch = mc.player.getPitch();
-        cameraYaw = playerYaw;
-        cameraPitch = playerPitch;
-        mouseInitialized = false;
-        active = true;
-        return true;
-    }
+   public static float cameraPitch() {
+      return cameraPitch;
+   }
 
-    @Override
-    protected void onEnable() {
-        // Config can enable this module before the player exists.
-        activateIfReady();
-    }
+   private boolean activateIfReady() {
+      if (mc.field_1724 != null && mc.field_1687 != null) {
+         Freecam freecam = null;
 
-    @Override
-    public void onTick() {
-        if (!active) {
-            activateIfReady();
-            return;
-        }
-        if (mc.player == null || mc.world == null || mc.getWindow() == null) return;
-        long window = mc.getWindow().getHandle();
-        double[] x = new double[1], y = new double[1];
-        GLFW.glfwGetCursorPos(window, x, y);
-        if (mouseInitialized) {
-            cameraYaw += (float) ((x[0] - lastMouseX) * 0.15);
-            cameraPitch += (float) ((y[0] - lastMouseY) * 0.15);
-            cameraPitch = Math.max(-90.0f, Math.min(90.0f, cameraPitch));
-        }
-        lastMouseX = x[0];
-        lastMouseY = y[0];
-        mouseInitialized = true;
+         try {
+            freecam = ModuleManager.get(Freecam.class);
+         } catch (IllegalStateException var3) {
+         }
 
-        // Undo vanilla mouse rotation for the local player. The mixin applies our
-        // independent angles to the render camera only.
-        mc.player.setYaw(playerYaw);
-        mc.player.setPitch(playerPitch);
-    }
+         if (freecam != null && freecam.isEnabled()) {
+            freecam.setEnabled(false);
+         }
 
-    @Override
-    public void onWorldLeave() {
-        active = false;
-        mouseInitialized = false;
-    }
+         this.playerYaw = mc.field_1724.method_36454();
+         this.playerPitch = mc.field_1724.method_36455();
+         cameraYaw = this.playerYaw;
+         cameraPitch = this.playerPitch;
+         this.mouseInitialized = false;
+         active = true;
+         return true;
+      } else {
+         return false;
+      }
+   }
 
-    @Override
-    protected void onDisable() {
-        boolean wasActive = active;
-        active = false;
-        if (wasActive && mc.player != null) {
-            mc.player.setYaw(playerYaw);
-            mc.player.setPitch(playerPitch);
-        }
-        mouseInitialized = false;
-    }
+   @Override
+   protected void onEnable() {
+      this.activateIfReady();
+   }
+
+   @Override
+   public void onTick() {
+      if (!active) {
+         this.activateIfReady();
+      } else if (mc.field_1724 != null && mc.field_1687 != null && mc.method_22683() != null) {
+         long window = mc.method_22683().method_4490();
+         double[] x = new double[1];
+         double[] y = new double[1];
+         GLFW.glfwGetCursorPos(window, x, y);
+         if (this.mouseInitialized) {
+            cameraYaw = cameraYaw + (float)((x[0] - this.lastMouseX) * 0.15);
+            cameraPitch = cameraPitch + (float)((y[0] - this.lastMouseY) * 0.15);
+            cameraPitch = Math.max(-90.0F, Math.min(90.0F, cameraPitch));
+         }
+
+         this.lastMouseX = x[0];
+         this.lastMouseY = y[0];
+         this.mouseInitialized = true;
+         mc.field_1724.method_36456(this.playerYaw);
+         mc.field_1724.method_36457(this.playerPitch);
+      }
+   }
+
+   @Override
+   public void onWorldLeave() {
+      active = false;
+      this.mouseInitialized = false;
+   }
+
+   @Override
+   protected void onDisable() {
+      boolean wasActive = active;
+      active = false;
+      if (wasActive && mc.field_1724 != null) {
+         mc.field_1724.method_36456(this.playerYaw);
+         mc.field_1724.method_36457(this.playerPitch);
+      }
+
+      this.mouseInitialized = false;
+   }
 }

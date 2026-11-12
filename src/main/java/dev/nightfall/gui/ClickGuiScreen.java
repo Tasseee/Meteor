@@ -1,21 +1,20 @@
 package dev.nightfall.gui;
 
-import dev.nightfall.Nightfall;
 import dev.nightfall.config.Config;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.ModuleManager;
-import dev.nightfall.module.setting.*;
+import dev.nightfall.module.setting.BoolSetting;
+import dev.nightfall.module.setting.ColorSetting;
+import dev.nightfall.module.setting.ListSetting;
+import dev.nightfall.module.setting.MessageListSetting;
+import dev.nightfall.module.setting.ModeSetting;
+import dev.nightfall.module.setting.NumberSetting;
+import dev.nightfall.module.setting.Setting;
+import dev.nightfall.module.setting.StringSetting;
 import dev.nightfall.modules.GUITheme;
 import dev.nightfall.util.Keys;
 import dev.nightfall.util.Theme;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.input.KeyInput;
-import net.minecraft.text.Text;
-import org.lwjgl.glfw.GLFW;
-
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -24,477 +23,746 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import net.minecraft.class_11908;
+import net.minecraft.class_2561;
+import net.minecraft.class_310;
+import net.minecraft.class_332;
+import net.minecraft.class_437;
+import org.lwjgl.glfw.GLFW;
 
-/**
- * Full-height vertical accordion ClickGUI. Categories contain modules, and each module
- * reveals its settings in-place. There is deliberately no secondary/side settings pane.
- */
-public class ClickGuiScreen extends Screen {
-    private static final int HEADER_TOP = 48;
-    private static final int CATEGORY_H = 32;
-    private static final int MODULE_H = 29;
-    private static final int SETTING_H = 23;
-    private static final int GAP = 6;
-    private static final int FOOTER_H = 26;
+public class ClickGuiScreen extends class_437 {
+   private static final int HEADER_TOP = 48;
+   private static final int CATEGORY_H = 32;
+   private static final int MODULE_H = 29;
+   private static final int SETTING_H = 23;
+   private static final int GAP = 6;
+   private static final int FOOTER_H = 26;
+   private static final Set<Category> OPEN_CATEGORIES = new HashSet<>();
+   private static final Set<Module> EXPANDED = new HashSet<>();
+   private static final Map<Category, Float> CATEGORY_PROGRESS = new EnumMap<>(Category.class);
+   private static final Map<Module, Float> MODULE_PROGRESS = new HashMap<>();
+   private static final Map<Module, Float> ENABLE_PROGRESS = new HashMap<>();
+   private static String search = "";
+   private static boolean onlyFavorites;
+   private final List<Category> cats = new ArrayList<>();
+   private final Keys.Poller poller = new Keys.Poller();
+   private boolean prevL;
+   private boolean prevR;
+   private boolean prevM;
+   private boolean clickL;
+   private boolean clickR;
+   private boolean clickM;
+   private boolean searchFocus;
+   private Module listening;
+   private String notice = "";
+   private long noticeUntil;
+   private NumberSetting slider;
+   private int sliderX;
+   private int sliderW;
+   private int visibleClipBottom;
+   private MessageListSetting editingMessages;
+   private StringSetting editingString;
+   private ColorSetting editingColor;
+   private String messageDraft = "";
+   private float scroll;
+   private int panelX;
+   private int panelW;
+   private int viewportTop;
+   private int viewportBottom;
 
-    private static final Set<Category> OPEN_CATEGORIES = new HashSet<>();
-    private static final Set<Module> EXPANDED = new HashSet<>();
-    private static final Map<Category, Float> CATEGORY_PROGRESS = new EnumMap<>(Category.class);
-    private static final Map<Module, Float> MODULE_PROGRESS = new HashMap<>();
-    private static final Map<Module, Float> ENABLE_PROGRESS = new HashMap<>();
-    private static String search = "";
+   public ClickGuiScreen() {
+      super(class_2561.method_43470("Nightfall"));
 
-    private final List<Category> cats = new ArrayList<>();
-    private final Keys.Poller poller = new Keys.Poller();
-    private boolean prevL, prevR, prevM, clickL, clickR, clickM;
-    private boolean searchFocus;
-    private Module listening;
-    private String notice = "";
-    private long noticeUntil;
-    private NumberSetting slider;
-    private int sliderX, sliderW;
-    private int visibleClipBottom;
-    private MessageListSetting editingMessages;
-    private StringSetting editingString;
-    private ColorSetting editingColor;
-    private String messageDraft = "";
-    private float scroll;
-    private int panelX, panelW, viewportTop, viewportBottom;
+      for (Category c : Category.values()) {
+         if (!ModuleManager.byCategory(c).isEmpty()) {
+            this.cats.add(c);
+         }
+      }
 
-    public ClickGuiScreen() {
-        super(Text.literal("Nightfall"));
-        for (Category c : Category.values()) if (!ModuleManager.byCategory(c).isEmpty()) cats.add(c);
-        long h = MinecraftClient.getInstance().getWindow().getHandle();
-        prevL = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
-        prevR = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
-        prevM = GLFW.glfwGetMouseButton(h, GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
-        poller.sync(h);
-    }
+      long h = class_310.method_1551().method_22683().method_4490();
+      this.prevL = GLFW.glfwGetMouseButton(h, 0) == 1;
+      this.prevR = GLFW.glfwGetMouseButton(h, 1) == 1;
+      this.prevM = GLFW.glfwGetMouseButton(h, 2) == 1;
+      this.poller.sync(h);
+   }
 
-    @Override public boolean shouldPause() { return false; }
-    @Override public void removed() { Config.save(); }
+   public boolean method_25421() {
+      return false;
+   }
 
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        if (mouseY < viewportTop || mouseY > viewportBottom) return false;
-        scroll = Math.max(0, scroll - (float) verticalAmount * 34.0f);
-        return true;
-    }
+   public void method_25432() {
+      Config.save();
+   }
 
-    private List<Module> visible(Category category) {
-        List<Module> all = ModuleManager.byCategory(category);
-        if (search.isEmpty()) return all;
-        List<Module> out = new ArrayList<>();
-        for (Module m : all) {
-            String q = search.toLowerCase(Locale.ROOT);
-            if (m.getName().toLowerCase(Locale.ROOT).contains(q)
-                    || m.getDescription().toLowerCase(Locale.ROOT).contains(q)) out.add(m);
-        }
-        return out;
-    }
+   public boolean method_25401(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+      if (!(mouseY < this.viewportTop) && !(mouseY > this.viewportBottom)) {
+         this.scroll = Math.max(0.0F, this.scroll - (float)verticalAmount * 34.0F);
+         return true;
+      } else {
+         return false;
+      }
+   }
 
-    private <K> float ease(Map<K, Float> values, K key, boolean target, float delta) {
-        float wanted = target ? 1.0f : 0.0f;
-        float current = values.getOrDefault(key, wanted);
-        float factor = Math.min(1.0f, Math.max(0.04f, delta * 10.0f));
-        current += (wanted - current) * factor;
-        if (Math.abs(wanted - current) < 0.008f) current = wanted;
-        values.put(key, current);
-        return current;
-    }
+   private List<Module> visible(Category category) {
+      List<Module> all = ModuleManager.byCategory(category);
+      List<Module> out = new ArrayList<>();
+      String q = search.toLowerCase(Locale.ROOT);
 
-    private boolean categoryOpen(Category c) { return OPEN_CATEGORIES.contains(c) || !search.isEmpty(); }
+      for (Module m : all) {
+         if ((!onlyFavorites || m.isFavorite())
+            && (q.isEmpty() || m.getName().toLowerCase(Locale.ROOT).contains(q) || m.getDescription().toLowerCase(Locale.ROOT).contains(q))) {
+            out.add(m);
+         }
+      }
 
-    @Override
-    public boolean keyPressed(KeyInput input) {
-        int keyCode = input.key();
-        if (listening != null || editingColor != null || editingMessages != null || editingString != null || searchFocus) {
-            onKey(keyCode);
-            return true;
-        }
-        if (keyCode == Config.guiKey) {
-            close();
-            return true;
-        }
-        return super.keyPressed(input);
-    }
+      return out;
+   }
 
-    private void onKey(int k) {
-        if (listening != null) {
-            if (k == GLFW.GLFW_KEY_ESCAPE) { listening = null; return; }
-            if (k == GLFW.GLFW_KEY_BACKSPACE) { listening.setKey(-1); notice("Keybind entfernt: " + listening.getName()); listening = null; Config.save(); return; }
-            String err = ModuleManager.assignKey(listening, k);
-            notice(err != null ? err : listening.getName() + " = " + Keys.name(k));
-            if (err == null) Config.save();
-            listening = null;
-            return;
-        }
-        if (editingColor != null) {
-            if (k == GLFW.GLFW_KEY_ESCAPE) { editingColor = null; messageDraft = ""; return; }
-            if (k == GLFW.GLFW_KEY_BACKSPACE) { if (!messageDraft.isEmpty()) messageDraft = messageDraft.substring(0, messageDraft.length() - 1); return; }
-            if (k == GLFW.GLFW_KEY_ENTER) {
-                String hex = messageDraft.replace("#", "").trim();
-                try {
-                    if (hex.length() != 6) throw new NumberFormatException();
-                    editingColor.set(Integer.parseInt(hex, 16)); Config.save(); notice("Farbe gespeichert: #" + hex.toUpperCase(Locale.ROOT));
-                } catch (NumberFormatException ex) { notice("Bitte genau 6 Hex-Zeichen eingeben"); }
-                editingColor = null; messageDraft = ""; return;
+   private <K> float ease(Map<K, Float> values, K key, boolean target, float delta) {
+      float wanted = target ? 1.0F : 0.0F;
+      float current = values.getOrDefault(key, wanted);
+      float factor = Math.min(1.0F, Math.max(0.04F, delta * 10.0F));
+      current += (wanted - current) * factor;
+      if (Math.abs(wanted - current) < 0.008F) {
+         current = wanted;
+      }
+
+      values.put(key, current);
+      return current;
+   }
+
+   private boolean categoryOpen(Category c) {
+      return OPEN_CATEGORIES.contains(c) || !search.isEmpty() || onlyFavorites;
+   }
+
+   public boolean method_25404(class_11908 input) {
+      int keyCode = input.comp_4795();
+      if (this.listening != null || this.editingColor != null || this.editingMessages != null || this.editingString != null || this.searchFocus) {
+         this.onKey(keyCode);
+         return true;
+      } else if (keyCode == Config.guiKey) {
+         this.method_25419();
+         return true;
+      } else {
+         return super.method_25404(input);
+      }
+   }
+
+   private void onKey(int k) {
+      if (this.listening != null) {
+         if (k == 256) {
+            this.listening = null;
+         } else if (k != 259 && k != 261) {
+            String err = ModuleManager.assignKey(this.listening, k);
+            this.notice(err != null ? err : this.listening.getName() + " = " + Keys.name(k));
+            if (err == null) {
+               Config.save();
             }
-            if (k >= GLFW.GLFW_KEY_0 && k <= GLFW.GLFW_KEY_9 && messageDraft.length() < 6) { messageDraft += (char) ('0' + k - GLFW.GLFW_KEY_0); return; }
-            if (k >= GLFW.GLFW_KEY_A && k <= GLFW.GLFW_KEY_F && messageDraft.length() < 6) { messageDraft += (char) ('A' + k - GLFW.GLFW_KEY_A); return; }
-            return;
-        }
-        if (editingMessages != null || editingString != null) {
-            if (k == GLFW.GLFW_KEY_ESCAPE) { editingMessages = null; editingString = null; messageDraft = ""; return; }
-            if (k == GLFW.GLFW_KEY_BACKSPACE) { if (!messageDraft.isEmpty()) messageDraft = messageDraft.substring(0, messageDraft.length() - 1); return; }
-            if (k == GLFW.GLFW_KEY_ENTER) {
-                if (editingString != null) {
-                    editingString.set(messageDraft); Config.save(); notice("Einstellung gespeichert"); editingString = null; messageDraft = ""; return;
-                }
-                if (editingMessages != null && !messageDraft.isBlank()) {
-                    boolean added = editingMessages.addMessage(messageDraft.trim());
-                    notice(added ? "Nachricht hinzugefügt" : "Leer oder bereits vorhanden"); Config.save();
-                }
-                messageDraft = ""; return;
+
+            this.listening = null;
+         } else {
+            this.listening.setKey(-1);
+            this.notice("Keybind entfernt: " + this.listening.getName());
+            this.listening = null;
+            Config.save();
+         }
+      } else if (this.editingColor != null) {
+         if (k == 256) {
+            this.editingColor = null;
+            this.messageDraft = "";
+         } else if (k == 259) {
+            if (!this.messageDraft.isEmpty()) {
+               this.messageDraft = this.messageDraft.substring(0, this.messageDraft.length() - 1);
             }
-            if (k == GLFW.GLFW_KEY_SPACE) { if (messageDraft.length() < 256) messageDraft += " "; return; }
-            if (k >= GLFW.GLFW_KEY_A && k <= GLFW.GLFW_KEY_Z && messageDraft.length() < 256) {
-                boolean shift = GLFW.glfwGetKey(MinecraftClient.getInstance().getWindow().getHandle(), GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
-                        || GLFW.glfwGetKey(MinecraftClient.getInstance().getWindow().getHandle(), GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
-                messageDraft += (char) ((shift ? 'A' : 'a') + (k - GLFW.GLFW_KEY_A)); return;
+         } else if (k == 257) {
+            String hex = this.messageDraft.replace("#", "").trim();
+
+            try {
+               if (hex.length() != 6) {
+                  throw new NumberFormatException();
+               }
+
+               this.editingColor.set(Integer.parseInt(hex, 16));
+               Config.save();
+               this.notice("Farbe gespeichert: #" + hex.toUpperCase(Locale.ROOT));
+            } catch (NumberFormatException var4) {
+               this.notice("Bitte genau 6 Hex-Zeichen eingeben");
             }
-            if (k >= GLFW.GLFW_KEY_0 && k <= GLFW.GLFW_KEY_9 && messageDraft.length() < 256) { messageDraft += (char) ('0' + k - GLFW.GLFW_KEY_0); return; }
-            if (k == GLFW.GLFW_KEY_MINUS && messageDraft.length() < 256) { messageDraft += "-"; return; }
-            if (k == GLFW.GLFW_KEY_PERIOD && messageDraft.length() < 256) { messageDraft += "."; return; }
-            if (k == GLFW.GLFW_KEY_COMMA && messageDraft.length() < 256) { messageDraft += ","; return; }
-            if (k == GLFW.GLFW_KEY_SLASH && messageDraft.length() < 256) { messageDraft += "/"; return; }
-            return;
-        }
-        if (!searchFocus) return;
-        if (k == GLFW.GLFW_KEY_BACKSPACE) { if (!search.isEmpty()) search = search.substring(0, search.length() - 1); scroll = 0; }
-        else if (k >= GLFW.GLFW_KEY_A && k <= GLFW.GLFW_KEY_Z) { search += (char) ('a' + k - GLFW.GLFW_KEY_A); scroll = 0; }
-        else if (k >= GLFW.GLFW_KEY_0 && k <= GLFW.GLFW_KEY_9) { search += (char) ('0' + k - GLFW.GLFW_KEY_0); scroll = 0; }
-        else if (k == GLFW.GLFW_KEY_SPACE) { search += ' '; scroll = 0; }
-        else if (k == GLFW.GLFW_KEY_ENTER) searchFocus = false;
-        else if (k == GLFW.GLFW_KEY_ESCAPE) { search = ""; searchFocus = false; scroll = 0; }
-    }
 
-    private void notice(String s) { notice = s; noticeUntil = System.currentTimeMillis() + 2600; }
+            this.editingColor = null;
+            this.messageDraft = "";
+         } else if (k >= 48 && k <= 57 && this.messageDraft.length() < 6) {
+            this.messageDraft = this.messageDraft + (char)(48 + k - 48);
+         } else if (k >= 65 && k <= 70 && this.messageDraft.length() < 6) {
+            this.messageDraft = this.messageDraft + (char)(65 + k - 65);
+         }
+      } else if (this.editingMessages == null && this.editingString == null) {
+         if (this.searchFocus) {
+            if (k == 259) {
+               if (!search.isEmpty()) {
+                  search = search.substring(0, search.length() - 1);
+               }
 
-    @Override
-    public void render(DrawContext ctx, int mx, int my, float delta) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        long handle = mc.getWindow().getHandle();
-        boolean l = GLFW.glfwGetMouseButton(handle, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
-        boolean r = GLFW.glfwGetMouseButton(handle, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
-        boolean m = GLFW.glfwGetMouseButton(handle, GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
-        clickL = l && !prevL; clickR = r && !prevR; clickM = m && !prevM;
-        prevL = l; prevR = r; prevM = m;
+               this.scroll = 0.0F;
+            } else if (k >= 65 && k <= 90) {
+               search = search + (char)(97 + k - 65);
+               this.scroll = 0.0F;
+            } else if (k >= 48 && k <= 57) {
+               search = search + (char)(48 + k - 48);
+               this.scroll = 0.0F;
+            } else if (k == 32) {
+               search = search + " ";
+               this.scroll = 0.0F;
+            } else if (k == 257) {
+               this.searchFocus = false;
+            } else if (k == 256) {
+               search = "";
+               this.searchFocus = false;
+               this.scroll = 0.0F;
+            }
+         }
+      } else if (k == 256) {
+         this.editingMessages = null;
+         this.editingString = null;
+         this.messageDraft = "";
+      } else if (k == 259) {
+         if (!this.messageDraft.isEmpty()) {
+            this.messageDraft = this.messageDraft.substring(0, this.messageDraft.length() - 1);
+         }
+      } else if (k == 257) {
+         if (this.editingString != null) {
+            this.editingString.set(this.messageDraft);
+            Config.save();
+            this.notice("Einstellung gespeichert");
+            this.editingString = null;
+            this.messageDraft = "";
+         } else {
+            if (this.editingMessages != null && !this.messageDraft.isBlank()) {
+               boolean added = this.editingMessages.addMessage(this.messageDraft.trim());
+               this.notice(added ? "Nachricht hinzugefügt" : "Leer oder bereits vorhanden");
+               Config.save();
+            }
 
-        ctx.fill(0, 0, width, height, Theme.BG_DIM);
-        ctx.fill(0, 0, width, 2, Theme.ACCENT);
-        ctx.fill(0, height - 2, width, height, Theme.ACCENT_DIM);
-        panelW = Math.min(720, width - 36);
-        panelX = (width - panelW) / 2;
-        viewportTop = HEADER_TOP;
-        viewportBottom = Math.max(viewportTop + 40, height - FOOTER_H - 8);
+            this.messageDraft = "";
+         }
+      } else if (k == 32) {
+         if (this.messageDraft.length() < 256) {
+            this.messageDraft = this.messageDraft + " ";
+         }
+      } else if (k >= 65 && k <= 90 && this.messageDraft.length() < 256) {
+         boolean shift = GLFW.glfwGetKey(class_310.method_1551().method_22683().method_4490(), 340) == 1
+            || GLFW.glfwGetKey(class_310.method_1551().method_22683().method_4490(), 344) == 1;
+         this.messageDraft = this.messageDraft + (char)((shift ? 65 : 97) + (k - 65));
+      } else if (k >= 48 && k <= 57 && this.messageDraft.length() < 256) {
+         this.messageDraft = this.messageDraft + (char)(48 + k - 48);
+      } else if (k == 45 && this.messageDraft.length() < 256) {
+         boolean shift = GLFW.glfwGetKey(class_310.method_1551().method_22683().method_4490(), 340) == 1
+            || GLFW.glfwGetKey(class_310.method_1551().method_22683().method_4490(), 344) == 1;
+         this.messageDraft = this.messageDraft + (shift ? "_" : "-");
+      } else if (k == 46 && this.messageDraft.length() < 256) {
+         this.messageDraft = this.messageDraft + ".";
+      } else if (k == 44 && this.messageDraft.length() < 256) {
+         this.messageDraft = this.messageDraft + ",";
+      } else if (k == 47 && this.messageDraft.length() < 256) {
+         this.messageDraft = this.messageDraft + "/";
+      } else if ((k == 59 || k == 46) && this.messageDraft.length() < 256) {
+         boolean shift = GLFW.glfwGetKey(class_310.method_1551().method_22683().method_4490(), 340) == 1
+            || GLFW.glfwGetKey(class_310.method_1551().method_22683().method_4490(), 344) == 1;
+         if (shift) {
+            this.messageDraft = this.messageDraft + ":";
+         } else if (k == 59) {
+            this.messageDraft = this.messageDraft + ";";
+         } else {
+            this.messageDraft = this.messageDraft + ".";
+         }
+      } else if (k == 61 && this.messageDraft.length() < 256) {
+         this.messageDraft = this.messageDraft + "=";
+      }
+   }
 
-        // Fixed app-style top bar with a clear brand lockup.
-        ctx.fill(panelX, 5, panelX + panelW, 39, Theme.PANEL);
-        ctx.fill(panelX, 5, panelX + 3, 39, Theme.ACCENT);
-        ctx.drawText(mc.textRenderer, "NIGHTFALL", panelX + 13, 10, Theme.TEXT, true);
-        ctx.drawText(mc.textRenderer, "CLIENT  /  MODULES", panelX + 13, 24, Theme.TEXT_DIM, false);
-        ctx.drawText(mc.textRenderer, Nightfall.VERSION, panelX + 132, 11, Theme.ACCENT, false);
-        int searchW = Math.min(240, panelW - 170);
-        int searchX = panelX + panelW - searchW - 10;
-        ctx.fill(searchX, 9, searchX + searchW, 31, 0xE9101118);
-        ctx.fill(searchX, 30, searchX + searchW, 31, searchFocus ? Theme.ACCENT : Theme.ACCENT_DIM);
-        String searchText = search.isEmpty() && !searchFocus ? "Module suchen..." : search + (searchFocus && (System.currentTimeMillis() / 500) % 2 == 0 ? "_" : "");
-        ctx.drawText(mc.textRenderer, searchText, searchX + 9, 17, search.isEmpty() ? Theme.TEXT_DIM : Theme.TEXT, false);
-        if (clickL && in(mx, my, searchX, 9, searchW, 22)) { searchFocus = true; clickL = false; }
-        else if (clickL && searchFocus) searchFocus = false;
+   private void notice(String s) {
+      this.notice = s;
+      this.noticeUntil = System.currentTimeMillis() + 2600L;
+   }
 
-        if (!l) slider = null;
-        if (slider != null && sliderW > 0) {
-            double t = (mx - sliderX) / (double) sliderW;
-            slider.set(slider.min + Math.max(0, Math.min(1, t)) * (slider.max - slider.min));
-        }
+   public void method_25394(class_332 ctx, int mx, int my, float delta) {
+      class_310 mc = class_310.method_1551();
+      long handle = mc.method_22683().method_4490();
+      boolean l = GLFW.glfwGetMouseButton(handle, 0) == 1;
+      boolean r = GLFW.glfwGetMouseButton(handle, 1) == 1;
+      boolean m = GLFW.glfwGetMouseButton(handle, 2) == 1;
+      this.clickL = l && !this.prevL;
+      this.clickR = r && !this.prevR;
+      this.clickM = m && !this.prevM;
+      this.prevL = l;
+      this.prevR = r;
+      this.prevM = m;
+      ctx.method_25294(0, 0, this.field_22789, this.field_22790, Theme.BG_DIM);
+      ctx.method_25294(0, 0, this.field_22789, 2, Theme.ACCENT);
+      ctx.method_25294(0, this.field_22790 - 2, this.field_22789, this.field_22790, Theme.ACCENT_DIM);
+      this.panelW = Math.min(720, this.field_22789 - 36);
+      this.panelX = (this.field_22789 - this.panelW) / 2;
+      this.viewportTop = 48;
+      this.viewportBottom = Math.max(this.viewportTop + 40, this.field_22790 - 26 - 8);
+      ctx.method_25294(this.panelX, 5, this.panelX + this.panelW, 39, Theme.PANEL);
+      ctx.method_25294(this.panelX, 5, this.panelX + 3, 39, Theme.ACCENT);
+      ctx.method_51433(mc.field_1772, "NIGHTFALL", this.panelX + 13, 10, Theme.TEXT, true);
+      ctx.method_51433(mc.field_1772, "CLIENT  /  MODULES", this.panelX + 13, 24, Theme.TEXT_DIM, false);
+      ctx.method_51433(mc.field_1772, "0.5.15", this.panelX + 132, 11, Theme.ACCENT, false);
+      int searchW = Math.min(220, this.panelW - 280);
+      searchW = Math.max(120, searchW);
+      int searchX = this.panelX + this.panelW - searchW - 10;
+      int favoriteButtonW = 112;
+      int favoriteButtonX = searchX - favoriteButtonW - 8;
+      int favoriteBg = onlyFavorites ? Theme.withAlpha(Theme.ACCENT, 90) : -384823016;
+      ctx.method_25294(favoriteButtonX, 9, favoriteButtonX + favoriteButtonW, 31, favoriteBg);
+      ctx.method_25294(favoriteButtonX, 30, favoriteButtonX + favoriteButtonW, 31, onlyFavorites ? Theme.ACCENT : Theme.ACCENT_DIM);
+      String favoriteText = onlyFavorites ? "★ Nur Favoriten ✓" : "☆ Nur Favoriten";
+      int favoriteTextW = mc.field_1772.method_1727(favoriteText);
+      ctx.method_51433(
+         mc.field_1772, favoriteText, favoriteButtonX + (favoriteButtonW - favoriteTextW) / 2, 17, onlyFavorites ? Theme.ACCENT : Theme.TEXT_DIM, false
+      );
+      if (this.clickL && in(mx, my, favoriteButtonX, 9, favoriteButtonW, 22)) {
+         onlyFavorites = !onlyFavorites;
+         this.scroll = 0.0F;
+         this.searchFocus = false;
+         this.clickL = false;
+      }
 
-        List<Category> displayedCats = new ArrayList<>();
-        for (Category c : cats) if (search.isEmpty() || !visible(c).isEmpty()) displayedCats.add(c);
-        float[] categoryBodies = new float[displayedCats.size()];
-        float totalHeight = 0;
-        for (int i = 0; i < displayedCats.size(); i++) {
-            Category c = displayedCats.get(i);
-            List<Module> mods = visible(c);
-            float cp = ease(CATEGORY_PROGRESS, c, categoryOpen(c), delta);
-            float bodyTarget = 0;
+      ctx.method_25294(searchX, 9, searchX + searchW, 31, -384823016);
+      ctx.method_25294(searchX, 30, searchX + searchW, 31, this.searchFocus ? Theme.ACCENT : Theme.ACCENT_DIM);
+      String searchText = search.isEmpty() && !this.searchFocus
+         ? "Module suchen..."
+         : search + (this.searchFocus && System.currentTimeMillis() / 500L % 2L == 0L ? "_" : "");
+      ctx.method_51433(mc.field_1772, searchText, searchX + 9, 17, search.isEmpty() ? Theme.TEXT_DIM : Theme.TEXT, false);
+      if (this.clickL && in(mx, my, searchX, 9, searchW, 22)) {
+         this.searchFocus = true;
+         this.clickL = false;
+      } else if (this.clickL && this.searchFocus) {
+         this.searchFocus = false;
+      }
+
+      if (this.listening != null && this.clickR) {
+         this.listening.setKey(-1);
+         this.notice("Keybind entfernt: " + this.listening.getName());
+         this.listening = null;
+         this.clickR = false;
+         Config.save();
+      }
+
+      if (!l) {
+         this.slider = null;
+      }
+
+      if (this.slider != null && this.sliderW > 0) {
+         double t = (double)(mx - this.sliderX) / this.sliderW;
+         this.slider.set(this.slider.min + Math.max(0.0, Math.min(1.0, t)) * (this.slider.max - this.slider.min));
+      }
+
+      List<Category> displayedCats = new ArrayList<>();
+
+      for (Category c : this.cats) {
+         if (!this.visible(c).isEmpty()) {
+            displayedCats.add(c);
+         }
+      }
+
+      float[] categoryBodies = new float[displayedCats.size()];
+      float totalHeight = 0.0F;
+
+      for (int i = 0; i < displayedCats.size(); i++) {
+         Category cx = displayedCats.get(i);
+         List<Module> mods = this.visible(cx);
+         float cp = this.ease(CATEGORY_PROGRESS, cx, this.categoryOpen(cx), delta);
+         float bodyTarget = 0.0F;
+
+         for (Module mod : mods) {
+            float mp = this.ease(MODULE_PROGRESS, mod, EXPANDED.contains(mod), delta);
+            bodyTarget += 29.0F + mod.getSettings().size() * 23 * mp;
+         }
+
+         categoryBodies[i] = bodyTarget * cp;
+         totalHeight += 32.0F + categoryBodies[i] + 6.0F;
+      }
+
+      float maxScroll = Math.max(0.0F, totalHeight - (this.viewportBottom - this.viewportTop));
+      this.scroll = Math.max(0.0F, Math.min(maxScroll, this.scroll));
+      ctx.method_25294(this.panelX, this.viewportTop - 4, this.panelX + this.panelW, this.viewportBottom, Theme.PANEL);
+      ctx.method_25294(this.panelX, this.viewportTop - 4, this.panelX + this.panelW, this.viewportTop - 2, Theme.ACCENT_DIM);
+      ctx.method_25294(this.panelX, this.viewportTop - 4, this.panelX + this.panelW, this.viewportTop - 2, Theme.ACCENT_DIM);
+      ctx.method_44379(this.panelX, this.viewportTop, this.panelX + this.panelW, this.viewportBottom);
+      float y = this.viewportTop - this.scroll;
+      Module hovered = null;
+      boolean modalOpen = this.editingMessages != null || this.editingString != null || this.editingColor != null;
+      if (modalOpen) {
+         this.clickL = false;
+         this.clickM = false;
+      }
+
+      for (int i = 0; i < displayedCats.size(); i++) {
+         Category category = displayedCats.get(i);
+         List<Module> mods = this.visible(category);
+         float cp = CATEGORY_PROGRESS.getOrDefault(category, 0.0F);
+         int cy = Math.round(y);
+         this.drawCategoryHeader(ctx, category, cy, mx, my, cp);
+         if (my >= this.viewportTop && my < this.viewportBottom && in(mx, my, this.panelX, cy, this.panelW, 32) && this.clickL && !modalOpen) {
+            if (!OPEN_CATEGORIES.remove(category)) {
+               OPEN_CATEGORIES.add(category);
+            }
+
+            this.clickL = false;
+         }
+
+         float bodyH = categoryBodies[i];
+         int bodyBottom = Math.round(y + 32.0F + bodyH);
+         if (bodyH > 0.5F) {
+            ctx.method_25294(this.panelX + 1, cy + 32, this.panelX + this.panelW - 1, bodyBottom, Theme.withAlpha(Theme.PANEL, 248));
+            ctx.method_25294(this.panelX + 1, cy + 32, this.panelX + 3, bodyBottom, Theme.withAlpha(Theme.ACCENT, 95));
+            ctx.method_44379(this.panelX + 1, cy + 32, this.panelX + this.panelW - 1, Math.min(this.viewportBottom, bodyBottom));
+            float rowY = y + 32.0F;
+
             for (Module mod : mods) {
-                float mp = ease(MODULE_PROGRESS, mod, EXPANDED.contains(mod), delta);
-                bodyTarget += MODULE_H + mod.getSettings().size() * SETTING_H * mp;
+               int ry = Math.round(rowY);
+               float mp = MODULE_PROGRESS.getOrDefault(mod, 0.0F);
+               boolean rowInViewport = ry + 29 >= this.viewportTop && ry <= this.viewportBottom && ry < bodyBottom;
+               boolean rowHovered = rowInViewport && my < bodyBottom && in(mx, my, this.panelX + 1, ry, this.panelW - 2, 29);
+               this.drawModuleRow(ctx, mod, ry, mx, my, rowHovered, delta);
+               if (rowHovered && !modalOpen) {
+                  int toggleX = this.panelX + this.panelW - 47;
+                  int favoriteX = this.panelX + this.panelW - 82;
+                  if (this.clickL && mx >= favoriteX - 5 && mx < favoriteX + 14) {
+                     mod.setFavorite(!mod.isFavorite());
+                     Config.save();
+                     this.notice(mod.getName() + (mod.isFavorite() ? " zu Favoriten hinzugefuegt" : " aus Favoriten entfernt"));
+                     this.clickL = false;
+                  } else if (this.clickL && mx >= toggleX) {
+                     mod.toggle();
+                     Config.save();
+                     this.clickL = false;
+                  } else if (this.clickL && mx >= this.panelX + this.panelW - 138 && mx < favoriteX - 5) {
+                     this.listening = mod;
+                     this.searchFocus = false;
+                     this.notice("Taste drücken für " + mod.getName() + " · Rechtsklick/Entf löscht");
+                     this.clickL = false;
+                  } else if (this.clickL) {
+                     this.toggleExpanded(mod);
+                     this.clickL = false;
+                  } else if (this.clickR) {
+                     this.toggleExpanded(mod);
+                     this.clickR = false;
+                  } else if (this.clickM) {
+                     this.listening = mod;
+                     this.searchFocus = false;
+                     this.notice("Taste drücken für " + mod.getName() + " · Rechtsklick/Entf löscht");
+                     this.clickM = false;
+                  }
+               }
+
+               if (rowHovered) {
+                  hovered = mod;
+               }
+
+               rowY += 29.0F;
+               float settingsH = mod.getSettings().size() * 23 * mp;
+               if (settingsH > 0.5F) {
+                  int settingsBottom = Math.round(rowY + settingsH);
+                  ctx.method_44379(this.panelX + 6, Math.round(rowY), this.panelX + this.panelW - 6, Math.min(bodyBottom, settingsBottom));
+                  this.visibleClipBottom = Math.min(bodyBottom, this.viewportBottom);
+
+                  for (int si = 0; si < mod.getSettings().size(); si++) {
+                     int sy = Math.round(rowY + si * 23);
+                     if (sy + 23 >= this.viewportTop && sy < this.viewportBottom && sy < bodyBottom) {
+                        this.drawSetting(ctx, mod.getSettings().get(si), sy, mx, my, this.panelX + 8, this.panelW - 16, modalOpen);
+                     }
+                  }
+
+                  ctx.method_44380();
+               }
+
+               rowY += settingsH;
             }
-            categoryBodies[i] = bodyTarget * cp;
-            totalHeight += CATEGORY_H + categoryBodies[i] + GAP;
-        }
-        float maxScroll = Math.max(0, totalHeight - (viewportBottom - viewportTop));
-        scroll = Math.max(0, Math.min(maxScroll, scroll));
 
-        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportBottom, Theme.PANEL);
-        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportTop - 2, Theme.ACCENT_DIM);
-        ctx.fill(panelX, viewportTop - 4, panelX + panelW, viewportTop - 2, Theme.ACCENT_DIM);
-        ctx.enableScissor(panelX, viewportTop, panelX + panelW, viewportBottom);
-        float y = viewportTop - scroll;
-        Module hovered = null;
-        boolean modalOpen = editingMessages != null || editingString != null || editingColor != null;
-        if (modalOpen) { clickL = false; clickM = false; }
+            ctx.method_44380();
+         }
 
-        for (int i = 0; i < displayedCats.size(); i++) {
-            Category category = displayedCats.get(i);
-            List<Module> mods = visible(category);
-            float cp = CATEGORY_PROGRESS.getOrDefault(category, 0f);
-            int cy = Math.round(y);
-            drawCategoryHeader(ctx, category, cy, mx, my, cp);
-            if (my >= viewportTop && my < viewportBottom && in(mx, my, panelX, cy, panelW, CATEGORY_H) && clickL && !modalOpen) {
-                if (!OPEN_CATEGORIES.remove(category)) OPEN_CATEGORIES.add(category);
-                clickL = false;
+         y += 32.0F + bodyH + 6.0F;
+      }
+
+      ctx.method_44380();
+      if (totalHeight > this.viewportBottom - this.viewportTop + 1) {
+         int trackX = this.panelX + this.panelW - 3;
+         int trackH = this.viewportBottom - this.viewportTop;
+         int thumbH = Math.max(24, (int)(trackH * (trackH / totalHeight)));
+         int thumbY = this.viewportTop + (int)((trackH - thumbH) * (this.scroll / Math.max(1.0F, maxScroll)));
+         ctx.method_25294(trackX, this.viewportTop, trackX + 2, this.viewportBottom, 1157627903);
+         ctx.method_25294(trackX, thumbY, trackX + 2, thumbY + thumbH, Theme.ACCENT);
+      }
+
+      if (hovered != null && !modalOpen) {
+         String desc = hovered.getDescription();
+         int max = this.panelW - 16;
+
+         while (mc.field_1772.method_1727(desc) > max && desc.length() > 8) {
+            desc = desc.substring(0, desc.length() - 2) + "…";
+         }
+
+         ctx.method_51433(mc.field_1772, desc, this.panelX + 2, this.field_22790 - 17, Theme.TEXT_DIM, false);
+      }
+
+      if (modalOpen) {
+         this.drawTextModal(ctx, mx, my);
+      }
+
+      if (this.listening != null) {
+         String msg = "Taste für " + this.listening.getName() + " drücken · Backspace = löschen · Esc = abbrechen";
+         this.drawNotice(ctx, msg, -11654);
+      } else if (System.currentTimeMillis() < this.noticeUntil) {
+         this.drawNotice(ctx, this.notice, -11654);
+      }
+
+      String footer = "★ Favorit  ·  L Optionen  ·  R Einstellungen  ·  M Keybind  ·  Mausrad Scroll";
+      ctx.method_25294(this.panelX, this.field_22790 - 22, this.panelX + this.panelW, this.field_22790 - 4, Theme.PANEL);
+      ctx.method_51433(mc.field_1772, footer, this.panelX + 10, this.field_22790 - 16, Theme.TEXT_DIM, false);
+      ctx.method_51433(
+         mc.field_1772, "0.5.15", this.panelX + this.panelW - 10 - mc.field_1772.method_1727("0.5.15"), this.field_22790 - 16, Theme.ACCENT, false
+      );
+   }
+
+   private void drawCategoryHeader(class_332 ctx, Category c, int y, int mx, int my, float progress) {
+      class_310 mc = class_310.method_1551();
+      boolean open = this.categoryOpen(c);
+      boolean hover = in(mx, my, this.panelX, y, this.panelW, 32);
+      int top = Theme.DESIGN.equals("Flat") ? Theme.HEADER_BOT : Theme.HEADER_TOP;
+      ctx.method_25296(this.panelX, y, this.panelX + this.panelW, y + 32 - 1, top, Theme.HEADER_BOT);
+      if (hover) {
+         ctx.method_25294(this.panelX, y, this.panelX + this.panelW, y + 32 - 1, Theme.ROW_HOVER);
+      }
+
+      ctx.method_25294(this.panelX, y + 32 - 2, this.panelX + this.panelW, y + 32 - 1, Theme.withAlpha(Theme.ACCENT, open ? 210 : 90));
+      String icon = this.categoryIcon(c);
+      ctx.method_25294(this.panelX + 9, y + 8, this.panelX + 27, y + 25, Theme.withAlpha(Theme.ACCENT, 45));
+      ctx.method_51433(mc.field_1772, icon, this.panelX + 15, y + 13, Theme.ACCENT, true);
+      ctx.method_51433(mc.field_1772, c.display.toUpperCase(Locale.ROOT), this.panelX + 36, y + 13, Theme.TEXT, true);
+      String count = String.valueOf(this.visible(c).size());
+      int countW = mc.field_1772.method_1727(count);
+      ctx.method_51433(mc.field_1772, count, this.panelX + this.panelW - 38 - countW, y + 13, Theme.TEXT_DIM, false);
+      String chevron = open ? "v" : ">";
+      ctx.method_51433(mc.field_1772, chevron, this.panelX + this.panelW - 22, y + 13, Theme.ACCENT, true);
+   }
+
+   private String categoryIcon(Category c) {
+      return switch (c) {
+         case COMBAT -> "C";
+         case MOVEMENT -> "M";
+         case VISUALS -> "V";
+         case WORLD -> "W";
+         case BASEFINDER -> "B";
+         case PLAYER -> "P";
+         case HUD -> "H";
+         case MISC -> "*";
+      };
+   }
+
+   private void drawModuleRow(class_332 ctx, Module mod, int y, int mx, int my, boolean hover, float delta) {
+      class_310 mc = class_310.method_1551();
+      float enabled = this.ease(ENABLE_PROGRESS, mod, mod.isEnabled(), delta);
+      int rowBg = hover ? Theme.ROW_HOVER : 402653184;
+      ctx.method_25294(this.panelX + 3, y, this.panelX + this.panelW - 3, y + 29 - 1, rowBg);
+      if (enabled > 0.01F) {
+         int alpha = Math.max(0, Math.min(155, (int)(enabled * 155.0F)));
+         ctx.method_25294(this.panelX + 3, y, this.panelX + 5, y + 29 - 1, Theme.withAlpha(Theme.ACCENT, alpha));
+      }
+
+      int iconX = this.panelX + 11;
+      ctx.method_25294(iconX, y + 7, iconX + 17, y + 23, Theme.withAlpha(mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, mod.isEnabled() ? 58 : 28));
+      String icon = mod.getName().substring(0, 1).toUpperCase(Locale.ROOT);
+      ctx.method_51433(mc.field_1772, icon, iconX + 5, y + 11, mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, true);
+      ctx.method_51433(mc.field_1772, mod.getName(), this.panelX + 38, y + 11, 0xFF000000 | Theme.lerp(Theme.TEXT_DIM, Theme.TEXT, enabled), false);
+      String key = this.listening == mod ? "..." : (mod.getKey() >= 0 ? Keys.name(mod.getKey()) : "KEY");
+      int keyW = mc.field_1772.method_1727(key);
+      int keyBoxX = this.panelX + this.panelW - 138;
+      ctx.method_25294(keyBoxX, y + 7, this.panelX + this.panelW - 91, y + 22, this.listening == mod ? 1716903355 : 1429486153);
+      ctx.method_51433(mc.field_1772, key, this.panelX + this.panelW - 114 - keyW / 2, y + 11, this.listening == mod ? Theme.ACCENT : Theme.TEXT_DIM, false);
+      int favoriteX = this.panelX + this.panelW - 82;
+      String favoriteIcon = mod.isFavorite() ? "★" : "☆";
+      int favoriteColor = mod.isFavorite() ? -11414 : Theme.TEXT_DIM;
+      ctx.method_51433(mc.field_1772, favoriteIcon, favoriteX, y + 8, favoriteColor, true);
+      int tx = this.panelX + this.panelW - 43;
+      int ty = y + 8;
+      ctx.method_25294(tx, ty, tx + 29, ty + 13, mod.isEnabled() ? Theme.ACCENT : -13355968);
+      int knobX = mod.isEnabled() ? tx + 18 : tx + 3;
+      ctx.method_25294(knobX, ty + 2, knobX + 8, ty + 11, -526342);
+      if (!mod.getSettings().isEmpty()) {
+         String expand = EXPANDED.contains(mod) ? "v" : ">";
+         ctx.method_51433(mc.field_1772, expand, tx - 15, y + 11, Theme.ACCENT_DIM, false);
+      }
+   }
+
+   private void toggleExpanded(Module mod) {
+      if (!mod.getSettings().isEmpty() && !EXPANDED.remove(mod)) {
+         EXPANDED.add(mod);
+      }
+   }
+
+   private void drawSetting(class_332 ctx, Setting<?> setting, int y, int mx, int my, int x, int w, boolean modalOpen) {
+      class_310 mc = class_310.method_1551();
+      boolean over = !modalOpen && my >= this.viewportTop && my < this.visibleClipBottom && in(mx, my, x, y, w, 23);
+      ctx.method_25294(x, y, x + w, y + 23 - 1, 889192448);
+      if (over) {
+         ctx.method_25294(x, y, x + w, y + 23 - 1, 620756991);
+      }
+
+      if (setting instanceof BoolSetting b) {
+         ctx.method_51433(mc.field_1772, b.getName(), x + 10, y + 8, Theme.TEXT_DIM, false);
+         int bx = x + w - 31;
+         ctx.method_25294(bx, y + 5, bx + 22, y + 15, b.get() ? Theme.ACCENT : -13355968);
+         ctx.method_25294(b.get() ? bx + 13 : bx + 2, y + 7, b.get() ? bx + 20 : bx + 9, y + 13, -526342);
+         if (over && this.clickL) {
+            b.toggle();
+            Config.save();
+            this.clickL = false;
+         }
+      } else if (setting instanceof NumberSetting n) {
+         double t = n.max == n.min ? 0.0 : (n.get() - n.min) / (n.max - n.min);
+         int barX = x + w - 112;
+         ctx.method_25294(barX, y + 17, x + w - 8, y + 19, -13355968);
+         ctx.method_25294(barX, y + 17, barX + (int)((w - 120) * t), y + 17, Theme.ACCENT);
+         ctx.method_51433(mc.field_1772, n.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
+         String val = n.display();
+         ctx.method_51433(mc.field_1772, val, barX - 7 - mc.field_1772.method_1727(val), y + 6, Theme.TEXT, false);
+         if (over && this.clickL) {
+            this.slider = n;
+            this.sliderX = barX;
+            this.sliderW = w - (barX - x) - 8;
+            this.clickL = false;
+         }
+      } else if (setting instanceof ModeSetting mode) {
+         ctx.method_51433(mc.field_1772, mode.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
+         String value = mode.get();
+         ctx.method_51433(mc.field_1772, "‹  " + value + "  ›", x + w - 112, y + 6, Theme.ACCENT, false);
+         if (over && this.clickL) {
+            mode.cycle(1);
+            Config.save();
+            this.clickL = false;
+         } else if (over && this.clickR) {
+            mode.cycle(-1);
+            Config.save();
+            this.clickR = false;
+         }
+      } else if (setting instanceof ColorSetting color) {
+         ctx.method_51433(mc.field_1772, color.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
+         ctx.method_25294(x + w - 34, y + 6, x + w - 9, y + 18, 0xFF000000 | color.rgb());
+         if (over && this.clickL) {
+            try {
+               ModuleManager.get(GUITheme.class).prepareColorEdit(color);
+            } catch (Throwable var23) {
             }
 
-            float bodyH = categoryBodies[i];
-            int bodyBottom = Math.round(y + CATEGORY_H + bodyH);
-            if (bodyH > 0.5f) {
-                ctx.fill(panelX + 1, cy + CATEGORY_H, panelX + panelW - 1, bodyBottom, Theme.withAlpha(Theme.PANEL, 248));
-                ctx.fill(panelX + 1, cy + CATEGORY_H, panelX + 3, bodyBottom, Theme.withAlpha(Theme.ACCENT, 95));
-                ctx.enableScissor(panelX + 1, cy + CATEGORY_H, panelX + panelW - 1, Math.min(viewportBottom, bodyBottom));
-                float rowY = y + CATEGORY_H;
-                for (Module mod : mods) {
-                    int ry = Math.round(rowY);
-                    float mp = MODULE_PROGRESS.getOrDefault(mod, 0f);
-                    boolean rowInViewport = ry + MODULE_H >= viewportTop && ry <= viewportBottom && ry < bodyBottom;
-                    boolean rowHovered = rowInViewport && my < bodyBottom && in(mx, my, panelX + 1, ry, panelW - 2, MODULE_H);
-                    drawModuleRow(ctx, mod, ry, mx, my, rowHovered, delta);
-                    if (rowHovered && !modalOpen) {
-                        int toggleX = panelX + panelW - 47;
-                        if (clickL && mx >= toggleX) { mod.toggle(); Config.save(); clickL = false; }
-                        else if (clickL) { toggleExpanded(mod); clickL = false; }
-                        else if (clickR) { toggleExpanded(mod); clickR = false; }
-                        else if (clickM) { listening = mod; searchFocus = false; notice("Taste drücken für " + mod.getName() + " · Backspace löscht"); clickM = false; }
-                    }
-                    if (rowHovered) hovered = mod;
-                    rowY += MODULE_H;
+            color.cycle(1);
+            Config.save();
+            this.clickL = false;
+         } else if (over && this.clickR) {
+            this.editingColor = color;
+            this.messageDraft = String.format(Locale.ROOT, "%06X", color.rgb());
 
-                    float settingsH = mod.getSettings().size() * SETTING_H * mp;
-                    if (settingsH > 0.5f) {
-                        int settingsBottom = Math.round(rowY + settingsH);
-                        ctx.enableScissor(panelX + 6, Math.round(rowY), panelX + panelW - 6, Math.min(bodyBottom, settingsBottom));
-                        visibleClipBottom = Math.min(bodyBottom, viewportBottom);
-                        for (int si = 0; si < mod.getSettings().size(); si++) {
-                            int sy = Math.round(rowY + si * SETTING_H);
-                            if (sy + SETTING_H >= viewportTop && sy < viewportBottom && sy < bodyBottom) {
-                                drawSetting(ctx, mod.getSettings().get(si), sy, mx, my, panelX + 8, panelW - 16, modalOpen);
-                            }
-                        }
-                        ctx.disableScissor();
-                    }
-                    rowY += settingsH;
-                }
-                ctx.disableScissor();
+            try {
+               ModuleManager.get(GUITheme.class).prepareColorEdit(color);
+            } catch (Throwable var22) {
             }
-            y += CATEGORY_H + bodyH + GAP;
-        }
-        ctx.disableScissor();
 
-        // Minimal scrollbar, positioned relative to the full accordion content.
-        if (totalHeight > viewportBottom - viewportTop + 1) {
-            int trackX = panelX + panelW - 3;
-            int trackH = viewportBottom - viewportTop;
-            int thumbH = Math.max(24, (int) (trackH * (trackH / totalHeight)));
-            int thumbY = viewportTop + (int) ((trackH - thumbH) * (scroll / Math.max(1, maxScroll)));
-            ctx.fill(trackX, viewportTop, trackX + 2, viewportBottom, 0x44FFFFFF);
-            ctx.fill(trackX, thumbY, trackX + 2, thumbY + thumbH, Theme.ACCENT);
-        }
+            this.searchFocus = false;
+            this.clickR = false;
+         }
+      } else if (setting instanceof StringSetting string) {
+         String value = string.get();
+         if (value.length() > 26) {
+            value = value.substring(0, 25) + "…";
+         }
 
-        if (hovered != null && !modalOpen) {
-            String desc = hovered.getDescription();
-            int max = panelW - 16;
-            while (mc.textRenderer.getWidth(desc) > max && desc.length() > 8) desc = desc.substring(0, desc.length() - 2) + "…";
-            ctx.drawText(mc.textRenderer, desc, panelX + 2, height - 17, Theme.TEXT_DIM, false);
-        }
+         ctx.method_51433(mc.field_1772, string.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
+         ctx.method_51433(mc.field_1772, value, x + w - 9 - mc.field_1772.method_1727(value), y + 6, Theme.ACCENT, false);
+         if (over && this.clickL) {
+            this.editingString = string;
+            this.messageDraft = string.get();
+            this.searchFocus = false;
+            this.clickL = false;
+         }
+      } else if (setting instanceof MessageListSetting messages) {
+         String valuex = messages.get().size() + " gespeichert · bearbeiten";
+         ctx.method_51433(mc.field_1772, messages.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
+         ctx.method_51433(mc.field_1772, valuex, x + w - 9 - mc.field_1772.method_1727(valuex), y + 6, Theme.ACCENT, false);
+         if (over && this.clickL) {
+            this.editingMessages = messages;
+            this.messageDraft = "";
+            this.searchFocus = false;
+            this.clickL = false;
+         }
+      } else if (setting instanceof ListSetting list) {
+         String valuex = list.get().size() + " Einträge";
+         ctx.method_51433(mc.field_1772, list.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
+         ctx.method_51433(mc.field_1772, valuex, x + w - 9 - mc.field_1772.method_1727(valuex), y + 6, Theme.TEXT_DIM, false);
+      }
+   }
 
-        if (modalOpen) drawTextModal(ctx, mx, my);
-        if (listening != null) {
-            String msg = "Taste für " + listening.getName() + " drücken · Backspace = löschen · Esc = abbrechen";
-            drawNotice(ctx, msg, 0xFFFFD27A);
-        } else if (System.currentTimeMillis() < noticeUntil) drawNotice(ctx, notice, 0xFFFFD27A);
+   private void drawTextModal(class_332 ctx, int mx, int my) {
+      class_310 mc = class_310.method_1551();
+      int mw = Math.min(340, this.field_22789 - 24);
+      int mh = 122;
+      int mx0 = (this.field_22789 - mw) / 2;
+      int my0 = (this.field_22790 - mh) / 2;
+      ctx.method_25294(mx0 - 2, my0 - 2, mx0 + mw + 2, my0 + mh + 2, -1610612736);
+      ctx.method_25294(mx0, my0, mx0 + mw, my0 + mh, -266856414);
+      ctx.method_25294(mx0, my0, mx0 + mw, my0 + 2, Theme.ACCENT);
+      ctx.method_51433(
+         mc.field_1772,
+         this.editingColor != null ? "FARBE · #RRGGBB" : (this.editingString != null ? "TEXT BEARBEITEN" : "AUTOTEXT · NACHRICHT HINZUFÜGEN"),
+         mx0 + 10,
+         my0 + 10,
+         Theme.TEXT,
+         true
+      );
+      ctx.method_25294(mx0 + 10, my0 + 29, mx0 + mw - 10, my0 + 49, -16250867);
+      String draftView = (this.editingColor != null ? "#" : "") + this.messageDraft + (System.currentTimeMillis() / 500L % 2L == 0L ? "_" : "");
+      ctx.method_51433(mc.field_1772, draftView, mx0 + 15, my0 + 36, Theme.ACCENT, false);
+      String instruction = this.editingColor == null && this.editingString == null ? "Enter: hinzufügen · Esc: schließen" : "Enter: speichern · Esc: abbrechen";
+      ctx.method_51433(mc.field_1772, instruction, mx0 + 10, my0 + 59, Theme.TEXT_DIM, false);
+      List<String> existing = this.editingMessages == null ? List.of() : this.editingMessages.get();
+      ctx.method_51433(
+         mc.field_1772,
+         this.editingColor == null && this.editingString == null ? "Gespeichert: " + existing.size() + " Nachrichten" : "Änderungen werden lokal gespeichert",
+         mx0 + 10,
+         my0 + 76,
+         Theme.TEXT_DIM,
+         false
+      );
+      if (this.editingMessages != null && !existing.isEmpty()) {
+         String last = existing.get(existing.size() - 1);
+         if (last.length() > 32) {
+            last = last.substring(0, 31) + "…";
+         }
 
-        String footer = "L Optionen  ·  R Einstellungen  ·  M Keybind  ·  Mausrad Scroll";
-        ctx.fill(panelX, height - 22, panelX + panelW, height - 4, Theme.PANEL);
-        ctx.drawText(mc.textRenderer, footer, panelX + 10, height - 16, Theme.TEXT_DIM, false);
-        ctx.drawText(mc.textRenderer, Nightfall.VERSION, panelX + panelW - 10 - mc.textRenderer.getWidth(Nightfall.VERSION), height - 16, Theme.ACCENT, false);
-    }
+         String remove = "Letzte: " + last + " · Rechtsklick löscht";
+         ctx.method_51433(mc.field_1772, remove, mx0 + 10, my0 + 94, Theme.TEXT_DIM, false);
+         if (this.clickR && in(mx, my, mx0, my0 + 88, mw, 24)) {
+            this.editingMessages.removeMessage(existing.get(existing.size() - 1));
+            Config.save();
+            this.notice("Letzte Nachricht gelöscht");
+            this.clickR = false;
+         }
+      }
+   }
 
-    private void drawCategoryHeader(DrawContext ctx, Category c, int y, int mx, int my, float progress) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        boolean open = categoryOpen(c);
-        boolean hover = in(mx, my, panelX, y, panelW, CATEGORY_H);
-        int top = Theme.DESIGN.equals("Flat") ? Theme.HEADER_BOT : Theme.HEADER_TOP;
-        ctx.fillGradient(panelX, y, panelX + panelW, y + CATEGORY_H - 1, top, Theme.HEADER_BOT);
-        if (hover) ctx.fill(panelX, y, panelX + panelW, y + CATEGORY_H - 1, Theme.ROW_HOVER);
-        ctx.fill(panelX, y + CATEGORY_H - 2, panelX + panelW, y + CATEGORY_H - 1, Theme.withAlpha(Theme.ACCENT, open ? 210 : 90));
-        String icon = categoryIcon(c);
-        ctx.fill(panelX + 9, y + 8, panelX + 27, y + 25, Theme.withAlpha(Theme.ACCENT, 45));
-        ctx.drawText(mc.textRenderer, icon, panelX + 15, y + 13, Theme.ACCENT, true);
-        ctx.drawText(mc.textRenderer, c.display.toUpperCase(Locale.ROOT), panelX + 36, y + 13, Theme.TEXT, true);
-        String count = String.valueOf(visible(c).size());
-        int countW = mc.textRenderer.getWidth(count);
-        ctx.drawText(mc.textRenderer, count, panelX + panelW - 38 - countW, y + 13, Theme.TEXT_DIM, false);
-        String chevron = open ? "v" : ">";
-        ctx.drawText(mc.textRenderer, chevron, panelX + panelW - 22, y + 13, Theme.ACCENT, true);
-    }
+   private void drawNotice(class_332 ctx, String message, int color) {
+      class_310 mc = class_310.method_1551();
+      int w = Math.min(this.field_22789 - 24, mc.field_1772.method_1727(message) + 20);
+      int x = (this.field_22789 - w) / 2;
+      int y = this.viewportBottom + 1;
+      ctx.method_25294(x, y, x + w, y + 16, -435088871);
+      ctx.method_25294(x, y, x + 2, y + 16, color);
+      ctx.method_51433(mc.field_1772, message, x + 8, y + 5, color, false);
+   }
 
-    private String categoryIcon(Category c) {
-        return switch (c) {
-            case COMBAT -> "C";
-            case MOVEMENT -> "M";
-            case VISUALS -> "V";
-            case WORLD -> "W";
-            case BASEFINDER -> "B";
-            case PLAYER -> "P";
-            case HUD -> "H";
-            case MISC -> "*";
-        };
-    }
-
-    private void drawModuleRow(DrawContext ctx, Module mod, int y, int mx, int my, boolean hover, float delta) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        float enabled = ease(ENABLE_PROGRESS, mod, mod.isEnabled(), delta);
-        int rowBg = hover ? Theme.ROW_HOVER : (0x18000000);
-        ctx.fill(panelX + 3, y, panelX + panelW - 3, y + MODULE_H - 1, rowBg);
-        if (enabled > 0.01f) {
-            int alpha = Math.max(0, Math.min(155, (int) (enabled * 155)));
-            ctx.fill(panelX + 3, y, panelX + 5, y + MODULE_H - 1, Theme.withAlpha(Theme.ACCENT, alpha));
-        }
-        int iconX = panelX + 11;
-        ctx.fill(iconX, y + 7, iconX + 17, y + 23, Theme.withAlpha(mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, mod.isEnabled() ? 58 : 28));
-        String icon = mod.getName().substring(0, 1).toUpperCase(Locale.ROOT);
-        ctx.drawText(mc.textRenderer, icon, iconX + 5, y + 11, mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, true);
-        ctx.drawText(mc.textRenderer, mod.getName(), panelX + 38, y + 11, (0xFF000000 | Theme.lerp(Theme.TEXT_DIM, Theme.TEXT, enabled)), false);
-
-        String key = listening == mod ? "..." : (mod.getKey() >= 0 ? Keys.name(mod.getKey()) : "");
-        if (!key.isEmpty()) {
-            int keyW = mc.textRenderer.getWidth(key);
-            ctx.drawText(mc.textRenderer, key, panelX + panelW - 73 - keyW, y + 9, Theme.TEXT_DIM, false);
-        }
-        // Compact toggle at the far right: independent from the row's expand/collapse action.
-        int tx = panelX + panelW - 43;
-        int ty = y + 8;
-        ctx.fill(tx, ty, tx + 29, ty + 13, mod.isEnabled() ? Theme.ACCENT : 0xFF343440);
-        int knobX = mod.isEnabled() ? tx + 18 : tx + 3;
-        ctx.fill(knobX, ty + 2, knobX + 8, ty + 11, 0xFFF7F7FA);
-        if (!mod.getSettings().isEmpty()) {
-            String expand = EXPANDED.contains(mod) ? "v" : ">";
-            ctx.drawText(mc.textRenderer, expand, tx - 15, y + 11, Theme.ACCENT_DIM, false);
-        }
-    }
-
-    private void toggleExpanded(Module mod) {
-        if (!mod.getSettings().isEmpty()) {
-            if (!EXPANDED.remove(mod)) EXPANDED.add(mod);
-        }
-    }
-
-    private void drawSetting(DrawContext ctx, Setting<?> setting, int y, int mx, int my, int x, int w, boolean modalOpen) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        boolean over = !modalOpen && my >= viewportTop && my < visibleClipBottom && in(mx, my, x, y, w, SETTING_H);
-        ctx.fill(x, y, x + w, y + SETTING_H - 1, 0x35000000);
-        if (over) ctx.fill(x, y, x + w, y + SETTING_H - 1, 0x24FFFFFF);
-
-        if (setting instanceof BoolSetting b) {
-            ctx.drawText(mc.textRenderer, b.getName(), x + 10, y + 8, Theme.TEXT_DIM, false);
-            int bx = x + w - 31;
-            ctx.fill(bx, y + 5, bx + 22, y + 15, b.get() ? Theme.ACCENT : 0xFF343440);
-            ctx.fill(b.get() ? bx + 13 : bx + 2, y + 7, b.get() ? bx + 20 : bx + 9, y + 13, 0xFFF7F7FA);
-            if (over && clickL) { b.toggle(); Config.save(); clickL = false; }
-        } else if (setting instanceof NumberSetting n) {
-            double t = n.max == n.min ? 0 : (n.get() - n.min) / (n.max - n.min);
-            int barX = x + w - 112;
-            ctx.fill(barX, y + 17, x + w - 8, y + 19, 0xFF343440);
-            ctx.fill(barX, y + 17, barX + (int) ((w - 120) * t), y + 17, Theme.ACCENT);
-            ctx.drawText(mc.textRenderer, n.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
-            String val = n.display();
-            ctx.drawText(mc.textRenderer, val, barX - 7 - mc.textRenderer.getWidth(val), y + 6, Theme.TEXT, false);
-            if (over && clickL) { slider = n; sliderX = barX; sliderW = w - (barX - x) - 8; clickL = false; }
-        } else if (setting instanceof ModeSetting mode) {
-            ctx.drawText(mc.textRenderer, mode.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
-            String value = mode.get();
-            ctx.drawText(mc.textRenderer, "‹  " + value + "  ›", x + w - 112, y + 6, Theme.ACCENT, false);
-            if (over && clickL) { mode.cycle(1); Config.save(); clickL = false; }
-            else if (over && clickR) { mode.cycle(-1); Config.save(); clickR = false; }
-        } else if (setting instanceof ColorSetting color) {
-            ctx.drawText(mc.textRenderer, color.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
-            ctx.fill(x + w - 34, y + 6, x + w - 9, y + 18, 0xFF000000 | color.rgb());
-            if (over && clickL) {
-                try { ModuleManager.get(GUITheme.class).prepareColorEdit(color); } catch (Throwable ignored) { }
-                color.cycle(1); Config.save(); clickL = false;
-            } else if (over && clickR) {
-                editingColor = color; messageDraft = String.format(Locale.ROOT, "%06X", color.rgb());
-                try { ModuleManager.get(GUITheme.class).prepareColorEdit(color); } catch (Throwable ignored) { }
-                searchFocus = false; clickR = false;
-            }
-        } else if (setting instanceof StringSetting string) {
-            String value = string.get();
-            if (value.length() > 26) value = value.substring(0, 25) + "…";
-            ctx.drawText(mc.textRenderer, string.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
-            ctx.drawText(mc.textRenderer, value, x + w - 9 - mc.textRenderer.getWidth(value), y + 6, Theme.ACCENT, false);
-            if (over && clickL) { editingString = string; messageDraft = string.get(); searchFocus = false; clickL = false; }
-        } else if (setting instanceof MessageListSetting messages) {
-            String value = messages.get().size() + " gespeichert · bearbeiten";
-            ctx.drawText(mc.textRenderer, messages.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
-            ctx.drawText(mc.textRenderer, value, x + w - 9 - mc.textRenderer.getWidth(value), y + 6, Theme.ACCENT, false);
-            if (over && clickL) { editingMessages = messages; messageDraft = ""; searchFocus = false; clickL = false; }
-        } else if (setting instanceof ListSetting list) {
-            String value = list.get().size() + " Einträge";
-            ctx.drawText(mc.textRenderer, list.getName(), x + 9, y + 6, Theme.TEXT_DIM, false);
-            ctx.drawText(mc.textRenderer, value, x + w - 9 - mc.textRenderer.getWidth(value), y + 6, Theme.TEXT_DIM, false);
-        }
-    }
-
-    private void drawTextModal(DrawContext ctx, int mx, int my) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        int mw = Math.min(340, width - 24), mh = 122;
-        int mx0 = (width - mw) / 2, my0 = (height - mh) / 2;
-        ctx.fill(mx0 - 2, my0 - 2, mx0 + mw + 2, my0 + mh + 2, 0xA0000000);
-        ctx.fill(mx0, my0, mx0 + mw, my0 + mh, 0xF0181822);
-        ctx.fill(mx0, my0, mx0 + mw, my0 + 2, Theme.ACCENT);
-        ctx.drawText(mc.textRenderer, editingColor != null ? "FARBE · #RRGGBB" : editingString != null ? "TEXT BEARBEITEN" : "AUTOTEXT · NACHRICHT HINZUFÜGEN", mx0 + 10, my0 + 10, Theme.TEXT, true);
-        ctx.fill(mx0 + 10, my0 + 29, mx0 + mw - 10, my0 + 49, 0xFF08080D);
-        String draftView = (editingColor != null ? "#" : "") + messageDraft + (((System.currentTimeMillis() / 500) % 2 == 0) ? "_" : "");
-        ctx.drawText(mc.textRenderer, draftView, mx0 + 15, my0 + 36, Theme.ACCENT, false);
-        String instruction = editingColor != null || editingString != null ? "Enter: speichern · Esc: abbrechen" : "Enter: hinzufügen · Esc: schließen";
-        ctx.drawText(mc.textRenderer, instruction, mx0 + 10, my0 + 59, Theme.TEXT_DIM, false);
-        List<String> existing = editingMessages == null ? List.of() : editingMessages.get();
-        ctx.drawText(mc.textRenderer, editingColor != null || editingString != null ? "Änderungen werden lokal gespeichert" : "Gespeichert: " + existing.size() + " Nachrichten", mx0 + 10, my0 + 76, Theme.TEXT_DIM, false);
-        if (editingMessages != null && !existing.isEmpty()) {
-            String last = existing.get(existing.size() - 1);
-            if (last.length() > 32) last = last.substring(0, 31) + "…";
-            String remove = "Letzte: " + last + " · Rechtsklick löscht";
-            ctx.drawText(mc.textRenderer, remove, mx0 + 10, my0 + 94, Theme.TEXT_DIM, false);
-            if (clickR && in(mx, my, mx0, my0 + 88, mw, 24)) {
-                editingMessages.removeMessage(existing.get(existing.size() - 1)); Config.save(); notice("Letzte Nachricht gelöscht"); clickR = false;
-            }
-        }
-    }
-
-    private void drawNotice(DrawContext ctx, String message, int color) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        int w = Math.min(width - 24, mc.textRenderer.getWidth(message) + 20);
-        int x = (width - w) / 2;
-        int y = viewportBottom + 1;
-        ctx.fill(x, y, x + w, y + 16, 0xE6111219);
-        ctx.fill(x, y, x + 2, y + 16, color);
-        ctx.drawText(mc.textRenderer, message, x + 8, y + 5, color, false);
-    }
-
-    private static boolean in(int mx, int my, int x, int y, int w, int h) {
-        return mx >= x && mx < x + w && my >= y && my < y + h;
-    }
+   private static boolean in(int mx, int my, int x, int y, int w, int h) {
+      return mx >= x && mx < x + w && my >= y && my < y + h;
+   }
 }
