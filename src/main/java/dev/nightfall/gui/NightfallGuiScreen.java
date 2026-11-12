@@ -515,8 +515,10 @@ public final class NightfallGuiScreen extends class_437 {
 
       this.drawAnimatedWindow(ctx, this.activeTab, x + offsetX, yx + offsetY, w, mx, my, click, rightClick, mc, true);
       if (this.numberSlider != null) {
-         float amount = Math.max(0.0F, Math.min(1.0F, (float)(mx - this.numberSliderX) / Math.max(1, this.numberSliderW)));
-         this.numberSlider.set(this.numberSlider.min + amount * (this.numberSlider.max - this.numberSlider.min));
+         if (left) {
+            float amount = Math.max(0.0F, Math.min(1.0F, (float)(mx - this.numberSliderX) / Math.max(1, this.numberSliderW)));
+            this.numberSlider.set(this.numberSlider.min + amount * (this.numberSlider.max - this.numberSlider.min));
+         }
          if (release) {
             Config.save();
             this.numberSlider = null;
@@ -684,8 +686,10 @@ public final class NightfallGuiScreen extends class_437 {
 
 
       if (this.numberSlider != null) {
-         float amount = Math.max(0.0F, Math.min(1.0F, (float)(mx - this.numberSliderX) / Math.max(1, this.numberSliderW)));
-         this.numberSlider.set(this.numberSlider.min + amount * (this.numberSlider.max - this.numberSlider.min));
+         if (left) {
+            float amount = Math.max(0.0F, Math.min(1.0F, (float)(mx - this.numberSliderX) / Math.max(1, this.numberSliderW)));
+            this.numberSlider.set(this.numberSlider.min + amount * (this.numberSlider.max - this.numberSlider.min));
+         }
          if (release) {
             Config.save();
             this.numberSlider = null;
@@ -770,8 +774,14 @@ public final class NightfallGuiScreen extends class_437 {
       this.drawAnimatedWindow(ctx, this.activeTab, panelX, panelY, panelW, mx, my, click, rightClick, mc, true);
 
       if (this.numberSlider != null) {
-         float amount = Math.max(0.0F, Math.min(1.0F, (float)(mx - this.numberSliderX) / Math.max(1, this.numberSliderW)));
-         this.numberSlider.set(this.numberSlider.min + amount * (this.numberSlider.max - this.numberSlider.min));
+         if (left) {
+            float amount = Math.max(0.0F, Math.min(1.0F, (float)(mx - this.numberSliderX) / Math.max(1, this.numberSliderW)));
+            this.numberSlider.set(this.numberSlider.min + amount * (this.numberSlider.max - this.numberSlider.min));
+         }
+         if (release) {
+            Config.save();
+            this.numberSlider = null;
+         }
       }
       if (this.editingColor != null || this.editingString != null || this.editingMessages != null || this.editingList != null) {
          this.drawTextEditor(ctx);
@@ -1283,16 +1293,19 @@ public final class NightfallGuiScreen extends class_437 {
 
    private void updateConfigSlider(int mx, boolean active, boolean release) {
       if (this.slider.isEmpty()) return;
-      float t = Math.max(0.0F, Math.min(1.0F, (float)(mx - this.sliderX) / Math.max(1, this.sliderW)));
-      switch (this.slider) {
-         case "hue" -> { Config.accentHue = t * 360.0F; this.applyHue(); }
-         case "blur" -> Config.blurStrength = Math.round(t * 150.0F);
-         case "transparency" -> Config.guiTransparency = Math.round(t * 100);
-         case "border" -> Config.borderSize = 1 + Math.round(t * 5);
-         case "radius" -> Config.cornerRadius = 10 + Math.round(t * 22);
-         case "scale" -> Config.guiScalePercent = 70 + Math.round(t * 30);
-         case "margin" -> Config.guiEdgeMargin = Math.round(t * 60);
-         case "espColor" -> this.updateEspColorSlider(mx);
+      // A slider only follows the cursor while the left mouse button is held.
+      if (active) {
+         float t = Math.max(0.0F, Math.min(1.0F, (float)(mx - this.sliderX) / Math.max(1, this.sliderW)));
+         switch (this.slider) {
+            case "hue" -> { Config.accentHue = t * 360.0F; this.applyHue(); }
+            case "blur" -> Config.blurStrength = Math.round(t * 150.0F);
+            case "transparency" -> Config.guiTransparency = Math.round(t * 100);
+            case "border" -> Config.borderSize = 1 + Math.round(t * 5);
+            case "radius" -> Config.cornerRadius = 10 + Math.round(t * 22);
+            case "scale" -> Config.guiScalePercent = 70 + Math.round(t * 30);
+            case "margin" -> Config.guiEdgeMargin = Math.round(t * 60);
+            case "espColor" -> this.updateEspColorSlider(mx);
+         }
       }
       if (release) {
          Config.save();
