@@ -111,7 +111,7 @@ public class CrystalAura extends Module {
          for (class_2350 face : class_2350.values()) {
             class_2338 neighbor = base.method_10093(face);
             class_2680 neighborState = mc.field_1687.method_8320(neighbor);
-            if (!neighborState.method_26220(mc.field_1687, neighbor).method_1110()) continue;
+            if (neighborState.method_26220(mc.field_1687, neighbor).method_1110()) continue;
 
             class_2350 clickedSide = face.method_10153();
             class_243 hit = class_243.method_24953(neighbor)
