@@ -60,7 +60,7 @@ public final class FakeLag extends Module {
       bypass = true;
       try {
          class_2596<?> packet;
-         while ((packet = QUEUE.poll()) != null) connection.method_10752(packet);
+         while ((packet = QUEUE.poll()) != null) connection.method_10752(packet, null);
       } finally {
          bypass = old;
       }
