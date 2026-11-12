@@ -68,10 +68,10 @@ public class CrystalAura extends Module {
       int sideZ = forwardX;
       class_2338 feet = target.method_24515();
       class_2338[] candidates = new class_2338[] {
-         feet.method_10069(sideX * 2, -1, sideZ * 2),
-         feet.method_10069(-sideX * 2, -1, -sideZ * 2),
-         feet.method_10069(forwardX * 2, -1, forwardZ * 2),
-         feet.method_10069(-forwardX * 2, -1, -forwardZ * 2)
+         feet.method_10069(sideX * 2, -2, sideZ * 2),
+         feet.method_10069(-sideX * 2, -2, -sideZ * 2),
+         feet.method_10069(forwardX * 2, -2, forwardZ * 2),
+         feet.method_10069(-forwardX * 2, -2, -forwardZ * 2)
       };
       for (class_2338 base : candidates) {
          class_2680 state = mc.field_1687.method_8320(base);
