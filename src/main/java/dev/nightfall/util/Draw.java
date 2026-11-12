@@ -84,6 +84,36 @@ public final class Draw {
          return false;
       }
 
+      // A 2D outline must include intersections where an edge crosses the near plane.
+      if (!threeD && !all) {
+         minX = Float.MAX_VALUE;
+         minY = Float.MAX_VALUE;
+         maxX = -Float.MAX_VALUE;
+         maxY = -Float.MAX_VALUE;
+         for (int ix = 0; ix < 8; ix++) {
+            for (int bit = 1; bit <= 4; bit <<= 1) {
+               if ((ix & bit) == 0) {
+                  int j = ix | bit;
+                  double ax = (ix & 1) == 0 ? worldMinX : worldMaxX;
+                  double ay = (ix & 2) == 0 ? worldMinY : worldMaxY;
+                  double az = (ix & 4) == 0 ? worldMinZ : worldMaxZ;
+                  double bx = (j & 1) == 0 ? worldMinX : worldMaxX;
+                  double by = (j & 2) == 0 ? worldMinY : worldMaxY;
+                  double bz = (j & 4) == 0 ? worldMinZ : worldMaxZ;
+                  if (Projection.projectSegment(ax, ay, az, bx, by, bz, PROJECTED_LINE)) {
+                     minX = Math.min(minX, Math.min(PROJECTED_LINE[0], PROJECTED_LINE[2]));
+                     maxX = Math.max(maxX, Math.max(PROJECTED_LINE[0], PROJECTED_LINE[2]));
+                     minY = Math.min(minY, Math.min(PROJECTED_LINE[1], PROJECTED_LINE[3]));
+                     maxY = Math.max(maxY, Math.max(PROJECTED_LINE[1], PROJECTED_LINE[3]));
+                  }
+               }
+            }
+         }
+         if (minX == Float.MAX_VALUE) {
+            return false;
+         }
+      }
+
       boolean intersectsScreen = !(maxX < 0.0F) && !(maxY < 0.0F)
          && !(minX > Projection.width()) && !(minY > Projection.height());
       topX = Math.max(0.0F, Math.min((float)Projection.width(), (minX + maxX) / 2.0F));
