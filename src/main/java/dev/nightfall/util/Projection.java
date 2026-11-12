@@ -92,12 +92,17 @@ public final class Projection {
    }
 
    public static boolean canSeeFromCamera(class_310 mc, class_1297 target) {
-      if (mc != null && mc.field_1687 != null && mc.field_1724 != null && target != null) {
+      return mc != null && target != null ? canSeeFromCamera(mc, target, target.method_5829()) : false;
+   }
+
+   public static boolean canSeeFromCamera(class_310 mc, class_1297 target, class_238 interpolatedBox) {
+      if (mc != null && mc.field_1687 != null && mc.field_1724 != null && target != null && interpolatedBox != null) {
          class_4184 camera = mc.field_1773.method_19418();
          class_243 start = camera != null && camera.method_19332() ? camera.method_71156() : mc.field_1724.method_33571();
-         class_238 box = target.method_5829();
          class_243 end = new class_243(
-            (box.field_1323 + box.field_1320) * 0.5, (box.field_1322 + box.field_1325) * 0.5, (box.field_1321 + box.field_1324) * 0.5
+            (interpolatedBox.field_1323 + interpolatedBox.field_1320) * 0.5,
+            (interpolatedBox.field_1322 + interpolatedBox.field_1325) * 0.5,
+            (interpolatedBox.field_1321 + interpolatedBox.field_1324) * 0.5
          );
          return start.method_1025(end) < 1.0E-8
             ? true
