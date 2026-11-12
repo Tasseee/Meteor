@@ -47,7 +47,8 @@ public final class NightfallGlintRenderer {
          }
       }
       class_1060 manager = class_310.method_1551().method_1531();
-      textureId = manager.method_4617("nightfall_item_glint", dynamic);
+      textureId = class_2960.method_60655("nightfall", "item_glint");
+      manager.method_4616(textureId, dynamic);
       return textureId;
    }
 
