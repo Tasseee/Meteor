@@ -9,7 +9,6 @@ import java.awt.Color;
 import net.minecraft.class_1799;
 
 public final class ItemGlint extends Module {
-   private final ModeSetting scope = this.add(new ModeSetting("Umfang", "Nur Hand", "Nur Hand", "Alle Items"));
    private final ModeSetting mode = this.add(new ModeSetting("Modus", "Static", "Static", "Rainbow", "Pulse"));
    private final ColorSetting color = this.add(new ColorSetting("Farbe", 0xFF2878));
    private final ColorSetting color2 = this.add(new ColorSetting("Farbe 2", 0x3C78FF));
@@ -17,7 +16,7 @@ public final class ItemGlint extends Module {
    private final NumberSetting intensity = this.add(new NumberSetting("Intensitaet", 1.2, 0.2, 3.0, 0.1));
 
    public ItemGlint() {
-      super("Item Glint", "Faerbt den Verzauberungs-Glanz statisch, als Regenbogen oder pulsierend.", Category.VISUALS);
+      super("Item Glint", "Vanilla-Glint auf allen Items mit eigener Farbe und Animation.", Category.VISUALS);
    }
 
    public boolean forceGlint(class_1799 stack) {
@@ -25,8 +24,7 @@ public final class ItemGlint extends Module {
          return false;
       }
 
-      return this.scope.is("Alle Items")
-         || mc.field_1724 != null && (stack == mc.field_1724.method_6047() || stack == mc.field_1724.method_6079());
+      return true;
    }
 
    public boolean shouldTint() {
