@@ -108,6 +108,13 @@ public class DTap extends Module {
       return null;
    }
 
+   // Compatibility helper for older DTap call sites expecting two base positions.
+   private class_2338[] findBases(class_746 player, class_1657 target) {
+      class_2338 base = findSideBase(player, target);
+      if (base == null) return new class_2338[0];
+      return new class_2338[] { base, base };
+   }
+
    private boolean placeObsidian(class_746 player, class_2338 base) {
       if (mc.field_1687.method_8320(base).method_27852(class_2246.field_9987)) return true;
       if (!entityFree(base, 0.0, 1.0) || !entityFree(base, 1.0, 3.0)) return false;
