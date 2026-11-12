@@ -115,10 +115,13 @@ public class DTap extends Module {
       if (slot < 0) return false;
       class_2338 support = base.method_10074();
       if (mc.field_1687.method_8320(support).method_26220(mc.field_1687, support).method_1110()) return false;
+      int previousSlot = InvUtil.selected();
       InvUtil.select(slot);
       class_243 hit = class_243.method_24953(support).method_1031(0.5, 1.0, 0.5);
       mc.field_1761.method_2896(player, class_1268.field_5808, new class_3965(hit, class_2350.field_11036, support, false));
       player.method_6104(class_1268.field_5808);
+      // Keep the player's manual hotbar selection; only switch for the placement action.
+      InvUtil.select(previousSlot);
       return false;
    }
 
@@ -134,10 +137,13 @@ public class DTap extends Module {
    private void placeCrystal(class_746 player, class_2338 base) {
       int slot = InvUtil.ensureHotbar(class_1802.field_8301);
       if (slot < 0) { this.setEnabled(false); return; }
+      int previousSlot = InvUtil.selected();
       InvUtil.select(slot);
       class_243 hit = new class_243(base.method_10263() + 0.5, base.method_10264() + 1.0, base.method_10260() + 0.5);
       mc.field_1761.method_2896(player, class_1268.field_5808, new class_3965(hit, class_2350.field_11036, base, false));
       player.method_6104(class_1268.field_5808);
+      // Restore the slot immediately so normal hotbar switching remains available.
+      InvUtil.select(previousSlot);
    }
 
    private void attackCrystal(class_746 player, class_2338 base) {
