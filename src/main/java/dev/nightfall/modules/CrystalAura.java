@@ -171,6 +171,8 @@ public class CrystalAura extends Module {
                class_1268 hand = p.method_6079().method_31574(class_1802.field_8301)
                   ? class_1268.field_5810
                   : (p.method_6047().method_31574(class_1802.field_8301) ? class_1268.field_5808 : null);
+               int previousSlot = InvUtil.selected();
+               boolean switchedForCrystal = false;
                if (hand == null) {
                   if (!this.autoSwitch.get()) {
                      return;
@@ -181,7 +183,10 @@ public class CrystalAura extends Module {
                      return;
                   }
 
-                  InvUtil.select(slot);
+                  if (slot != previousSlot) {
+                     InvUtil.select(slot);
+                     switchedForCrystal = true;
+                  }
                   hand = class_1268.field_5808;
                }
 
@@ -227,6 +232,10 @@ public class CrystalAura extends Module {
                   class_3965 hitResult = new class_3965(hit, class_2350.field_11036, bestPos, false);
                   mc.field_1761.method_2896(p, hand, hitResult);
                   p.method_6104(hand);
+                  // Auto-switch only for the placement action; restore the user's selected slot immediately.
+                  if (switchedForCrystal) {
+                     InvUtil.select(previousSlot);
+                  }
                   this.placeT = this.placeDelay.getInt();
                }
             }
