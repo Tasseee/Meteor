@@ -56,7 +56,8 @@ public final class NightfallGlintRenderer {
 
       texture.method_4524();
       class_1060 manager = class_310.method_1551().method_1531();
-      textureId = manager.method_4617("nightfall_item_glint", texture);
+      textureId = net.minecraft.class_2960.method_60655("nightfall", "item_glint");
+      manager.method_4616(textureId, texture);
       return textureId;
    }
 
