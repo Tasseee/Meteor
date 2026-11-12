@@ -22,6 +22,8 @@ public final class Freecam extends Module {
    private double lastMouseX;
    private double lastMouseY;
    private boolean mouseInitialized;
+   private final double[] cursorX = new double[1];
+   private final double[] cursorY = new double[1];
    private final NumberSetting speed = this.add(new NumberSetting("Geschwindigkeit", 0.45, 0.1, 2.0, 0.05));
    private final NumberSetting sensitivity = this.add(new NumberSetting("Kamera-Sensitivitaet", 0.15, 0.03, 0.5, 0.01));
 
@@ -112,19 +114,18 @@ public final class Freecam extends Module {
          long now = System.nanoTime();
          double frameSeconds = Math.max(0.0, Math.min(0.05, (now - this.lastMoveNanos) / 1.0E9));
          this.lastMoveNanos = now;
-         double[] x = new double[1];
-         double[] y = new double[1];
-         GLFW.glfwGetCursorPos(window, x, y);
+         GLFW.glfwGetCursorPos(window, this.cursorX, this.cursorY);
          if (this.mouseInitialized) {
-            double dx = Math.max(-100.0, Math.min(100.0, x[0] - this.lastMouseX));
-            double dy = Math.max(-100.0, Math.min(100.0, y[0] - this.lastMouseY));
-            cameraYaw = cameraYaw + (float)(dx * this.sensitivity.get());
+            double dx = Math.max(-250.0, Math.min(250.0, this.cursorX[0] - this.lastMouseX));
+            double dy = Math.max(-250.0, Math.min(250.0, this.cursorY[0] - this.lastMouseY));
+            // Match Minecraft's standard mouse direction: right decreases yaw, down increases pitch.
+            cameraYaw = cameraYaw - (float)(dx * this.sensitivity.get());
             cameraPitch = cameraPitch + (float)(dy * this.sensitivity.get());
             cameraPitch = Math.max(-90.0F, Math.min(90.0F, cameraPitch));
          }
 
-         this.lastMouseX = x[0];
-         this.lastMouseY = y[0];
+         this.lastMouseX = this.cursorX[0];
+         this.lastMouseY = this.cursorY[0];
          this.mouseInitialized = true;
          float yaw = (float)Math.toRadians(cameraYaw);
          float pitch = (float)Math.toRadians(cameraPitch);
