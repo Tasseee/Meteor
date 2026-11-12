@@ -12,6 +12,7 @@ public final class Draw {
    private static final double[][] C = new double[8][2];
    private static final boolean[] OK = new boolean[8];
    private static final float[] CLIPPED_LINE = new float[4];
+   private static final float[] PROJECTED_LINE = new float[4];
 
    private Draw() {
    }
@@ -81,44 +82,48 @@ public final class Draw {
 
       if (any == 0) {
          return false;
-      } else if (!(maxX < 0.0F) && !(maxY < 0.0F) && !(minX > Projection.width()) && !(minY > Projection.height())) {
-         topX = Math.max(0.0F, Math.min((float)Projection.width(), (minX + maxX) / 2.0F));
-         topY = Math.max(0.0F, Math.min((float)Projection.height(), minY));
-         botY = Math.max(0.0F, Math.min((float)Projection.height(), maxY));
-         if (!threeD) {
-            if (!all) {
-               return false;
-            } else {
-               int x0 = Math.max(0, Math.min(Projection.width(), Math.round(minX)));
-               int y0 = Math.max(0, Math.min(Projection.height(), Math.round(minY)));
-               int x1 = Math.max(0, Math.min(Projection.width(), Math.round(maxX)));
-               int y1 = Math.max(0, Math.min(Projection.height(), Math.round(maxY)));
-               if (x1 > x0 && y1 > y0) {
-                  roundedOutline(ctx, x0, y0, x1, y1, argb, th, smooth);
-                  return true;
-               } else {
-                  return false;
-               }
-            }
-         } else {
-            for (int ix = 0; ix < 8; ix++) {
-               if (OK[ix]) {
-                  for (int bit = 1; bit <= 4; bit <<= 1) {
-                     if ((ix & bit) == 0) {
-                        int j = ix | bit;
-                        if (OK[j]) {
-                           line(ctx, (float)C[ix][0], (float)C[ix][1], (float)C[j][0], (float)C[j][1], argb, th, smooth);
-                        }
-                     }
-                  }
-               }
-            }
+      }
 
+      boolean intersectsScreen = !(maxX < 0.0F) && !(maxY < 0.0F)
+         && !(minX > Projection.width()) && !(minY > Projection.height());
+      topX = Math.max(0.0F, Math.min((float)Projection.width(), (minX + maxX) / 2.0F));
+      topY = Math.max(0.0F, Math.min((float)Projection.height(), minY));
+      botY = Math.max(0.0F, Math.min((float)Projection.height(), maxY));
+
+      if (!threeD) {
+         if (!all || !intersectsScreen) {
+            return false;
+         }
+         int x0 = Math.max(0, Math.min(Projection.width(), Math.round(minX)));
+         int y0 = Math.max(0, Math.min(Projection.height(), Math.round(minY)));
+         int x1 = Math.max(0, Math.min(Projection.width(), Math.round(maxX)));
+         int y1 = Math.max(0, Math.min(Projection.height(), Math.round(maxY)));
+         if (x1 > x0 && y1 > y0) {
+            roundedOutline(ctx, x0, y0, x1, y1, argb, th, smooth);
             return true;
          }
-      } else {
          return false;
       }
+
+      boolean rendered = false;
+      for (int ix = 0; ix < 8; ix++) {
+         for (int bit = 1; bit <= 4; bit <<= 1) {
+            if ((ix & bit) == 0) {
+               int j = ix | bit;
+               double ax = (ix & 1) == 0 ? worldMinX : worldMaxX;
+               double ay = (ix & 2) == 0 ? worldMinY : worldMaxY;
+               double az = (ix & 4) == 0 ? worldMinZ : worldMaxZ;
+               double bx = (j & 1) == 0 ? worldMinX : worldMaxX;
+               double by = (j & 2) == 0 ? worldMinY : worldMaxY;
+               double bz = (j & 4) == 0 ? worldMinZ : worldMaxZ;
+               if (Projection.projectSegment(ax, ay, az, bx, by, bz, PROJECTED_LINE)) {
+                  line(ctx, PROJECTED_LINE[0], PROJECTED_LINE[1], PROJECTED_LINE[2], PROJECTED_LINE[3], argb, th, smooth);
+                  rendered = true;
+               }
+            }
+         }
+      }
+      return rendered;
    }
 
    private static void roundedOutline(class_332 ctx, int x0, int y0, int x1, int y1, int argb, int thickness, boolean smooth) {
