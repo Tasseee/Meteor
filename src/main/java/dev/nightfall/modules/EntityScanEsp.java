@@ -14,11 +14,8 @@ import net.minecraft.class_332;
 public abstract class EntityScanEsp extends EspBase {
    protected final BoolSetting health = this.add(new BoolSetting("Health", true));
    protected final BoolSetting visibleOnly = this.add(new BoolSetting("Nur sichtbare", false));
-   private final List<class_1297> buf = new ArrayList<>();
-   private static double sx;
-   private static double sy;
-   private static double sz;
-   private static final Comparator<class_1297> BY_DIST = Comparator.comparingDouble(e -> e.method_5649(sx, sy, sz));
+   private final List<RenderTarget> buf = new ArrayList<>();
+   private static final Comparator<RenderTarget> BY_DIST = Comparator.comparingDouble(RenderTarget::distanceSquared);
 
    protected EntityScanEsp(String n, String d, int r, int mr, int rgb) {
       super(n, d, r, mr, rgb);
@@ -33,38 +30,67 @@ public abstract class EntityScanEsp extends EspBase {
    @Override
    public void renderHud(class_332 ctx) {
       if (mc.field_1687 != null && mc.field_1724 != null && Projection.valid()) {
-         sx = Projection.eyeX();
-         sy = Projection.eyeY();
-         sz = Projection.eyeZ();
-         double r2 = this.range.get() * this.range.get();
+         double cameraX = Projection.eyeX();
+         double cameraY = Projection.eyeY();
+         double cameraZ = Projection.eyeZ();
+         double rangeSquared = this.range.get() * this.range.get();
+         float tickDelta = Projection.tickDelta();
          this.buf.clear();
 
-         for (class_1297 e : mc.field_1687.method_18112()) {
-            if (e != mc.field_1724 && this.accept(e) && !(e.method_5649(sx, sy, sz) > r2) && (!this.visibleOnly.get() || Projection.canSeeFromCamera(mc, e))) {
-               this.buf.add(e);
+         for (class_1297 entity : mc.field_1687.method_18112()) {
+            if (entity == mc.field_1724 || !this.accept(entity)) {
+               continue;
             }
+
+            // Use the exact render-frame tick delta for both the entity position and its box.
+            class_243 interpolated = entity.method_30950(tickDelta);
+            double dx = interpolated.field_1352 - entity.method_23317();
+            double dy = interpolated.field_1351 - entity.method_23318();
+            double dz = interpolated.field_1350 - entity.method_23321();
+            class_238 currentBox = entity.method_5829();
+            class_238 interpolatedBox = new class_238(
+               currentBox.field_1323 + dx,
+               currentBox.field_1322 + dy,
+               currentBox.field_1321 + dz,
+               currentBox.field_1320 + dx,
+               currentBox.field_1325 + dy,
+               currentBox.field_1324 + dz
+            );
+
+            double rx = interpolated.field_1352 - cameraX;
+            double ry = interpolated.field_1351 - cameraY;
+            double rz = interpolated.field_1350 - cameraZ;
+            double distanceSquared = rx * rx + ry * ry + rz * rz;
+            if (distanceSquared > rangeSquared) {
+               continue;
+            }
+
+            if (this.visibleOnly.get() && !Projection.canSeeFromCamera(mc, entity, interpolatedBox)) {
+               continue;
+            }
+
+            this.buf.add(new RenderTarget(entity, interpolatedBox, distanceSquared));
          }
 
          if (this.buf.size() > this.maxObjects.getInt()) {
             this.buf.sort(BY_DIST);
          }
 
-         int n = Math.min(this.buf.size(), this.maxObjects.getInt());
-
-         for (int i = 0; i < n && !this.capReached(); i++) {
-            class_1297 ex = this.buf.get(i);
-            double d = Math.sqrt(ex.method_5649(sx, sy, sz));
-            String lb = this.label(this.nameOf(ex), d);
-            if (this.health.get() && ex instanceof class_1309 le) {
-               lb = lb + " " + Math.round(le.method_6032()) + "hp";
+         int count = Math.min(this.buf.size(), this.maxObjects.getInt());
+         for (int i = 0; i < count && !this.capReached(); i++) {
+            RenderTarget target = this.buf.get(i);
+            class_1297 entity = target.entity();
+            String label = this.label(this.nameOf(entity), Math.sqrt(target.distanceSquared()));
+            if (this.health.get() && entity instanceof class_1309 living) {
+               label = label + " " + Math.round(living.method_6032()) + "hp";
             }
 
-            class_243 renderedPos = ex.method_30950(Projection.tickDelta());
-            double offsetX = renderedPos.field_1352 - ex.method_23317();
-            double offsetY = renderedPos.field_1351 - ex.method_23318();
-            double offsetZ = renderedPos.field_1350 - ex.method_23321();
-            this.drawTarget(ctx, ex.method_5829(), lb, this.color.rgb(), offsetX, offsetY, offsetZ);
+            // No tick-position offset is passed downstream: every ESP primitive uses this box.
+            this.drawTarget(ctx, target.box(), label, this.color.rgb());
          }
       }
+   }
+
+   private record RenderTarget(class_1297 entity, class_238 box, double distanceSquared) {
    }
 }
