@@ -239,6 +239,54 @@ public class AutoPvp extends Module {
       return !p.method_5799() && !p.method_5771() && !p.method_6128() && !p.method_5765();
    }
 
+   private boolean isObsidian(class_2338 pos) {
+      return mc.field_1687.method_8320(pos).method_27852(net.minecraft.class_2246.field_9987);
+   }
+
+   // Reuse obsidian already within a 2-block horizontal radius of the target.
+   private class_2338 findNearbyObsidian(class_1657 target) {
+      class_2338 feet = target.method_24515();
+      class_2338 best = null;
+      double bestDistance = Double.MAX_VALUE;
+      for (int x = -2; x <= 2; x++) {
+         for (int z = -2; z <= 2; z++) {
+            if (x * x + z * z > 4) continue;
+            class_2338 candidate = feet.method_10069(x, -1, z);
+            if (isObsidian(candidate)) {
+               double distance = x * x + z * z;
+               if (distance < bestDistance) {
+                  best = candidate;
+                  bestDistance = distance;
+               }
+            }
+         }
+      }
+      return best;
+   }
+
+   // Never add more than two obsidian blocks inside the player's 2-block radius.
+   private boolean hasRoomForObsidian(class_746 p) {
+      class_2338 center = p.method_24515();
+      int count = 0;
+      for (int x = -2; x <= 2; x++) {
+         for (int y = -1; y <= 2; y++) {
+            for (int z = -2; z <= 2; z++) {
+               if (x * x + y * y + z * z > 4) continue;
+               if (isObsidian(center.method_10069(x, y, z)) && ++count >= 2) return false;
+            }
+         }
+      }
+      return true;
+   }
+
+   private boolean obsidianAhead(class_746 p, class_1657 target) {
+      class_243 toward = new class_243(target.method_23317() - p.method_23317(), 0.0, target.method_23321() - p.method_23321());
+      if (toward.method_1027() < 1.0E-5) return false;
+      toward = toward.method_1029();
+      class_2338 feet = class_2338.method_49637(p.method_23317() + toward.field_1352 * 0.85, p.method_23318(), p.method_23321() + toward.field_1350 * 0.85);
+      return isObsidian(feet) || isObsidian(feet.method_10074()) || isObsidian(feet.method_10084());
+   }
+
    private boolean safeForward(class_746 p, class_1657 target) {
       class_243 toward = new class_243(target.method_23317() - p.method_23317(), 0.0, target.method_23321() - p.method_23321());
       if (toward.method_1027() < 1.0E-5) {
@@ -372,21 +420,43 @@ public class AutoPvp extends Module {
          return false;
       }
 
+      // If the target has moved outside the selected base's 2-block radius,
+      // abandon that base and select/reuse one near the target's new position.
+      if (this.crystalComboBase != null) {
+         double bx = this.crystalComboBase.method_10263() + 0.5 - target.method_23317();
+         double bz = this.crystalComboBase.method_10260() + 0.5 - target.method_23321();
+         if (bx * bx + bz * bz > 4.0) {
+            this.crystalComboBase = null;
+            this.crystalComboPhase = 1;
+            this.crystalComboTicks = 0;
+         }
+      }
+
       class_1268 main = class_1268.field_5808;
       if (this.crystalComboPhase == 1) {
          if (target.method_24828()) return true;
          if (this.crystalComboBase == null) {
-            class_2338 feet = target.method_24515();
-            double dx = target.method_23317() - p.method_23317();
-            double dz = target.method_23321() - p.method_23321();
-            int ox = Math.abs(dx) > Math.abs(dz) ? 0 : (dx >= 0.0 ? 2 : -2);
-            int oz = Math.abs(dx) > Math.abs(dz) ? (dz >= 0.0 ? -2 : 2) : 0;
-            this.crystalComboBase = feet.method_10069(ox, -1, oz);
+            this.crystalComboBase = this.findNearbyObsidian(target);
+            if (this.crystalComboBase == null) {
+               class_2338 feet = target.method_24515();
+               double dx = target.method_23317() - p.method_23317();
+               double dz = target.method_23321() - p.method_23321();
+               int ox = Math.abs(dx) > Math.abs(dz) ? 0 : (dx >= 0.0 ? 2 : -2);
+               int oz = Math.abs(dx) > Math.abs(dz) ? (dz >= 0.0 ? -2 : 2) : 0;
+               class_2338 proposed = feet.method_10069(ox, -1, oz);
+               double px = proposed.method_10263() + 0.5 - p.method_23317();
+               double pz = proposed.method_10260() + 0.5 - p.method_23321();
+               if (px * px + pz * pz > 4.0 || !this.hasRoomForObsidian(p)) {
+                  this.resetCrystalCombo();
+                  return false;
+               }
+               this.crystalComboBase = proposed;
+            }
          }
          class_2680 baseState = mc.field_1687.method_8320(this.crystalComboBase);
          if (!baseState.method_27852(net.minecraft.class_2246.field_9987)) {
             int obsidian = InvUtil.ensureHotbar(class_1802.field_8281);
-            if (obsidian < 0 || !baseState.method_45474()) {
+            if (obsidian < 0 || !baseState.method_45474() || !this.hasRoomForObsidian(p)) {
                this.resetCrystalCombo();
                return false;
             }
@@ -509,7 +579,7 @@ public class AutoPvp extends Module {
                   mc.field_1690.field_1849.method_23481(false);
                }
 
-               boolean obstacle = p.field_5976;
+               boolean obstacle = p.field_5976 && !this.obsidianAhead(p, target);
                boolean critMode = this.swordCrits.get() && !this.useCrystalAura.get()
                   && distance <= this.reach.get() + 0.8 && this.clearAbove(p, 2);
                if (critMode) {
