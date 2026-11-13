@@ -248,7 +248,10 @@ public class DTap extends Module {
    }
 
    private boolean delayReady(int delay) {
-      return phaseTicks > 0 && phaseTicks % (delay + 1) == 0;
+      // Wait the configured number of ticks, then retry every tick until
+      // the server confirms the placement. Modulo-based attempts could miss
+      // a valid placement window and unnecessarily leave DTap stuck.
+      return phaseTicks > delay;
    }
 
    private void attackCrystal(class_746 player, class_1511 crystal) {
