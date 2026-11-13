@@ -37,6 +37,7 @@ import dev.nightfall.modules.DebugHud;
 import dev.nightfall.modules.DroppedItemNotifier;
 import dev.nightfall.modules.ElytraFly;
 import dev.nightfall.modules.EntityEsp;
+import dev.nightfall.modules.EntityScanEsp;
 import dev.nightfall.modules.EspBase;
 import dev.nightfall.modules.FakeBases;
 import dev.nightfall.modules.FakeStats;
@@ -104,6 +105,7 @@ import java.util.Collections;
 import java.util.List;
 import net.minecraft.class_310;
 import net.minecraft.class_332;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import org.lwjgl.glfw.GLFW;
 
 public final class ModuleManager {
@@ -313,6 +315,21 @@ public final class ModuleManager {
                   errorCount++;
                   m.setEnabled(false);
                }
+            }
+         }
+      }
+   }
+
+   public static void renderWorld(WorldRenderContext context) {
+      EspBase.drawn = 0;
+      for (Module m : MODULES) {
+         if (m.isEnabled() && m instanceof EntityScanEsp esp) {
+            try {
+               esp.renderWorld(context);
+            } catch (Throwable var4) {
+               Nightfall.LOGGER.error("World-Render-Fehler in Modul {} - Modul wird deaktiviert", m.getName(), var4);
+               errorCount++;
+               m.setEnabled(false);
             }
          }
       }
