@@ -13,6 +13,7 @@ public final class ShieldBreaker extends Module {
    private final NumberSetting delay = this.add(new NumberSetting("Angriffsintervall (Ticks)", 3.0, 1.0, 12.0, 1.0));
    private int cooldown;
    private int previousSlot = -1;
+   private int activeSlot = -1;
    private class_1657 pendingTarget;
 
    public ShieldBreaker() {
@@ -24,6 +25,13 @@ public final class ShieldBreaker extends Module {
       if (mc.field_1724 == null || mc.field_1687 == null || mc.field_1761 == null || mc.field_1755 != null) {
          this.restore();
       } else if (this.previousSlot >= 0) {
+         // The player may have changed slots between the selection and attack tick.
+         if (InvUtil.selected() != this.activeSlot) {
+            this.previousSlot = this.activeSlot = -1;
+            this.pendingTarget = null;
+            return;
+         }
+
          class_1657 target = this.pendingTarget;
          if (target != null
             && target.method_5805()
@@ -52,6 +60,7 @@ public final class ShieldBreaker extends Module {
 
             if (axeSlot >= 0) {
                this.previousSlot = mc.field_1724.method_31548().method_67532();
+               this.activeSlot = axeSlot;
                this.pendingTarget = target;
                mc.field_1724.method_31548().method_61496(axeSlot);
             }
@@ -60,11 +69,13 @@ public final class ShieldBreaker extends Module {
    }
 
    private void restore() {
-      if (this.previousSlot >= 0 && mc.field_1724 != null) {
+      if (this.previousSlot >= 0 && this.activeSlot >= 0 && mc.field_1724 != null
+         && InvUtil.selected() == this.activeSlot) {
          mc.field_1724.method_31548().method_61496(this.previousSlot);
       }
 
       this.previousSlot = -1;
+      this.activeSlot = -1;
       this.pendingTarget = null;
    }
 
