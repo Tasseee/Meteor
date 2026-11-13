@@ -71,11 +71,17 @@ public class CrystalAura extends Module {
       int sideX = -forwardZ;
       int sideZ = forwardX;
       class_2338 feet = target.method_24515();
+      // Keep obsidian directly around the target: one block sideways is
+      // usually closer to the hitbox and gives the crystal a stronger blast.
       class_2338[] candidates = new class_2338[] {
-         feet.method_10069(sideX * 2, -1, sideZ * 2),
-         feet.method_10069(-sideX * 2, -1, -sideZ * 2),
-         feet.method_10069(forwardX * 2, -1, forwardZ * 2),
-         feet.method_10069(-forwardX * 2, -1, -forwardZ * 2)
+         feet.method_10069(sideX, -1, sideZ),
+         feet.method_10069(-sideX, -1, -sideZ),
+         feet.method_10069(forwardX, -1, forwardZ),
+         feet.method_10069(-forwardX, -1, -forwardZ),
+         feet.method_10069(sideX + forwardX, -1, sideZ + forwardZ),
+         feet.method_10069(sideX - forwardX, -1, sideZ - forwardZ),
+         feet.method_10069(-sideX + forwardX, -1, -sideZ + forwardZ),
+         feet.method_10069(-sideX - forwardX, -1, -sideZ - forwardZ)
       };
       for (class_2338 base : candidates) {
          class_2680 state = mc.field_1687.method_8320(base);
@@ -97,16 +103,25 @@ public class CrystalAura extends Module {
       return !target.method_24828();
    }
 
-   private boolean isCrystalHeight(class_1657 target) {
-      // Measure height above the current block-level, not modulo world Y.
+   // A target clearly above our player can be comboed even if it is not
+   // currently in the falling/airborne state.
+   private boolean isTargetElevated(class_746 player, class_1657 target) {
+      return target.method_23318() - player.method_23318() >= 1.5;
+   }
+
+   private boolean canComboTarget(class_746 player, class_1657 target, double minimumHeight) {
       double heightAboveBlock = target.method_23318() - target.method_24515().method_10264();
-      return this.isTargetAirborne(target) && heightAboveBlock >= this.crystalHeight.get();
+      return isTargetElevated(player, target)
+         || (isTargetAirborne(target) && heightAboveBlock >= minimumHeight);
+   }
+
+   private boolean isCrystalHeight(class_746 player, class_1657 target) {
+      return canComboTarget(player, target, this.crystalHeight.get());
    }
 
    private boolean placeObsidianAfterHit(class_746 player, class_1657 target) {
-      double heightAboveBlock = target.method_23318() - target.method_24515().method_10264();
-      if (!this.placeObsidianOnHit.get() || target.method_24828()
-         || heightAboveBlock < this.obsidianHeight.get()) return false;
+      if (!this.placeObsidianOnHit.get()
+         || !canComboTarget(player, target, this.obsidianHeight.get())) return false;
 
       class_2338 base = findHitObsidianBase(player, target);
       // If no valid obsidian position exists, do not block normal crystal placement.
@@ -196,7 +211,7 @@ public class CrystalAura extends Module {
                if (this.placeObsidianAfterHit(p, target)) return;
             }
 
-            if (target != null && this.isCrystalHeight(target)) {
+            if (target != null && this.isCrystalHeight(p, target)) {
                class_1268 hand = p.method_6079().method_31574(class_1802.field_8301)
                   ? class_1268.field_5810
                   : (p.method_6047().method_31574(class_1802.field_8301) ? class_1268.field_5808 : null);
