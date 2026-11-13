@@ -78,7 +78,9 @@ public final class InvUtil {
                   destination = p.method_31548().method_67532();
                }
 
-               client.field_1761.method_2906(p.field_7498.field_7763, source, destination, class_1713.field_7791, p);
+               // Player inventory indices 9-35 map to PlayerScreenHandler slots 10-36.
+               // Slot 9 is the offhand, so using 'source' directly swaps the wrong stack.
+               client.field_1761.method_2906(p.field_7498.field_7763, source + 1, destination, class_1713.field_7791, p);
                return destination;
             }
          }
