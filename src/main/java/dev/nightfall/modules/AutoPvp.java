@@ -469,10 +469,24 @@ public class AutoPvp extends Module {
             class_243 hit = class_243.method_24953(support).method_1031(0.5, 1.0, 0.5);
             mc.field_1761.method_2896(p, main, new class_3965(hit, class_2350.field_11036, support, false));
             p.method_6104(main);
+            // Wait for the server to confirm this single placement; don't send
+            // another obsidian placement every tick while the block update is pending.
+            this.crystalComboPhase = 6;
+            this.crystalComboTicks = 0;
             return true;
          }
          this.crystalComboPhase = 2;
          this.crystalComboTicks = 0;
+      }
+
+      if (this.crystalComboPhase == 6) {
+         if (this.crystalComboBase != null && this.isObsidian(this.crystalComboBase)) {
+            this.crystalComboPhase = 2;
+            this.crystalComboTicks = 0;
+         } else {
+            // Keep waiting for block confirmation instead of placing again.
+            return true;
+         }
       }
 
       if (this.crystalComboPhase == 3) {
