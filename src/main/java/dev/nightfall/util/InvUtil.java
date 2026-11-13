@@ -2,6 +2,7 @@ package dev.nightfall.util;
 
 import net.minecraft.class_1713;
 import net.minecraft.class_1792;
+import net.minecraft.class_2868;
 import net.minecraft.class_1799;
 import net.minecraft.class_1802;
 import net.minecraft.class_310;
@@ -116,6 +117,9 @@ public final class InvUtil {
       if (p != null && slot >= 0 && slot <= 8) {
          if (p.method_31548().method_67532() != slot) {
             p.method_31548().method_61496(slot);
+            // Send the held-slot change before an interaction is sent in the same tick.
+            // Otherwise interactBlock can reach the server while the old slot is still active.
+            if (p.field_3944 != null) p.field_3944.method_52787(new class_2868(slot));
          }
 
          return true;
