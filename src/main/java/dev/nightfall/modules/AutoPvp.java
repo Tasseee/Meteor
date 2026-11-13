@@ -43,6 +43,7 @@ public class AutoPvp extends Module {
    private int crystalComboTicks;
    private int crystalComboTargetId = -1;
    private class_2338 crystalComboBase;
+   private class_2338 lastCrystalObsidianBase;
    private boolean driving;
    private boolean wasForward;
    private boolean wasSprint;
@@ -453,12 +454,11 @@ public class AutoPvp extends Module {
          return false;
       }
 
-      // If the target has moved outside the selected base's 2-block radius,
-      // abandon that base and select/reuse one near the target's new position.
+      // Keep using the last obsidian until the target is at least 3 blocks away.
       if (this.crystalComboBase != null) {
          double bx = this.crystalComboBase.method_10263() + 0.5 - target.method_23317();
          double bz = this.crystalComboBase.method_10260() + 0.5 - target.method_23321();
-         if (bx * bx + bz * bz > 4.0) {
+         if (bx * bx + bz * bz >= 9.0) {
             this.crystalComboBase = null;
             this.crystalComboPhase = 1;
             this.crystalComboTicks = 0;
@@ -469,7 +469,14 @@ public class AutoPvp extends Module {
       if (this.crystalComboPhase == 1) {
          if (target.method_24828()) return true;
          if (this.crystalComboBase == null) {
-            this.crystalComboBase = this.findNearbyObsidian(target);
+            if (this.lastCrystalObsidianBase != null && this.isObsidian(this.lastCrystalObsidianBase)) {
+               double lastX = this.lastCrystalObsidianBase.method_10263() + 0.5 - target.method_23317();
+               double lastZ = this.lastCrystalObsidianBase.method_10260() + 0.5 - target.method_23321();
+               if (lastX * lastX + lastZ * lastZ < 9.0) {
+                  this.crystalComboBase = this.lastCrystalObsidianBase;
+               }
+            }
+            if (this.crystalComboBase == null) this.crystalComboBase = this.findNearbyObsidian(target);
             if (this.crystalComboBase == null) {
                class_2338 feet = target.method_24515();
                double dx = target.method_23317() - p.method_23317();
@@ -502,6 +509,7 @@ public class AutoPvp extends Module {
             class_243 hit = class_243.method_24953(support).method_1031(0.5, 1.0, 0.5);
             mc.field_1761.method_2896(p, main, new class_3965(hit, class_2350.field_11036, support, false));
             p.method_6104(main);
+            this.lastCrystalObsidianBase = this.crystalComboBase;
             // Wait for the server to confirm this single placement; don't send
             // another obsidian placement every tick while the block update is pending.
             this.crystalComboPhase = 6;
@@ -575,6 +583,8 @@ public class AutoPvp extends Module {
 
    @Override
    public void onWorldLeave() {
+      this.resetCrystalCombo();
+      this.lastCrystalObsidianBase = null;
       this.cancelSlam(true);
       this.releaseShieldAxe();
       this.release();
