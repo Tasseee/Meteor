@@ -84,6 +84,14 @@ public class DTap extends Module {
       this.queuedTargetId = target.method_5628();
    }
 
+   // True when the selected crystal spawn volume is occupied. AutoPvP
+   // briefly backs away so its own hitbox no longer blocks crystal placement.
+   public boolean needsRetreat() {
+      if (base == null || (phase != PLACE_FIRST && phase != WAIT_FIRST
+         && phase != PLACE_SECOND && phase != WAIT_SECOND_SPAWN)) return false;
+      return !entityFree(base, 1.0, 3.0);
+   }
+
    private void setPhase(int next) {
       phase = next;
       phaseTicks = 0;
