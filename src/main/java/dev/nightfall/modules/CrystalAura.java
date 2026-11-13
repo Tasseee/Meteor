@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.CombatUtil;
@@ -136,6 +137,8 @@ public class CrystalAura extends Module {
    public void onTick() {
       class_746 p = mc.field_1724;
       if (p != null && mc.field_1687 != null && mc.field_1761 != null && mc.field_1755 == null) {
+         AutoPvp autoPvp = ModuleManager.get(AutoPvp.class);
+         if (autoPvp != null && autoPvp.isCrystalComboEnabled()) return;
          if (this.placeT > 0) {
             this.placeT--;
          }
