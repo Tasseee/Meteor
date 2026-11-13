@@ -126,34 +126,9 @@ public class DTap extends Module {
       return entityFree(candidate, 1.0, 3.0);
    }
 
-   // Finds an existing obsidian block one or two blocks beside the target.
-   private class_2338 findNearbyObsidian(class_1657 target) {
-      class_2338 feet = target.method_24515();
-      class_2338 best = null;
-      double bestDistance = Double.MAX_VALUE;
-      for (int drop = 0; drop <= 3; drop++) {
-         for (int x = -2; x <= 2; x++) {
-            for (int z = -2; z <= 2; z++) {
-               int horizontal = x * x + z * z;
-               if (horizontal < 1 || horizontal > 4) continue;
-               class_2338 candidate = feet.method_10069(x, -drop, z);
-               if (usableObsidian(candidate)) {
-                  // Prefer a two-block offset: it leaves more room for the
-                  // crystal hitbox while keeping the explosion close enough.
-                  double distance = (horizontal == 4 ? 0.0 : horizontal == 2 ? 0.5 : 1.0) + drop * 0.25;
-                  if (distance < bestDistance) {
-                     best = candidate;
-                     bestDistance = distance;
-                  }
-               }
-            }
-         }
-      }
-      return best;
-   }
-
-   // Searches at the target's feet level first, then lower levels for a supported
-   // position. This avoids searching inside the solid floor block on flat ground.
+   // Search for a FRESH obsidian position beside the target.
+   // Nearby obsidian never creates a no-place radius: occupied cells are simply
+   // skipped and the search continues to the next side position.
    private class_2338 findSideBase(class_746 player, class_1657 target) {
       double dx = target.method_23317() - player.method_23317();
       double dz = target.method_23321() - player.method_23321();
@@ -162,21 +137,33 @@ public class DTap extends Module {
       int sideX = -forwardZ;
       int sideZ = forwardX;
       int[][] offsets = {
-         // Prefer two blocks of horizontal clearance for the crystal hitbox.
+         // The first choices remain one or two blocks beside the target.
+         { -forwardX, -forwardZ }, { sideX, sideZ }, { -sideX, -sideZ },
          { sideX * 2, sideZ * 2 }, { -sideX * 2, -sideZ * 2 },
-         { forwardX * 2, forwardZ * 2 }, { -forwardX * 2, -forwardZ * 2 },
+         { forwardX, forwardZ }, { forwardX * 2, forwardZ * 2 },
+         { -forwardX * 2, -forwardZ * 2 },
          { sideX + forwardX, sideZ + forwardZ },
          { sideX - forwardX, sideZ - forwardZ },
          { -sideX + forwardX, -sideZ + forwardZ },
          { -sideX - forwardX, -sideZ - forwardZ },
-         { sideX, sideZ }, { -sideX, -sideZ },
-         { forwardX, forwardZ }, { -forwardX, -forwardZ }
+         // Expand outward only when every closer side cell is occupied/blocked.
+         { sideX * 3, sideZ * 3 }, { -sideX * 3, -sideZ * 3 },
+         { forwardX * 3, forwardZ * 3 }, { -forwardX * 3, -forwardZ * 3 },
+         { sideX * 4, sideZ * 4 }, { -sideX * 4, -sideZ * 4 },
+         { forwardX * 4, forwardZ * 4 }, { -forwardX * 4, -forwardZ * 4 }
       };
       class_2338 feet = target.method_24515();
       for (int drop = 0; drop <= 3; drop++) {
          for (int[] offset : offsets) {
             class_2338 candidate = feet.method_10069(offset[0], -drop, offset[1]);
-            if (validBase(candidate)) return candidate;
+            if (!validBase(candidate)) continue;
+
+            // Crystal interaction is one block higher than the obsidian
+            // placement face. Prefer only positions the player can actually reach.
+            class_243 crystalHit = new class_243(candidate.method_10263() + 0.5,
+               candidate.method_10264() + 1.0, candidate.method_10260() + 0.5);
+            if (player.method_33571().method_1022(crystalHit) > 4.5) continue;
+            return candidate;
          }
       }
       return null;
@@ -219,22 +206,38 @@ public class DTap extends Module {
 
    private boolean placeCrystal(class_746 player, class_2338 candidate) {
       if (!isObsidian(candidate) || !clearCrystalBlocks(candidate) || !entityFree(candidate, 1.0, 3.0)) return false;
-      int slot = InvUtil.ensureHotbar(class_1802.field_8301);
-      if (slot < 0) return false;
 
+      // Match CrystalAura's hand selection: an offhand crystal is valid too.
+      class_1268 hand = player.method_6079().method_31574(class_1802.field_8301)
+         ? class_1268.field_5810
+         : (player.method_6047().method_31574(class_1802.field_8301) ? class_1268.field_5808 : null);
       int previousSlot = InvUtil.selected();
-      InvUtil.select(slot);
+      boolean switched = false;
+      if (hand == null) {
+         int slot = InvUtil.ensureHotbar(class_1802.field_8301);
+         if (slot < 0) return false;
+         if (slot != previousSlot) {
+            InvUtil.select(slot);
+            switched = true;
+         }
+         hand = class_1268.field_5808;
+      }
+
       boolean accepted = false;
       try {
          class_243 hit = new class_243(candidate.method_10263() + 0.5,
             candidate.method_10264() + 1.0, candidate.method_10260() + 0.5);
+         // Do not send an out-of-reach placement packet.
+         if (player.method_33571().method_1022(hit) > 4.5) return false;
          class_3965 result = new class_3965(hit, class_2350.field_11036, candidate, false);
-         accepted = mc.field_1761.method_2896(player, class_1268.field_5808, result).method_23665();
-         if (accepted) player.method_6104(class_1268.field_5808);
+         accepted = mc.field_1761.method_2896(player, hand, result).method_23665();
+         player.method_6104(hand);
       } finally {
-         InvUtil.select(previousSlot);
+         if (switched) InvUtil.select(previousSlot);
       }
-      return accepted;
+      // A world update can arrive immediately even when the local interaction
+      // result is PASS; count the spawned crystal as a successful placement.
+      return accepted || findCrystal(candidate) != null;
    }
 
    private void attackCrystal(class_746 player, class_1511 crystal) {
@@ -285,13 +288,10 @@ public class DTap extends Module {
          if (!wasHit || countInventory(player, class_1802.field_8301) < 2) return;
 
          targetId = target.method_5628();
-         base = findNearbyObsidian(target);
-         if (base != null) {
-            setPhase(PLACE_FIRST);
-         } else {
-            base = findSideBase(player, target);
-            setPhase(PLACE_OBSIDIAN);
-         }
+         // DTap always starts with a fresh obsidian block. There is no
+         // nearby-obsidian radius that suppresses a new placement.
+         base = findSideBase(player, target);
+         setPhase(PLACE_OBSIDIAN);
          hitDelayTicks = hitDelay.getInt();
          sequenceTicks = 0;
          return;
@@ -312,8 +312,7 @@ public class DTap extends Module {
       switch (phase) {
          case PLACE_OBSIDIAN:
             if (base == null || (!isObsidian(base) && !validBase(base))) {
-               class_2338 existing = findNearbyObsidian(target);
-               base = existing != null ? existing : findSideBase(player, target);
+               base = findSideBase(player, target);
             }
             if (base == null) return;
             if (isObsidian(base)) {
