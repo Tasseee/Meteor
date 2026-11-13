@@ -1,7 +1,6 @@
 package dev.nightfall.util;
 
 import dev.nightfall.mixin.GameRendererAccessor;
-import dev.nightfall.mixin.CameraProjectionAccessor;
 import net.minecraft.class_1297;
 import net.minecraft.class_238;
 import net.minecraft.class_243;
@@ -66,19 +65,12 @@ public final class Projection {
             ey = cameraPos.field_1351;
             ez = cameraPos.field_1350;
             GameRendererAccessor renderer = (GameRendererAccessor)mc.field_1773;
-            // Read the camera's effective projection instead of GameRenderer#getFov.
-            // Zoomify changes Camera's projection while its zoom key is held, so the
-            // renderer FOV alone can be stale and make ESP boxes drift away from entities.
-            CameraProjectionAccessor cameraProjection = (CameraProjectionAccessor) camera.method_36425();
-            class_243 halfHeight = cameraProjection.nightfall$getHalfHeight();
-            double halfHeightLength = Math.sqrt(
-               halfHeight.field_1352 * halfHeight.field_1352
-                  + halfHeight.field_1351 * halfHeight.field_1351
-                  + halfHeight.field_1350 * halfHeight.field_1350
-            );
-            float fov = (float) Math.toDegrees(2.0 * Math.atan(halfHeightLength));
-            if (Float.isFinite(fov) && fov > 0.0F) {
-               Matrix4f projection = renderer.nightfall$invokeGetProjectionMatrix(fov);
+            // Use Minecraft's exact render-time FOV for this camera/tickDelta. Rebuilding
+            // the FOV from the camera projection plane can introduce tiny scale changes
+            // while the camera is rotating, which become visible as ESP jitter.
+            float renderFov = renderer.nightfall$invokeGetFov(camera, tickDelta, false);
+            if (Float.isFinite(renderFov) && renderFov > 0.0F) {
+               Matrix4f projection = renderer.nightfall$invokeGetProjectionMatrix(renderFov);
                Quaternionf inverseCameraRotation = camera.method_23767().conjugate(new Quaternionf());
                Matrix4f view = new Matrix4f().rotation(inverseCameraRotation);
                viewProjection = projection.mul(view);
