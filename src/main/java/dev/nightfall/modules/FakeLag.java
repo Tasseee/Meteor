@@ -27,7 +27,6 @@ public final class FakeLag extends Module {
 
    private final NumberSetting maxDelay = this.add(new NumberSetting("Max. Delay (ms)", 350.0, 50.0, 1000.0, 25.0));
    private final NumberSetting maxPackets = this.add(new NumberSetting("Max. Pakete", 25.0, 5.0, 60.0, 1.0));
-   private final BoolSetting flushOnAttack = this.add(new BoolSetting("Bei Angriff senden", true));
    private final BoolSetting flushOnScreen = this.add(new BoolSetting("Bei GUI senden", true));
 
    public FakeLag() {
@@ -56,31 +55,31 @@ public final class FakeLag extends Module {
       serverPitch = packet.method_12270(serverPitch);
    }
 
-   public static boolean hasPendingServerPosition() {
+   public static synchronized boolean hasPendingServerPosition() {
       return !QUEUE.isEmpty() && serverPositionInitialized;
    }
 
-   public static double serverX() {
+   public static synchronized double serverX() {
       return serverX;
    }
 
-   public static double serverY() {
+   public static synchronized double serverY() {
       return serverY;
    }
 
-   public static double serverZ() {
+   public static synchronized double serverZ() {
       return serverZ;
    }
 
-   public static float serverYaw() {
+   public static synchronized float serverYaw() {
       return serverYaw;
    }
 
-   public static float serverPitch() {
+   public static synchronized float serverPitch() {
       return serverPitch;
    }
 
-   public static void intercept(class_2535 conn, class_2596<?> packet, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+   public static synchronized void intercept(class_2535 conn, class_2596<?> packet, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
       if (bypass) {
          if (packet instanceof class_2828 movement) recordSentMovement(movement);
          return;
@@ -99,13 +98,15 @@ public final class FakeLag extends Module {
          return;
       }
 
-      if (packet instanceof class_2824) {
-         if (module.flushOnAttack.get()) flush();
+      // Preserve packet order: flush delayed movement before every action/control
+      // packet (attacks, interactions, slot changes, keep-alives, etc.).
+      if (!(packet instanceof class_2828 movement)) {
+         flush();
          return;
       }
-      if (!(packet instanceof class_2828 movement)) return;
 
       if (QUEUE.isEmpty()) holdStart = System.currentTimeMillis();
+      if (connection != null && connection != conn) flush();
       connection = conn;
       QUEUE.add(packet);
       ci.cancel();
@@ -113,7 +114,7 @@ public final class FakeLag extends Module {
       if (QUEUE.size() >= module.maxPackets.getInt()) flush();
    }
 
-   public static void flush() {
+   public static synchronized void flush() {
       if (connection == null) {
          QUEUE.clear();
          holdStart = 0L;
@@ -126,7 +127,10 @@ public final class FakeLag extends Module {
          while ((packet = QUEUE.poll()) != null) connection.method_10752(packet, null);
       } finally {
          bypass = old;
-         if (QUEUE.isEmpty()) holdStart = 0L;
+         if (QUEUE.isEmpty()) {
+            holdStart = 0L;
+            connection = null;
+         }
       }
    }
 
