@@ -32,6 +32,10 @@ public final class AutoGap extends Module {
       this.cooldown = 0;
    }
 
+   public boolean isEating() {
+      return this.eating;
+   }
+
    private void finish() {
       if (this.eating) {
          if (mc.field_1690 != null) {
