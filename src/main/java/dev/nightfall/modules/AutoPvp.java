@@ -362,7 +362,7 @@ public class AutoPvp extends Module {
    private boolean tickCrystalCombo(class_746 p, class_1657 target) {
       // AutoPvP owns the crystal sequence: it starts after its own melee hit
       // and waits until the target is airborne before placing obsidian.
-      if (!this.crystalCombo.get()) {
+      if (!this.crystalCombo.get() || !this.useCrystalAura.get()) {
          this.resetCrystalCombo();
          return false;
       }
@@ -538,13 +538,13 @@ public class AutoPvp extends Module {
                      InvUtil.select(swordSlot);
                   }
 
-                  if (this.crystalCombo.get()) {
+                  if (this.crystalCombo.get() && this.useCrystalAura.get()) {
                      mc.field_1690.field_1867.method_23481(true);
                      mc.field_1690.field_1894.method_23481(true);
                   }
                   mc.field_1761.method_2918(p, target);
                   p.method_6104(class_1268.field_5808);
-                  if (this.crystalCombo.get() && InvUtil.findInventory(class_1802.field_8281) >= 0 && InvUtil.findInventory(class_1802.field_8301) >= 0) {
+                  if (this.crystalCombo.get() && this.useCrystalAura.get() && InvUtil.findInventory(class_1802.field_8281) >= 0 && InvUtil.findInventory(class_1802.field_8301) >= 0) {
                      this.crystalComboPhase = 1;
                      this.crystalComboTicks = 0;
                      this.crystalComboTargetId = target.method_5628();
