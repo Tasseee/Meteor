@@ -667,9 +667,8 @@ public class AutoPvp extends Module {
       if (p != null && mc.field_1755 == null && mc.field_1761 != null && mc.field_1687 != null) {
          // AutoGap owns the hotbar and use key until its eating sequence finishes.
          if (ModuleManager.get(AutoGap.class).isEating()) {
-            this.resetCrystalCombo();
-            this.cancelSlam(true);
-            this.releaseShieldAxe();
+            // Pause movement, but keep the current combo/slot ownership intact.
+            // AutoGap restores the slot it found; the sequence can resume afterward.
             this.release();
             return;
          }
