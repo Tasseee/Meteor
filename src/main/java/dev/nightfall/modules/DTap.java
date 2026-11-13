@@ -80,16 +80,22 @@ public class DTap extends Module {
 
    // Called by AutoPvP immediately after it performs a sword attack.
    public void triggerFromAutoPvp(class_1657 target) {
-      if (!this.isEnabled() || target == null || !target.method_5805()) return;
+      // Ignore additional hits while a sequence is already running; otherwise
+      // a stale queued hit could start an unexpected second sequence afterward.
+      if (!this.isEnabled() || phase != IDLE || target == null || !target.method_5805()) return;
       this.queuedTargetId = target.method_5628();
    }
 
-   // True when the selected crystal spawn volume is occupied. AutoPvP
-   // briefly backs away so its own hitbox no longer blocks crystal placement.
+   // True only when our own player hitbox blocks the crystal spawn volume.
+   // Other entities (including the target or a spawned crystal) must not make
+   // AutoPvP retreat unnecessarily.
    public boolean needsRetreat() {
-      if (base == null || (phase != PLACE_FIRST && phase != WAIT_FIRST
+      if (base == null || mc.field_1687 == null || mc.field_1724 == null
+         || (phase != PLACE_FIRST && phase != WAIT_FIRST
          && phase != PLACE_SECOND && phase != WAIT_SECOND_SPAWN)) return false;
-      return !entityFree(base, 1.0, 3.0);
+      class_238 spawnBox = new class_238(base.method_10263(), base.method_10264() + 1.0, base.method_10260(),
+         base.method_10263() + 1.0, base.method_10264() + 3.0, base.method_10260() + 1.0);
+      return mc.field_1687.method_8335(null, spawnBox).contains(mc.field_1724);
    }
 
    private void setPhase(int next) {
@@ -282,13 +288,16 @@ public class DTap extends Module {
       if (player == null || mc.field_1687 == null || mc.field_1761 == null || mc.field_1755 != null) return;
 
       if (phase == IDLE) {
-         // AutoPvP queues the exact opponent after its sword swing. This avoids
-         // relying on a delayed health update, which may never arrive client-side.
-         class_1657 target = this.queuedTargetId != -1
-            ? findTrackedTarget(this.queuedTargetId)
-            : null;
-         if (this.queuedTargetId != -1) this.queuedTargetId = -1;
-         if (target == null) {
+         // A queued AutoPvP hit is authoritative: never fall back to another
+         // nearby player if that exact entity is no longer present.
+         int queuedId = this.queuedTargetId;
+         boolean autoPvpTriggered = queuedId != -1;
+         this.queuedTargetId = -1;
+         class_1657 target;
+         if (autoPvpTriggered) {
+            target = findTrackedTarget(queuedId);
+            if (target == null || player.method_5739(target) > targetRange.get() + 2.0) return;
+         } else {
             target = CombatUtil.nearestPlayer(targetRange.get());
             if (target == null) return;
             // Standalone DTap remains usable: initialize target tracking, then
@@ -321,7 +330,9 @@ public class DTap extends Module {
       }
 
       class_1657 target = findTrackedTarget(targetId);
-      if (target == null || ++sequenceTicks > 180) {
+      if (target == null || ++sequenceTicks > 180
+         || player.method_5739(target) > targetRange.get() + 2.0) {
+         // Stop if the original opponent disappears or leaves the supported range.
          finishSequence(target);
          return;
       }
