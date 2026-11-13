@@ -8,7 +8,6 @@ import java.util.List;
 import net.minecraft.class_1297;
 import net.minecraft.class_1309;
 import net.minecraft.class_238;
-import net.minecraft.class_243;
 import net.minecraft.class_332;
 
 public abstract class EntityScanEsp extends EspBase {
@@ -79,7 +78,7 @@ public abstract class EntityScanEsp extends EspBase {
                continue;
             }
 
-            this.buf.add(new RenderTarget(entity, interpolatedBox, distanceSquared, interpolatedX, interpolatedY, interpolatedZ));
+            this.buf.add(new RenderTarget(entity, interpolatedBox, distanceSquared));
          }
 
          if (this.buf.size() > this.maxObjects.getInt()) {
@@ -97,11 +96,11 @@ public abstract class EntityScanEsp extends EspBase {
 
             // The box and all other ESP primitives are drawn from this same render-frame
             // world position. Projection converts them to screen space during this frame.
-            this.drawTarget(ctx, target.box(), label, this.color.rgb(), 0.0, 0.0, 0.0);
+            this.drawTarget(ctx, target.box(), label, this.color.rgb());
          }
       }
    }
 
-   private record RenderTarget(class_1297 entity, class_238 box, double distanceSquared, double renderX, double renderY, double renderZ) {
+   private record RenderTarget(class_1297 entity, class_238 box, double distanceSquared) {
    }
 }
