@@ -48,8 +48,10 @@ public final class LowHealthWarning extends HudModule {
    @Override
    protected void draw(class_332 ctx) {
       boolean preview = mc.field_1755 instanceof HudEditorScreen;
-      if (mc.field_1724 != null && (!(mc.field_1724.method_6032() > this.threshold.get() * 2.0) || preview)) {
-         String text = preview && mc.field_1724.method_6032() > this.threshold.get() * 2.0
+      boolean low = mc.field_1724 != null && mc.field_1724.method_5805()
+         && mc.field_1724.method_6032() <= this.threshold.get() * 2.0;
+      if (mc.field_1724 != null && (low || preview)) {
+         String text = preview && !low
             ? "LOW HEALTH  3.5 ♥ (Preview)"
             : String.format("LOW HEALTH  %.1f ♥", mc.field_1724.method_6032() / 2.0F);
          this.w = mc.field_1772.method_1727(text) + 18;
