@@ -14,6 +14,7 @@ import net.minecraft.class_1297;
 import net.minecraft.class_1309;
 import net.minecraft.class_238;
 import net.minecraft.class_332;
+import net.minecraft.class_4184;
 
 public abstract class EntityScanEsp extends EspBase {
    protected final BoolSetting health = this.add(new BoolSetting("Health", true));
@@ -36,8 +37,10 @@ public abstract class EntityScanEsp extends EspBase {
          return;
       }
 
+      class_4184 cameraView = mc.field_1773.method_19418();
+      if (cameraView == null || !cameraView.method_19332()) return;
       float tickDelta = Projection.tickDelta();
-      class_243 camera = mc.field_1773.method_19418().method_71156();
+      class_243 camera = cameraView.method_71156();
       double cameraX = camera.field_1352;
       double cameraY = camera.field_1351;
       double cameraZ = camera.field_1350;
