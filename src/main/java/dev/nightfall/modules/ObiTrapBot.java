@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.ModuleManager;
 import dev.nightfall.util.InvUtil;
 import java.util.ArrayList;
 import java.util.List;
@@ -85,7 +86,7 @@ public final class ObiTrapBot extends Module {
          return;
       }
       // Do not place blocks while a menu or inventory screen is open.
-      if (mc.field_1755 != null) return;
+      if (mc.field_1755 != null || ModuleManager.get(AutoGap.class).isEating()) return;
 
       // Respect manual hotbar changes: stop instead of silently selecting the
       // bot's previous slot again. restoreSlot() then preserves the user's choice.
