@@ -444,10 +444,6 @@ public class AutoPvp extends Module {
                      && p.method_7261(0.5F) >= 0.95F) {
                      mc.field_1761.method_2918(p, target);
                      p.method_6104(class_1268.field_5808);
-                     if (this.useDTap.get()) {
-                        DTap dtap = ModuleManager.get(DTap.class);
-                        dtap.triggerFromAutoPvp(target);
-                     }
                      this.cancelSlam(true);
                      return true;
                   }
@@ -507,20 +503,6 @@ public class AutoPvp extends Module {
          }
          double chaseDistance = p.method_5739(target);
          if (chaseDistance > 3.8) {
-            // Make a little room when the crystal spawn volume is blocked by
-            // our own position. Face the opponent but step backward briefly;
-            // normal chase controls resume as soon as the space is clear.
-            if (this.useDTap.get() && ModuleManager.get(DTap.class).needsRetreat()) {
-               this.aimAt(target.method_23317(), target.method_23323(0.5), target.method_23321());
-               mc.field_1690.field_1894.method_23481(false);
-               mc.field_1690.field_1905.method_23481(true);
-               mc.field_1690.field_1867.method_23481(false);
-               mc.field_1690.field_1913.method_23481(false);
-               mc.field_1690.field_1849.method_23481(false);
-               mc.field_1690.field_1903.method_23481(false);
-               this.driving = true;
-               return;
-            }
             this.aimAt(target.method_23317(), target.method_23323(0.5), target.method_23321());
             mc.field_1690.field_1894.method_23481(true);
             mc.field_1690.field_1867.method_23481(true);
@@ -703,6 +685,22 @@ public class AutoPvp extends Module {
             if (this.tickStunSlam(p, target, distance)) {
                this.driving = true;
             } else {
+               // The retreat check belongs in the active movement path; the old
+               // check inside tickCrystalCombo was unreachable when DTap was enabled.
+               if (this.useDTap.get()) {
+                  DTap dtap = ModuleManager.get(DTap.class);
+                  if (dtap != null && dtap.needsRetreat()) {
+                     this.aimAt(target.method_23317(), target.method_23323(0.5), target.method_23321());
+                     mc.field_1690.field_1894.method_23481(false);
+                     mc.field_1690.field_1905.method_23481(true);
+                     mc.field_1690.field_1867.method_23481(false);
+                     mc.field_1690.field_1913.method_23481(false);
+                     mc.field_1690.field_1849.method_23481(false);
+                     mc.field_1690.field_1903.method_23481(false);
+                     this.driving = true;
+                     return;
+                  }
+               }
                boolean obsidianInPath = this.obsidianAhead(p, target);
                int obsidianSide = obsidianInPath ? this.obsidianDetourSide(p, target) : 0;
                boolean detouring = obsidianSide != 0;
@@ -776,6 +774,11 @@ public class AutoPvp extends Module {
                      }
                      mc.field_1761.method_2918(p, target);
                      p.method_6104(class_1268.field_5808);
+                     // Start DTap only after an actual sword hit, never after the shield-breaking axe hit.
+                     if (this.useDTap.get() && this.shieldAxeSlot < 0) {
+                        DTap dtap = ModuleManager.get(DTap.class);
+                        if (dtap != null) dtap.triggerFromAutoPvp(target);
+                     }
                      if (this.crystalCombo.get() && this.useCrystalAura.get()
                         && InvUtil.findInventory(class_1802.field_8281) >= 0
                         && InvUtil.findInventory(class_1802.field_8301) >= 0) {
