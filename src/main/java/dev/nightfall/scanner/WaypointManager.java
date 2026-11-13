@@ -43,7 +43,13 @@ public final class WaypointManager {
          try {
             List<Waypoint> in = (List<Waypoint>)GSON.fromJson(Files.readString(f), LIST);
             if (in != null) {
-               LIST_.addAll(in);
+               for (Waypoint waypoint : in) {
+                  if (waypoint == null) continue;
+                  waypoint.name = waypoint.name == null || waypoint.name.isBlank() ? "Waypoint" : waypoint.name.trim();
+                  waypoint.category = waypoint.category == null || waypoint.category.isBlank() ? "Default" : waypoint.category.trim();
+                  waypoint.dim = waypoint.dim == null || waypoint.dim.isBlank() ? "unknown" : waypoint.dim.trim();
+                  LIST_.add(waypoint);
+               }
             }
          } catch (Exception var2) {
             Nightfall.LOGGER.error("Waypoints defekt: {}", f, var2);
@@ -64,8 +70,8 @@ public final class WaypointManager {
    public static Waypoint add(String name, String category, int x, int y, int z) {
       List<Waypoint> l = all();
       Waypoint w = new Waypoint();
-      w.name = name;
-      w.category = category == null ? "Default" : category;
+      w.name = name == null || name.isBlank() ? "Waypoint" : name.trim();
+      w.category = category == null || category.isBlank() ? "Default" : category.trim();
       w.dim = Storage.dim();
       w.x = x;
       w.y = y;
@@ -77,7 +83,9 @@ public final class WaypointManager {
    }
 
    public static boolean remove(String name) {
-      boolean r = all().removeIf(w -> w.name.equalsIgnoreCase(name));
+      if (name == null || name.isBlank()) return false;
+      String normalizedName = name.trim();
+      boolean r = all().removeIf(w -> w != null && w.name != null && w.name.equalsIgnoreCase(normalizedName));
       if (r) {
          save();
       }
@@ -86,7 +94,7 @@ public final class WaypointManager {
    }
 
    public static void remove(Waypoint w) {
-      if (all().remove(w)) {
+      if (w != null && all().remove(w)) {
          save();
       }
    }
