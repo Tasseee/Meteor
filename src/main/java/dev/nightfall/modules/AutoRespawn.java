@@ -3,11 +3,13 @@ package dev.nightfall.modules;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
+import dev.nightfall.module.setting.NumberSetting;
 import net.minecraft.class_2561;
 import net.minecraft.class_418;
 
 public final class AutoRespawn extends Module {
    private final BoolSetting chatNotice = this.add(new BoolSetting("Statusmeldung", false));
+   private final NumberSetting delay = this.add(new NumberSetting("Verzögerung (Ticks)", 20.0, 1.0, 100.0, 1.0));
    private int delayTicks = 0;
 
    public AutoRespawn() {
@@ -37,7 +39,7 @@ public final class AutoRespawn extends Module {
          return;
       }
 
-      if (++this.delayTicks >= 20) {
+      if (++this.delayTicks >= this.delay.getInt()) {
          mc.field_1724.method_7331();
          mc.method_1507(null);
          this.delayTicks = 0;
