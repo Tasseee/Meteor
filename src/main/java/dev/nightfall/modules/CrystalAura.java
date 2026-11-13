@@ -26,6 +26,7 @@ public class CrystalAura extends Module {
    private final NumberSetting placeRange = this.add(new NumberSetting("Platzier-Reichweite", 4.5, 2.0, 6.0, 0.5));
    private final NumberSetting breakRange = this.add(new NumberSetting("Zerstoer-Reichweite", 4.5, 2.0, 6.0, 0.5));
    private final NumberSetting placeDelay = this.add(new NumberSetting("Platzier-Delay (Ticks)", 0.0, 0.0, 20.0, 1.0));
+   private final NumberSetting placementsPerTick = this.add(new NumberSetting("Kristalle pro Tick", 4.0, 1.0, 8.0, 1.0));
    private final NumberSetting breakDelay = this.add(new NumberSetting("Zerstoer-Delay (Ticks)", 0.0, 0.0, 20.0, 1.0));
    private final NumberSetting crystalHeight = this.add(new NumberSetting("Crystal-Mindesthoehe", 0.75, 0.0, 2.5, 0.05));
    private final NumberSetting obsidianHeight = this.add(new NumberSetting("Obsidian-Mindesthoehe", 0.05, 0.0, 2.5, 0.05));
@@ -220,51 +221,67 @@ public class CrystalAura extends Module {
 
                class_2338 origin = p.method_24515();
                int r = (int)Math.ceil(this.placeRange.get());
-               class_2338 bestPos = null;
-               double bestDistance = Double.MAX_VALUE;
+               int maxPlacements = this.placementsPerTick.getInt();
+               class_2338[] bestPositions = new class_2338[maxPlacements];
+               double[] bestDistances = new double[maxPlacements];
+               for (int i = 0; i < maxPlacements; i++) bestDistances[i] = Double.MAX_VALUE;
 
+               // Collect the closest valid crystal bases, not just one position.
                for (int x = -r; x <= r; x++) {
                   for (int y = -r; y <= r; y++) {
                      for (int z = -r; z <= r; z++) {
                         class_2338 bp = origin.method_10069(x, y, z);
-                        if (!(p.method_33571().method_1022(class_243.method_24953(bp)) > this.placeRange.get() + 1.0)) {
-                           class_2680 state = mc.field_1687.method_8320(bp);
-                           if (state.method_27852(class_2246.field_10540) || state.method_27852(class_2246.field_9987)) {
-                              class_2338 up = bp.method_10084();
-                              if (mc.field_1687.method_8320(up).method_26215() && mc.field_1687.method_8320(up.method_10084()).method_26215()) {
-                                 class_238 crystalSpace = new class_238(
-                                    bp.method_10263(),
-                                    bp.method_10264() + 1,
-                                    bp.method_10260(),
-                                    bp.method_10263() + 1,
-                                    bp.method_10264() + 3,
-                                    bp.method_10260() + 1
-                                 );
-                                 if (mc.field_1687.method_8335(null, crystalSpace).isEmpty()) {
-                                    class_243 crystalPos = new class_243(bp.method_10263() + 0.5, bp.method_10264() + 1.0, bp.method_10260() + 0.5);
-                                    double targetDistance = target.method_5707(crystalPos);
-                                    if (!(targetDistance > 144.0) && targetDistance < bestDistance) {
-                                       bestDistance = targetDistance;
-                                       bestPos = bp.method_10062();
-                                    }
-                                 }
+                        if (p.method_33571().method_1022(class_243.method_24953(bp)) > this.placeRange.get() + 1.0) continue;
+                        class_2680 state = mc.field_1687.method_8320(bp);
+                        if (!state.method_27852(class_2246.field_10540) && !state.method_27852(class_2246.field_9987)) continue;
+
+                        class_2338 up = bp.method_10084();
+                        if (!mc.field_1687.method_8320(up).method_26215()
+                           || !mc.field_1687.method_8320(up.method_10084()).method_26215()) continue;
+
+                        class_238 crystalSpace = new class_238(
+                           bp.method_10263(), bp.method_10264() + 1, bp.method_10260(),
+                           bp.method_10263() + 1, bp.method_10264() + 3, bp.method_10260() + 1
+                        );
+                        if (!mc.field_1687.method_8335(null, crystalSpace).isEmpty()) continue;
+
+                        class_243 crystalPos = new class_243(bp.method_10263() + 0.5, bp.method_10264() + 1.0, bp.method_10260() + 0.5);
+                        double targetDistance = target.method_5707(crystalPos);
+                        if (targetDistance > 144.0) continue;
+
+                        for (int i = 0; i < maxPlacements; i++) {
+                           if (targetDistance < bestDistances[i]) {
+                              for (int j = maxPlacements - 1; j > i; j--) {
+                                 bestDistances[j] = bestDistances[j - 1];
+                                 bestPositions[j] = bestPositions[j - 1];
                               }
+                              bestDistances[i] = targetDistance;
+                              bestPositions[i] = bp.method_10062();
+                              break;
                            }
                         }
                      }
                   }
                }
 
-               if (bestPos != null) {
-                  class_243 hit = new class_243(bestPos.method_10263() + 0.5, bestPos.method_10264() + 1.0, bestPos.method_10260() + 0.5);
-                  class_3965 hitResult = new class_3965(hit, class_2350.field_11036, bestPos, false);
-                  mc.field_1761.method_2896(p, hand, hitResult);
-                  p.method_6104(hand);
-                  // Auto-switch only for the placement action; restore the user's selected slot immediately.
-                  if (switchedForCrystal) {
-                     InvUtil.select(previousSlot);
+               boolean placedAny = false;
+               try {
+                  for (class_2338 bestPos : bestPositions) {
+                     if (bestPos == null) continue;
+                     class_3965 hitResult = new class_3965(
+                        new class_243(bestPos.method_10263() + 0.5, bestPos.method_10264() + 1.0, bestPos.method_10260() + 0.5),
+                        class_2350.field_11036, bestPos, false
+                     );
+                     if (mc.field_1761.method_2896(p, hand, hitResult).method_23665()) {
+                        p.method_6104(hand);
+                        placedAny = true;
+                     }
                   }
-                  this.placeT = this.placeDelay.getInt();
+               } finally {
+                  // Restore the selected slot even if one of the placement attempts fails.
+                  if (switchedForCrystal) InvUtil.select(previousSlot);
+               }
+               if (placedAny) this.placeT = this.placeDelay.getInt();
                }
             }
          }
