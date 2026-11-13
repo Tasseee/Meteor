@@ -161,7 +161,9 @@ public final class CrystalTest extends Module {
    }
 
    private boolean placeCrystal(class_746 player) {
-      if (!isObsidian(base) || !clearForCrystal(base) || !facing(player, crystalAim())) return false;
+      if (!isObsidian(base) || !clearForCrystal(base)
+         || player.method_33571().method_1022(crystalAim()) > placeRange.get()) return false;
+
       class_1268 hand = player.method_6079().method_31574(class_1802.field_8301)
          ? class_1268.field_5810
          : (player.method_6047().method_31574(class_1802.field_8301) ? class_1268.field_5808 : null);
@@ -170,20 +172,23 @@ public final class CrystalTest extends Module {
       if (hand == null) {
          int slot = InvUtil.ensureHotbar(class_1802.field_8301);
          if (slot < 0) return false;
-         // Inventory-Swap kann clientseitig einen Tick benötigen.
-         // Erst interagieren, wenn im Ziel-Hotbar-Slot wirklich ein Endkristall liegt.
-         if (!InvUtil.hotbarStack(slot).method_31574(class_1802.field_8301)) return false;
-         if (slot != previous) { InvUtil.select(slot); switched = true; }
+         // Wie bei DTap: direkt den von ensureHotbar gefundenen Slot verwenden.
+         if (slot != previous) {
+            InvUtil.select(slot);
+            switched = true;
+         }
          hand = class_1268.field_5808;
       }
+
+      boolean accepted = false;
       try {
          class_3965 hit = new class_3965(crystalAim(), class_2350.field_11036, base, false);
-         mc.field_1761.method_2896(player, hand, hit);
+         accepted = mc.field_1761.method_2896(player, hand, hit).method_23665();
          player.method_6104(hand);
       } finally {
          if (switched) InvUtil.select(previous);
       }
-      return findCrystal() != null;
+      return accepted || findCrystal() != null;
    }
 
    private void attack(class_746 player) {
@@ -236,7 +241,10 @@ public final class CrystalTest extends Module {
             break;
          case PLACE_CRYSTAL_1:
             if (findCrystal() != null) next(BREAK_CRYSTAL_1);
-            else if (ticks > placeDelay.getInt()) placeCrystal(player);
+            else {
+               lookAt(player, crystalAim());
+               if (facing(player, crystalAim()) && ticks > placeDelay.getInt()) placeCrystal(player);
+            }
             break;
          case BREAK_CRYSTAL_1:
             if (findCrystal() == null) next(WAIT_BETWEEN);
@@ -253,7 +261,10 @@ public final class CrystalTest extends Module {
             break;
          case PLACE_CRYSTAL_2:
             if (findCrystal() != null) next(BREAK_CRYSTAL_2);
-            else if (ticks > placeDelay.getInt()) placeCrystal(player);
+            else {
+               lookAt(player, crystalAim());
+               if (facing(player, crystalAim()) && ticks > placeDelay.getInt()) placeCrystal(player);
+            }
             break;
          case BREAK_CRYSTAL_2:
             if (findCrystal() == null) { next(IDLE); base = null; }
