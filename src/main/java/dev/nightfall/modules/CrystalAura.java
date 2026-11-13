@@ -27,6 +27,8 @@ public class CrystalAura extends Module {
    private final NumberSetting breakRange = this.add(new NumberSetting("Zerstoer-Reichweite", 4.5, 2.0, 6.0, 0.5));
    private final NumberSetting placeDelay = this.add(new NumberSetting("Platzier-Delay (Ticks)", 0.0, 0.0, 20.0, 1.0));
    private final NumberSetting breakDelay = this.add(new NumberSetting("Zerstoer-Delay (Ticks)", 0.0, 0.0, 20.0, 1.0));
+   private final NumberSetting crystalHeight = this.add(new NumberSetting("Crystal-Mindesthoehe", 0.75, 0.0, 2.5, 0.05));
+   private final NumberSetting obsidianHeight = this.add(new NumberSetting("Obsidian-Mindesthoehe", 0.05, 0.0, 2.5, 0.05));
    private final BoolSetting place = this.add(new BoolSetting("Platzieren", true));
    private final BoolSetting breakC = this.add(new BoolSetting("Zerstoeren", true));
    private final BoolSetting autoSwitch = this.add(new BoolSetting("Auto-Switch", true));
@@ -97,11 +99,13 @@ public class CrystalAura extends Module {
    private boolean isCrystalHeight(class_1657 target) {
       // Measure height above the current block-level, not modulo world Y.
       double heightAboveBlock = target.method_23318() - target.method_24515().method_10264();
-      return this.isTargetAirborne(target) && heightAboveBlock >= 0.75;
+      return this.isTargetAirborne(target) && heightAboveBlock >= this.crystalHeight.get();
    }
 
    private boolean placeObsidianAfterHit(class_746 player, class_1657 target) {
-      if (!this.placeObsidianOnHit.get() || !this.isTargetAirborne(target)) return false;
+      double heightAboveBlock = target.method_23318() - target.method_24515().method_10264();
+      if (!this.placeObsidianOnHit.get() || target.method_24828()
+         || heightAboveBlock < this.obsidianHeight.get()) return false;
 
       class_2338 base = findHitObsidianBase(player, target);
       // If no valid obsidian position exists, do not block normal crystal placement.
