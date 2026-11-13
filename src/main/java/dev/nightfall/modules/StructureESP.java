@@ -36,6 +36,8 @@ public final class StructureESP extends Module {
    private int scanChunkZ = Integer.MIN_VALUE;
    private class_2818 scanChunk;
    private boolean scanning;
+   private int scanRange = -1;
+   private int scanSelectionMask = -1;
 
    public StructureESP() {
       super("StructureESP", "Markiert Struktur-Hinweise in bereits geladenen Chunks.", Category.VISUALS);
@@ -49,6 +51,16 @@ public final class StructureESP extends Module {
          || this.suspicious.get() && (b == class_2246.field_42728 || b == class_2246.field_43227);
    }
 
+   private int selectionMask() {
+      int mask = 0;
+      if (this.spawners.get()) mask |= 1;
+      if (this.portals.get()) mask |= 2;
+      if (this.trial.get()) mask |= 4;
+      if (this.chests.get()) mask |= 8;
+      if (this.suspicious.get()) mask |= 16;
+      return mask;
+   }
+
    @Override
    public void onTick() {
       if (mc.field_1724 == null || mc.field_1687 == null) {
@@ -59,6 +71,11 @@ public final class StructureESP extends Module {
       if (this.scanWorld != mc.field_1687) {
          this.scanWorld = mc.field_1687;
          this.resetScan(true);
+      }
+
+      if (this.scanning && (this.scanRange != this.range.getInt()
+         || this.scanSelectionMask != this.selectionMask())) {
+         this.resetScan(false);
       }
 
       int playerChunkX = mc.field_1724.method_31477() >> 4;
@@ -83,6 +100,8 @@ public final class StructureESP extends Module {
    private void beginScan() {
       class_2338 playerPos = mc.field_1724.method_24515();
       int r = this.range.getInt();
+      this.scanRange = r;
+      this.scanSelectionMask = this.selectionMask();
       this.minX = playerPos.method_10263() - r;
       this.maxX = playerPos.method_10263() + r;
       this.minY = Math.max(mc.field_1687.method_31607(), playerPos.method_10264() - r);
@@ -154,6 +173,8 @@ public final class StructureESP extends Module {
       this.scanChunk = null;
       this.scanChunkX = Integer.MIN_VALUE;
       this.scanChunkZ = Integer.MIN_VALUE;
+      this.scanRange = -1;
+      this.scanSelectionMask = -1;
       if (clearVisible) this.positions.clear();
    }
 
