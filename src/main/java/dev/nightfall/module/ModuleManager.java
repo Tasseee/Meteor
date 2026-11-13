@@ -32,6 +32,7 @@ import dev.nightfall.modules.CombatStatusHud;
 import dev.nightfall.modules.CooldownHud;
 import dev.nightfall.modules.Coordinates;
 import dev.nightfall.modules.CrystalAura;
+import dev.nightfall.modules.CrystalTest;
 import dev.nightfall.modules.CustomCrosshair;
 import dev.nightfall.modules.DebugHud;
 import dev.nightfall.modules.DroppedItemNotifier;
@@ -129,6 +130,7 @@ public final class ModuleManager {
       MODULES.add(new TargetStrafe());
       MODULES.add(new ShieldBreaker());
       MODULES.add(new CrystalAura());
+      MODULES.add(new CrystalTest());
       MODULES.add(new AutoAnchor());
       MODULES.add(new MaceAssist());
       MODULES.add(new AutoTotem());
