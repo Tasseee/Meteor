@@ -31,7 +31,7 @@ public class AutoPvp extends Module {
    private final BoolSetting swordCrits = this.add(new BoolSetting("Schwert-Crits ohne CrystalAura", true));
    private final BoolSetting strafe = this.add(new BoolSetting("Strafen", false));
    private final BoolSetting jump = this.add(new BoolSetting("Springen bei Hindernis", true));
-   private final BoolSetting useStunSlam = this.add(new BoolSetting("Stun-Slam (Windcharge -> Mace)", true));
+   private final BoolSetting useStunSlam = this.add(new BoolSetting("Stun-Slam (Windcharge -> Mace)", false));
    private final BoolSetting useShieldBreak = this.add(new BoolSetting("Schild mit Axt kontern", true));
    private final BoolSetting useAutoGap = this.add(new BoolSetting("AutoGap integrieren", true));
    private final BoolSetting useAutoTotem = this.add(new BoolSetting("AutoTotem integrieren", true));
@@ -488,8 +488,10 @@ public class AutoPvp extends Module {
          // Follow the airborne opponent first. Do not cancel the combo just
          // because the target has moved outside block-placement reach.
          if (target.method_24828()) {
-            mc.field_1690.field_1894.method_23481(false);
-            return true;
+            // A grounded target must not freeze normal AutoPvP attacks while
+            // the crystal combo waits for the opponent to become airborne.
+            this.crystalComboBase = null;
+            return false;
          }
          double chaseDistance = p.method_5739(target);
          if (chaseDistance > 3.8) {
@@ -716,7 +718,9 @@ public class AutoPvp extends Module {
                   && p.method_18798().field_1351 <= 0.0;
                if (this.attack.get() && distance <= this.reach.get()
                   && p.method_6057(target) && this.isAimAligned(p, target)
-                  && (!critMode || fallingForCrit)
+                  // Never suppress every hit just because a critical-hit
+                  // window was missed; grounded hits remain a safe fallback.
+                  && (!critMode || fallingForCrit || p.method_24828())
                   && p.method_7261(0.5F) >= 0.95F) {
                   if (this.shieldAxeSlot < 0) {
                      int swordSlot = InvUtil.findBestSword();
