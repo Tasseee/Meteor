@@ -58,7 +58,7 @@ public class AutoAnchor extends Module {
    public void onTick() {
       class_746 p = mc.field_1724;
       if (p != null && mc.field_1687 != null && mc.field_1761 != null && mc.field_1755 == null) {
-         if (mc.field_1687.method_27983().method_29177().method_12832().equals("the_nether")) {
+         if (!"the_nether".equals(mc.field_1687.method_27983().method_29177().method_12832())) {
             if (this.timer > 0) {
                this.timer--;
             } else {
@@ -110,6 +110,9 @@ public class AutoAnchor extends Module {
                   }
                }
             }
+         } else {
+            // Respawn anchors are safe to use as anchors in the Nether.
+            this.timer = 0;
          }
       }
    }
