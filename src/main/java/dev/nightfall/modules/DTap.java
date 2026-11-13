@@ -26,6 +26,9 @@ public class DTap extends Module {
    private final NumberSetting hitDelay = this.add(new NumberSetting("Delay nach Schwerttreffer (Ticks)", 0.0, 0.0, 40.0, 1.0));
    private final NumberSetting crystalHeight = this.add(new NumberSetting("Crystal-Mindesthoehe", 0.75, 0.0, 2.5, 0.05));
    private final NumberSetting obsidianHeight = this.add(new NumberSetting("Obsidian-Mindesthoehe", 0.05, 0.0, 2.5, 0.05));
+   private final NumberSetting sequenceRange = this.add(new NumberSetting("Combo-Verfolgungsabstand", 24.0, 8.0, 48.0, 1.0));
+   private final NumberSetting baseRepositionDistance = this.add(new NumberSetting("Base neu waehlen ab", 4.0, 2.0, 8.0, 0.5));
+   private final NumberSetting placementRange = this.add(new NumberSetting("Platzier-Reichweite", 4.5, 2.0, 6.0, 0.25));
 
    private static final int IDLE = 0;
    private static final int PLACE_OBSIDIAN = 1;
@@ -153,25 +156,37 @@ public class DTap extends Module {
       return entityFree(candidate, 1.0, 3.0);
    }
 
-   // Finds an existing obsidian block one or two blocks beside the target.
-   private class_2338 findNearbyObsidian(class_1657 target) {
+   private double baseScore(class_746 player, class_1657 target, class_2338 candidate) {
+      class_243 crystalPos = new class_243(
+         candidate.method_10263() + 0.5,
+         candidate.method_10264() + 1.0,
+         candidate.method_10260() + 0.5
+      );
+      double targetDistance = target.method_5707(crystalPos);
+      double playerDistance = player.method_33571().method_1022(crystalPos);
+      double reachSquared = this.placementRange.get() * this.placementRange.get();
+      // Prefer bases close to the opponent, while penalizing bases that cannot
+      // currently be reached from the player's interaction position.
+      double reachPenalty = Math.max(0.0, playerDistance - reachSquared) * 3.0;
+      return targetDistance + playerDistance * 0.35 + reachPenalty;
+   }
+
+   // Finds the best existing obsidian base around the target, not just the first one.
+   private class_2338 findNearbyObsidian(class_746 player, class_1657 target) {
       class_2338 feet = target.method_24515();
       class_2338 best = null;
-      double bestDistance = Double.MAX_VALUE;
+      double bestScore = Double.MAX_VALUE;
       for (int drop = 0; drop <= 3; drop++) {
          for (int x = -2; x <= 2; x++) {
             for (int z = -2; z <= 2; z++) {
                int horizontal = x * x + z * z;
                if (horizontal < 1 || horizontal > 4) continue;
                class_2338 candidate = feet.method_10069(x, -drop, z);
-               if (usableObsidian(candidate)) {
-                  // Prefer a two-block offset: it leaves more room for the
-                  // crystal hitbox while keeping the explosion close enough.
-                  double distance = (horizontal == 4 ? 0.0 : horizontal == 2 ? 0.5 : 1.0) + drop * 0.25;
-                  if (distance < bestDistance) {
-                     best = candidate;
-                     bestDistance = distance;
-                  }
+               if (!usableObsidian(candidate)) continue;
+               double score = this.baseScore(player, target, candidate);
+               if (score < bestScore) {
+                  best = candidate;
+                  bestScore = score;
                }
             }
          }
@@ -200,18 +215,27 @@ public class DTap extends Module {
          { forwardX, forwardZ }, { -forwardX, -forwardZ }
       };
       class_2338 feet = target.method_24515();
+      class_2338 best = null;
+      double bestScore = Double.MAX_VALUE;
       for (int drop = 0; drop <= 3; drop++) {
          for (int[] offset : offsets) {
             class_2338 candidate = feet.method_10069(offset[0], -drop, offset[1]);
-            if (validBase(candidate)) return candidate;
+            if (!validBase(candidate)) continue;
+            double score = this.baseScore(player, target, candidate);
+            if (score < bestScore) {
+               best = candidate;
+               bestScore = score;
+            }
          }
       }
-      return null;
+      return best;
    }
 
    private boolean placeObsidian(class_746 player, class_2338 candidate) {
       if (isObsidian(candidate)) return true;
       if (!validBase(candidate)) return false;
+      class_243 placementPoint = class_243.method_24953(candidate);
+      if (player.method_33571().method_1022(placementPoint) > this.placementRange.get() * this.placementRange.get()) return false;
 
       int slot = InvUtil.ensureHotbar(class_1802.field_8281);
       if (slot < 0) return false;
@@ -246,6 +270,8 @@ public class DTap extends Module {
 
    private boolean placeCrystal(class_746 player, class_2338 candidate) {
       if (!isObsidian(candidate) || !clearCrystalBlocks(candidate) || !entityFree(candidate, 1.0, 3.0)) return false;
+      class_243 hitPoint = new class_243(candidate.method_10263() + 0.5, candidate.method_10264() + 1.0, candidate.method_10260() + 0.5);
+      if (player.method_33571().method_1022(hitPoint) > this.placementRange.get() * this.placementRange.get()) return false;
       int slot = InvUtil.ensureHotbar(class_1802.field_8301);
       if (slot < 0) return false;
 
@@ -265,9 +291,32 @@ public class DTap extends Module {
    }
 
    private void attackCrystal(class_746 player, class_1511 crystal) {
-      if (crystal != null && player.method_5739(crystal) <= 4.5) {
+      if (crystal != null && player.method_5739(crystal) <= this.placementRange.get() && player.method_6057(crystal)) {
          mc.field_1761.method_2918(player, crystal);
          player.method_6104(class_1268.field_5808);
+      }
+   }
+
+   /**
+    * Re-pick a base when knockback or a pearl teleport moves the target away.
+    * This prevents the second crystal from being placed at an old position.
+    */
+   private void rebaseForTargetMovement(class_746 player, class_1657 target) {
+      if (base == null) return;
+      double dx = target.method_23317() - (base.method_10263() + 0.5);
+      double dy = target.method_23318() - (base.method_10264() + 1.0);
+      double dz = target.method_23321() - (base.method_10260() + 0.5);
+      double threshold = this.baseRepositionDistance.get();
+      if (dx * dx + dz * dz <= threshold * threshold && Math.abs(dy) <= 3.0) return;
+
+      class_2338 replacement = findNearbyObsidian(player, target);
+      if (replacement == null) replacement = findSideBase(player, target);
+      if (replacement == null) {
+         base = null;
+         setPhase(PLACE_OBSIDIAN);
+      } else if (!replacement.equals(base)) {
+         base = replacement;
+         setPhase(isObsidian(base) ? PLACE_FIRST : PLACE_OBSIDIAN);
       }
    }
 
@@ -324,7 +373,7 @@ public class DTap extends Module {
          targetId = target.method_5628();
          trackedTargetId = targetId;
          lastTargetHealth = target.method_6032();
-         base = findNearbyObsidian(target);
+         base = findNearbyObsidian(player, target);
          if (base != null) {
             setPhase(PLACE_FIRST);
          } else {
@@ -337,12 +386,14 @@ public class DTap extends Module {
       }
 
       class_1657 target = findTrackedTarget(targetId);
-      if (target == null || ++sequenceTicks > 180
-         || player.method_5739(target) > targetRange.get() + 2.0) {
+      if (target == null || ++sequenceTicks > 240
+         || player.method_5739(target) > Math.max(targetRange.get() + 2.0, sequenceRange.get())) {
          // Stop if the original opponent disappears or leaves the supported range.
          finishSequence(target);
          return;
       }
+
+      this.rebaseForTargetMovement(player, target);
 
       if (hitDelayTicks > 0) {
          hitDelayTicks--;
@@ -353,7 +404,7 @@ public class DTap extends Module {
       switch (phase) {
          case PLACE_OBSIDIAN:
             if (base == null || (!isObsidian(base) && !validBase(base))) {
-               class_2338 existing = findNearbyObsidian(target);
+               class_2338 existing = findNearbyObsidian(player, target);
                base = existing != null ? existing : findSideBase(player, target);
             }
             if (base == null) return;
