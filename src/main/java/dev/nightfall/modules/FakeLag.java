@@ -17,7 +17,7 @@ public final class FakeLag extends Module {
    private static final Queue<class_2596<?>> QUEUE = new ArrayDeque<>();
    private static class_2535 connection;
    private static boolean bypass;
-   private static long holdStart;
+   private static long holdStartNanos;
    private static double serverX;
    private static double serverY;
    private static double serverZ;
@@ -106,9 +106,9 @@ public final class FakeLag extends Module {
       }
 
       // Flush the previous connection before starting the timer for the new one.
-      // Otherwise flush() resets holdStart and the next queue would appear overdue.
+      // Otherwise flush() resets holdStartNanos and the next queue would appear overdue.
       if (connection != null && connection != conn) flush();
-      if (QUEUE.isEmpty()) holdStart = System.currentTimeMillis();
+      if (QUEUE.isEmpty()) holdStartNanos = System.nanoTime();
       connection = conn;
       QUEUE.add(packet);
       ci.cancel();
@@ -119,7 +119,7 @@ public final class FakeLag extends Module {
    public static synchronized void flush() {
       if (connection == null) {
          QUEUE.clear();
-         holdStart = 0L;
+         holdStartNanos = 0L;
          return;
       }
       boolean old = bypass;
@@ -130,7 +130,7 @@ public final class FakeLag extends Module {
       } finally {
          bypass = old;
          if (QUEUE.isEmpty()) {
-            holdStart = 0L;
+            holdStartNanos = 0L;
             connection = null;
          }
       }
@@ -161,7 +161,7 @@ public final class FakeLag extends Module {
          flush();
          QUEUE.clear();
          connection = null;
-         holdStart = 0L;
+         holdStartNanos = 0L;
          serverPositionInitialized = false;
          serverX = serverY = serverZ = 0.0;
          serverYaw = serverPitch = 0.0F;
@@ -175,7 +175,10 @@ public final class FakeLag extends Module {
             flush();
             return;
          }
-         if (!QUEUE.isEmpty() && System.currentTimeMillis() - holdStart >= maxDelay.getInt()) flush();
+         if (!QUEUE.isEmpty()
+            && System.nanoTime() - holdStartNanos >= (long)maxDelay.getInt() * 1_000_000L) {
+            flush();
+         }
       }
    }
 
