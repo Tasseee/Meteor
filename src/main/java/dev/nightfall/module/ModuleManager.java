@@ -41,7 +41,6 @@ import dev.nightfall.modules.EntityScanEsp;
 import dev.nightfall.modules.EspBase;
 import dev.nightfall.modules.FakeBases;
 import dev.nightfall.modules.FakeStats;
-import dev.nightfall.modules.FakeLagTest;
 import dev.nightfall.modules.FakeLag;
 import dev.nightfall.modules.FavoriteChunk;
 import dev.nightfall.modules.FirstPersonStyle;
@@ -167,7 +166,6 @@ public final class ModuleManager {
       MODULES.add(new FirstPersonStyle());
       MODULES.add(new WeaponAnimations());
       MODULES.add(new SlowSwing());
-      MODULES.add(new FakeLagTest());
       MODULES.add(new FakeLag());
       MODULES.add(new InvSee());
       MODULES.add(new GlowESP());
