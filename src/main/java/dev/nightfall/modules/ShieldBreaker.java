@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.CombatUtil;
 import dev.nightfall.util.InvUtil;
@@ -23,6 +24,7 @@ public final class ShieldBreaker extends Module {
 
    @Override
    public void onTick() {
+      if (ModuleManager.get(AutoGap.class).isEating()) return;
       if (mc.field_1724 == null || mc.field_1687 == null || mc.field_1761 == null || mc.field_1755 != null) {
          this.restore();
       } else if (this.previousSlot >= 0) {
