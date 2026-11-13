@@ -181,22 +181,20 @@ public class DTap extends Module {
       if (!validBase(candidate)) return false;
 
       int slot = InvUtil.ensureHotbar(class_1802.field_8281);
-      if (slot < 0) return false;
-
-      int previousSlot = InvUtil.selected();
-      InvUtil.select(slot);
-      boolean accepted = false;
-      try {
-         // Click the solid block directly below the target cell's base position.
-         class_2338 support = candidate.method_10074();
-         class_243 hit = new class_243(candidate.method_10263() + 0.5,
-            candidate.method_10264(), candidate.method_10260() + 0.5);
-         class_3965 result = new class_3965(hit, class_2350.field_11036, support, false);
-         accepted = mc.field_1761.method_2896(player, class_1268.field_5808, result).method_23665();
-         if (accepted) player.method_6104(class_1268.field_5808);
-      } finally {
-         InvUtil.select(previousSlot);
+      if (slot < 0 || !InvUtil.hotbarStack(slot).method_31574(class_1802.field_8281)) return false;
+      // Equip on its own tick. Do not swap back before the server handles the use packet.
+      if (slot != InvUtil.selected()) {
+         InvUtil.select(slot);
+         return false;
       }
+
+      // Click the solid block directly below the target cell's base position.
+      class_2338 support = candidate.method_10074();
+      class_243 hit = new class_243(candidate.method_10263() + 0.5,
+         candidate.method_10264(), candidate.method_10260() + 0.5);
+      class_3965 result = new class_3965(hit, class_2350.field_11036, support, false);
+      boolean accepted = mc.field_1761.method_2896(player, class_1268.field_5808, result).method_23665();
+      if (accepted) player.method_6104(class_1268.field_5808);
       return accepted || isObsidian(candidate);
    }
 
@@ -218,30 +216,26 @@ public class DTap extends Module {
       class_1268 hand = player.method_6079().method_31574(class_1802.field_8301)
          ? class_1268.field_5810
          : (player.method_6047().method_31574(class_1802.field_8301) ? class_1268.field_5808 : null);
-      int previousSlot = InvUtil.selected();
-      boolean switched = false;
       if (hand == null) {
          int slot = InvUtil.ensureHotbar(class_1802.field_8301);
-         if (slot < 0) return false;
-         if (slot != previousSlot) {
+         if (slot < 0 || !InvUtil.hotbarStack(slot).method_31574(class_1802.field_8301)) return false;
+         // Keep the crystal selected for a full tick so the server processes
+         // the inventory swap and held-slot update before the placement packet.
+         if (slot != InvUtil.selected()) {
             InvUtil.select(slot);
-            switched = true;
+            return false;
          }
+         if (!player.method_6047().method_31574(class_1802.field_8301)) return false;
          hand = class_1268.field_5808;
       }
 
-      boolean accepted = false;
-      try {
-         class_243 hit = new class_243(candidate.method_10263() + 0.5,
-            candidate.method_10264() + 1.0, candidate.method_10260() + 0.5);
-         // Do not send an out-of-reach placement packet.
-         if (player.method_33571().method_1022(hit) > crystalPlaceRange.get()) return false;
-         class_3965 result = new class_3965(hit, class_2350.field_11036, candidate, false);
-         accepted = mc.field_1761.method_2896(player, hand, result).method_23665();
-         player.method_6104(hand);
-      } finally {
-         if (switched) InvUtil.select(previousSlot);
-      }
+      class_243 hit = new class_243(candidate.method_10263() + 0.5,
+         candidate.method_10264() + 1.0, candidate.method_10260() + 0.5);
+      // Do not send an out-of-reach placement packet.
+      if (player.method_33571().method_1022(hit) > crystalPlaceRange.get()) return false;
+      class_3965 result = new class_3965(hit, class_2350.field_11036, candidate, false);
+      boolean accepted = mc.field_1761.method_2896(player, hand, result).method_23665();
+      player.method_6104(hand);
       // A world update can arrive immediately even when the local interaction
       // result is PASS; count the spawned crystal as a successful placement.
       return accepted || findCrystal(candidate) != null;
