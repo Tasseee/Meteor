@@ -6,6 +6,7 @@ import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import java.util.ArrayDeque;
 import java.util.Queue;
+import net.minecraft.class_243;
 import net.minecraft.class_2535;
 import net.minecraft.class_2596;
 import net.minecraft.class_2824;
@@ -17,6 +18,12 @@ public final class FakeLag extends Module {
    private static class_2535 connection;
    private static boolean bypass;
    private static long holdStart;
+   private static double serverX;
+   private static double serverY;
+   private static double serverZ;
+   private static float serverYaw;
+   private static float serverPitch;
+   private static boolean serverPositionInitialized;
 
    private final NumberSetting maxDelay = this.add(new NumberSetting("Max. Delay (ms)", 350.0, 50.0, 1000.0, 25.0));
    private final NumberSetting maxPackets = this.add(new NumberSetting("Max. Pakete", 25.0, 5.0, 60.0, 1.0));
@@ -27,21 +34,76 @@ public final class FakeLag extends Module {
       super("FakeLag", "Verzoegert ausgehende Bewegungspakete.", Category.COMBAT);
    }
 
+   /**
+    * Called for every outgoing movement packet. The position is only advanced when the
+    * packet is actually allowed through (including packets replayed by flush()).
+    */
+   private static void recordSentMovement(class_2828 packet) {
+      if (!serverPositionInitialized && mc.field_1724 != null) {
+         serverX = mc.field_1724.method_23317();
+         serverY = mc.field_1724.method_23318();
+         serverZ = mc.field_1724.method_23321();
+         serverYaw = mc.field_1724.method_36454();
+         serverPitch = mc.field_1724.method_36455();
+         serverPositionInitialized = true;
+      }
+
+      if (!serverPositionInitialized) return;
+      serverX = packet.method_12269(serverX);
+      serverY = packet.method_12268(serverY);
+      serverZ = packet.method_12274(serverZ);
+      serverYaw = packet.method_12271(serverYaw);
+      serverPitch = packet.method_12270(serverPitch);
+   }
+
+   public static boolean hasPendingServerPosition() {
+      return !QUEUE.isEmpty() && serverPositionInitialized;
+   }
+
+   public static double serverX() {
+      return serverX;
+   }
+
+   public static double serverY() {
+      return serverY;
+   }
+
+   public static double serverZ() {
+      return serverZ;
+   }
+
+   public static float serverYaw() {
+      return serverYaw;
+   }
+
+   public static float serverPitch() {
+      return serverPitch;
+   }
+
    public static void intercept(class_2535 conn, class_2596<?> packet, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-      if (bypass) return;
+      if (bypass) {
+         if (packet instanceof class_2828 movement) recordSentMovement(movement);
+         return;
+      }
+
       FakeLag module;
       try {
          module = dev.nightfall.module.ModuleManager.get(FakeLag.class);
       } catch (IllegalStateException ignored) {
+         if (packet instanceof class_2828 movement) recordSentMovement(movement);
          return;
       }
-      if (!module.isEnabled()) return;
+
+      if (!module.isEnabled()) {
+         if (packet instanceof class_2828 movement) recordSentMovement(movement);
+         return;
+      }
 
       if (packet instanceof class_2824) {
          if (module.flushOnAttack.get()) flush();
          return;
       }
-      if (!(packet instanceof class_2828)) return;
+      if (!(packet instanceof class_2828 movement)) return;
 
       if (QUEUE.isEmpty()) holdStart = System.currentTimeMillis();
       connection = conn;
@@ -54,6 +116,7 @@ public final class FakeLag extends Module {
    public static void flush() {
       if (connection == null) {
          QUEUE.clear();
+         holdStart = 0L;
          return;
       }
       boolean old = bypass;
@@ -63,6 +126,19 @@ public final class FakeLag extends Module {
          while ((packet = QUEUE.poll()) != null) connection.method_10752(packet, null);
       } finally {
          bypass = old;
+         if (QUEUE.isEmpty()) holdStart = 0L;
+      }
+   }
+
+   @Override
+   protected void onEnable() {
+      if (!serverPositionInitialized && mc.field_1724 != null) {
+         serverX = mc.field_1724.method_23317();
+         serverY = mc.field_1724.method_23318();
+         serverZ = mc.field_1724.method_23321();
+         serverYaw = mc.field_1724.method_36454();
+         serverPitch = mc.field_1724.method_36455();
+         serverPositionInitialized = true;
       }
    }
 
@@ -77,6 +153,9 @@ public final class FakeLag extends Module {
       QUEUE.clear();
       connection = null;
       holdStart = 0L;
+      serverPositionInitialized = false;
+      serverX = serverY = serverZ = 0.0;
+      serverYaw = serverPitch = 0.0F;
    }
 
    @Override
