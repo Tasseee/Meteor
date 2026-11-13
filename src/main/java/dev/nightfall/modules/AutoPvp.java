@@ -791,6 +791,29 @@ public class AutoPvp extends Module {
             if (this.tickCrystalCombo(p, target)) { this.driving = true; return; }
             if (this.tickStunSlam(p, target, distance)) {
                this.driving = true;
+            } else if (!target.method_24828()) {
+               // Even without the dedicated hit-combo phase, intercept the
+               // opponent's predicted landing point instead of chasing their
+               // stale current position after knockback.
+               class_243 landing = this.predictLandingPoint(target);
+               double leadX = landing.field_1352 - p.method_23317();
+               double leadZ = landing.field_1350 - p.method_23321();
+               double leadDistance = Math.sqrt(leadX * leadX + leadZ * leadZ);
+               if (leadDistance > 3.8) {
+                  if (!this.pearlToLandingPoint(p, landing)) {
+                     this.aimAt(landing.field_1352, landing.field_1351 + 0.6, landing.field_1350);
+                  }
+                  mc.field_1690.field_1894.method_23481(true);
+                  mc.field_1690.field_1867.method_23481(true);
+                  mc.field_1690.field_1913.method_23481(false);
+                  mc.field_1690.field_1849.method_23481(false);
+                  mc.field_1690.field_1903.method_23481(false);
+                  this.updateShieldAxe(target);
+                  this.driving = true;
+               } else {
+                  this.aimAt(target.method_23317(), target.method_23323(0.5), target.method_23321());
+                  this.driving = false;
+               }
             } else {
                boolean obsidianInPath = this.obsidianAhead(p, target);
                int obsidianSide = obsidianInPath ? this.obsidianDetourSide(p, target) : 0;
