@@ -137,17 +137,17 @@ public final class CrystalTest extends Module {
    private boolean placeObsidian(class_746 player) {
       if (isObsidian(base)) return true;
       int slot = InvUtil.ensureHotbar(class_1802.field_8281);
-      if (slot < 0 || !facing(player, obsidianAim())) return false;
-      int previous = InvUtil.selected();
-      InvUtil.select(slot);
-      try {
-         class_2338 support = base.method_10074();
-         class_3965 hit = new class_3965(obsidianAim(), class_2350.field_11036, support, false);
-         mc.field_1761.method_2896(player, class_1268.field_5808, hit);
-         player.method_6104(class_1268.field_5808);
-      } finally {
-         InvUtil.select(previous);
+      if (slot < 0 || !InvUtil.hotbarStack(slot).method_31574(class_1802.field_8281)
+         || !facing(player, obsidianAim())) return false;
+      // Equip on its own tick. Keep the slot selected until the interaction is sent.
+      if (slot != InvUtil.selected()) {
+         InvUtil.select(slot);
+         return false;
       }
+      class_2338 support = base.method_10074();
+      class_3965 hit = new class_3965(obsidianAim(), class_2350.field_11036, support, false);
+      mc.field_1761.method_2896(player, class_1268.field_5808, hit);
+      player.method_6104(class_1268.field_5808);
       return isObsidian(base);
    }
 
@@ -167,27 +167,21 @@ public final class CrystalTest extends Module {
       class_1268 hand = player.method_6079().method_31574(class_1802.field_8301)
          ? class_1268.field_5810
          : (player.method_6047().method_31574(class_1802.field_8301) ? class_1268.field_5808 : null);
-      int previous = InvUtil.selected();
-      boolean switched = false;
       if (hand == null) {
          int slot = InvUtil.ensureHotbar(class_1802.field_8301);
-         if (slot < 0) return false;
-         // Wie bei DTap: direkt den von ensureHotbar gefundenen Slot verwenden.
-         if (slot != previous) {
+         if (slot < 0 || !InvUtil.hotbarStack(slot).method_31574(class_1802.field_8301)) return false;
+         // Equip on its own tick so the server has the crystal in the selected hand.
+         if (slot != InvUtil.selected()) {
             InvUtil.select(slot);
-            switched = true;
+            return false;
          }
+         if (!player.method_6047().method_31574(class_1802.field_8301)) return false;
          hand = class_1268.field_5808;
       }
 
-      boolean accepted = false;
-      try {
-         class_3965 hit = new class_3965(crystalAim(), class_2350.field_11036, base, false);
-         accepted = mc.field_1761.method_2896(player, hand, hit).method_23665();
-         player.method_6104(hand);
-      } finally {
-         if (switched) InvUtil.select(previous);
-      }
+      class_3965 hit = new class_3965(crystalAim(), class_2350.field_11036, base, false);
+      boolean accepted = mc.field_1761.method_2896(player, hand, hit).method_23665();
+      player.method_6104(hand);
       return accepted || findCrystal() != null;
    }
 
