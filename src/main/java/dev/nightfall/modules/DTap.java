@@ -44,6 +44,7 @@ public class DTap extends Module {
    private int targetId = -1;
    private class_2338 base;
    private int trackedTargetId = -1;
+   private int queuedTargetId = -1;
    private float lastTargetHealth = Float.NaN;
 
    public DTap() {
@@ -73,7 +74,14 @@ public class DTap extends Module {
       targetId = -1;
       base = null;
       trackedTargetId = -1;
+      queuedTargetId = -1;
       lastTargetHealth = Float.NaN;
+   }
+
+   // Called by AutoPvP immediately after it performs a sword attack.
+   public void triggerFromAutoPvp(class_1657 target) {
+      if (!this.isEnabled() || target == null || !target.method_5805()) return;
+      this.queuedTargetId = target.method_5628();
    }
 
    private void setPhase(int next) {
@@ -266,25 +274,32 @@ public class DTap extends Module {
       if (player == null || mc.field_1687 == null || mc.field_1761 == null || mc.field_1755 != null) return;
 
       if (phase == IDLE) {
-         class_1657 target = CombatUtil.nearestPlayer(targetRange.get());
+         // AutoPvP queues the exact opponent after its sword swing. This avoids
+         // relying on a delayed health update, which may never arrive client-side.
+         class_1657 target = this.queuedTargetId != -1
+            ? findTrackedTarget(this.queuedTargetId)
+            : null;
+         if (this.queuedTargetId != -1) this.queuedTargetId = -1;
          if (target == null) {
-            trackedTargetId = -1;
-            lastTargetHealth = Float.NaN;
-            return;
+            target = CombatUtil.nearestPlayer(targetRange.get());
+            if (target == null) return;
+            // Standalone DTap remains usable: initialize target tracking, then
+            // wait for a health decrease only when AutoPvP did not queue a hit.
+            if (trackedTargetId != target.method_5628()) {
+               trackedTargetId = target.method_5628();
+               lastTargetHealth = target.method_6032();
+               return;
+            }
+            float health = target.method_6032();
+            boolean wasHit = !Float.isNaN(lastTargetHealth) && health < lastTargetHealth - 0.01F;
+            lastTargetHealth = health;
+            if (!wasHit) return;
          }
-
-         if (trackedTargetId != target.method_5628()) {
-            trackedTargetId = target.method_5628();
-            lastTargetHealth = target.method_6032();
-            return;
-         }
-
-         float health = target.method_6032();
-         boolean wasHit = !Float.isNaN(lastTargetHealth) && health < lastTargetHealth - 0.01F;
-         lastTargetHealth = health;
-         if (!wasHit || countInventory(player, class_1802.field_8301) < 2) return;
+         if (countInventory(player, class_1802.field_8301) < 2) return;
 
          targetId = target.method_5628();
+         trackedTargetId = targetId;
+         lastTargetHealth = target.method_6032();
          base = findNearbyObsidian(target);
          if (base != null) {
             setPhase(PLACE_FIRST);
