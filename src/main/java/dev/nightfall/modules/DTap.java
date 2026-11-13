@@ -121,11 +121,6 @@ public class DTap extends Module {
       return entityFree(candidate, 0.0, 1.0) && entityFree(candidate, 1.0, 3.0);
    }
 
-   private boolean usableObsidian(class_2338 candidate) {
-      if (!isObsidian(candidate) || !clearCrystalBlocks(candidate)) return false;
-      return entityFree(candidate, 1.0, 3.0);
-   }
-
    // Search for a FRESH obsidian position beside the target.
    // Nearby obsidian never creates a no-place radius: occupied cells are simply
    // skipped and the search continues to the next side position.
@@ -137,15 +132,16 @@ public class DTap extends Module {
       int sideX = -forwardZ;
       int sideZ = forwardX;
       int[][] offsets = {
-         // The first choices remain one or two blocks beside the target.
-         { -forwardX, -forwardZ }, { sideX, sideZ }, { -sideX, -sideZ },
+         // Prefer the opponent's sides at one or two blocks of distance.
          { sideX * 2, sideZ * 2 }, { -sideX * 2, -sideZ * 2 },
-         { forwardX, forwardZ }, { forwardX * 2, forwardZ * 2 },
-         { -forwardX * 2, -forwardZ * 2 },
+         { sideX, sideZ }, { -sideX, -sideZ },
          { sideX + forwardX, sideZ + forwardZ },
          { sideX - forwardX, sideZ - forwardZ },
          { -sideX + forwardX, -sideZ + forwardZ },
          { -sideX - forwardX, -sideZ - forwardZ },
+         // Then use the side facing the player or the far side if necessary.
+         { -forwardX, -forwardZ }, { forwardX, forwardZ },
+         { -forwardX * 2, -forwardZ * 2 }, { forwardX * 2, forwardZ * 2 },
          // Expand outward only when every closer side cell is occupied/blocked.
          { sideX * 3, sideZ * 3 }, { -sideX * 3, -sideZ * 3 },
          { forwardX * 3, forwardZ * 3 }, { -forwardX * 3, -forwardZ * 3 },
