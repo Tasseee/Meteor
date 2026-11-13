@@ -725,36 +725,35 @@ public class AutoPvp extends Module {
                // This prevents orbiting/turning around a player without landing a hit.
                boolean fallingForCrit = !p.method_24828() && p.field_6017 > 0.08F
                   && p.method_18798().field_1351 <= 0.0;
+               // Keep attacking whenever the target is in reach and visible.
+               // Smooth rotation is still applied above, but a strict angle check
+               // here could permanently suppress the next hit after knockback.
                if (this.attack.get() && distance <= this.reach.get()
-                  && p.method_6057(target) && this.isAimAligned(p, target)
-                  // Never suppress every hit just because a critical-hit
-                  // window was missed; grounded hits remain a safe fallback.
-                  // Crit timing must never lock AutoPvP out of all later attacks.
-                  // Prefer falling hits, but keep normal attacks available while airborne too.
+                  && p.method_6057(target)
                   && p.method_7261(0.5F) >= 0.90F) {
-                  if (this.shieldAxeSlot < 0) {
-                     int swordSlot = InvUtil.findBestSword();
-                     if (swordSlot < 0) {
-                        return;
-                     }
+                  int weaponSlot = this.shieldAxeSlot >= 0
+                     ? this.shieldAxeSlot
+                     : InvUtil.findBestSword();
+                  if (weaponSlot >= 0) {
+                     if (this.shieldAxeSlot < 0) InvUtil.select(weaponSlot);
 
-                     InvUtil.select(swordSlot);
-                  }
-
-                  if (this.useCrystalAura.get()) {
-                     // Preserve sprint on every melee hit while CrystalAura is enabled.
-                     mc.field_1690.field_1867.method_23481(true);
-                     if (this.crystalCombo.get()) {
-                        mc.field_1690.field_1894.method_23481(true);
+                     if (this.useCrystalAura.get()) {
+                        // Preserve sprint on every melee hit while CrystalAura is enabled.
+                        mc.field_1690.field_1867.method_23481(true);
+                        if (this.crystalCombo.get()) {
+                           mc.field_1690.field_1894.method_23481(true);
+                        }
                      }
-                  }
-                  mc.field_1761.method_2918(p, target);
-                  p.method_6104(class_1268.field_5808);
-                  if (this.crystalCombo.get() && this.useCrystalAura.get() && InvUtil.findInventory(class_1802.field_8281) >= 0 && InvUtil.findInventory(class_1802.field_8301) >= 0) {
-                     this.crystalComboPhase = 1;
-                     this.crystalComboTicks = 0;
-                     this.crystalComboTargetId = target.method_5628();
-                     this.crystalComboBase = null;
+                     mc.field_1761.method_2918(p, target);
+                     p.method_6104(class_1268.field_5808);
+                     if (this.crystalCombo.get() && this.useCrystalAura.get()
+                        && InvUtil.findInventory(class_1802.field_8281) >= 0
+                        && InvUtil.findInventory(class_1802.field_8301) >= 0) {
+                        this.crystalComboPhase = 1;
+                        this.crystalComboTicks = 0;
+                        this.crystalComboTargetId = target.method_5628();
+                        this.crystalComboBase = null;
+                     }
                   }
                }
             }
