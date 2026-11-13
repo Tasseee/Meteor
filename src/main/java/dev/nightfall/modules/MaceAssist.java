@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.CombatUtil;
@@ -63,6 +64,7 @@ public class MaceAssist extends Module {
       class_746 p = mc.field_1724;
       this.estimate = 0.0;
       if (p == null || mc.field_1755 != null || mc.field_1761 == null) return;
+      if (ModuleManager.get(AutoGap.class).isEating()) return;
 
       boolean grounded = p.method_24828();
       if (this.activeSlot >= 0 && InvUtil.selected() != this.activeSlot) {
