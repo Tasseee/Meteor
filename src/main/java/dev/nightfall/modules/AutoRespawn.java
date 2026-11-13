@@ -25,6 +25,11 @@ public final class AutoRespawn extends Module {
    }
 
    @Override
+   public void onWorldLeave() {
+      this.delayTicks = 0;
+   }
+
+   @Override
    public void onTick() {
       if (mc.field_1724 == null || !(mc.field_1755 instanceof class_418)) {
          // Do not carry a partially elapsed respawn delay across screen changes.
