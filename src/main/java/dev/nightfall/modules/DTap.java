@@ -138,7 +138,9 @@ public class DTap extends Module {
                if (horizontal < 1 || horizontal > 4) continue;
                class_2338 candidate = feet.method_10069(x, -drop, z);
                if (usableObsidian(candidate)) {
-                  double distance = horizontal + drop * 0.25;
+                  // Prefer a two-block offset: it leaves more room for the
+                  // crystal hitbox while keeping the explosion close enough.
+                  double distance = (horizontal == 4 ? 0.0 : horizontal == 2 ? 0.5 : 1.0) + drop * 0.25;
                   if (distance < bestDistance) {
                      best = candidate;
                      bestDistance = distance;
@@ -160,14 +162,15 @@ public class DTap extends Module {
       int sideX = -forwardZ;
       int sideZ = forwardX;
       int[][] offsets = {
-         { sideX, sideZ }, { -sideX, -sideZ },
-         { forwardX, forwardZ }, { -forwardX, -forwardZ },
+         // Prefer two blocks of horizontal clearance for the crystal hitbox.
+         { sideX * 2, sideZ * 2 }, { -sideX * 2, -sideZ * 2 },
+         { forwardX * 2, forwardZ * 2 }, { -forwardX * 2, -forwardZ * 2 },
          { sideX + forwardX, sideZ + forwardZ },
          { sideX - forwardX, sideZ - forwardZ },
          { -sideX + forwardX, -sideZ + forwardZ },
          { -sideX - forwardX, -sideZ - forwardZ },
-         { sideX * 2, sideZ * 2 }, { -sideX * 2, -sideZ * 2 },
-         { forwardX * 2, forwardZ * 2 }, { -forwardX * 2, -forwardZ * 2 }
+         { sideX, sideZ }, { -sideX, -sideZ },
+         { forwardX, forwardZ }, { -forwardX, -forwardZ }
       };
       class_2338 feet = target.method_24515();
       for (int drop = 0; drop <= 3; drop++) {
