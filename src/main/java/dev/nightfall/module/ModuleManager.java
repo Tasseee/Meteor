@@ -42,6 +42,7 @@ import dev.nightfall.modules.EspBase;
 import dev.nightfall.modules.FakeBases;
 import dev.nightfall.modules.FakeStats;
 import dev.nightfall.modules.FakeLag;
+import dev.nightfall.modules.FakeLagHud;
 import dev.nightfall.modules.FavoriteChunk;
 import dev.nightfall.modules.FirstPersonStyle;
 import dev.nightfall.modules.Fly;
@@ -210,6 +211,7 @@ public final class ModuleManager {
       MODULES.add(new NotificationsHud());
       MODULES.add(new WaypointHud());
       MODULES.add(new DebugHud());
+      MODULES.add(new FakeLagHud());
       MODULES.add(new TextHuds.Fps());
       MODULES.add(new TextHuds.Ping());
       MODULES.add(new TextHuds.Clock());
