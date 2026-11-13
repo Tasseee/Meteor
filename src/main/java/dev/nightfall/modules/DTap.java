@@ -144,19 +144,34 @@ public class DTap extends Module {
 
    private boolean placeObsidian(class_746 player, class_2338 base) {
       if (mc.field_1687.method_8320(base).method_27852(class_2246.field_9987)) return true;
-      if (!entityFree(base, 0.0, 1.0) || !entityFree(base, 1.0, 3.0)) return false;
+      if (!validBase(base)) return false;
       int slot = InvUtil.ensureHotbar(class_1802.field_8281);
       if (slot < 0) return false;
-      class_2338 support = base.method_10074();
-      if (mc.field_1687.method_8320(support).method_26220(mc.field_1687, support).method_1110()) return false;
       int previousSlot = InvUtil.selected();
-      InvUtil.select(slot);
-      class_243 hit = class_243.method_24953(support).method_1031(0.5, 1.0, 0.5);
-      mc.field_1761.method_2896(player, class_1268.field_5808, new class_3965(hit, class_2350.field_11036, support, false));
-      player.method_6104(class_1268.field_5808);
-      // Keep the player's manual hotbar selection; only switch for the placement action.
-      InvUtil.select(previousSlot);
-      return false;
+      boolean switched = slot != previousSlot;
+      if (switched) InvUtil.select(slot);
+      boolean accepted = false;
+      try {
+         for (class_2350 face : class_2350.values()) {
+            class_2338 neighbor = base.method_10093(face);
+            if (mc.field_1687.method_8320(neighbor).method_26220(mc.field_1687, neighbor).method_1110()) continue;
+            class_2350 clickedSide = face.method_10153();
+            class_243 hit = class_243.method_24953(neighbor).method_1031(
+               clickedSide.method_10148() * 0.5,
+               clickedSide.method_10164() * 0.5,
+               clickedSide.method_10165() * 0.5
+            );
+            class_3965 result = new class_3965(hit, clickedSide, neighbor, false);
+            if (mc.field_1761.method_2896(player, class_1268.field_5808, result).method_23665()) {
+               player.method_6104(class_1268.field_5808);
+               accepted = true;
+               break;
+            }
+         }
+      } finally {
+         if (switched) InvUtil.select(previousSlot);
+      }
+      return accepted || mc.field_1687.method_8320(base).method_27852(class_2246.field_9987);
    }
 
    private class_1511 findCrystal(class_2338 base) {
