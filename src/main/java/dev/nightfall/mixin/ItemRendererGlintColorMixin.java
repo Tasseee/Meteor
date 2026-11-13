@@ -3,7 +3,6 @@ package dev.nightfall.mixin;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.ItemGlint;
 import dev.nightfall.render.GlintColorVertexConsumer;
-import dev.nightfall.render.NightfallGlintRenderer;
 import net.minecraft.class_12249;
 import net.minecraft.class_1921;
 import net.minecraft.class_4588;
@@ -43,8 +42,8 @@ public abstract class ItemRendererGlintColorMixin {
       }
 
       try {
-         class_1921 customLayer = NightfallGlintRenderer.layerFor(layer);
-         return new GlintColorVertexConsumer(provider.method_73477(customLayer), module::currentGlintColor);
+         // Keep Minecraft's known-good glint layer/texture and only tint its vertex color.
+         return new GlintColorVertexConsumer(provider.method_73477(layer), module::currentGlintColor);
       } catch (Throwable ignored) {
          return provider.method_73477(layer);
       }
