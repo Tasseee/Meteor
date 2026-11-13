@@ -11,6 +11,7 @@ import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.SeedCracker;
 import dev.nightfall.render.HatsRenderer;
+import dev.nightfall.render.FakeLagGhostRenderer;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import dev.nightfall.render.SkyVisualRenderer;
 import dev.nightfall.scanner.WaypointManager;
@@ -50,6 +51,7 @@ public class Nightfall implements ClientModInitializer {
       Config.load();
       SkyVisualRenderer.register();
       HatsRenderer.register();
+      FakeLagGhostRenderer.register();
       WorldRenderEvents.AFTER_ENTITIES.register(ModuleManager::renderWorld);
       ClientLifecycleEvents.CLIENT_STARTED.register((ClientStarted)client -> SeedCracker.syncState());
       ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
