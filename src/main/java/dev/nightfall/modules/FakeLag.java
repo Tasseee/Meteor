@@ -6,10 +6,8 @@ import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import java.util.ArrayDeque;
 import java.util.Queue;
-import net.minecraft.class_243;
 import net.minecraft.class_2535;
 import net.minecraft.class_2596;
-import net.minecraft.class_2824;
 import net.minecraft.class_2828;
 import net.minecraft.class_9836;
 
@@ -29,9 +27,12 @@ public final class FakeLag extends Module {
    private final NumberSetting maxDelay = this.add(new NumberSetting("Max. Delay (ms)", 350.0, 50.0, 1000.0, 25.0));
    private final NumberSetting maxPackets = this.add(new NumberSetting("Max. Pakete", 25.0, 5.0, 60.0, 1.0));
    private final BoolSetting flushOnScreen = this.add(new BoolSetting("Bei GUI senden", true));
+   private final BoolSetting showGhost = this.add(new BoolSetting("Ghost anzeigen", true));
+   private final BoolSetting showGhostOutline = this.add(new BoolSetting("Ghost-Rahmen", true));
+   private final BoolSetting showGhostLink = this.add(new BoolSetting("Verbindungslinie", true));
 
    public FakeLag() {
-      super("FakeLag", "Verzoegert ausgehende Bewegungspakete.", Category.COMBAT);
+      super("FakeLag", "Verzoegert Bewegungspakete und zeigt die letzte Server-Position.", Category.COMBAT);
    }
 
    /**
@@ -60,6 +61,51 @@ public final class FakeLag extends Module {
       return !QUEUE.isEmpty() && serverPositionInitialized;
    }
 
+   /**
+    * Returns one atomic render/HUD snapshot so coordinates and queue timing cannot
+    * come from different packets when the network thread updates the queue.
+    */
+   public static synchronized GhostSnapshot snapshot() {
+      if (QUEUE.isEmpty() || !serverPositionInitialized) return null;
+      long elapsedNanos = holdStartNanos > 0L ? Math.max(0L, System.nanoTime() - holdStartNanos) : 0L;
+      return new GhostSnapshot(
+         serverX,
+         serverY,
+         serverZ,
+         serverYaw,
+         serverPitch,
+         QUEUE.size(),
+         elapsedNanos / 1_000_000L
+      );
+   }
+
+   public boolean isGhostEnabled() {
+      return this.isEnabled() && this.showGhost.get();
+   }
+
+   public boolean isGhostOutlineEnabled() {
+      return this.isGhostEnabled() && this.showGhostOutline.get();
+   }
+
+   public boolean isGhostLinkEnabled() {
+      return this.isGhostEnabled() && this.showGhostLink.get();
+   }
+
+   public int maxDelayMillis() {
+      return this.maxDelay.getInt();
+   }
+
+   public record GhostSnapshot(
+      double x,
+      double y,
+      double z,
+      float yaw,
+      float pitch,
+      int queuedPackets,
+      long heldMillis
+   ) {
+   }
+
    public static synchronized double serverX() {
       return serverX;
    }
@@ -80,7 +126,11 @@ public final class FakeLag extends Module {
       return serverPitch;
    }
 
-   public static synchronized void intercept(class_2535 conn, class_2596<?> packet, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+   public static synchronized void intercept(
+      class_2535 conn,
+      class_2596<?> packet,
+      org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci
+   ) {
       if (bypass) {
          if (packet instanceof class_2828 movement) recordSentMovement(movement);
          return;
@@ -189,7 +239,7 @@ public final class FakeLag extends Module {
 
    @Override
    public String getDescription() {
-      return "Verzoegert ausgehende Bewegungspakete.";
+      return "Verzoegert Bewegungspakete mit optionaler Server-Ghost-Ansicht.";
    }
 
    @Override
