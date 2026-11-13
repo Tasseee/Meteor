@@ -286,19 +286,35 @@ public class AutoPvp extends Module {
       class_243 toward = new class_243(target.method_23317() - p.method_23317(), 0.0, target.method_23321() - p.method_23321());
       if (toward.method_1027() < 1.0E-5) return 0;
       toward = toward.method_1029();
+      // Check both sides and prefer the side with the clearest short route
+      // around the block, rather than stopping when the first side is tight.
+      int bestSide = 0;
+      double bestScore = -1.0;
       for (int side : new int[] {-1, 1}) {
-         double x = p.method_23317() + toward.field_1352 * 0.35 - toward.field_1350 * side * 0.95;
-         double z = p.method_23321() + toward.field_1350 * 0.35 + toward.field_1352 * side * 0.95;
-         class_2338 feet = class_2338.method_49637(x, p.method_23318(), z);
-         class_2338 head = feet.method_10084();
-         class_2338 floor = feet.method_10074();
-         boolean clear = mc.field_1687.method_8320(feet).method_26220(mc.field_1687, feet).method_1110()
-            && mc.field_1687.method_8320(head).method_26220(mc.field_1687, head).method_1110()
-            && !mc.field_1687.method_8320(floor).method_26220(mc.field_1687, floor).method_1110()
-            && !this.isObsidian(feet) && !this.isObsidian(head);
-         if (clear) return side;
+         boolean clear = true;
+         double score = 0.0;
+         for (double forward : new double[] {0.15, 0.65, 1.15}) {
+            double x = p.method_23317() + toward.field_1352 * forward - toward.field_1350 * side * 0.9;
+            double z = p.method_23321() + toward.field_1350 * forward + toward.field_1352 * side * 0.9;
+            class_2338 feet = class_2338.method_49637(x, p.method_23318(), z);
+            class_2338 head = feet.method_10084();
+            class_2338 floor = feet.method_10074();
+            boolean open = mc.field_1687.method_8320(feet).method_26220(mc.field_1687, feet).method_1110()
+               && mc.field_1687.method_8320(head).method_26220(mc.field_1687, head).method_1110()
+               && !mc.field_1687.method_8320(floor).method_26220(mc.field_1687, floor).method_1110()
+               && !this.isObsidian(feet) && !this.isObsidian(head) && !this.isObsidian(floor);
+            if (!open) {
+               clear = false;
+               break;
+            }
+            score += 1.0;
+         }
+         if (clear && score > bestScore) {
+            bestScore = score;
+            bestSide = side;
+         }
       }
-      return 0;
+      return bestSide;
    }
 
    private boolean obsidianAhead(class_746 p, class_1657 target) {
@@ -458,6 +474,8 @@ public class AutoPvp extends Module {
       if (this.crystalComboBase != null) {
          double bx = this.crystalComboBase.method_10263() + 0.5 - target.method_23317();
          double bz = this.crystalComboBase.method_10260() + 0.5 - target.method_23321();
+         // Only allow a fresh obsidian block after the opponent has moved
+         // at least 3 blocks away from the previous base.
          if (bx * bx + bz * bz >= 9.0) {
             this.crystalComboBase = null;
             this.crystalComboPhase = 1;
@@ -481,16 +499,30 @@ public class AutoPvp extends Module {
                class_2338 feet = target.method_24515();
                double dx = target.method_23317() - p.method_23317();
                double dz = target.method_23321() - p.method_23321();
-               int ox = Math.abs(dx) > Math.abs(dz) ? 0 : (dx >= 0.0 ? 2 : -2);
-               int oz = Math.abs(dx) > Math.abs(dz) ? (dz >= 0.0 ? -2 : 2) : 0;
-               class_2338 proposed = feet.method_10069(ox, -1, oz);
-               double px = proposed.method_10263() + 0.5 - p.method_23317();
-               double pz = proposed.method_10260() + 0.5 - p.method_23321();
-               if (px * px + pz * pz > 1.0 || !this.hasRoomForObsidian(p)) {
+               int forwardX = Math.abs(dx) >= Math.abs(dz) ? (dx >= 0.0 ? 1 : -1) : 0;
+               int forwardZ = forwardX == 0 ? (dz >= 0.0 ? 1 : -1) : 0;
+               int sideX = -forwardZ;
+               int sideZ = forwardX;
+               class_2338[] candidates = new class_2338[] {
+                  feet.method_10069(sideX, -1, sideZ),
+                  feet.method_10069(-sideX, -1, -sideZ),
+                  feet.method_10069(forwardX, -1, forwardZ),
+                  feet.method_10069(-forwardX, -1, -forwardZ)
+               };
+               for (class_2338 candidate : candidates) {
+                  class_2338 support = candidate.method_10074();
+                  class_2680 state = mc.field_1687.method_8320(candidate);
+                  if (!state.method_45474()
+                     || mc.field_1687.method_8320(support).method_26220(mc.field_1687, support).method_1110()
+                     || !mc.field_1687.method_8320(candidate.method_10084()).method_26215()
+                     || !mc.field_1687.method_8320(candidate.method_10084().method_10084()).method_26215()) continue;
+                  this.crystalComboBase = candidate;
+                  break;
+               }
+               if (this.crystalComboBase == null || !this.hasRoomForObsidian(p)) {
                   this.resetCrystalCombo();
                   return false;
                }
-               this.crystalComboBase = proposed;
             }
          }
          class_2680 baseState = mc.field_1687.method_8320(this.crystalComboBase);
