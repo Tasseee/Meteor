@@ -43,11 +43,22 @@ public class AutoAnchor extends Module {
       p.method_6104(class_1268.field_5808);
    }
 
+   private void useWithSlot(class_746 p, int slot, class_2338 pos, class_2350 face, class_243 hit) {
+      int previousSlot = InvUtil.selected();
+      if (!InvUtil.select(slot)) return;
+      try {
+         this.use(p, pos, face, hit);
+      } finally {
+         // Do not leave AutoAnchor's temporary item selection active.
+         if (InvUtil.selected() == slot) InvUtil.select(previousSlot);
+      }
+   }
+
    @Override
    public void onTick() {
       class_746 p = mc.field_1724;
       if (p != null && mc.field_1687 != null && mc.field_1761 != null && mc.field_1755 == null) {
-         if (!mc.field_1687.method_27983().method_29177().method_12832().equals("the_nether")) {
+         if (mc.field_1687.method_27983().method_29177().method_12832().equals("the_nether")) {
             if (this.timer > 0) {
                this.timer--;
             } else {
@@ -68,8 +79,7 @@ public class AutoAnchor extends Module {
                                     class_2350 face = d.method_10153();
                                     class_243 hit = class_243.method_24953(nb)
                                        .method_1031(face.method_10148() * 0.5, face.method_10164() * 0.5, face.method_10165() * 0.5);
-                                    InvUtil.select(a);
-                                    this.use(p, nb, face, hit);
+                                    this.useWithSlot(p, a, nb, face, hit);
                                     this.timer = this.delay.getInt();
                                     return;
                                  }
@@ -84,7 +94,7 @@ public class AutoAnchor extends Module {
                               return;
                            }
 
-                           InvUtil.select(g);
+                           // The helper restores the user's slot after charging.
                         } else {
                            int other = -1;
 
@@ -102,7 +112,8 @@ public class AutoAnchor extends Module {
                            InvUtil.select(other);
                         }
 
-                        this.use(p, cand, class_2350.field_11036, center);
+                        int useSlot = charges < 1 ? InvUtil.findHotbar(class_1802.field_8801) : other;
+                        this.useWithSlot(p, useSlot, cand, class_2350.field_11036, center);
                         this.timer = this.delay.getInt();
                      }
                   }
