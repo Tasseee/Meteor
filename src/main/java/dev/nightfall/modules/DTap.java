@@ -114,14 +114,24 @@ public class DTap extends Module {
       double dz = target.method_23321() - player.method_23321();
       int forwardX = Math.abs(dx) >= Math.abs(dz) ? (dx >= 0 ? 1 : -1) : 0;
       int forwardZ = forwardX == 0 ? (dz >= 0 ? 1 : -1) : 0;
-      // First try the target's left side, then the right side.
-      int leftX = -forwardZ;
-      int leftZ = forwardX;
+      int sideX = -forwardZ;
+      int sideZ = forwardX;
       class_2338 feet = target.method_24515();
-      class_2338 left = feet.method_10069(leftX * 2, -1, leftZ * 2);
-      class_2338 right = feet.method_10069(-leftX * 2, -1, -leftZ * 2);
-      if (usableBase(left)) return left;
-      if (usableBase(right)) return right;
+      int[][] offsets = {
+         { sideX, sideZ }, { -sideX, -sideZ },
+         { forwardX, forwardZ }, { -forwardX, -forwardZ },
+         { sideX + forwardX, sideZ + forwardZ },
+         { sideX - forwardX, sideZ - forwardZ },
+         { -sideX + forwardX, -sideZ + forwardZ },
+         { -sideX - forwardX, -sideZ - forwardZ },
+         { 0, 0 }
+      };
+      for (int drop = 1; drop <= 8; drop++) {
+         for (int[] offset : offsets) {
+            class_2338 candidate = feet.method_10069(offset[0], -drop, offset[1]);
+            if (usableBase(candidate)) return candidate;
+         }
+      }
       return null;
    }
 
@@ -201,12 +211,10 @@ public class DTap extends Module {
          boolean wasHit = !Float.isNaN(lastTargetHealth) && health < lastTargetHealth - 0.01F;
          lastTargetHealth = health;
          if (!wasHit) return;
-         // findInventory() returns a SLOT INDEX, not an item count. Count actual stack contents.
          if (countInventory(player, class_1802.field_8281) < 1 || countInventory(player, class_1802.field_8301) < 2) return;
-         firstBase = findSideBase(player, target);
-         if (firstBase == null) return;
-         // Both crystals are placed sequentially on the same side-positioned obsidian.
-         secondBase = firstBase;
+         // The target may still be rising at hit time. Find a valid base on later ticks.
+         firstBase = null;
+         secondBase = null;
          targetId = target.method_5628();
          phase = 1;
          ticks = 0;
@@ -228,19 +236,21 @@ public class DTap extends Module {
 
       switch (phase) {
          case 1:
-            // Obsidian placement uses its own adjustable minimum airborne height.
+            if (firstBase == null || !usableBase(firstBase)) {
+               firstBase = findSideBase(player, target);
+               secondBase = firstBase;
+            }
+            if (firstBase == null) return;
             if (target.method_24828()
                || this.heightAboveBase(target, firstBase) < this.obsidianHeight.get()) return;
-            if (placeObsidian(player, firstBase)) { phase = 2; ticks = 0; }
+            if (placeObsidian(player, firstBase)) { phase = 3; ticks = 0; }
             break;
          case 2:
-            if (target.method_24828()
-               || this.heightAboveBase(target, secondBase) < this.obsidianHeight.get()) return;
-            if (placeObsidian(player, secondBase)) { phase = 3; ticks = 0; }
+            phase = 3;
+            ticks = 0;
             break;
          case 3:
-            // Both DTap crystals wait until the target is at least 0.75 blocks above its block level.
-            if (!this.isCrystalHeight(target, firstBase)) return;
+            if (firstBase == null || !this.isCrystalHeight(target, firstBase)) return;
             if (findCrystal(firstBase) == null) placeCrystal(player, firstBase);
             if (findCrystal(firstBase) != null) { phase = 4; ticks = 0; }
             break;
@@ -249,7 +259,7 @@ public class DTap extends Module {
             if (findCrystal(firstBase) == null && ticks > 0) { phase = 5; ticks = 0; }
             break;
          case 5:
-            if (!this.isCrystalHeight(target, secondBase)) return;
+            if (secondBase == null || !this.isCrystalHeight(target, secondBase)) return;
             if (findCrystal(secondBase) == null) placeCrystal(player, secondBase);
             if (findCrystal(secondBase) != null) { phase = 6; ticks = 0; }
             break;
