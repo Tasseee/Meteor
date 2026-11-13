@@ -171,6 +171,9 @@ public final class CrystalTest extends Module {
       if (hand == null) {
          int slot = InvUtil.ensureHotbar(class_1802.field_8301);
          if (slot < 0) return false;
+         // Inventory-Swap kann clientseitig einen Tick benötigen.
+         // Erst interagieren, wenn im Ziel-Hotbar-Slot wirklich ein Endkristall liegt.
+         if (!InvUtil.hotbarStack(slot).method_31574(class_1802.field_8301)) return false;
          if (slot != previous) { InvUtil.select(slot); switched = true; }
          hand = class_1268.field_5808;
       }
