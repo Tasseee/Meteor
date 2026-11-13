@@ -69,10 +69,10 @@ public class CrystalAura extends Module {
       int sideZ = forwardX;
       class_2338 feet = target.method_24515();
       class_2338[] candidates = new class_2338[] {
-         feet.method_10069(sideX * 2, -2, sideZ * 2),
-         feet.method_10069(-sideX * 2, -2, -sideZ * 2),
-         feet.method_10069(forwardX * 2, -2, forwardZ * 2),
-         feet.method_10069(-forwardX * 2, -2, -forwardZ * 2)
+         feet.method_10069(sideX * 2, -1, sideZ * 2),
+         feet.method_10069(-sideX * 2, -1, -sideZ * 2),
+         feet.method_10069(forwardX * 2, -1, forwardZ * 2),
+         feet.method_10069(-forwardX * 2, -1, -forwardZ * 2)
       };
       for (class_2338 base : candidates) {
          class_2680 state = mc.field_1687.method_8320(base);
@@ -181,7 +181,7 @@ public class CrystalAura extends Module {
                if (this.placeObsidianAfterHit(p, target)) return;
             }
 
-            if (target != null && !target.method_24828()) {
+            if (target != null) {
                class_1268 hand = p.method_6079().method_31574(class_1802.field_8301)
                   ? class_1268.field_5810
                   : (p.method_6047().method_31574(class_1802.field_8301) ? class_1268.field_5808 : null);
