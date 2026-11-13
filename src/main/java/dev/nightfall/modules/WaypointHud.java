@@ -28,7 +28,7 @@ public class WaypointHud extends HudModule {
          String dim = Storage.dim();
 
          for (Waypoint wp : WaypointManager.all()) {
-            if (wp.dim.equals(dim)) {
+            if (wp != null && dim.equals(wp.dim)) {
                this.tmp.add(wp);
             }
          }
@@ -42,7 +42,8 @@ public class WaypointHud extends HudModule {
 
          for (int i = 0; i < n; i++) {
             Waypoint waypoint = this.tmp.get(i);
-            lines[i] = waypoint.name + " " + (int)Math.hypot(waypoint.x - px, waypoint.z - pz) + "m";
+            String name = waypoint.name == null || waypoint.name.isBlank() ? "Waypoint" : waypoint.name;
+            lines[i] = name + " " + (int)Math.hypot(waypoint.x - px, waypoint.z - pz) + "m";
             widest = Math.max(widest, mc.field_1772.method_1727(lines[i]));
          }
 
@@ -61,8 +62,9 @@ public class WaypointHud extends HudModule {
    }
 
    private String trim(String text, int maxWidth) {
-      while (mc.field_1772.method_1727(text) > maxWidth && text.length() > 1) {
-         text = text.substring(0, text.length() - 2) + "…";
+      while (mc.field_1772.method_1727(text) > maxWidth && text.codePointCount(0, text.length()) > 1) {
+         int lastCodePoint = text.offsetByCodePoints(0, text.codePointCount(0, text.length()) - 1);
+         text = text.substring(0, lastCodePoint) + "…";
       }
 
       return text;
