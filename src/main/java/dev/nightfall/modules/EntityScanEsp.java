@@ -85,28 +85,43 @@ public abstract class EntityScanEsp extends EspBase {
       }
 
       int count = Math.min(this.buf.size(), this.maxObjects.getInt());
-      // Acquire the line layer and current pose once per frame, not once per edge.
-      class_4588 vertices = context.consumers().method_73477(class_12249.method_76015());
-      var matrix = context.matrices().method_23760().method_23761();
-      int rgb = this.color.rgb();
-      float red = (rgb >> 16 & 255) / 255.0F;
-      float green = (rgb >> 8 & 255) / 255.0F;
-      float blue = (rgb & 255) / 255.0F;
-      float alpha = this.opacity.get().floatValue();
-      for (int i = 0; i < count && !this.capReached(); i++) {
-         RenderTarget target = this.buf.get(i);
-         if (this.style.is("3D")) {
-            this.drawWorldBox(vertices, matrix, target.box(), red, green, blue, alpha);
-         }
+      // WorldRenderContext does not apply the camera translation to custom vertices.
+      // Match the established world-render pattern used by HatsRenderer: translate the
+      // matrix stack by the negative camera position before submitting world coordinates.
+      class_4587 matrices = context.matrices();
+      matrices.method_22903();
+      try {
+         matrices.method_22904(-cameraX, -cameraY, -cameraZ);
+         class_4588 vertices = context.consumers().method_73477(class_12249.method_76015());
+         var matrix = matrices.method_23760().method_23761();
+         int rgb = this.color.rgb();
+         float red = (rgb >> 16 & 255) / 255.0F;
+         float green = (rgb >> 8 & 255) / 255.0F;
+         float blue = (rgb & 255) / 255.0F;
+         float alpha = this.opacity.get().floatValue();
+         boolean drawTracers = this.tracers.get();
+         boolean drawBoxes = this.style.is("3D");
+         boolean centerOrigin = this.origin.is("Mitte");
 
-         if (this.tracers.get()) {
-            double tx = (target.box().field_1323 + target.box().field_1320) * 0.5;
-            double ty = this.origin.is("Mitte")
-               ? (target.box().field_1322 + target.box().field_1325) * 0.5
-               : target.box().field_1322;
-            double tz = (target.box().field_1321 + target.box().field_1324) * 0.5;
-            this.drawWorldLine(vertices, matrix, cameraX, cameraY, cameraZ, tx, ty, tz, red, green, blue, alpha);
+         for (int i = 0; i < count && !this.capReached(); i++) {
+            RenderTarget target = this.buf.get(i);
+            if (drawBoxes) {
+               this.drawWorldBox(vertices, matrix, target.box(), red, green, blue, alpha);
+            }
+
+            if (drawTracers) {
+               double tx = (target.box().field_1323 + target.box().field_1320) * 0.5;
+               double ty = centerOrigin
+                  ? (target.box().field_1322 + target.box().field_1325) * 0.5
+                  : target.box().field_1322;
+               double tz = (target.box().field_1321 + target.box().field_1324) * 0.5;
+               // Camera is now the local origin (0, 0, 0) in this matrix space.
+               this.drawWorldLine(vertices, matrix, 0.0, 0.0, 0.0, tx, ty, tz, red, green, blue, alpha);
+            }
          }
+      } finally {
+         matrices.method_22904(cameraX, cameraY, cameraZ);
+         matrices.method_22909();
       }
    }
 
