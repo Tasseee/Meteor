@@ -626,8 +626,11 @@ public class AutoPvp extends Module {
                mc.field_1690.field_1894.method_23481(approach);
                // CrystalAura mode keeps sprint enabled for sprint-hit combos;
                // sword-only mode manages sprint separately for critical hits.
+               // Sprint while closing the distance so the bot reaches its target faster.
+               // In sword-only crit mode sprint is released again when preparing the critical hit.
                boolean crystalSprint = this.useCrystalAura.get();
-               mc.field_1690.field_1867.method_23481(crystalSprint || (approach && distance > this.stop.get() + 1.5));
+               boolean sprintToTarget = approach && distance > this.stop.get() + 0.5;
+               mc.field_1690.field_1867.method_23481(crystalSprint || sprintToTarget);
                if (detouring) {
                   // Obsidian nicht ueberspringen: seitlich daran vorbeilaufen.
                   mc.field_1690.field_1913.method_23481(obsidianSide < 0);
