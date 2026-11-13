@@ -15,6 +15,7 @@ import net.minecraft.class_4184;
 import net.minecraft.class_4587;
 import net.minecraft.class_4588;
 import net.minecraft.class_897;
+import dev.nightfall.util.Projection;
 import org.joml.Matrix4f;
 
 /**
@@ -55,9 +56,7 @@ public final class FakeLagGhostRenderer {
          try {
             class_897 baseRenderer = mc.method_1561().method_3953(mc.field_1724);
             if (baseRenderer instanceof class_1007 playerRenderer) {
-               float tickDelta = mc.method_1561().method_3953(mc.field_1724) == null
-                  ? 0.0F
-                  : mc.field_1724.method_5695();
+               float tickDelta = Projection.tickDelta();
                class_10055 state = playerRenderer.method_62608();
                playerRenderer.method_62354(mc.field_1724, state, tickDelta);
 
