@@ -590,7 +590,10 @@ public class AutoPvp extends Module {
             } else {
                boolean approach = distance > this.stop.get() && this.safeForward(p, target);
                mc.field_1690.field_1894.method_23481(approach);
-               mc.field_1690.field_1867.method_23481(approach && distance > this.stop.get() + 1.5);
+               // CrystalAura mode keeps sprint enabled for sprint-hit combos;
+               // sword-only mode manages sprint separately for critical hits.
+               boolean crystalSprint = this.useCrystalAura.get();
+               mc.field_1690.field_1867.method_23481(crystalSprint || (approach && distance > this.stop.get() + 1.5));
                if (this.strafe.get() && distance <= this.reach.get() + 1.5
                   && !(distance <= this.reach.get() + 0.4 && !this.isAimAligned(p, target))) {
                   if (this.strafeTimer-- <= 0) {
@@ -610,12 +613,14 @@ public class AutoPvp extends Module {
                boolean critMode = this.swordCrits.get() && !this.useCrystalAura.get()
                   && distance <= this.reach.get() + 0.8 && this.clearAbove(p, 2) && !obsidianInPath;
                if (critMode) {
-                  // Jump for sword crits only when the path ahead is clear of obsidian.
+                  // Sword-only mode: stop sprinting and time the hit while falling.
                   mc.field_1690.field_1867.method_23481(false);
                   mc.field_1690.field_1903.method_23481(p.method_24828());
                } else {
-                  // Never auto-jump into or over an obsidian block.
-                  mc.field_1690.field_1903.method_23481(!obsidianInPath && this.jump.get() && obstacle && p.method_24828() && this.clearAbove(p, 2));
+                  // CrystalAura mode does not prepare sword crits: keep sprinting.
+                  // Still avoid jumping over obsidian or triggering obstacle jumps in CrystalAura mode.
+                  mc.field_1690.field_1903.method_23481(!this.useCrystalAura.get() && !obsidianInPath
+                     && this.jump.get() && obstacle && p.method_24828() && this.clearAbove(p, 2));
                }
                this.driving = true;
                this.updateShieldAxe(target);
@@ -636,9 +641,12 @@ public class AutoPvp extends Module {
                      InvUtil.select(swordSlot);
                   }
 
-                  if (this.crystalCombo.get() && this.useCrystalAura.get()) {
+                  if (this.useCrystalAura.get()) {
+                     // Preserve sprint on every melee hit while CrystalAura is enabled.
                      mc.field_1690.field_1867.method_23481(true);
-                     mc.field_1690.field_1894.method_23481(true);
+                     if (this.crystalCombo.get()) {
+                        mc.field_1690.field_1894.method_23481(true);
+                     }
                   }
                   mc.field_1761.method_2918(p, target);
                   p.method_6104(class_1268.field_5808);
