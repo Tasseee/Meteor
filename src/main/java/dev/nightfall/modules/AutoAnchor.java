@@ -88,31 +88,22 @@ public class AutoAnchor extends Module {
                         }
                      } else if (!(self > this.maxSelf.get()) && !(self >= CombatUtil.effectiveHealth(p) - 1.0)) {
                         int charges = (Integer)st.method_11654(class_4969.field_23153);
+                        int useSlot;
                         if (charges < 1) {
-                           int g = InvUtil.ensureHotbar(class_1802.field_8801);
-                           if (g < 0) {
-                              return;
-                           }
-
-                           // The helper restores the user's slot after charging.
+                           useSlot = InvUtil.ensureHotbar(class_1802.field_8801);
+                           if (useSlot < 0) return;
                         } else {
-                           int other = -1;
-
+                           useSlot = -1;
                            for (int i = 0; i < 9; i++) {
                               if (!InvUtil.hotbarStack(i).method_31574(class_1802.field_8801)) {
-                                 other = i;
+                                 useSlot = i;
                                  break;
                               }
                            }
 
-                           if (other < 0) {
-                              return;
-                           }
-
-                           InvUtil.select(other);
+                           if (useSlot < 0) return;
                         }
 
-                        int useSlot = charges < 1 ? InvUtil.findHotbar(class_1802.field_8801) : other;
                         this.useWithSlot(p, useSlot, cand, class_2350.field_11036, center);
                         this.timer = this.delay.getInt();
                      }
