@@ -4,6 +4,7 @@ import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.CombatUtil;
+import dev.nightfall.util.InvUtil;
 import net.minecraft.class_1268;
 import net.minecraft.class_1657;
 import net.minecraft.class_1743;
