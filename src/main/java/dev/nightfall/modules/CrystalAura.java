@@ -182,7 +182,7 @@ public class CrystalAura extends Module {
             double bestDistance = Double.MAX_VALUE;
 
             for (class_1297 e : mc.field_1687.method_18112()) {
-               if (e instanceof class_1511 c && c.method_5805() && !(p.method_5739(c) > this.breakRange.get())) {
+               if (e instanceof class_1511 c && c.method_5805() && p.method_5739(c) <= this.breakRange.get()) {
                   double distance = c.method_5858(p);
                   if (distance < bestDistance) {
                      bestDistance = distance;
@@ -192,9 +192,22 @@ public class CrystalAura extends Module {
             }
 
             if (best != null) {
-               mc.field_1761.method_2918(p, best);
-               p.method_6104(class_1268.field_5808);
-               this.breakT = this.breakDelay.getInt();
+               // With zero break delay, clear every crystal already in range this tick
+               // instead of spending one full tick per crystal. This makes fast crystal
+               // chains detonate as soon as the server has spawned them.
+               if (this.breakDelay.getInt() == 0) {
+                  for (class_1297 e : mc.field_1687.method_18112()) {
+                     if (e instanceof class_1511 c && c.method_5805()
+                        && p.method_5739(c) <= this.breakRange.get()) {
+                        mc.field_1761.method_2918(p, c);
+                        p.method_6104(class_1268.field_5808);
+                     }
+                  }
+               } else {
+                  mc.field_1761.method_2918(p, best);
+                  p.method_6104(class_1268.field_5808);
+                  this.breakT = this.breakDelay.getInt();
+               }
                return;
             }
          }
