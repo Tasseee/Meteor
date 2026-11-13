@@ -25,28 +25,52 @@ public final class FakeBases extends Module {
 
    @Override
    public void renderHud(class_332 ctx) {
-      if (mc.field_1724 != null && Projection.valid()) {
-         for (Waypoint w : WaypointManager.all()) {
-            if ("FakeBase".equalsIgnoreCase(w.category) && w.dim.equals(Storage.dim())) {
-               double x = w.x + 0.5;
-               double y = w.y + 0.5;
-               double z = w.z + 0.5;
-               double dx = x - Projection.eyeX();
-               double dy = y - Projection.eyeY();
-               double dz = z - Projection.eyeZ();
-               double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-               if (!(distance > this.maxDistance.get()) && Projection.project(x, y, z, this.point)) {
-                  int color = Theme.withAlpha(-41099, 232);
-                  ctx.method_25294((int)this.point[0] - 3, (int)this.point[1] - 3, (int)this.point[0] + 4, (int)this.point[1] + 4, color);
-                  if (this.labels.get()) {
-                     Draw.centeredText(ctx, mc.field_1772, "[TEST/DECOY] " + w.name, (float)this.point[0], (float)this.point[1] - 14.0F, -30825);
-                  }
+      if (mc.field_1724 == null || mc.field_1687 == null || !Projection.valid()) return;
 
-                  if (this.tracers.get()) {
-                     Draw.line(ctx, Projection.width() / 2.0F, Projection.height() / 2.0F, (float)this.point[0], (float)this.point[1], color, 1);
-                  }
-               }
-            }
+      String dimension = Storage.dim();
+      int screenWidth = Projection.width();
+      int screenHeight = Projection.height();
+      int color = Theme.withAlpha(-41099, 232);
+
+      for (Waypoint waypoint : WaypointManager.all()) {
+         // Ignore incomplete/corrupt records instead of letting one bad entry
+         // disable the whole HUD module.
+         if (waypoint == null || !"FakeBase".equalsIgnoreCase(waypoint.category)
+            || !dimension.equals(waypoint.dim)) {
+            continue;
+         }
+
+         double x = waypoint.x + 0.5;
+         double y = waypoint.y + 0.5;
+         double z = waypoint.z + 0.5;
+         double dx = x - Projection.eyeX();
+         double dy = y - Projection.eyeY();
+         double dz = z - Projection.eyeZ();
+         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+         if (!Double.isFinite(distance) || distance > this.maxDistance.get()) continue;
+
+         boolean projected = Projection.project(x, y, z, this.point);
+         boolean onScreen = projected
+            && this.point[0] >= 0.0 && this.point[0] <= screenWidth
+            && this.point[1] >= 0.0 && this.point[1] <= screenHeight;
+
+         // Keep distant/off-screen markers discoverable at the screen edge.
+         if (!onScreen && !Projection.projectToEdge(x, y, z, this.point)) continue;
+
+         int px = (int)this.point[0];
+         int py = (int)this.point[1];
+         int halfSize = onScreen ? 3 : 4;
+         ctx.method_25294(px - halfSize, py - halfSize, px + halfSize + 1, py + halfSize + 1, color);
+
+         if (this.labels.get()) {
+            String name = waypoint.name == null || waypoint.name.isBlank() ? "Unbenannt" : waypoint.name;
+            String label = "[TEST/DECOY] " + name + (onScreen ? "" : " (außerhalb)");
+            Draw.centeredText(ctx, mc.field_1772, label, (float)this.point[0], (float)this.point[1] - 14.0F, -30825);
+         }
+
+         if (this.tracers.get()) {
+            Draw.line(ctx, screenWidth / 2.0F, screenHeight / 2.0F,
+               (float)this.point[0], (float)this.point[1], color, 1);
          }
       }
    }
