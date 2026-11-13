@@ -89,6 +89,7 @@ public final class FakeLag extends Module {
    public boolean isModelMode() { return this.ghostMode.is("Model"); }
    public boolean isBoxMode() { return this.ghostMode.is("Box"); }
    public boolean isWireframeMode() { return this.ghostMode.is("Wireframe"); }
+   public String ghostModeName() { return this.ghostMode.get(); }
    public int ghostColor() { return this.ghostColor.rgb(); }
    public float ghostOpacity() { return this.ghostOpacity.get().floatValue(); }
    public int trailLength() { return this.trailLength.getInt(); }
