@@ -34,11 +34,13 @@ public class CrystalAura extends Module {
    private final BoolSetting breakC = this.add(new BoolSetting("Zerstoeren", true));
    private final BoolSetting autoSwitch = this.add(new BoolSetting("Auto-Switch", true));
    private final BoolSetting placeObsidianOnHit = this.add(new BoolSetting("Obsidian automatisch", true));
+   private final NumberSetting obsidianSpacing = this.add(new NumberSetting("Abstand zwischen Obsidian", 2.0, 1.0, 6.0, 1.0));
    private int trackedTargetId = -1;
    private float lastTargetHealth = Float.NaN;
    private int placeT;
    private int breakT;
    private boolean awaitingObsidian;
+   private boolean pendingObsidianHit;
 
    @Override
    public void onWorldLeave() {
@@ -47,6 +49,7 @@ public class CrystalAura extends Module {
       this.trackedTargetId = -1;
       this.lastTargetHealth = Float.NaN;
       this.awaitingObsidian = false;
+      this.pendingObsidianHit = false;
    }
 
    @Override
@@ -56,6 +59,7 @@ public class CrystalAura extends Module {
       this.trackedTargetId = -1;
       this.lastTargetHealth = Float.NaN;
       this.awaitingObsidian = false;
+      this.pendingObsidianHit = false;
    }
 
    public CrystalAura() {
@@ -99,6 +103,56 @@ public class CrystalAura extends Module {
       return null;
    }
 
+   private class_2338 findSecondHitObsidianBase(class_746 player, class_2338 first) {
+      int distance = this.obsidianSpacing.getInt();
+      int[][] directions = {{1,0},{-1,0},{0,1},{0,-1}};
+      for (int[] direction : directions) {
+         class_2338 base = first.method_10069(direction[0] * distance, 0, direction[1] * distance);
+         class_2680 state = mc.field_1687.method_8320(base);
+         class_2338 support = base.method_10074();
+         if (!state.method_45474()) continue;
+         if (mc.field_1687.method_8320(support).method_26220(mc.field_1687, support).method_1110()) continue;
+         if (!mc.field_1687.method_8320(base.method_10084()).method_26215()
+            || !mc.field_1687.method_8320(base.method_10084().method_10084()).method_26215()) continue;
+         class_238 space = new class_238(base.method_10263(), base.method_10264(),
+            base.method_10260(), base.method_10263() + 1.0, base.method_10264() + 3.0,
+            base.method_10260() + 1.0);
+         if (!mc.field_1687.method_8335(null, space).isEmpty()) continue;
+         if (player.method_33571().method_1022(class_243.method_24953(base)) > this.placeRange.get() + 1.0) continue;
+         return base;
+      }
+      return null;
+   }
+
+   private boolean placeObsidianAt(class_746 player, class_2338 base) {
+      if (mc.field_1687.method_8320(base).method_27852(class_2246.field_9987)) return true;
+      int slot = InvUtil.ensureHotbar(class_1802.field_8281);
+      if (slot < 0) return false;
+      int previousSlot = InvUtil.selected();
+      boolean switched = slot != previousSlot;
+      if (switched) InvUtil.select(slot);
+      boolean accepted = false;
+      try {
+         for (class_2350 face : class_2350.values()) {
+            class_2338 neighbor = base.method_10093(face);
+            class_2680 neighborState = mc.field_1687.method_8320(neighbor);
+            if (neighborState.method_26220(mc.field_1687, neighbor).method_1110()) continue;
+            class_2350 clickedSide = face.method_10153();
+            class_243 hit = class_243.method_24953(neighbor)
+               .method_1031(clickedSide.method_10148() * 0.5, clickedSide.method_10164() * 0.5, clickedSide.method_10165() * 0.5);
+            class_3965 result = new class_3965(hit, clickedSide, neighbor, false);
+            if (mc.field_1761.method_2896(player, class_1268.field_5808, result).method_23665()) {
+               player.method_6104(class_1268.field_5808);
+               accepted = true;
+               break;
+            }
+         }
+      } finally {
+         if (switched) InvUtil.select(previousSlot);
+      }
+      return accepted;
+   }
+
    private boolean isTargetAirborne(class_1657 target) {
       return !target.method_24828();
    }
@@ -123,44 +177,13 @@ public class CrystalAura extends Module {
       if (!this.placeObsidianOnHit.get()
          || !canComboTarget(player, target, this.obsidianHeight.get())) return false;
 
-      class_2338 base = findHitObsidianBase(player, target);
-      // If no valid obsidian position exists, do not block normal crystal placement.
-      if (base == null) return false;
-      if (mc.field_1687.method_8320(base).method_27852(class_2246.field_9987)) {
-         return false; // Obsidian is confirmed in the world.
-      }
-
-      int slot = InvUtil.ensureHotbar(class_1802.field_8281);
-      if (slot < 0) return false;
-
-      int previousSlot = InvUtil.selected();
-      boolean switched = slot != previousSlot;
-      if (switched) InvUtil.select(slot);
-
-      boolean placementAccepted = false;
-      try {
-         // Place against a valid neighboring block face.
-         for (class_2350 face : class_2350.values()) {
-            class_2338 neighbor = base.method_10093(face);
-            class_2680 neighborState = mc.field_1687.method_8320(neighbor);
-            if (neighborState.method_26220(mc.field_1687, neighbor).method_1110()) continue;
-
-            class_2350 clickedSide = face.method_10153();
-            class_243 hit = class_243.method_24953(neighbor)
-               .method_1031(clickedSide.method_10148() * 0.5, clickedSide.method_10164() * 0.5, clickedSide.method_10165() * 0.5);
-            class_3965 result = new class_3965(hit, clickedSide, neighbor, false);
-            if (mc.field_1761.method_2896(player, class_1268.field_5808, result).method_23665()) {
-               player.method_6104(class_1268.field_5808);
-               placementAccepted = true;
-               break;
-            }
-         }
-      } finally {
-         if (switched) InvUtil.select(previousSlot);
-      }
-
-      // Wait for the world update only if the interaction was actually accepted.
-      return placementAccepted;
+      class_2338 first = findHitObsidianBase(player, target);
+      if (first == null) return false;
+      class_2338 second = findSecondHitObsidianBase(player, first);
+      if (second == null) return false;
+      boolean firstAccepted = placeObsidianAt(player, first);
+      boolean secondAccepted = placeObsidianAt(player, second);
+      return firstAccepted || secondAccepted;
    }
 
    @Override
@@ -218,6 +241,26 @@ public class CrystalAura extends Module {
                this.trackedTargetId = -1;
                this.lastTargetHealth = Float.NaN;
                this.awaitingObsidian = false;
+               this.pendingObsidianHit = false;
+            } else {
+               float health = target.method_6032();
+               if (this.trackedTargetId != target.method_5628()) {
+                  this.trackedTargetId = target.method_5628();
+                  this.lastTargetHealth = health;
+                  this.awaitingObsidian = false;
+                  this.pendingObsidianHit = false;
+               } else {
+                  if (!Float.isNaN(this.lastTargetHealth) && health < this.lastTargetHealth - 0.01F) {
+                     this.pendingObsidianHit = true;
+                     this.awaitingObsidian = false;
+                  }
+                  this.lastTargetHealth = health;
+               }
+               if (this.pendingObsidianHit && !this.awaitingObsidian
+                  && this.placeObsidianAfterHit(p, target)) {
+                  this.awaitingObsidian = true;
+                  this.pendingObsidianHit = false;
+               }
             }
 
             if (target != null && this.isCrystalHeight(p, target)) {
