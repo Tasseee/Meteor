@@ -485,7 +485,23 @@ public class AutoPvp extends Module {
 
       class_1268 main = class_1268.field_5808;
       if (this.crystalComboPhase == 1) {
-         if (target.method_24828()) return true;
+         // Follow the airborne opponent first. Do not cancel the combo just
+         // because the target has moved outside block-placement reach.
+         if (target.method_24828()) {
+            mc.field_1690.field_1894.method_23481(false);
+            return true;
+         }
+         double chaseDistance = p.method_5739(target);
+         if (chaseDistance > 3.8) {
+            this.aimAt(target.method_23317(), target.method_23323(0.5), target.method_23321());
+            mc.field_1690.field_1894.method_23481(true);
+            mc.field_1690.field_1867.method_23481(true);
+            mc.field_1690.field_1913.method_23481(false);
+            mc.field_1690.field_1849.method_23481(false);
+            this.driving = true;
+            return true;
+         }
+         mc.field_1690.field_1894.method_23481(false);
          if (this.crystalComboBase == null) {
             if (this.lastCrystalObsidianBase != null && this.isObsidian(this.lastCrystalObsidianBase)) {
                double lastX = this.lastCrystalObsidianBase.method_10263() + 0.5 - target.method_23317();
@@ -496,20 +512,13 @@ public class AutoPvp extends Module {
             }
             if (this.crystalComboBase == null) this.crystalComboBase = this.findNearbyObsidian(target);
             if (this.crystalComboBase == null) {
-               class_2338 feet = target.method_24515();
-               double dx = target.method_23317() - p.method_23317();
-               double dz = target.method_23321() - p.method_23321();
-               int forwardX = Math.abs(dx) >= Math.abs(dz) ? (dx >= 0.0 ? 1 : -1) : 0;
-               int forwardZ = forwardX == 0 ? (dz >= 0.0 ? 1 : -1) : 0;
-               int sideX = -forwardZ;
-               int sideZ = forwardX;
-               class_2338[] candidates = new class_2338[] {
-                  feet.method_10069(sideX, -1, sideZ),
-                  feet.method_10069(-sideX, -1, -sideZ),
-                  feet.method_10069(forwardX, -1, forwardZ),
-                  feet.method_10069(-forwardX, -1, -forwardZ)
-               };
-               for (class_2338 candidate : candidates) {
+               // Find a supported obsidian position on the ground directly
+               // below the opponent's current X/Z position. If the opponent is
+               // high in the air, scan downward until a valid ground-level base
+               // with two free crystal blocks above it is found.
+               class_2338 targetFeet = target.method_24515();
+               for (int drop = 1; drop <= 6; drop++) {
+                  class_2338 candidate = targetFeet.method_10069(0, -drop, 0);
                   class_2338 support = candidate.method_10074();
                   class_2680 state = mc.field_1687.method_8320(candidate);
                   if (!state.method_45474()
@@ -519,9 +528,14 @@ public class AutoPvp extends Module {
                   this.crystalComboBase = candidate;
                   break;
                }
-               if (this.crystalComboBase == null || !this.hasRoomForObsidian(p)) {
-                  this.resetCrystalCombo();
-                  return false;
+               if (this.crystalComboBase == null || !this.hasRoomForObsidian(p)
+                  || p.method_33571().method_1022(class_243.method_24953(this.crystalComboBase)) > 4.5) {
+                  // Keep chasing instead of abandoning the combo if the base
+                  // is not yet within interaction reach.
+                  mc.field_1690.field_1894.method_23481(true);
+                  mc.field_1690.field_1867.method_23481(true);
+                  this.driving = true;
+                  return true;
                }
             }
          }
