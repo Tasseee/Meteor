@@ -14,7 +14,6 @@ import net.minecraft.class_2338;
 import net.minecraft.class_2350;
 import net.minecraft.class_3965;
 import net.minecraft.class_1511;
-import net.minecraft.class_1684;
 import net.minecraft.class_1297;
 import net.minecraft.class_243;
 import net.minecraft.class_2680;
@@ -24,8 +23,6 @@ import net.minecraft.class_746;
 
 public class AutoPvp extends Module {
    private final NumberSetting follow = this.add(new NumberSetting("Verfolgen bis (Bloecke)", 18.0, 4.0, 32.0, 1.0));
-   private final NumberSetting pearlFollowRange = this.add(new NumberSetting("Pearl-Verfolgung (Bloecke)", 48.0, 18.0, 96.0, 2.0));
-   private final NumberSetting targetMemory = this.add(new NumberSetting("Ziel merken (Ticks)", 120.0, 20.0, 300.0, 10.0));
    private final NumberSetting stop = this.add(new NumberSetting("Abstand halten", 2.4, 1.5, 5.0, 0.1));
    private final NumberSetting reach = this.add(new NumberSetting("Angriffsreichweite", 3.4, 1.0, 6.0, 0.1));
    private final NumberSetting turnSpeed = this.add(new NumberSetting("Drehgeschwindigkeit", 35.0, 3.0, 45.0, 1.0));
@@ -49,8 +46,6 @@ public class AutoPvp extends Module {
    private class_2338 crystalComboBase;
    private class_2338 lastCrystalObsidianBase;
    private boolean driving;
-   private int chaseTargetId = -1;
-   private int targetMissingTicks;
    private boolean wasForward;
    private boolean wasBack;
    private boolean wasSprint;
@@ -92,7 +87,6 @@ public class AutoPvp extends Module {
 
    @Override
    protected void onDisable() {
-      this.resetTargetTracking();
       this.resetCrystalCombo();
       this.cancelSlam(true);
       this.releaseShieldAxe();
@@ -144,72 +138,6 @@ public class AutoPvp extends Module {
             module.setEnabled(false);
          }
       }
-   }
-
-   private void resetTargetTracking() {
-      this.chaseTargetId = -1;
-      this.targetMissingTicks = 0;
-   }
-
-   private class_1657 findPlayerById(int id) {
-      if (mc.field_1687 == null || id == -1) return null;
-      for (class_1657 candidate : mc.field_1687.method_18456()) {
-         if (candidate.method_5628() == id && candidate.method_5805()
-            && !candidate.method_7325() && !CombatUtil.isFriend(candidate)) {
-            return candidate;
-         }
-      }
-      return null;
-   }
-
-   private boolean hasActivePearl(int targetId) {
-      if (mc.field_1687 == null || targetId == -1) return false;
-      for (class_1297 entity : mc.field_1687.method_18112()) {
-         if (entity instanceof class_1684 pearl && pearl.method_5805()
-            && pearl.method_24921() instanceof class_1657 owner
-            && owner.method_5628() == targetId) {
-            return true;
-         }
-      }
-      return false;
-   }
-
-   /**
-    * Keeps the selected opponent locked while they are in the extended chase range.
-    * If their pearl is in flight, keep the lock instead of switching to another player
-    * during the short interval before the teleport updates their position.
-    */
-   private class_1657 selectChaseTarget(class_746 player) {
-      if (this.chaseTargetId != -1) {
-         class_1657 tracked = this.findPlayerById(this.chaseTargetId);
-         boolean pearlInFlight = this.hasActivePearl(this.chaseTargetId);
-         if (tracked != null) {
-            double distance = player.method_5739(tracked);
-            if (distance <= this.pearlFollowRange.get() || pearlInFlight) {
-               this.targetMissingTicks = 0;
-               return tracked;
-            }
-            if (++this.targetMissingTicks <= this.targetMemory.getInt()) {
-               return tracked;
-            }
-         } else {
-            if (pearlInFlight) {
-               this.targetMissingTicks = 0;
-               return null;
-            }
-            if (++this.targetMissingTicks <= this.targetMemory.getInt()) {
-               return null;
-            }
-         }
-         this.resetTargetTracking();
-      }
-
-      class_1657 nearest = CombatUtil.nearestPlayer(this.follow.get());
-      if (nearest != null) {
-         this.chaseTargetId = nearest.method_5628();
-         this.targetMissingTicks = 0;
-      }
-      return nearest;
    }
 
    private void resetCrystalCombo() {
@@ -722,7 +650,6 @@ public class AutoPvp extends Module {
 
    @Override
    public void onWorldLeave() {
-      this.resetTargetTracking();
       this.resetCrystalCombo();
       this.lastCrystalObsidianBase = null;
       this.cancelSlam(true);
@@ -746,7 +673,7 @@ public class AutoPvp extends Module {
             return;
          }
 
-         class_1657 target = this.selectChaseTarget(p);
+         class_1657 target = CombatUtil.nearestPlayer(this.follow.get());
          if (target == null) {
             this.resetCrystalCombo();
             this.cancelSlam(true);
