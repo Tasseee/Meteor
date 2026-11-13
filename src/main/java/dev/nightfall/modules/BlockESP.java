@@ -39,6 +39,8 @@ public final class BlockESP extends Module {
    private int scanChunkZ = Integer.MIN_VALUE;
    private class_2818 scanChunk;
    private boolean scanning;
+   private int scanRange = -1;
+   private int scanSelectionMask = -1;
 
    public BlockESP() {
       super("BlockESP", "Waehlt Blocktypen einzeln aus und markiert sie im geladenen Gebiet.", Category.VISUALS);
@@ -54,6 +56,18 @@ public final class BlockESP extends Module {
          || this.emerald.get() && (b == class_2246.field_10013 || b == class_2246.field_29220);
    }
 
+   private int selectionMask() {
+      int mask = 0;
+      if (this.diamonds.get()) mask |= 1;
+      if (this.ancient.get()) mask |= 2;
+      if (this.chests.get()) mask |= 4;
+      if (this.spawners.get()) mask |= 8;
+      if (this.obsidian.get()) mask |= 16;
+      if (this.gold.get()) mask |= 32;
+      if (this.emerald.get()) mask |= 64;
+      return mask;
+   }
+
    @Override
    public void onTick() {
       if (mc.field_1724 == null || mc.field_1687 == null) {
@@ -64,6 +78,11 @@ public final class BlockESP extends Module {
       if (this.scanWorld != mc.field_1687) {
          this.scanWorld = mc.field_1687;
          this.resetScan(true);
+      }
+
+      if (this.scanning && (this.scanRange != this.range.getInt()
+         || this.scanSelectionMask != this.selectionMask())) {
+         this.resetScan(false);
       }
 
       int playerChunkX = mc.field_1724.method_31477() >> 4;
@@ -88,6 +107,8 @@ public final class BlockESP extends Module {
    private void beginScan() {
       class_2338 playerPos = mc.field_1724.method_24515();
       int r = this.range.getInt();
+      this.scanRange = r;
+      this.scanSelectionMask = this.selectionMask();
       this.minX = playerPos.method_10263() - r;
       this.maxX = playerPos.method_10263() + r;
       this.minY = Math.max(mc.field_1687.method_31607(), playerPos.method_10264() - r);
@@ -159,6 +180,8 @@ public final class BlockESP extends Module {
       this.scanChunk = null;
       this.scanChunkX = Integer.MIN_VALUE;
       this.scanChunkZ = Integer.MIN_VALUE;
+      this.scanRange = -1;
+      this.scanSelectionMask = -1;
       if (clearVisible) this.found.clear();
    }
 
