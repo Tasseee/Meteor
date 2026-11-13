@@ -197,9 +197,11 @@ public abstract class EntityScanEsp extends EspBase {
                label = label + " " + Math.round(living.method_6032()) + "hp";
             }
 
-            // The box and all other ESP primitives are drawn from this same render-frame
-            // world position. Projection converts them to screen space during this frame.
-            this.drawTarget(ctx, target.box(), label, this.color.rgb());
+            if (this.style.is("3D")) {
+               this.drawLabelOnly(ctx, target.box(), label);
+            } else {
+               this.drawTarget(ctx, target.box(), label, this.color.rgb());
+            }
          }
       }
    }
