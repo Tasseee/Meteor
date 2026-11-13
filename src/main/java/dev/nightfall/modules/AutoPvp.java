@@ -69,6 +69,10 @@ public class AutoPvp extends Module {
       super("AutoPvP", "Kaempft situationsabhaengig mit sanfter Rotation und Umgebungschecks.", Category.COMBAT);
    }
 
+   public boolean isCrystalComboEnabled() {
+      return this.isEnabled() && this.crystalCombo.get();
+   }
+
    @Override
    protected void onEnable() {
       this.syncAssistModules();
