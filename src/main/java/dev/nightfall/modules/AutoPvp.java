@@ -283,8 +283,20 @@ public class AutoPvp extends Module {
       class_243 toward = new class_243(target.method_23317() - p.method_23317(), 0.0, target.method_23321() - p.method_23321());
       if (toward.method_1027() < 1.0E-5) return false;
       toward = toward.method_1029();
-      class_2338 feet = class_2338.method_49637(p.method_23317() + toward.field_1352 * 0.85, p.method_23318(), p.method_23321() + toward.field_1350 * 0.85);
-      return isObsidian(feet) || isObsidian(feet.method_10074()) || isObsidian(feet.method_10084());
+
+      // Check several positions in front of the player, including floor,
+      // feet and head height. Any obsidian in this corridor disables jumping.
+      for (double distance = 0.45; distance <= 1.65; distance += 0.4) {
+         for (double side : new double[] {-0.35, 0.0, 0.35}) {
+            double x = p.method_23317() + toward.field_1352 * distance - toward.field_1350 * side;
+            double z = p.method_23321() + toward.field_1350 * distance + toward.field_1352 * side;
+            class_2338 feet = class_2338.method_49637(x, p.method_23318(), z);
+            if (this.isObsidian(feet) || this.isObsidian(feet.method_10074()) || this.isObsidian(feet.method_10084())) {
+               return true;
+            }
+         }
+      }
+      return false;
    }
 
    private boolean safeForward(class_746 p, class_1657 target) {
@@ -593,15 +605,17 @@ public class AutoPvp extends Module {
                   mc.field_1690.field_1849.method_23481(false);
                }
 
-               boolean obstacle = p.field_5976 && !this.obsidianAhead(p, target);
+               boolean obsidianInPath = this.obsidianAhead(p, target);
+               boolean obstacle = p.field_5976 && !obsidianInPath;
                boolean critMode = this.swordCrits.get() && !this.useCrystalAura.get()
-                  && distance <= this.reach.get() + 0.8 && this.clearAbove(p, 2);
+                  && distance <= this.reach.get() + 0.8 && this.clearAbove(p, 2) && !obsidianInPath;
                if (critMode) {
-                  // Jump repeatedly at melee range and stop sprinting so falling sword hits can crit.
+                  // Jump for sword crits only when the path ahead is clear of obsidian.
                   mc.field_1690.field_1867.method_23481(false);
                   mc.field_1690.field_1903.method_23481(p.method_24828());
                } else {
-                  mc.field_1690.field_1903.method_23481(this.jump.get() && obstacle && p.method_24828() && this.clearAbove(p, 2));
+                  // Never auto-jump into or over an obsidian block.
+                  mc.field_1690.field_1903.method_23481(!obsidianInPath && this.jump.get() && obstacle && p.method_24828() && this.clearAbove(p, 2));
                }
                this.driving = true;
                this.updateShieldAxe(target);
