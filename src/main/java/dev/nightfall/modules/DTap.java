@@ -25,6 +25,15 @@ public class DTap extends Module {
    private final NumberSetting hitDelay = this.add(new NumberSetting("Delay nach Schwerttreffer (Ticks)", 0.0, 0.0, 40.0, 1.0));
    private final NumberSetting crystalHeight = this.add(new NumberSetting("Crystal-Mindesthoehe", 0.75, 0.0, 2.5, 0.05));
    private final NumberSetting obsidianHeight = this.add(new NumberSetting("Obsidian-Mindesthoehe", 0.05, 0.0, 2.5, 0.05));
+   private final NumberSetting obsidianPlaceDelay = this.add(new NumberSetting("Obsidian-Platzierdelay", 2.0, 0.0, 20.0, 1.0));
+   private final NumberSetting obsidianWaitTimeout = this.add(new NumberSetting("Obsidian-Wartezeit", 25.0, 5.0, 60.0, 1.0));
+   private final NumberSetting crystalPlaceDelay = this.add(new NumberSetting("Crystal-Platzierdelay", 2.0, 0.0, 20.0, 1.0));
+   private final NumberSetting crystalSpawnTimeout = this.add(new NumberSetting("Crystal-Spawn-Timeout", 18.0, 5.0, 40.0, 1.0));
+   private final NumberSetting firstDetonateDelay = this.add(new NumberSetting("Zuenddelay Crystal 1", 0.0, 0.0, 10.0, 1.0));
+   private final NumberSetting secondDetonateDelay = this.add(new NumberSetting("Zuenddelay Crystal 2", 0.0, 0.0, 10.0, 1.0));
+   private final NumberSetting betweenCrystalDelay = this.add(new NumberSetting("Pause zwischen Crystals", 4.0, 0.0, 20.0, 1.0));
+   private final NumberSetting crystalPlaceRange = this.add(new NumberSetting("Crystal-Platzierreichweite", 4.5, 2.0, 6.0, 0.1));
+   private final NumberSetting crystalBreakRange = this.add(new NumberSetting("Crystal-Zuendreichweite", 4.5, 2.0, 6.0, 0.1));
 
    private static final int IDLE = 0;
    private static final int PLACE_OBSIDIAN = 1;
@@ -160,7 +169,7 @@ public class DTap extends Module {
             // placement face. Prefer only positions the player can actually reach.
             class_243 crystalHit = new class_243(candidate.method_10263() + 0.5,
                candidate.method_10264() + 1.0, candidate.method_10260() + 0.5);
-            if (player.method_33571().method_1022(crystalHit) > 4.5) continue;
+            if (player.method_33571().method_1022(crystalHit) > crystalPlaceRange.get()) continue;
             return candidate;
          }
       }
@@ -226,7 +235,7 @@ public class DTap extends Module {
          class_243 hit = new class_243(candidate.method_10263() + 0.5,
             candidate.method_10264() + 1.0, candidate.method_10260() + 0.5);
          // Do not send an out-of-reach placement packet.
-         if (player.method_33571().method_1022(hit) > 4.5) return false;
+         if (player.method_33571().method_1022(hit) > crystalPlaceRange.get()) return false;
          class_3965 result = new class_3965(hit, class_2350.field_11036, candidate, false);
          accepted = mc.field_1761.method_2896(player, hand, result).method_23665();
          player.method_6104(hand);
@@ -238,8 +247,12 @@ public class DTap extends Module {
       return accepted || findCrystal(candidate) != null;
    }
 
+   private boolean delayReady(int delay) {
+      return phaseTicks > 0 && phaseTicks % (delay + 1) == 0;
+   }
+
    private void attackCrystal(class_746 player, class_1511 crystal) {
-      if (crystal != null && player.method_5739(crystal) <= 4.5) {
+      if (crystal != null && player.method_5739(crystal) <= crystalBreakRange.get()) {
          mc.field_1761.method_2918(player, crystal);
          player.method_6104(class_1268.field_5808);
       }
@@ -330,15 +343,15 @@ public class DTap extends Module {
                finishSequence(target);
                return;
             }
-            if (phaseTicks % 3 == 1 && placeObsidian(player, base)) setPhase(WAIT_OBSIDIAN);
+            if (delayReady(obsidianPlaceDelay.getInt()) && placeObsidian(player, base)) setPhase(WAIT_OBSIDIAN);
             break;
 
          case WAIT_OBSIDIAN:
             if (isObsidian(base)) {
                setPhase(PLACE_FIRST);
-            } else if (phaseTicks > 25) {
+            } else if (phaseTicks > obsidianWaitTimeout.getInt()) {
                finishSequence(target);
-            } else if (phaseTicks % 4 == 0) {
+            } else if (delayReady(obsidianPlaceDelay.getInt())) {
                placeObsidian(player, base);
             }
             break;
@@ -352,13 +365,13 @@ public class DTap extends Module {
                setPhase(DETONATE_FIRST);
                return;
             }
-            if (phaseTicks % 3 == 1 && placeCrystal(player, base)) setPhase(WAIT_FIRST);
+            if (delayReady(crystalPlaceDelay.getInt()) && placeCrystal(player, base)) setPhase(WAIT_FIRST);
             break;
 
          case WAIT_FIRST:
             if (findCrystal(base) != null) {
                setPhase(DETONATE_FIRST);
-            } else if (phaseTicks > 18) {
+            } else if (phaseTicks > crystalSpawnTimeout.getInt()) {
                setPhase(PLACE_FIRST);
             }
             break;
@@ -367,7 +380,7 @@ public class DTap extends Module {
             class_1511 crystal = findCrystal(base);
             if (crystal == null) {
                if (phaseTicks >= 2) setPhase(WAIT_SECOND);
-            } else {
+            } else if (phaseTicks > firstDetonateDelay.getInt()) {
                attackCrystal(player, crystal);
             }
             break;
@@ -375,7 +388,7 @@ public class DTap extends Module {
 
          case WAIT_SECOND:
             // Allow the first explosion and the totem/equipment swap to resolve.
-            if (phaseTicks >= 4) setPhase(PLACE_SECOND);
+            if (phaseTicks >= betweenCrystalDelay.getInt()) setPhase(PLACE_SECOND);
             break;
 
          case PLACE_SECOND:
@@ -387,13 +400,13 @@ public class DTap extends Module {
                setPhase(DETONATE_SECOND);
                return;
             }
-            if (phaseTicks % 3 == 1 && placeCrystal(player, base)) setPhase(WAIT_SECOND_SPAWN);
+            if (delayReady(crystalPlaceDelay.getInt()) && placeCrystal(player, base)) setPhase(WAIT_SECOND_SPAWN);
             break;
 
          case WAIT_SECOND_SPAWN:
             if (findCrystal(base) != null) {
                setPhase(DETONATE_SECOND);
-            } else if (phaseTicks > 18) {
+            } else if (phaseTicks > crystalSpawnTimeout.getInt()) {
                setPhase(PLACE_SECOND);
             }
             break;
@@ -402,7 +415,7 @@ public class DTap extends Module {
             class_1511 crystal = findCrystal(base);
             if (crystal == null) {
                if (phaseTicks >= 2) finishSequence(target);
-            } else {
+            } else if (phaseTicks > secondDetonateDelay.getInt()) {
                attackCrystal(player, crystal);
             }
             break;
