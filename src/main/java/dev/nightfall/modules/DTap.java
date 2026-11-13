@@ -23,6 +23,8 @@ import net.minecraft.class_746;
 public class DTap extends Module {
    private final NumberSetting targetRange = this.add(new NumberSetting("Ziel-Reichweite", 6.0, 3.0, 12.0, 0.5));
    private final NumberSetting hitDelay = this.add(new NumberSetting("Delay nach Schwerttreffer (Ticks)", 0.0, 0.0, 40.0, 1.0));
+   private final NumberSetting crystalHeight = this.add(new NumberSetting("Crystal-Mindesthoehe", 0.75, 0.0, 2.5, 0.05));
+   private final NumberSetting obsidianHeight = this.add(new NumberSetting("Obsidian-Mindesthoehe", 0.05, 0.0, 2.5, 0.05));
    private int phase;
    private int ticks;
    private int hitDelayTicks;
@@ -71,7 +73,7 @@ public class DTap extends Module {
 
    private boolean isCrystalHeight(class_1657 target) {
       double heightAboveBlock = target.method_23318() - target.method_24515().method_10264();
-      return this.isTargetAirborne(target) && heightAboveBlock >= 0.75;
+      return this.isTargetAirborne(target) && heightAboveBlock >= this.crystalHeight.get();
    }
 
    private boolean entityFree(class_2338 pos, double minY, double maxY) {
@@ -220,12 +222,14 @@ public class DTap extends Module {
 
       switch (phase) {
          case 1:
-            // Obsidian may be placed as soon as the target leaves the ground.
-            if (!this.isTargetAirborne(target)) return;
+            // Obsidian placement uses its own adjustable minimum airborne height.
+            if (target.method_24828()
+               || target.method_23318() - target.method_24515().method_10264() < this.obsidianHeight.get()) return;
             if (placeObsidian(player, firstBase)) { phase = 2; ticks = 0; }
             break;
          case 2:
-            if (!this.isTargetAirborne(target)) return;
+            if (target.method_24828()
+               || target.method_23318() - target.method_24515().method_10264() < this.obsidianHeight.get()) return;
             if (placeObsidian(player, secondBase)) { phase = 3; ticks = 0; }
             break;
          case 3:
