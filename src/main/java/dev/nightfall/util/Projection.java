@@ -68,7 +68,8 @@ public final class Projection {
             // Use Minecraft's exact render-time FOV for this camera/tickDelta. Rebuilding
             // the FOV from the camera projection plane can introduce tiny scale changes
             // while the camera is rotating, which become visible as ESP jitter.
-            float renderFov = renderer.nightfall$invokeGetFov(camera, tickDelta, false);
+            float renderTickDelta = Math.max(0.0F, Math.min(1.0F, frameTickDelta));
+            float renderFov = renderer.nightfall$invokeGetFov(camera, renderTickDelta, false);
             if (Float.isFinite(renderFov) && renderFov > 0.0F) {
                Matrix4f projection = renderer.nightfall$invokeGetProjectionMatrix(renderFov);
                Quaternionf inverseCameraRotation = camera.method_23767().conjugate(new Quaternionf());
@@ -76,7 +77,7 @@ public final class Projection {
                viewProjection = projection.mul(view);
                sw = width;
                sh = height;
-               tickDelta = Math.max(0.0F, Math.min(1.0F, frameTickDelta));
+               tickDelta = renderTickDelta;
                valid = Double.isFinite(ex) && Double.isFinite(ey) && Double.isFinite(ez);
             }
          }

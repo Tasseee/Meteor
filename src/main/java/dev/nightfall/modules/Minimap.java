@@ -53,9 +53,11 @@ public class Minimap extends HudModule {
          double theta = this.rotate.get() ? Math.toRadians(180.0 - yaw) : 0.0;
          ctx.method_25294(x, y, x + s, y + s, Theme.withAlpha(Theme.MAP_BG, a));
          ctx.method_44379(x, y, x + s, y + s);
-         Matrix3x2fStack m = ctx.method_51448();
-         m.pushMatrix();
-         m.translate(cx, cy);
+         try {
+            Matrix3x2fStack m = ctx.method_51448();
+            m.pushMatrix();
+            try {
+               m.translate(cx, cy);
          if (this.rotate.get()) {
             m.rotate((float)theta);
          }
@@ -90,8 +92,12 @@ public class Minimap extends HudModule {
             }
          }
 
-         m.popMatrix();
-         ctx.method_44380();
+            } finally {
+               m.popMatrix();
+            }
+         } finally {
+            ctx.method_44380();
+         }
          ctx.method_25294((int)cx - 1, (int)cy - 1, (int)cx + 2, (int)cy + 2, -1);
          int fxm;
          int fym;

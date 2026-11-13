@@ -13,6 +13,7 @@ public final class AutoGap extends Module {
    private boolean used;
    private boolean previousUsePressed;
    private int previousSlot;
+   private int eatingSlot = -1;
    private int ticks;
    private int cooldown;
 
@@ -31,14 +32,24 @@ public final class AutoGap extends Module {
       this.cooldown = 0;
    }
 
+   public boolean isEating() {
+      return this.eating;
+   }
+
    private void finish() {
       if (this.eating) {
-         mc.field_1690.field_1904.method_23481(this.previousUsePressed);
-         InvUtil.select(this.previousSlot);
+         if (mc.field_1690 != null) {
+            mc.field_1690.field_1904.method_23481(this.previousUsePressed);
+         }
+         // Restore only if the player has not manually selected another hotbar slot.
+         if (this.eatingSlot >= 0 && InvUtil.selected() == this.eatingSlot) {
+            InvUtil.select(this.previousSlot);
+         }
       }
 
       this.eating = false;
       this.used = false;
+      this.eatingSlot = -1;
       this.ticks = 0;
    }
 
@@ -51,6 +62,10 @@ public final class AutoGap extends Module {
          }
 
          if (this.eating) {
+            if (mc.field_1755 != null || (this.eatingSlot >= 0 && InvUtil.selected() != this.eatingSlot)) {
+               this.finish();
+               return;
+            }
             this.ticks++;
             if (p.method_6115()) {
                this.used = true;
@@ -73,6 +88,7 @@ public final class AutoGap extends Module {
                   this.previousSlot = InvUtil.selected();
                   this.previousUsePressed = mc.field_1690.field_1904.method_1434();
                   InvUtil.select(slot);
+                  this.eatingSlot = slot;
                   mc.field_1690.field_1904.method_23481(true);
                   this.eating = true;
                }

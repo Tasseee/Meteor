@@ -11,13 +11,14 @@ import net.minecraft.class_2535;
 import net.minecraft.class_2596;
 import net.minecraft.class_2824;
 import net.minecraft.class_2828;
+import net.minecraft.class_9836;
 
 /** Delays only outgoing player movement packets; all other traffic stays untouched. */
 public final class FakeLag extends Module {
    private static final Queue<class_2596<?>> QUEUE = new ArrayDeque<>();
    private static class_2535 connection;
    private static boolean bypass;
-   private static long holdStart;
+   private static long holdStartNanos;
    private static double serverX;
    private static double serverY;
    private static double serverZ;
@@ -27,7 +28,6 @@ public final class FakeLag extends Module {
 
    private final NumberSetting maxDelay = this.add(new NumberSetting("Max. Delay (ms)", 350.0, 50.0, 1000.0, 25.0));
    private final NumberSetting maxPackets = this.add(new NumberSetting("Max. Pakete", 25.0, 5.0, 60.0, 1.0));
-   private final BoolSetting flushOnAttack = this.add(new BoolSetting("Bei Angriff senden", true));
    private final BoolSetting flushOnScreen = this.add(new BoolSetting("Bei GUI senden", true));
 
    public FakeLag() {
@@ -56,31 +56,31 @@ public final class FakeLag extends Module {
       serverPitch = packet.method_12270(serverPitch);
    }
 
-   public static boolean hasPendingServerPosition() {
+   public static synchronized boolean hasPendingServerPosition() {
       return !QUEUE.isEmpty() && serverPositionInitialized;
    }
 
-   public static double serverX() {
+   public static synchronized double serverX() {
       return serverX;
    }
 
-   public static double serverY() {
+   public static synchronized double serverY() {
       return serverY;
    }
 
-   public static double serverZ() {
+   public static synchronized double serverZ() {
       return serverZ;
    }
 
-   public static float serverYaw() {
+   public static synchronized float serverYaw() {
       return serverYaw;
    }
 
-   public static float serverPitch() {
+   public static synchronized float serverPitch() {
       return serverPitch;
    }
 
-   public static void intercept(class_2535 conn, class_2596<?> packet, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+   public static synchronized void intercept(class_2535 conn, class_2596<?> packet, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
       if (bypass) {
          if (packet instanceof class_2828 movement) recordSentMovement(movement);
          return;
@@ -99,13 +99,21 @@ public final class FakeLag extends Module {
          return;
       }
 
-      if (packet instanceof class_2824) {
-         if (module.flushOnAttack.get()) flush();
+      // ClientTickEnd is sent once per client tick. Let it pass without draining the
+      // movement queue, otherwise FakeLag would flush almost immediately every tick.
+      if (packet instanceof class_9836) return;
+
+      // Flush delayed movement before action/control packets (attacks, interactions,
+      // slot changes, keep-alives, etc.) so those actions keep their expected ordering.
+      if (!(packet instanceof class_2828 movement)) {
+         flush();
          return;
       }
-      if (!(packet instanceof class_2828 movement)) return;
 
-      if (QUEUE.isEmpty()) holdStart = System.currentTimeMillis();
+      // Flush the previous connection before starting the timer for the new one.
+      // Otherwise flush() resets holdStartNanos and the next queue would appear overdue.
+      if (connection != null && connection != conn) flush();
+      if (QUEUE.isEmpty()) holdStartNanos = System.nanoTime();
       connection = conn;
       QUEUE.add(packet);
       ci.cancel();
@@ -113,10 +121,10 @@ public final class FakeLag extends Module {
       if (QUEUE.size() >= module.maxPackets.getInt()) flush();
    }
 
-   public static void flush() {
+   public static synchronized void flush() {
       if (connection == null) {
          QUEUE.clear();
-         holdStart = 0L;
+         holdStartNanos = 0L;
          return;
       }
       boolean old = bypass;
@@ -126,19 +134,24 @@ public final class FakeLag extends Module {
          while ((packet = QUEUE.poll()) != null) connection.method_10752(packet, null);
       } finally {
          bypass = old;
-         if (QUEUE.isEmpty()) holdStart = 0L;
+         if (QUEUE.isEmpty()) {
+            holdStartNanos = 0L;
+            connection = null;
+         }
       }
    }
 
    @Override
    protected void onEnable() {
-      if (!serverPositionInitialized && mc.field_1724 != null) {
-         serverX = mc.field_1724.method_23317();
-         serverY = mc.field_1724.method_23318();
-         serverZ = mc.field_1724.method_23321();
-         serverYaw = mc.field_1724.method_36454();
-         serverPitch = mc.field_1724.method_36455();
-         serverPositionInitialized = true;
+      synchronized (FakeLag.class) {
+         if (!serverPositionInitialized && mc.field_1724 != null) {
+            serverX = mc.field_1724.method_23317();
+            serverY = mc.field_1724.method_23318();
+            serverZ = mc.field_1724.method_23321();
+            serverYaw = mc.field_1724.method_36454();
+            serverPitch = mc.field_1724.method_36455();
+            serverPositionInitialized = true;
+         }
       }
    }
 
@@ -149,22 +162,29 @@ public final class FakeLag extends Module {
 
    @Override
    public void onWorldLeave() {
-      flush();
-      QUEUE.clear();
-      connection = null;
-      holdStart = 0L;
-      serverPositionInitialized = false;
-      serverX = serverY = serverZ = 0.0;
-      serverYaw = serverPitch = 0.0F;
+      synchronized (FakeLag.class) {
+         flush();
+         QUEUE.clear();
+         connection = null;
+         holdStartNanos = 0L;
+         serverPositionInitialized = false;
+         serverX = serverY = serverZ = 0.0;
+         serverYaw = serverPitch = 0.0F;
+      }
    }
 
    @Override
    public void onTick() {
-      if (mc.field_1724 == null || mc.field_1687 == null || (flushOnScreen.get() && mc.field_1755 != null)) {
-         flush();
-         return;
+      synchronized (FakeLag.class) {
+         if (mc.field_1724 == null || mc.field_1687 == null || (flushOnScreen.get() && mc.field_1755 != null)) {
+            flush();
+            return;
+         }
+         if (!QUEUE.isEmpty()
+            && System.nanoTime() - holdStartNanos >= (long)maxDelay.getInt() * 1_000_000L) {
+            flush();
+         }
       }
-      if (!QUEUE.isEmpty() && System.currentTimeMillis() - holdStart >= maxDelay.getInt()) flush();
    }
 
    @Override

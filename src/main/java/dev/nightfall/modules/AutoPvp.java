@@ -38,6 +38,7 @@ public class AutoPvp extends Module {
    private final BoolSetting useCrystalAura = this.add(new BoolSetting("CrystalAura integrieren", false));
    private final BoolSetting useAutoAnchor = this.add(new BoolSetting("AutoAnchor integrieren", false));
    private final BoolSetting useMaceAssist = this.add(new BoolSetting("MaceAssist integrieren", true));
+   private final BoolSetting useDTap = this.add(new BoolSetting("DTap integrieren", true));
    private final BoolSetting crystalCombo = this.add(new BoolSetting("Sprint-Hit + Obsidian + 2 Crystals", true));
    private int crystalComboPhase;
    private int crystalComboTicks;
@@ -46,6 +47,7 @@ public class AutoPvp extends Module {
    private class_2338 lastCrystalObsidianBase;
    private boolean driving;
    private boolean wasForward;
+   private boolean wasBack;
    private boolean wasSprint;
    private boolean wasLeft;
    private boolean wasRight;
@@ -55,6 +57,7 @@ public class AutoPvp extends Module {
    private boolean ownsCrystalAura;
    private boolean ownsAutoAnchor;
    private boolean ownsMaceAssist;
+   private boolean ownsDTap;
    private int strafeDir = 1;
    private int strafeTimer;
    private int shieldPreviousSlot = -1;
@@ -72,7 +75,9 @@ public class AutoPvp extends Module {
    }
 
    public boolean isCrystalComboEnabled() {
-      return this.isEnabled() && this.crystalCombo.get() && this.crystalComboPhase > 0;
+      if (this.isEnabled() && this.crystalCombo.get() && this.crystalComboPhase > 0) return true;
+      DTap dtap = ModuleManager.get(DTap.class);
+      return dtap != null && dtap.isEnabled() && dtap.isSequenceActive();
    }
 
    @Override
@@ -95,6 +100,7 @@ public class AutoPvp extends Module {
       this.ownsCrystalAura = this.syncModule(CrystalAura.class, this.useCrystalAura.get(), this.ownsCrystalAura);
       this.ownsAutoAnchor = this.syncModule(AutoAnchor.class, this.useAutoAnchor.get(), this.ownsAutoAnchor);
       this.ownsMaceAssist = this.syncModule(MaceAssist.class, this.useMaceAssist.get(), this.ownsMaceAssist);
+      this.ownsDTap = this.syncModule(DTap.class, this.useDTap.get(), this.ownsDTap);
    }
 
    private <T extends Module> boolean syncModule(Class<T> type, boolean requested, boolean owned) {
@@ -121,7 +127,8 @@ public class AutoPvp extends Module {
       this.disableIfOwned(CrystalAura.class, this.ownsCrystalAura);
       this.disableIfOwned(AutoAnchor.class, this.ownsAutoAnchor);
       this.disableIfOwned(MaceAssist.class, this.ownsMaceAssist);
-      this.ownsAutoGap = this.ownsAutoTotem = this.ownsCrystalAura = this.ownsAutoAnchor = this.ownsMaceAssist = false;
+      this.disableIfOwned(DTap.class, this.ownsDTap);
+      this.ownsAutoGap = this.ownsAutoTotem = this.ownsCrystalAura = this.ownsAutoAnchor = this.ownsMaceAssist = this.ownsDTap = false;
    }
 
    private <T extends Module> void disableIfOwned(Class<T> type, boolean owned) {
@@ -185,6 +192,7 @@ public class AutoPvp extends Module {
    private void release() {
       if (this.driving && mc.field_1690 != null) {
          mc.field_1690.field_1894.method_23481(this.wasForward);
+         mc.field_1690.field_1881.method_23481(this.wasBack);
          mc.field_1690.field_1867.method_23481(this.wasSprint);
          mc.field_1690.field_1913.method_23481(this.wasLeft);
          mc.field_1690.field_1849.method_23481(this.wasRight);
@@ -460,7 +468,9 @@ public class AutoPvp extends Module {
    private boolean tickCrystalCombo(class_746 p, class_1657 target) {
       // AutoPvP owns the crystal sequence: it starts after its own melee hit
       // and waits until the target is airborne before placing obsidian.
-      if (!this.crystalCombo.get() || !this.useCrystalAura.get()) {
+      // DTap is the sole crystal sequencer when integrated; avoid two modules
+      // trying to place/detonate crystals on the same tick.
+      if (!this.crystalCombo.get() || !this.useCrystalAura.get() || this.useDTap.get()) {
          this.resetCrystalCombo();
          return false;
       }
@@ -655,6 +665,14 @@ public class AutoPvp extends Module {
       this.syncAssistModules();
       class_746 p = mc.field_1724;
       if (p != null && mc.field_1755 == null && mc.field_1761 != null && mc.field_1687 != null) {
+         // AutoGap owns the hotbar and use key until its eating sequence finishes.
+         if (ModuleManager.get(AutoGap.class).isEating()) {
+            // Pause movement, but keep the current combo/slot ownership intact.
+            // AutoGap restores the slot it found; the sequence can resume afterward.
+            this.release();
+            return;
+         }
+
          class_1657 target = CombatUtil.nearestPlayer(this.follow.get());
          if (target == null) {
             this.resetCrystalCombo();
@@ -664,6 +682,7 @@ public class AutoPvp extends Module {
          } else {
             if (!this.driving) {
                this.wasForward = mc.field_1690.field_1894.method_1434();
+               this.wasBack = mc.field_1690.field_1881.method_1434();
                this.wasSprint = mc.field_1690.field_1867.method_1434();
                this.wasLeft = mc.field_1690.field_1913.method_1434();
                this.wasRight = mc.field_1690.field_1849.method_1434();
@@ -676,10 +695,27 @@ public class AutoPvp extends Module {
             if (this.tickStunSlam(p, target, distance)) {
                this.driving = true;
             } else {
+               // The retreat check belongs in the active movement path; the old
+               // check inside tickCrystalCombo was unreachable when DTap was enabled.
+               if (this.useDTap.get()) {
+                  DTap dtap = ModuleManager.get(DTap.class);
+                  if (dtap != null && dtap.needsRetreat()) {
+                     this.aimAt(target.method_23317(), target.method_23323(0.5), target.method_23321());
+                     mc.field_1690.field_1894.method_23481(false);
+                     mc.field_1690.field_1881.method_23481(true);
+                     mc.field_1690.field_1867.method_23481(false);
+                     mc.field_1690.field_1913.method_23481(false);
+                     mc.field_1690.field_1849.method_23481(false);
+                     mc.field_1690.field_1903.method_23481(false);
+                     this.driving = true;
+                     return;
+                  }
+               }
                boolean obsidianInPath = this.obsidianAhead(p, target);
                int obsidianSide = obsidianInPath ? this.obsidianDetourSide(p, target) : 0;
                boolean detouring = obsidianSide != 0;
                boolean approach = distance > this.stop.get() && (detouring || this.safeForward(p, target));
+               mc.field_1690.field_1881.method_23481(false);
                mc.field_1690.field_1894.method_23481(approach);
                // CrystalAura mode keeps sprint enabled for sprint-hit combos;
                // sword-only mode manages sprint separately for critical hits.
@@ -714,10 +750,12 @@ public class AutoPvp extends Module {
                   mc.field_1690.field_1867.method_23481(false);
                   mc.field_1690.field_1903.method_23481(p.method_24828());
                } else {
-                  // CrystalAura mode does not prepare sword crits: keep sprinting.
-                  // Still avoid jumping over obsidian or triggering obstacle jumps in CrystalAura mode.
+                  // Keep a sprint-jump rhythm while closing distance; pause it only for a timed sword crit.
+                  // Obsidian in the path is handled by the lateral detour instead of jumping into it.
+                  boolean chaseJump = approach && distance > this.stop.get() - 0.2
+                     && this.jump.get() && p.method_24828() && this.clearAbove(p, 2);
                   mc.field_1690.field_1903.method_23481(!this.useCrystalAura.get() && !obsidianInPath
-                     && this.jump.get() && obstacle && p.method_24828() && this.clearAbove(p, 2));
+                     && (chaseJump || (obstacle && this.jump.get() && p.method_24828() && this.clearAbove(p, 2))));
                }
                this.driving = true;
                this.updateShieldAxe(target);
@@ -731,9 +769,11 @@ public class AutoPvp extends Module {
                if (this.attack.get() && distance <= this.reach.get()
                   && p.method_6057(target)
                   && p.method_7261(0.5F) >= 0.90F) {
+                  boolean maceForSmash = this.useMaceAssist.get() && !p.method_24828()
+                     && p.method_6047().method_31574(class_1802.field_49814);
                   int weaponSlot = this.shieldAxeSlot >= 0
                      ? this.shieldAxeSlot
-                     : InvUtil.findBestSword();
+                     : (maceForSmash ? InvUtil.selected() : InvUtil.findBestSword());
                   if (weaponSlot >= 0) {
                      if (this.shieldAxeSlot < 0) InvUtil.select(weaponSlot);
 
@@ -746,6 +786,12 @@ public class AutoPvp extends Module {
                      }
                      mc.field_1761.method_2918(p, target);
                      p.method_6104(class_1268.field_5808);
+                     // Start DTap only after an actual sword hit, never after the shield-breaking axe hit.
+                     if (this.useDTap.get() && this.shieldAxeSlot < 0
+                        && !p.method_6047().method_31574(class_1802.field_49814)) {
+                        DTap dtap = ModuleManager.get(DTap.class);
+                        if (dtap != null) dtap.triggerFromAutoPvp(target);
+                     }
                      if (this.crystalCombo.get() && this.useCrystalAura.get()
                         && InvUtil.findInventory(class_1802.field_8281) >= 0
                         && InvUtil.findInventory(class_1802.field_8301) >= 0) {

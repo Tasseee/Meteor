@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.CombatUtil;
 import dev.nightfall.util.InvUtil;
@@ -44,6 +45,7 @@ public class DTap extends Module {
    private int targetId = -1;
    private class_2338 base;
    private int trackedTargetId = -1;
+   private int queuedTargetId = -1;
    private float lastTargetHealth = Float.NaN;
 
    public DTap() {
@@ -73,7 +75,32 @@ public class DTap extends Module {
       targetId = -1;
       base = null;
       trackedTargetId = -1;
+      queuedTargetId = -1;
       lastTargetHealth = Float.NaN;
+   }
+
+   public boolean isSequenceActive() {
+      return this.phase != IDLE || this.queuedTargetId != -1;
+   }
+
+   // Called by AutoPvP immediately after it performs a sword attack.
+   public void triggerFromAutoPvp(class_1657 target) {
+      // Ignore additional hits while a sequence is already running; otherwise
+      // a stale queued hit could start an unexpected second sequence afterward.
+      if (!this.isEnabled() || phase != IDLE || target == null || !target.method_5805()) return;
+      this.queuedTargetId = target.method_5628();
+   }
+
+   // True only when our own player hitbox blocks the crystal spawn volume.
+   // Other entities (including the target or a spawned crystal) must not make
+   // AutoPvP retreat unnecessarily.
+   public boolean needsRetreat() {
+      if (base == null || mc.field_1687 == null || mc.field_1724 == null
+         || (phase != PLACE_FIRST && phase != WAIT_FIRST
+         && phase != PLACE_SECOND && phase != WAIT_SECOND_SPAWN)) return false;
+      class_238 spawnBox = new class_238(base.method_10263(), base.method_10264() + 1.0, base.method_10260(),
+         base.method_10263() + 1.0, base.method_10264() + 3.0, base.method_10260() + 1.0);
+      return mc.field_1687.method_8335(null, spawnBox).contains(mc.field_1724);
    }
 
    private void setPhase(int next) {
@@ -264,27 +291,39 @@ public class DTap extends Module {
    public void onTick() {
       class_746 player = mc.field_1724;
       if (player == null || mc.field_1687 == null || mc.field_1761 == null || mc.field_1755 != null) return;
+      // Preserve queued hits and pause every DTap phase while AutoGap is eating.
+      if (ModuleManager.get(AutoGap.class).isEating()) return;
 
       if (phase == IDLE) {
-         class_1657 target = CombatUtil.nearestPlayer(targetRange.get());
-         if (target == null) {
-            trackedTargetId = -1;
-            lastTargetHealth = Float.NaN;
-            return;
+         // A queued AutoPvP hit is authoritative: never fall back to another
+         // nearby player if that exact entity is no longer present.
+         int queuedId = this.queuedTargetId;
+         boolean autoPvpTriggered = queuedId != -1;
+         this.queuedTargetId = -1;
+         class_1657 target;
+         if (autoPvpTriggered) {
+            target = findTrackedTarget(queuedId);
+            if (target == null || player.method_5739(target) > targetRange.get() + 2.0) return;
+         } else {
+            target = CombatUtil.nearestPlayer(targetRange.get());
+            if (target == null) return;
+            // Standalone DTap remains usable: initialize target tracking, then
+            // wait for a health decrease only when AutoPvP did not queue a hit.
+            if (trackedTargetId != target.method_5628()) {
+               trackedTargetId = target.method_5628();
+               lastTargetHealth = target.method_6032();
+               return;
+            }
+            float health = target.method_6032();
+            boolean wasHit = !Float.isNaN(lastTargetHealth) && health < lastTargetHealth - 0.01F;
+            lastTargetHealth = health;
+            if (!wasHit) return;
          }
-
-         if (trackedTargetId != target.method_5628()) {
-            trackedTargetId = target.method_5628();
-            lastTargetHealth = target.method_6032();
-            return;
-         }
-
-         float health = target.method_6032();
-         boolean wasHit = !Float.isNaN(lastTargetHealth) && health < lastTargetHealth - 0.01F;
-         lastTargetHealth = health;
-         if (!wasHit || countInventory(player, class_1802.field_8301) < 2) return;
+         if (countInventory(player, class_1802.field_8301) < 2) return;
 
          targetId = target.method_5628();
+         trackedTargetId = targetId;
+         lastTargetHealth = target.method_6032();
          base = findNearbyObsidian(target);
          if (base != null) {
             setPhase(PLACE_FIRST);
@@ -298,7 +337,9 @@ public class DTap extends Module {
       }
 
       class_1657 target = findTrackedTarget(targetId);
-      if (target == null || ++sequenceTicks > 180) {
+      if (target == null || ++sequenceTicks > 180
+         || player.method_5739(target) > targetRange.get() + 2.0) {
+         // Stop if the original opponent disappears or leaves the supported range.
          finishSequence(target);
          return;
       }

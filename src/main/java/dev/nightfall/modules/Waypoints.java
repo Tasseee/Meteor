@@ -28,16 +28,18 @@ public class Waypoints extends Module {
          String dim = Storage.dim();
 
          for (Waypoint w : WaypointManager.all()) {
-            if (!"FakeBase".equalsIgnoreCase(w.category) && w.dim.equals(dim)) {
+            if (w != null && !"FakeBase".equalsIgnoreCase(w.category) && dim.equals(w.dim)) {
                double dx = w.x + 0.5 - Projection.eyeX();
                double dy = w.y + 0.5 - Projection.eyeY();
                double dz = w.z + 0.5 - Projection.eyeZ();
                double d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-               if (!(d > this.maxDist.get()) && Projection.project(w.x + 0.5, w.y + 0.5, w.z + 0.5, this.pt)) {
+               if (Double.isFinite(d) && d <= this.maxDist.get()
+                  && Projection.project(w.x + 0.5, w.y + 0.5, w.z + 0.5, this.pt)) {
                   int col = Theme.withAlpha(w.color, 224);
                   ctx.method_25294((int)this.pt[0] - 2, (int)this.pt[1] - 2, (int)this.pt[0] + 3, (int)this.pt[1] + 3, col);
                   if (this.labels.get()) {
-                     Draw.centeredText(ctx, mc.field_1772, w.name + " " + (int)d + "m", (float)this.pt[0], (float)this.pt[1] - 12.0F, -1);
+                     String name = w.name == null || w.name.isBlank() ? "Waypoint" : w.name;
+                     Draw.centeredText(ctx, mc.field_1772, name + " " + (int)d + "m", (float)this.pt[0], (float)this.pt[1] - 12.0F, -1);
                   }
 
                   if (this.tracers.get()) {

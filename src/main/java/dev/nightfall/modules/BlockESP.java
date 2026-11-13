@@ -11,12 +11,15 @@ import java.util.List;
 import net.minecraft.class_2246;
 import net.minecraft.class_2248;
 import net.minecraft.class_2338;
+import net.minecraft.class_2818;
+import net.minecraft.class_638;
 import net.minecraft.class_238;
 import net.minecraft.class_332;
 
 public final class BlockESP extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 64.0, 8.0, 64.0, 4.0));
    private final NumberSetting maxBlocks = this.add(new NumberSetting("Max Markierungen", 600.0, 20.0, 600.0, 20.0));
+   private final NumberSetting budgetMs = this.add(new NumberSetting("Suchbudget (ms/Tick)", 2.0, 0.5, 5.0, 0.1));
    private final BoolSetting diamonds = this.add(new BoolSetting("Diamanterz", true));
    private final BoolSetting ancient = this.add(new BoolSetting("Antiker Schrott", true));
    private final BoolSetting chests = this.add(new BoolSetting("Kisten", true));
@@ -24,8 +27,20 @@ public final class BlockESP extends Module {
    private final BoolSetting obsidian = this.add(new BoolSetting("Obsidian", false));
    private final BoolSetting gold = this.add(new BoolSetting("Golderz", false));
    private final BoolSetting emerald = this.add(new BoolSetting("Smaragderz", false));
+   private static final int MAX_CHECKS_PER_TICK = 12000;
    private final List<class_238> found = new ArrayList<>();
+   private final List<class_238> working = new ArrayList<>();
+   private class_638 scanWorld;
    private int timer;
+   private int cursor;
+   private int total;
+   private int minX, minY, minZ, maxX, maxY, maxZ;
+   private int scanChunkX = Integer.MIN_VALUE;
+   private int scanChunkZ = Integer.MIN_VALUE;
+   private class_2818 scanChunk;
+   private boolean scanning;
+   private int scanRange = -1;
+   private int scanSelectionMask = -1;
 
    public BlockESP() {
       super("BlockESP", "Waehlt Blocktypen einzeln aus und markiert sie im geladenen Gebiet.", Category.VISUALS);
@@ -41,43 +56,133 @@ public final class BlockESP extends Module {
          || this.emerald.get() && (b == class_2246.field_10013 || b == class_2246.field_29220);
    }
 
+   private int selectionMask() {
+      int mask = 0;
+      if (this.diamonds.get()) mask |= 1;
+      if (this.ancient.get()) mask |= 2;
+      if (this.chests.get()) mask |= 4;
+      if (this.spawners.get()) mask |= 8;
+      if (this.obsidian.get()) mask |= 16;
+      if (this.gold.get()) mask |= 32;
+      if (this.emerald.get()) mask |= 64;
+      return mask;
+   }
+
    @Override
    public void onTick() {
-      if (mc.field_1724 != null && mc.field_1687 != null && this.timer-- <= 0) {
-         this.timer = 12;
-         this.found.clear();
-         class_2338 p = mc.field_1724.method_24515();
-         int r = this.range.getInt();
-         int cap = this.maxBlocks.getInt();
-         int minY = Math.max(mc.field_1687.method_31607(), p.method_10264() - r);
-         int maxY = Math.min(mc.field_1687.method_31600(), p.method_10264() + r);
-         int minX = p.method_10263() - r;
-         int maxX = p.method_10263() + r;
-         int minZ = p.method_10260() - r;
-         int maxZ = p.method_10260() + r;
+      if (mc.field_1724 == null || mc.field_1687 == null) {
+         this.resetScan(true);
+         return;
+      }
 
-         for (int cx = minX >> 4; cx <= maxX >> 4 && this.found.size() < cap; cx++) {
-            for (int cz = minZ >> 4; cz <= maxZ >> 4 && this.found.size() < cap; cz++) {
-               if (mc.field_1687.method_2935().method_21730(cx, cz) != null) {
-                  int sx = Math.max(minX, cx << 4);
-                  int ex = Math.min(maxX, (cx << 4) + 15);
-                  int sz = Math.max(minZ, cz << 4);
-                  int ez = Math.min(maxZ, (cz << 4) + 15);
+      if (this.scanWorld != mc.field_1687) {
+         this.scanWorld = mc.field_1687;
+         this.resetScan(true);
+      }
 
-                  for (int x = sx; x <= ex && this.found.size() < cap; x++) {
-                     for (int z = sz; z <= ez && this.found.size() < cap; z++) {
-                        for (int y = minY; y <= maxY && this.found.size() < cap; y++) {
-                           class_2338 bp = new class_2338(x, y, z);
-                           if (this.selected(mc.field_1687.method_8320(bp).method_26204())) {
-                              this.found.add(new class_238(bp));
-                           }
-                        }
-                     }
-                  }
-               }
+      if (this.scanning && (this.scanRange != this.range.getInt()
+         || this.scanSelectionMask != this.selectionMask())) {
+         this.resetScan(false);
+      }
+
+      int playerChunkX = mc.field_1724.method_31477() >> 4;
+      int playerChunkZ = mc.field_1724.method_31479() >> 4;
+      if (this.scanning && (playerChunkX != (this.minX + (this.maxX - this.minX) / 2) >> 4
+         || playerChunkZ != (this.minZ + (this.maxZ - this.minZ) / 2) >> 4)) {
+         this.scanning = false;
+         this.timer = 0;
+      }
+
+      if (!this.scanning) {
+         if (this.timer > 0) {
+            this.timer--;
+            return;
+         }
+         this.beginScan();
+      }
+
+      if (this.scanning) this.scanStep();
+   }
+
+   private void beginScan() {
+      class_2338 playerPos = mc.field_1724.method_24515();
+      int r = this.range.getInt();
+      this.scanRange = r;
+      this.scanSelectionMask = this.selectionMask();
+      this.minX = playerPos.method_10263() - r;
+      this.maxX = playerPos.method_10263() + r;
+      this.minY = Math.max(mc.field_1687.method_31607(), playerPos.method_10264() - r);
+      this.maxY = Math.min(mc.field_1687.method_31600(), playerPos.method_10264() + r);
+      this.minZ = playerPos.method_10260() - r;
+      this.maxZ = playerPos.method_10260() + r;
+      int xCount = this.maxX - this.minX + 1;
+      int yCount = this.maxY - this.minY + 1;
+      int zCount = this.maxZ - this.minZ + 1;
+      this.total = xCount * yCount * zCount;
+      this.cursor = 0;
+      this.scanChunkX = Integer.MIN_VALUE;
+      this.scanChunkZ = Integer.MIN_VALUE;
+      this.scanChunk = null;
+      this.working.clear();
+      this.scanning = true;
+   }
+
+   private void scanStep() {
+      long deadline = System.nanoTime() + (long)(this.budgetMs.get() * 1_000_000.0);
+      int checks = 0;
+      int yCount = this.maxY - this.minY + 1;
+      int zCount = this.maxZ - this.minZ + 1;
+      int cap = this.maxBlocks.getInt();
+
+      while (this.cursor < this.total && this.working.size() < cap
+         && checks < MAX_CHECKS_PER_TICK && (checks == 0 || System.nanoTime() < deadline)) {
+         int xIndex = this.cursor / (zCount * yCount);
+         int remainder = this.cursor % (zCount * yCount);
+         int zIndex = remainder / yCount;
+         int y = this.minY + remainder % yCount;
+         int x = this.minX + xIndex;
+         int z = this.minZ + zIndex;
+         int chunkX = x >> 4;
+         int chunkZ = z >> 4;
+
+         if (chunkX != this.scanChunkX || chunkZ != this.scanChunkZ) {
+            this.scanChunkX = chunkX;
+            this.scanChunkZ = chunkZ;
+            this.scanChunk = mc.field_1687.method_2935().method_21730(chunkX, chunkZ);
+         }
+
+         if (this.scanChunk != null) {
+            class_2338 blockPos = new class_2338(x, y, z);
+            if (this.selected(this.scanChunk.method_8320(blockPos).method_26204())) {
+               this.working.add(new class_238(blockPos));
             }
          }
+
+         this.cursor++;
+         checks++;
       }
+
+      if (this.cursor >= this.total || this.working.size() >= cap) {
+         this.found.clear();
+         this.found.addAll(this.working);
+         this.working.clear();
+         this.scanning = false;
+         this.timer = 12;
+      }
+   }
+
+   private void resetScan(boolean clearVisible) {
+      this.scanning = false;
+      this.cursor = 0;
+      this.total = 0;
+      this.timer = 0;
+      this.working.clear();
+      this.scanChunk = null;
+      this.scanChunkX = Integer.MIN_VALUE;
+      this.scanChunkZ = Integer.MIN_VALUE;
+      this.scanRange = -1;
+      this.scanSelectionMask = -1;
+      if (clearVisible) this.found.clear();
    }
 
    @Override
@@ -91,12 +196,13 @@ public final class BlockESP extends Module {
 
    @Override
    protected void onDisable() {
-      this.found.clear();
+      this.resetScan(true);
    }
 
    @Override
    public void onWorldLeave() {
-      this.found.clear();
+      this.resetScan(true);
+      this.scanWorld = null;
       this.timer = 0;
    }
 }

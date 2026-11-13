@@ -27,27 +27,31 @@ public final class LowHealthWarning extends HudModule {
 
    @Override
    public void onTick() {
-      if (mc.field_1724 == null) {
+      if (mc.field_1724 == null || !mc.field_1724.method_5805()) {
+         // A death screen reports zero health too; do not show a low-health alert for it.
          this.wasLow = false;
-      } else {
-         boolean low = mc.field_1724.method_6032() <= this.threshold.get() * 2.0;
-         if (low && !this.wasLow) {
-            NotificationCenter.push("Wenig Leben", String.format("Noch %.1f Herzen", mc.field_1724.method_6032() / 2.0F), 4500L, -41620);
-         }
+         return;
+      }
 
-         if (!low && mc.field_1724.method_6032() > (this.threshold.get() + 1.0) * 2.0) {
-            this.wasLow = false;
-         } else if (low) {
-            this.wasLow = true;
-         }
+      boolean low = mc.field_1724.method_6032() <= this.threshold.get() * 2.0;
+      if (low && !this.wasLow) {
+         NotificationCenter.push("Wenig Leben", String.format("Noch %.1f Herzen", mc.field_1724.method_6032() / 2.0F), 4500L, -41620);
+      }
+
+      if (!low && mc.field_1724.method_6032() > (this.threshold.get() + 1.0) * 2.0) {
+         this.wasLow = false;
+      } else if (low) {
+         this.wasLow = true;
       }
    }
 
    @Override
    protected void draw(class_332 ctx) {
       boolean preview = mc.field_1755 instanceof HudEditorScreen;
-      if (mc.field_1724 != null && (!(mc.field_1724.method_6032() > this.threshold.get() * 2.0) || preview)) {
-         String text = preview && mc.field_1724.method_6032() > this.threshold.get() * 2.0
+      boolean low = mc.field_1724 != null && mc.field_1724.method_5805()
+         && mc.field_1724.method_6032() <= this.threshold.get() * 2.0;
+      if (mc.field_1724 != null && (low || preview)) {
+         String text = preview && !low
             ? "LOW HEALTH  3.5 ♥ (Preview)"
             : String.format("LOW HEALTH  %.1f ♥", mc.field_1724.method_6032() / 2.0F);
          this.w = mc.field_1772.method_1727(text) + 18;

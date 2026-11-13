@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.InvUtil;
 import net.minecraft.class_1802;
@@ -45,6 +46,7 @@ public final class AutoTotem extends Module {
    public void onTick() {
       class_746 player = mc.field_1724;
       if (player != null && mc.field_1761 != null) {
+         if (ModuleManager.get(AutoGap.class).isEating()) return;
          if (player.field_7512 == player.field_7498) {
             boolean hasTotem = player.method_6079().method_31574(class_1802.field_8288);
             if (hasTotem) {
