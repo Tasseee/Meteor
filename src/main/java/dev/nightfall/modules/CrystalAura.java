@@ -93,19 +93,20 @@ public class CrystalAura extends Module {
       if (!this.placeObsidianOnHit.get()) return false;
 
       class_2338 base = findHitObsidianBase(player, target);
-      // No safe position yet: keep the combo blocked instead of placing a crystal.
-      if (base == null) return true;
+      // If no valid obsidian position exists, do not block normal crystal placement.
+      if (base == null) return false;
       if (mc.field_1687.method_8320(base).method_27852(class_2246.field_9987)) {
          return false; // Obsidian is confirmed in the world.
       }
 
       int slot = InvUtil.ensureHotbar(class_1802.field_8281);
-      if (slot < 0) return true;
+      if (slot < 0) return false;
 
       int previousSlot = InvUtil.selected();
       boolean switched = slot != previousSlot;
       if (switched) InvUtil.select(slot);
 
+      boolean placementAccepted = false;
       try {
          // Place against a valid neighboring block face.
          for (class_2350 face : class_2350.values()) {
@@ -119,6 +120,7 @@ public class CrystalAura extends Module {
             class_3965 result = new class_3965(hit, clickedSide, neighbor, false);
             if (mc.field_1761.method_2896(player, class_1268.field_5808, result).method_23665()) {
                player.method_6104(class_1268.field_5808);
+               placementAccepted = true;
                break;
             }
          }
@@ -126,8 +128,8 @@ public class CrystalAura extends Module {
          if (switched) InvUtil.select(previousSlot);
       }
 
-      // Always wait for the server/world state update before allowing crystal placement.
-      return true;
+      // Wait for the world update only if the interaction was actually accepted.
+      return placementAccepted;
    }
 
    @Override
