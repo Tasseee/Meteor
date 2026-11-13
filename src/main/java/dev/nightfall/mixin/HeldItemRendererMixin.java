@@ -11,6 +11,7 @@ import net.minecraft.class_1799;
 import net.minecraft.class_4587;
 import net.minecraft.class_742;
 import net.minecraft.class_759;
+import net.minecraft.class_7923;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
