@@ -218,10 +218,6 @@ public class CrystalAura extends Module {
                this.trackedTargetId = -1;
                this.lastTargetHealth = Float.NaN;
                this.awaitingObsidian = false;
-            } else if (this.placeObsidianOnHit.get()) {
-               // CrystalAura works continuously: try to establish an obsidian base
-               // without requiring a previous health change / player hit.
-               if (this.placeObsidianAfterHit(p, target)) return;
             }
 
             if (target != null && this.isCrystalHeight(p, target)) {
