@@ -105,8 +105,10 @@ public final class ObiTrapBot extends Module {
       // has left the original area by at least two blocks, otherwise progress
       // would be reset on almost every movement tick.
       class_2338 currentAnchor = this.target.method_24515();
+      int anchorDx = currentAnchor.method_10263() - this.anchor.method_10263();
+      int anchorDz = currentAnchor.method_10260() - this.anchor.method_10260();
       if (currentAnchor.method_10264() != this.anchor.method_10264()
-         || currentAnchor.method_1028(this.anchor) >= 4.0) {
+         || anchorDx * anchorDx + anchorDz * anchorDz >= 4) {
          this.anchor = currentAnchor;
          this.pendingPosition = null;
          this.pendingTicks = 0;
