@@ -119,7 +119,7 @@ public final class CrystalTest extends Module {
       double dz = point.field_1350 - eye.field_1350;
       float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
       float pitch = (float)(-Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz))));
-      float max = (float)turnSpeed.get();
+      float max = turnSpeed.get().floatValue();
       player.method_36456(player.method_36454() + clamp(wrapDegrees(yaw - player.method_36454()), -max, max));
       player.method_36457(player.method_36455() + clamp(pitch - player.method_36455(), -max, max));
    }
