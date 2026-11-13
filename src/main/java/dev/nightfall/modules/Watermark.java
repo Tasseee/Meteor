@@ -17,7 +17,8 @@ public class Watermark extends HudModule {
 
    @Override
    protected void draw(class_332 ctx) {
-      String t = "Nightfall 0.5.15";
+      String playerName = mc.field_1724 != null ? mc.field_1724.method_5477().getString() : "Nicht verbunden";
+      String t = "Nightfall | " + playerName;
       this.w = mc.field_1772.method_1727(t) + 10;
       this.h = 12;
       ctx.method_25294(0, 0, this.w, this.h, Theme.HUD_PANEL);
