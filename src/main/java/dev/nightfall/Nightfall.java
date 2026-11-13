@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 
 public class Nightfall implements ClientModInitializer {
    public static final String NAME = "Nightfall";
-   public static final String VERSION = "0.5.15";
+   public static final String VERSION = "0.5.18";
    public static final Logger LOGGER = LoggerFactory.getLogger("nightfall");
    private boolean prevGui;
    private boolean prevHud;
@@ -52,6 +52,7 @@ public class Nightfall implements ClientModInitializer {
       SkyVisualRenderer.register();
       HatsRenderer.register();
       WorldRenderEvents.AFTER_ENTITIES.register(ModuleManager::renderWorld);
+      FakeLagGhostRenderer.register();
       ClientLifecycleEvents.CLIENT_STARTED.register((ClientStarted)client -> SeedCracker.syncState());
       ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
       HudElementRegistry.attachElementAfter(VanillaHudElements.MISC_OVERLAYS, class_2960.method_60655("nightfall", "hud"), (ctx, tickCounter) -> {
@@ -83,7 +84,7 @@ public class Nightfall implements ClientModInitializer {
          WaypointManager.save();
          Config.save();
       });
-      LOGGER.info("{} {} geladen", "Nightfall", "0.5.15");
+      LOGGER.info("{} {} geladen", "Nightfall", "0.5.18");
    }
 
    private void onTick(class_310 mc) {

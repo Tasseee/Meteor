@@ -102,6 +102,7 @@ public abstract class EntityScanEsp extends EspBase {
          float green = (rgb >> 8 & 255) / 255.0F;
          float blue = (rgb & 255) / 255.0F;
          float alpha = this.opacity.get().floatValue();
+         float lineWidth = this.thickness.getInt();
          boolean drawTracers = this.tracers.get();
          boolean drawBoxes = this.style.is("3D");
          boolean centerOrigin = this.origin.is("Mitte");
@@ -109,7 +110,7 @@ public abstract class EntityScanEsp extends EspBase {
          for (int i = 0; i < count && !this.capReached(); i++) {
             RenderTarget target = this.buf.get(i);
             if (drawBoxes) {
-               this.drawWorldBox(vertices, matrix, target.box(), red, green, blue, alpha);
+               this.drawWorldBox(vertices, matrix, target.box(), red, green, blue, alpha, lineWidth);
             }
 
             if (drawTracers) {
@@ -119,7 +120,7 @@ public abstract class EntityScanEsp extends EspBase {
                   : target.box().field_1322;
                double tz = (target.box().field_1321 + target.box().field_1324) * 0.5;
                // Camera is now the local origin (0, 0, 0) in this matrix space.
-               this.drawWorldLine(vertices, matrix, 0.0, 0.0, 0.0, tx, ty, tz, red, green, blue, alpha);
+               this.drawWorldLine(vertices, matrix, 0.0, 0.0, 0.0, tx, ty, tz, red, green, blue, alpha, lineWidth);
             }
          }
       } finally {
@@ -129,29 +130,31 @@ public abstract class EntityScanEsp extends EspBase {
    }
 
    private void drawWorldBox(class_4588 vertices, org.joml.Matrix4f matrix, class_238 box,
-                             float r, float g, float b, float a) {
+                             float r, float g, float b, float a, float lineWidth) {
       double minX = box.field_1323, minY = box.field_1322, minZ = box.field_1321;
       double maxX = box.field_1320, maxY = box.field_1325, maxZ = box.field_1324;
       // 12 edges / 24 vertices, all written to the same buffered line consumer.
-      this.drawWorldLine(vertices, matrix, minX, minY, minZ, maxX, minY, minZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, maxY, minZ, maxX, maxY, minZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, minY, maxZ, maxX, minY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, maxY, maxZ, maxX, maxY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, minY, minZ, minX, maxY, minZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, maxX, minY, minZ, maxX, maxY, minZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, minY, maxZ, minX, maxY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, maxX, minY, maxZ, maxX, maxY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, minY, minZ, minX, minY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, maxX, minY, minZ, maxX, minY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, maxY, minZ, minX, maxY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, maxX, maxY, minZ, maxX, maxY, maxZ, r, g, b, a);
+      this.drawWorldLine(vertices, matrix, minX, minY, minZ, maxX, minY, minZ, r, g, b, a, lineWidth);
+      this.drawWorldLine(vertices, matrix, minX, maxY, minZ, maxX, maxY, minZ, r, g, b, a, lineWidth);
+      this.drawWorldLine(vertices, matrix, minX, minY, maxZ, maxX, minY, maxZ, r, g, b, a, lineWidth);
+      this.drawWorldLine(vertices, matrix, minX, maxY, maxZ, maxX, maxY, maxZ, r, g, b, a, lineWidth);
+      this.drawWorldLine(vertices, matrix, minX, minY, minZ, minX, maxY, minZ, r, g, b, a, lineWidth);
+      this.drawWorldLine(vertices, matrix, maxX, minY, minZ, maxX, maxY, minZ, r, g, b, a, lineWidth);
+      this.drawWorldLine(vertices, matrix, minX, minY, maxZ, minX, maxY, maxZ, r, g, b, a, lineWidth);
+      this.drawWorldLine(vertices, matrix, maxX, minY, maxZ, maxX, maxY, maxZ, r, g, b, a, lineWidth);
+      this.drawWorldLine(vertices, matrix, minX, minY, minZ, minX, minY, maxZ, r, g, b, a, lineWidth);
+      this.drawWorldLine(vertices, matrix, maxX, minY, minZ, maxX, minY, maxZ, r, g, b, a, lineWidth);
+      this.drawWorldLine(vertices, matrix, minX, maxY, minZ, minX, maxY, maxZ, r, g, b, a, lineWidth);
+      this.drawWorldLine(vertices, matrix, maxX, maxY, minZ, maxX, maxY, maxZ, r, g, b, a, lineWidth);
    }
 
    private void drawWorldLine(class_4588 vertices, org.joml.Matrix4f matrix,
                               double x0, double y0, double z0, double x1, double y1, double z1,
-                              float r, float g, float b, float a) {
-      vertices.method_22918(matrix, (float)x0, (float)y0, (float)z0).method_22915(r, g, b, a);
-      vertices.method_22918(matrix, (float)x1, (float)y1, (float)z1).method_22915(r, g, b, a);
+                              float r, float g, float b, float a, float lineWidth) {
+      vertices.method_22918(matrix, (float)x0, (float)y0, (float)z0)
+         .method_22915(r, g, b, a).method_75298(lineWidth).method_22914(0.0F, 1.0F, 0.0F);
+      vertices.method_22918(matrix, (float)x1, (float)y1, (float)z1)
+         .method_22915(r, g, b, a).method_75298(lineWidth).method_22914(0.0F, 1.0F, 0.0F);
    }
 
    @Override

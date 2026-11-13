@@ -11,6 +11,7 @@ import net.minecraft.class_2535;
 import net.minecraft.class_2596;
 import net.minecraft.class_2824;
 import net.minecraft.class_2828;
+import net.minecraft.class_9836;
 
 /** Delays only outgoing player movement packets; all other traffic stays untouched. */
 public final class FakeLag extends Module {
@@ -98,8 +99,12 @@ public final class FakeLag extends Module {
          return;
       }
 
-      // Preserve packet order: flush delayed movement before every action/control
-      // packet (attacks, interactions, slot changes, keep-alives, etc.).
+      // ClientTickEnd is sent once per client tick. Let it pass without draining the
+      // movement queue, otherwise FakeLag would flush almost immediately every tick.
+      if (packet instanceof class_9836) return;
+
+      // Flush delayed movement before action/control packets (attacks, interactions,
+      // slot changes, keep-alives, etc.) so those actions keep their expected ordering.
       if (!(packet instanceof class_2828 movement)) {
          flush();
          return;
