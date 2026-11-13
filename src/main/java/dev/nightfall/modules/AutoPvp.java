@@ -22,7 +22,7 @@ import net.minecraft.class_3532;
 import net.minecraft.class_746;
 
 public class AutoPvp extends Module {
-   private final NumberSetting follow = this.add(new NumberSetting("Verfolgen bis (Bloecke)", 18.0, 4.0, 32.0, 1.0));
+   private final NumberSetting follow = this.add(new NumberSetting("Verfolgen bis (Bloecke)", 32.0, 4.0, 48.0, 1.0));
    private final NumberSetting stop = this.add(new NumberSetting("Abstand halten", 2.4, 1.5, 5.0, 0.1));
    private final NumberSetting reach = this.add(new NumberSetting("Angriffsreichweite", 3.4, 1.0, 6.0, 0.1));
    private final NumberSetting turnSpeed = this.add(new NumberSetting("Drehgeschwindigkeit", 35.0, 3.0, 45.0, 1.0));
@@ -35,7 +35,7 @@ public class AutoPvp extends Module {
    private final BoolSetting useShieldBreak = this.add(new BoolSetting("Schild mit Axt kontern", true));
    private final BoolSetting useAutoGap = this.add(new BoolSetting("AutoGap integrieren", true));
    private final BoolSetting useAutoTotem = this.add(new BoolSetting("AutoTotem integrieren", true));
-   private final BoolSetting useCrystalAura = this.add(new BoolSetting("CrystalAura integrieren", false));
+   private final BoolSetting useCrystalAura = this.add(new BoolSetting("CrystalAura integrieren", true));
    private final BoolSetting useAutoAnchor = this.add(new BoolSetting("AutoAnchor integrieren", false));
    private final BoolSetting useMaceAssist = this.add(new BoolSetting("MaceAssist integrieren", true));
    private final BoolSetting crystalCombo = this.add(new BoolSetting("Sprint-Hit + Obsidian + 2 Crystals", true));
@@ -798,7 +798,8 @@ public class AutoPvp extends Module {
             if (this.tickCrystalCombo(p, target)) { this.driving = true; return; }
             if (this.tickStunSlam(p, target, distance)) {
                this.driving = true;
-            } else if (!target.method_24828() && this.distanceToLandingPoint(p, target) > 3.8) {
+            } else if (this.distanceToLandingPoint(p, target)
+               > (target.method_24828() ? this.pearlDistance.get() : 3.8)) {
                // Even without the dedicated hit-combo phase, intercept the
                // opponent's predicted landing point instead of chasing their
                // stale current position after knockback.
