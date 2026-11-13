@@ -442,6 +442,10 @@ public class AutoPvp extends Module {
                      && p.method_7261(0.5F) >= 0.95F) {
                      mc.field_1761.method_2918(p, target);
                      p.method_6104(class_1268.field_5808);
+                     if (this.useDTap.get()) {
+                        DTap dtap = ModuleManager.get(DTap.class);
+                        dtap.triggerFromAutoPvp(target);
+                     }
                      this.cancelSlam(true);
                      return true;
                   }
@@ -464,7 +468,9 @@ public class AutoPvp extends Module {
    private boolean tickCrystalCombo(class_746 p, class_1657 target) {
       // AutoPvP owns the crystal sequence: it starts after its own melee hit
       // and waits until the target is airborne before placing obsidian.
-      if (!this.crystalCombo.get() || !this.useCrystalAura.get()) {
+      // DTap is the sole crystal sequencer when integrated; avoid two modules
+      // trying to place/detonate crystals on the same tick.
+      if (!this.crystalCombo.get() || !this.useCrystalAura.get() || this.useDTap.get()) {
          this.resetCrystalCombo();
          return false;
       }
