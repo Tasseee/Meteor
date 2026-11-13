@@ -22,13 +22,13 @@ import net.minecraft.class_3532;
 import net.minecraft.class_746;
 
 public class AutoPvp extends Module {
-   private final NumberSetting follow = this.add(new NumberSetting("Verfolgen bis (Bloecke)", 14.0, 4.0, 32.0, 1.0));
-   private final NumberSetting stop = this.add(new NumberSetting("Abstand halten", 2.6, 1.5, 5.0, 0.1));
-   private final NumberSetting reach = this.add(new NumberSetting("Angriffsreichweite", 3.2, 1.0, 6.0, 0.1));
-   private final NumberSetting turnSpeed = this.add(new NumberSetting("Drehgeschwindigkeit", 16.0, 3.0, 35.0, 1.0));
+   private final NumberSetting follow = this.add(new NumberSetting("Verfolgen bis (Bloecke)", 18.0, 4.0, 32.0, 1.0));
+   private final NumberSetting stop = this.add(new NumberSetting("Abstand halten", 2.4, 1.5, 5.0, 0.1));
+   private final NumberSetting reach = this.add(new NumberSetting("Angriffsreichweite", 3.4, 1.0, 6.0, 0.1));
+   private final NumberSetting turnSpeed = this.add(new NumberSetting("Drehgeschwindigkeit", 35.0, 3.0, 45.0, 1.0));
    private final BoolSetting smoothLook = this.add(new BoolSetting("Smooth Rotation", true));
    private final BoolSetting attack = this.add(new BoolSetting("Angreifen", true));
-   private final BoolSetting strafe = this.add(new BoolSetting("Strafen", true));
+   private final BoolSetting strafe = this.add(new BoolSetting("Strafen", false));
    private final BoolSetting jump = this.add(new BoolSetting("Springen bei Hindernis", true));
    private final BoolSetting useStunSlam = this.add(new BoolSetting("Stun-Slam (Windcharge -> Mace)", true));
    private final BoolSetting useShieldBreak = this.add(new BoolSetting("Schild mit Axt kontern", true));
@@ -210,6 +210,18 @@ public class AutoPvp extends Module {
             p.method_36457(p.method_36455() + class_3532.method_15363(class_3532.method_15393(pitch - p.method_36455()), -max, max));
          }
       }
+   }
+
+   private boolean isAimAligned(class_746 p, class_1657 target) {
+      class_243 eye = p.method_33571();
+      double dx = target.method_23317() - eye.field_1352;
+      double dy = target.method_23323(0.5) - eye.field_1351;
+      double dz = target.method_23321() - eye.field_1350;
+      float desiredYaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+      float desiredPitch = (float)(-Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz))));
+      float yawError = Math.abs(class_3532.method_15393(desiredYaw - p.method_36454()));
+      float pitchError = Math.abs(desiredPitch - p.method_36455());
+      return yawError <= 12.0F && pitchError <= 12.0F;
    }
 
    private boolean clearAbove(class_746 p, int height) {
@@ -482,7 +494,8 @@ public class AutoPvp extends Module {
                boolean approach = distance > this.stop.get() && this.safeForward(p, target);
                mc.field_1690.field_1894.method_23481(approach);
                mc.field_1690.field_1867.method_23481(approach && distance > this.stop.get() + 1.5);
-               if (this.strafe.get() && distance <= this.reach.get() + 1.5) {
+               if (this.strafe.get() && distance <= this.reach.get() + 1.5
+                  && !(distance <= this.reach.get() + 0.4 && !this.isAimAligned(p, target))) {
                   if (this.strafeTimer-- <= 0) {
                      this.strafeDir = -this.strafeDir;
                      this.strafeTimer = 16 + (int)(distance * 3.0);
@@ -499,7 +512,11 @@ public class AutoPvp extends Module {
                mc.field_1690.field_1903.method_23481(this.jump.get() && obstacle && p.method_24828() && this.clearAbove(p, 2));
                this.driving = true;
                this.updateShieldAxe(target);
-               if (this.attack.get() && !(distance > this.reach.get()) && p.method_6057(target) && !(p.method_7261(0.5F) < 0.95F)) {
+               // Do not swing while the camera is still rotating past the target.
+               // This prevents orbiting/turning around a player without landing a hit.
+               if (this.attack.get() && distance <= this.reach.get()
+                  && p.method_6057(target) && this.isAimAligned(p, target)
+                  && p.method_7261(0.5F) >= 0.95F) {
                   if (this.shieldAxeSlot < 0) {
                      int swordSlot = InvUtil.findBestSword();
                      if (swordSlot < 0) {
