@@ -264,19 +264,40 @@ public class AutoPvp extends Module {
       return best;
    }
 
-   // Never add more than two obsidian blocks inside the player's 2-block radius.
+   // Maximal zwei Obsidian-Bloecke im horizontalen 1-Block-Radius um den Spieler.
    private boolean hasRoomForObsidian(class_746 p) {
       class_2338 center = p.method_24515();
       int count = 0;
-      for (int x = -2; x <= 2; x++) {
-         for (int y = -1; y <= 2; y++) {
-            for (int z = -2; z <= 2; z++) {
-               if (x * x + y * y + z * z > 4) continue;
+      for (int x = -1; x <= 1; x++) {
+         for (int y = -1; y <= 1; y++) {
+            for (int z = -1; z <= 1; z++) {
+               if (x * x + z * z > 1) continue;
                if (isObsidian(center.method_10069(x, y, z)) && ++count >= 2) return false;
             }
          }
       }
       return true;
+   }
+
+   // Liefert eine freie Ausweichseite, wenn Obsidian direkt vor dem Spieler liegt.
+   // -1 = links, 1 = rechts (relativ zum anvisierten Gegner), 0 = kein Weg.
+   private int obsidianDetourSide(class_746 p, class_1657 target) {
+      class_243 toward = new class_243(target.method_23317() - p.method_23317(), 0.0, target.method_23321() - p.method_23321());
+      if (toward.method_1027() < 1.0E-5) return 0;
+      toward = toward.method_1029();
+      for (int side : new int[] {-1, 1}) {
+         double x = p.method_23317() + toward.field_1352 * 0.35 - toward.field_1350 * side * 0.95;
+         double z = p.method_23321() + toward.field_1350 * 0.35 + toward.field_1352 * side * 0.95;
+         class_2338 feet = class_2338.method_49637(x, p.method_23318(), z);
+         class_2338 head = feet.method_10084();
+         class_2338 floor = feet.method_10074();
+         boolean clear = mc.field_1687.method_8320(feet).method_26220(mc.field_1687, feet).method_1110()
+            && mc.field_1687.method_8320(head).method_26220(mc.field_1687, head).method_1110()
+            && !mc.field_1687.method_8320(floor).method_26220(mc.field_1687, floor).method_1110()
+            && !this.isObsidian(feet) && !this.isObsidian(head);
+         if (clear) return side;
+      }
+      return 0;
    }
 
    private boolean obsidianAhead(class_746 p, class_1657 target) {
@@ -458,7 +479,7 @@ public class AutoPvp extends Module {
                class_2338 proposed = feet.method_10069(ox, -1, oz);
                double px = proposed.method_10263() + 0.5 - p.method_23317();
                double pz = proposed.method_10260() + 0.5 - p.method_23321();
-               if (px * px + pz * pz > 4.0 || !this.hasRoomForObsidian(p)) {
+               if (px * px + pz * pz > 1.0 || !this.hasRoomForObsidian(p)) {
                   this.resetCrystalCombo();
                   return false;
                }
@@ -588,13 +609,20 @@ public class AutoPvp extends Module {
             if (this.tickStunSlam(p, target, distance)) {
                this.driving = true;
             } else {
-               boolean approach = distance > this.stop.get() && this.safeForward(p, target);
+               boolean obsidianInPath = this.obsidianAhead(p, target);
+               int obsidianSide = obsidianInPath ? this.obsidianDetourSide(p, target) : 0;
+               boolean detouring = obsidianSide != 0;
+               boolean approach = distance > this.stop.get() && (detouring || this.safeForward(p, target));
                mc.field_1690.field_1894.method_23481(approach);
                // CrystalAura mode keeps sprint enabled for sprint-hit combos;
                // sword-only mode manages sprint separately for critical hits.
                boolean crystalSprint = this.useCrystalAura.get();
                mc.field_1690.field_1867.method_23481(crystalSprint || (approach && distance > this.stop.get() + 1.5));
-               if (this.strafe.get() && distance <= this.reach.get() + 1.5
+               if (detouring) {
+                  // Obsidian nicht ueberspringen: seitlich daran vorbeilaufen.
+                  mc.field_1690.field_1913.method_23481(obsidianSide < 0);
+                  mc.field_1690.field_1849.method_23481(obsidianSide > 0);
+               } else if (this.strafe.get() && distance <= this.reach.get() + 1.5
                   && !(distance <= this.reach.get() + 0.4 && !this.isAimAligned(p, target))) {
                   if (this.strafeTimer-- <= 0) {
                      this.strafeDir = -this.strafeDir;
@@ -608,7 +636,6 @@ public class AutoPvp extends Module {
                   mc.field_1690.field_1849.method_23481(false);
                }
 
-               boolean obsidianInPath = this.obsidianAhead(p, target);
                boolean obstacle = p.field_5976 && !obsidianInPath;
                boolean critMode = this.swordCrits.get() && !this.useCrystalAura.get()
                   && distance <= this.reach.get() + 0.8 && this.clearAbove(p, 2) && !obsidianInPath;
