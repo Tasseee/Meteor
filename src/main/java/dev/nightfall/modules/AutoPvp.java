@@ -39,6 +39,9 @@ public class AutoPvp extends Module {
    private final BoolSetting useAutoAnchor = this.add(new BoolSetting("AutoAnchor integrieren", false));
    private final BoolSetting useMaceAssist = this.add(new BoolSetting("MaceAssist integrieren", true));
    private final BoolSetting crystalCombo = this.add(new BoolSetting("Sprint-Hit + Obsidian + 2 Crystals", true));
+   private final BoolSetting pearlChase = this.add(new BoolSetting("Pearl zum Gegner", true));
+   private final NumberSetting pearlDistance = this.add(new NumberSetting("Pearl ab Distanz", 12.0, 6.0, 24.0, 1.0));
+   private int pearlUseDelay;
    private int crystalComboPhase;
    private int crystalComboTicks;
    private int crystalComboTargetId = -1;
@@ -72,7 +75,10 @@ public class AutoPvp extends Module {
    }
 
    public boolean isCrystalComboEnabled() {
-      return this.isEnabled() && this.crystalCombo.get() && this.crystalComboPhase > 0;
+      // CrystalAura must keep placing/breaking while AutoPvP chases the
+      // airborne target (phase 1). Pause it only while the dedicated
+      // obsidian + double-crystal sequence owns the interaction.
+      return this.isEnabled() && this.crystalCombo.get() && this.crystalComboPhase > 1;
    }
 
    @Override
@@ -457,6 +463,98 @@ public class AutoPvp extends Module {
       }
    }
 
+   // Predict the opponent's landing point by simulating player motion.
+   // Horizontal air movement is damped each tick; gravity is applied vertically.
+   private class_243 predictLandingPoint(class_1657 target) {
+      double x = target.method_23317();
+      double y = target.method_23318();
+      double z = target.method_23321();
+      class_243 velocity = target.method_18798();
+      double vx = velocity.field_1352;
+      double vy = velocity.field_1351;
+      double vz = velocity.field_1350;
+
+      if (target.method_24828()) {
+         // For a grounded target, predict a short movement lead instead.
+         for (int tick = 0; tick < 4; tick++) {
+            x += vx;
+            z += vz;
+            vx *= 0.6;
+            vz *= 0.6;
+         }
+         return new class_243(x, y, z);
+      }
+
+      for (int tick = 0; tick < 40; tick++) {
+         x += vx;
+         y += vy;
+         z += vz;
+
+         if (vy <= 0.0) {
+            // Find the first solid floor below the simulated feet position.
+            for (int down = 0; down < 24; down++) {
+               class_2338 floor = class_2338.method_49637(x, Math.floor(y - 0.05) - down, z);
+               class_2680 state = mc.field_1687.method_8320(floor);
+               if (!state.method_26220(mc.field_1687, floor).method_1110()) {
+                  double floorY = floor.method_10264() + 1.0;
+                  if (y <= floorY + 0.85) return new class_243(x, floorY, z);
+                  break;
+               }
+            }
+         }
+
+         vx *= 0.91;
+         vz *= 0.91;
+         vy = (vy - 0.08) * 0.98;
+      }
+
+      return new class_243(x, y, z);
+   }
+
+   // Throws a pearl toward the predicted landing point, using a low ballistic
+   // arc so it arrives under the opponent rather than above their head.
+   private boolean pearlToLandingPoint(class_746 p, class_243 landing) {
+      if (!this.pearlChase.get() || this.pearlUseDelay > 0) return false;
+
+      class_243 eye = p.method_33571();
+      double dx = landing.field_1352 - eye.field_1352;
+      double dy = landing.field_1351 + 0.15 - eye.field_1351;
+      double dz = landing.field_1350 - eye.field_1350;
+      double horizontal = Math.sqrt(dx * dx + dz * dz);
+      if (horizontal < this.pearlDistance.get()) return false;
+
+      int pearlSlot = InvUtil.ensureHotbar(class_1802.field_8634);
+      if (pearlSlot < 0) return false;
+      net.minecraft.class_1799 pearlStack = InvUtil.hotbarStack(pearlSlot);
+      if (p.method_7357().method_7905(pearlStack, 0.0F) > 0.001F) return false;
+
+      double speed = 1.5;
+      double gravity = 0.03;
+      double a = gravity * horizontal * horizontal / (2.0 * speed * speed);
+      double discriminant = horizontal * horizontal - 4.0 * a * (dy + a);
+      double launchTan = discriminant >= 0.0 && a > 1.0E-6
+         ? (horizontal - Math.sqrt(discriminant)) / (2.0 * a)
+         : dy / horizontal;
+      float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+      float pitch = (float)(-Math.toDegrees(Math.atan(launchTan)));
+
+      int previousSlot = InvUtil.selected();
+      InvUtil.select(pearlSlot);
+      try {
+         p.method_36456(yaw);
+         p.method_36457(pitch);
+         mc.field_1761.method_2919(p, class_1268.field_5808);
+         p.method_6104(class_1268.field_5808);
+      } finally {
+         if (pearlSlot != previousSlot) InvUtil.select(previousSlot);
+      }
+
+      // Prevent another throw before the pearl has had time to travel and
+      // before the server's item cooldown becomes visible locally.
+      this.pearlUseDelay = 20;
+      return true;
+   }
+
    private boolean tickCrystalCombo(class_746 p, class_1657 target) {
       // AutoPvP owns the crystal sequence: it starts after its own melee hit
       // and waits until the target is airborne before placing obsidian.
@@ -487,21 +585,38 @@ public class AutoPvp extends Module {
       if (this.crystalComboPhase == 1) {
          // Follow the airborne opponent first. Do not cancel the combo just
          // because the target has moved outside block-placement reach.
-         if (target.method_24828()) {
-            // A grounded target must not freeze normal AutoPvP attacks while
-            // the crystal combo waits for the opponent to become airborne.
+         class_243 landing = this.predictLandingPoint(target);
+         double chaseX = landing.field_1352 - p.method_23317();
+         double chaseZ = landing.field_1350 - p.method_23321();
+         double chaseDistance = Math.sqrt(chaseX * chaseX + chaseZ * chaseZ);
+
+         // If the target has landed nearby, hand control back to normal melee.
+         // While it is still far away, keep chasing its predicted movement point.
+         if (target.method_24828() && chaseDistance <= 3.8) {
             this.crystalComboBase = null;
             return false;
          }
-         double chaseDistance = p.method_5739(target);
+
+         if (chaseDistance > this.pearlDistance.get() && this.pearlToLandingPoint(p, landing)) {
+            mc.field_1690.field_1894.method_23481(true);
+            mc.field_1690.field_1867.method_23481(true);
+            this.driving = true;
+            return true;
+         }
+
          if (chaseDistance > 3.8) {
-            this.aimAt(target.method_23317(), target.method_23323(0.5), target.method_23321());
+            this.aimAt(landing.field_1352, landing.field_1351 + 0.6, landing.field_1350);
             mc.field_1690.field_1894.method_23481(true);
             mc.field_1690.field_1867.method_23481(true);
             mc.field_1690.field_1913.method_23481(false);
             mc.field_1690.field_1849.method_23481(false);
             this.driving = true;
             return true;
+         }
+
+         if (target.method_24828()) {
+            this.crystalComboBase = null;
+            return false;
          }
          mc.field_1690.field_1894.method_23481(false);
          if (this.crystalComboBase == null) {
@@ -653,6 +768,7 @@ public class AutoPvp extends Module {
    @Override
    public void onTick() {
       this.syncAssistModules();
+      if (this.pearlUseDelay > 0) this.pearlUseDelay--;
       class_746 p = mc.field_1724;
       if (p != null && mc.field_1755 == null && mc.field_1761 != null && mc.field_1687 != null) {
          class_1657 target = CombatUtil.nearestPlayer(this.follow.get());
