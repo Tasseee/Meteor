@@ -119,6 +119,18 @@ public abstract class EspBase extends Module {
       ctx.method_51433(mc.field_1772, label, x, y, -854790, true);
    }
 
+   protected void drawLabelOnly(class_332 ctx, class_238 box, String label) {
+      if (label == null || label.isEmpty() || !Projection.valid()) {
+         return;
+      }
+      double cx = (box.field_1323 + box.field_1320) * 0.5;
+      double cy = (box.field_1322 + box.field_1325) * 0.5;
+      double cz = (box.field_1321 + box.field_1324) * 0.5;
+      if (Projection.project(cx, cy, cz, this.pt)) {
+         this.drawCleanLabel(ctx, label, (float)this.pt[0], (float)this.pt[1] - 5.0F);
+      }
+   }
+
    protected String label(String name, double dist) {
       StringBuilder sb = new StringBuilder();
       if (this.names.get() && name != null) {
