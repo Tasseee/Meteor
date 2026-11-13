@@ -11,6 +11,7 @@ import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.SeedCracker;
 import dev.nightfall.render.HatsRenderer;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import dev.nightfall.render.SkyVisualRenderer;
 import dev.nightfall.scanner.WaypointManager;
 import dev.nightfall.seed.SeedResultListener;
@@ -49,6 +50,7 @@ public class Nightfall implements ClientModInitializer {
       Config.load();
       SkyVisualRenderer.register();
       HatsRenderer.register();
+      WorldRenderEvents.AFTER_ENTITIES.register(ModuleManager::renderWorld);
       ClientLifecycleEvents.CLIENT_STARTED.register((ClientStarted)client -> SeedCracker.syncState());
       ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
       HudElementRegistry.attachElementAfter(VanillaHudElements.MISC_OVERLAYS, class_2960.method_60655("nightfall", "hud"), (ctx, tickCounter) -> {
