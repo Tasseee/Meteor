@@ -343,6 +343,8 @@ public class AutoPvp extends Module {
    }
 
    private boolean tickCrystalCombo(class_746 p, class_1657 target) {
+      // AutoPvP owns the crystal sequence: it starts after its own melee hit
+      // and waits until the target is airborne before placing obsidian.
       if (!this.crystalCombo.get()) {
          this.resetCrystalCombo();
          return false;
