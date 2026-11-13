@@ -505,6 +505,20 @@ public class AutoPvp extends Module {
          }
          double chaseDistance = p.method_5739(target);
          if (chaseDistance > 3.8) {
+            // Make a little room when the crystal spawn volume is blocked by
+            // our own position. Face the opponent but step backward briefly;
+            // normal chase controls resume as soon as the space is clear.
+            if (this.useDTap.get() && ModuleManager.get(DTap.class).needsRetreat()) {
+               this.aimAt(target.method_23317(), target.method_23323(0.5), target.method_23321());
+               mc.field_1690.field_1894.method_23481(false);
+               mc.field_1690.field_1905.method_23481(true);
+               mc.field_1690.field_1867.method_23481(false);
+               mc.field_1690.field_1913.method_23481(false);
+               mc.field_1690.field_1849.method_23481(false);
+               mc.field_1690.field_1903.method_23481(false);
+               this.driving = true;
+               return;
+            }
             this.aimAt(target.method_23317(), target.method_23323(0.5), target.method_23321());
             mc.field_1690.field_1894.method_23481(true);
             mc.field_1690.field_1867.method_23481(true);
