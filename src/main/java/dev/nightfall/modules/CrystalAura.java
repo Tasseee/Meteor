@@ -29,7 +29,7 @@ public class CrystalAura extends Module {
    private final BoolSetting place = this.add(new BoolSetting("Platzieren", true));
    private final BoolSetting breakC = this.add(new BoolSetting("Zerstoeren", true));
    private final BoolSetting autoSwitch = this.add(new BoolSetting("Auto-Switch", true));
-   private final BoolSetting placeObsidianOnHit = this.add(new BoolSetting("Obsidian bei Treffer", true));
+   private final BoolSetting placeObsidianOnHit = this.add(new BoolSetting("Obsidian automatisch", true));
    private int trackedTargetId = -1;
    private float lastTargetHealth = Float.NaN;
    private int placeT;
@@ -172,24 +172,10 @@ public class CrystalAura extends Module {
                this.trackedTargetId = -1;
                this.lastTargetHealth = Float.NaN;
                this.awaitingObsidian = false;
-            } else {
-               int currentTargetId = target.method_5628();
-               float currentHealth = target.method_6032();
-               if (currentTargetId != this.trackedTargetId) {
-                  this.trackedTargetId = currentTargetId;
-                  this.lastTargetHealth = currentHealth;
-               } else {
-                  boolean targetWasHit = !Float.isNaN(this.lastTargetHealth)
-                     && currentHealth < this.lastTargetHealth - 0.01F;
-                  this.lastTargetHealth = currentHealth;
-                  if (targetWasHit && this.placeObsidianOnHit.get()) {
-                     this.awaitingObsidian = true;
-                  }
-               }
-            }
-            if (target != null && this.awaitingObsidian) {
+            } else if (this.placeObsidianOnHit.get()) {
+               // CrystalAura works continuously: try to establish an obsidian base
+               // without requiring a previous health change / player hit.
                if (this.placeObsidianAfterHit(p, target)) return;
-               this.awaitingObsidian = false;
             }
 
             if (target != null && !target.method_24828()) {
