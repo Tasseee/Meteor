@@ -87,6 +87,14 @@ public final class ObiTrapBot extends Module {
       // Do not place blocks while a menu or inventory screen is open.
       if (mc.field_1755 != null) return;
 
+      // Respect manual hotbar changes: stop instead of silently selecting the
+      // bot's previous slot again. restoreSlot() then preserves the user's choice.
+      if (this.activeSlot >= 0 && InvUtil.selected() != this.activeSlot) {
+         this.stop("Abgebrochen: Hotbar wurde manuell geändert.");
+         this.setEnabled(false);
+         return;
+      }
+
       if (!this.target.method_5805() || this.target.method_31481() || this.target.method_73183() != mc.field_1687) {
          this.stop("Ziel nicht mehr verfügbar.");
          this.setEnabled(false);
