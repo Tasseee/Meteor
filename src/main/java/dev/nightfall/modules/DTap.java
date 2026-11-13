@@ -45,6 +45,7 @@ public class DTap extends Module {
    private class_2338 base;
    private int trackedTargetId = -1;
    private float lastTargetHealth = Float.NaN;
+   private boolean pendingHit;
 
    public DTap() {
       super("DTap", "Platziert einen Obsidian-Block und detoniert zwei End-Crystals nacheinander.", Category.COMBAT);
@@ -74,6 +75,7 @@ public class DTap extends Module {
       base = null;
       trackedTargetId = -1;
       lastTargetHealth = Float.NaN;
+      pendingHit = false;
    }
 
    private void setPhase(int next) {
@@ -256,6 +258,7 @@ public class DTap extends Module {
       } else {
          trackedTargetId = -1;
          lastTargetHealth = Float.NaN;
+         pendingHit = false;
       }
    }
 
@@ -281,8 +284,10 @@ public class DTap extends Module {
          float health = target.method_6032();
          boolean wasHit = !Float.isNaN(lastTargetHealth) && health < lastTargetHealth - 0.01F;
          lastTargetHealth = health;
-         if (!wasHit || countInventory(player, class_1802.field_8301) < 2) return;
+         if (wasHit) pendingHit = true;
+         if (!pendingHit || countInventory(player, class_1802.field_8301) < 2) return;
 
+         pendingHit = false;
          targetId = target.method_5628();
          // DTap always starts with a fresh obsidian block. There is no
          // nearby-obsidian radius that suppresses a new placement.
@@ -298,6 +303,12 @@ public class DTap extends Module {
          finishSequence(target);
          return;
       }
+
+      // Do not lose hits that happen while the two-crystal sequence is running.
+      // Queue the next DTap and start it as soon as the current sequence finishes.
+      float activeHealth = target.method_6032();
+      if (!Float.isNaN(lastTargetHealth) && activeHealth < lastTargetHealth - 0.01F) pendingHit = true;
+      lastTargetHealth = activeHealth;
 
       if (hitDelayTicks > 0) {
          hitDelayTicks--;
