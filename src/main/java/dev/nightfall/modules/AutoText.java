@@ -61,26 +61,36 @@ public final class AutoText extends Module {
 
    @Override
    public void onTick() {
-      if (mc.field_1724 != null && mc.field_1724.field_3944 != null) {
-         List<String> list = this.messageList();
-         if (!list.isEmpty()) {
-            this.ticks++;
-            if (this.ticks >= this.interval.getInt() * 20) {
-               this.ticks = 0;
-               String message = list.get(Math.floorMod(this.nextIndex, list.size()));
-               mc.field_1724.field_3944.method_45729(message);
-               if (this.rotate.get()) {
-                  this.nextIndex++;
-               }
+      if (mc.field_1724 == null || mc.field_1724.field_3944 == null) {
+         this.ticks = 0;
+         return;
+      }
 
-               if (this.showInfo.get()) {
-                  mc.field_1724
-                     .method_7353(
-                        class_2561.method_43470("[Nightfall] AutoText gesendet (" + (this.nextIndex % Math.max(1, list.size()) + 1) + "/" + list.size() + ")"),
-                        true
-                     );
-               }
-            }
+      List<String> list = this.messageList();
+      if (list.isEmpty()) {
+         this.ticks = 0;
+         this.nextIndex = 0;
+         return;
+      }
+
+      this.ticks++;
+      if (this.ticks >= this.interval.getInt() * 20) {
+         this.ticks = 0;
+         int sentIndex = Math.floorMod(this.nextIndex, list.size());
+         String message = list.get(sentIndex);
+         mc.field_1724.field_3944.method_45729(message);
+         if (this.rotate.get()) {
+            this.nextIndex = sentIndex + 1;
+         } else {
+            this.nextIndex = 0;
+         }
+
+         if (this.showInfo.get()) {
+            mc.field_1724
+               .method_7353(
+                  class_2561.method_43470("[Nightfall] AutoText gesendet (" + (sentIndex + 1) + "/" + list.size() + ")"),
+                  true
+               );
          }
       }
    }
