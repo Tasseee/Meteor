@@ -27,6 +27,7 @@ public final class ObiTrapBot extends Module {
    private int idleTicks;
    private int pendingTicks;
    private int previousSlot = -1;
+   private int activeSlot = -1;
 
    public ObiTrapBot() {
       super("ObiTrapBot", "Baut eine Obsidian-Box um den anvisierten Spieler und platziert Cobwebs.", Category.COMBAT);
@@ -83,16 +84,21 @@ public final class ObiTrapBot extends Module {
          this.setEnabled(false);
          return;
       }
+      // Do not place blocks while a menu or inventory screen is open.
+      if (mc.field_1755 != null) return;
 
-      if (!this.target.method_5805() || this.target.method_31481()) {
+      if (!this.target.method_5805() || this.target.method_31481() || this.target.method_73183() != mc.field_1687) {
          this.stop("Ziel nicht mehr verfügbar.");
          this.setEnabled(false);
          return;
       }
 
-      // Follow the target's current block position; restart the perimeter if it moved.
+      // Ignore one-block strafes while building. Re-anchor only after the target
+      // has left the original area by at least two blocks, otherwise progress
+      // would be reset on almost every movement tick.
       class_2338 currentAnchor = this.target.method_24515();
-      if (!currentAnchor.equals(this.anchor)) {
+      if (currentAnchor.method_10264() != this.anchor.method_10264()
+         || currentAnchor.method_1028(this.anchor) >= 4.0) {
          this.anchor = currentAnchor;
          this.pendingPosition = null;
          this.pendingTicks = 0;
@@ -155,6 +161,7 @@ public final class ObiTrapBot extends Module {
       if (this.previousSlot < 0) {
          this.previousSlot = InvUtil.selected();
       }
+      this.activeSlot = slot;
       InvUtil.select(slot);
 
       if (this.tryPlace(next)) {
@@ -226,10 +233,14 @@ public final class ObiTrapBot extends Module {
    }
 
    private void restoreSlot() {
-      if (this.previousSlot >= 0 && mc.field_1724 != null) {
+      // Restore only while the hotbar is still on the slot selected by this bot.
+      // This avoids overwriting a manual slot change made by the player.
+      if (this.previousSlot >= 0 && this.activeSlot >= 0 && mc.field_1724 != null
+         && InvUtil.selected() == this.activeSlot) {
          InvUtil.select(this.previousSlot);
       }
       this.previousSlot = -1;
+      this.activeSlot = -1;
    }
 
    private void stop(String message) {
