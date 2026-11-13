@@ -519,16 +519,25 @@ public class AutoPvp extends Module {
                // high in the air, scan downward until a valid ground-level base
                // with two free crystal blocks above it is found.
                class_2338 targetFeet = target.method_24515();
-               for (int drop = 1; drop <= 6; drop++) {
-                  class_2338 candidate = targetFeet.method_10069(0, -drop, 0);
-                  class_2338 support = candidate.method_10074();
-                  class_2680 state = mc.field_1687.method_8320(candidate);
-                  if (!state.method_45474()
-                     || mc.field_1687.method_8320(support).method_26220(mc.field_1687, support).method_1110()
-                     || !mc.field_1687.method_8320(candidate.method_10084()).method_26215()
-                     || !mc.field_1687.method_8320(candidate.method_10084().method_10084()).method_26215()) continue;
-                  this.crystalComboBase = candidate;
-                  break;
+               // Place the obsidian beside the opponent, never directly underneath.
+               // Prefer a two-block offset, then try one block if that space is usable.
+               int[][] sideOffsets = {
+                  { 2, 0 }, { -2, 0 }, { 0, 2 }, { 0, -2 },
+                  { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 },
+                  { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 }
+               };
+               for (int drop = 1; drop <= 6 && this.crystalComboBase == null; drop++) {
+                  for (int[] offset : sideOffsets) {
+                     class_2338 candidate = targetFeet.method_10069(offset[0], -drop, offset[1]);
+                     class_2338 support = candidate.method_10074();
+                     class_2680 state = mc.field_1687.method_8320(candidate);
+                     if (!state.method_45474()
+                        || mc.field_1687.method_8320(support).method_26220(mc.field_1687, support).method_1110()
+                        || !mc.field_1687.method_8320(candidate.method_10084()).method_26215()
+                        || !mc.field_1687.method_8320(candidate.method_10084().method_10084()).method_26215()) continue;
+                     this.crystalComboBase = candidate;
+                     break;
+                  }
                }
                if (this.crystalComboBase == null || !this.hasRoomForObsidian(p)
                   || p.method_33571().method_1022(class_243.method_24953(this.crystalComboBase)) > 4.5) {
@@ -720,8 +729,9 @@ public class AutoPvp extends Module {
                   && p.method_6057(target) && this.isAimAligned(p, target)
                   // Never suppress every hit just because a critical-hit
                   // window was missed; grounded hits remain a safe fallback.
-                  && (!critMode || fallingForCrit || p.method_24828())
-                  && p.method_7261(0.5F) >= 0.95F) {
+                  // Crit timing must never lock AutoPvP out of all later attacks.
+                  // Prefer falling hits, but keep normal attacks available while airborne too.
+                  && p.method_7261(0.5F) >= 0.90F) {
                   if (this.shieldAxeSlot < 0) {
                      int swordSlot = InvUtil.findBestSword();
                      if (swordSlot < 0) {
