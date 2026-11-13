@@ -105,8 +105,10 @@ public final class FakeLag extends Module {
          return;
       }
 
-      if (QUEUE.isEmpty()) holdStart = System.currentTimeMillis();
+      // Flush the previous connection before starting the timer for the new one.
+      // Otherwise flush() resets holdStart and the next queue would appear overdue.
       if (connection != null && connection != conn) flush();
+      if (QUEUE.isEmpty()) holdStart = System.currentTimeMillis();
       connection = conn;
       QUEUE.add(packet);
       ci.cancel();
@@ -136,13 +138,15 @@ public final class FakeLag extends Module {
 
    @Override
    protected void onEnable() {
-      if (!serverPositionInitialized && mc.field_1724 != null) {
-         serverX = mc.field_1724.method_23317();
-         serverY = mc.field_1724.method_23318();
-         serverZ = mc.field_1724.method_23321();
-         serverYaw = mc.field_1724.method_36454();
-         serverPitch = mc.field_1724.method_36455();
-         serverPositionInitialized = true;
+      synchronized (FakeLag.class) {
+         if (!serverPositionInitialized && mc.field_1724 != null) {
+            serverX = mc.field_1724.method_23317();
+            serverY = mc.field_1724.method_23318();
+            serverZ = mc.field_1724.method_23321();
+            serverYaw = mc.field_1724.method_36454();
+            serverPitch = mc.field_1724.method_36455();
+            serverPositionInitialized = true;
+         }
       }
    }
 
@@ -153,22 +157,26 @@ public final class FakeLag extends Module {
 
    @Override
    public void onWorldLeave() {
-      flush();
-      QUEUE.clear();
-      connection = null;
-      holdStart = 0L;
-      serverPositionInitialized = false;
-      serverX = serverY = serverZ = 0.0;
-      serverYaw = serverPitch = 0.0F;
+      synchronized (FakeLag.class) {
+         flush();
+         QUEUE.clear();
+         connection = null;
+         holdStart = 0L;
+         serverPositionInitialized = false;
+         serverX = serverY = serverZ = 0.0;
+         serverYaw = serverPitch = 0.0F;
+      }
    }
 
    @Override
    public void onTick() {
-      if (mc.field_1724 == null || mc.field_1687 == null || (flushOnScreen.get() && mc.field_1755 != null)) {
-         flush();
-         return;
+      synchronized (FakeLag.class) {
+         if (mc.field_1724 == null || mc.field_1687 == null || (flushOnScreen.get() && mc.field_1755 != null)) {
+            flush();
+            return;
+         }
+         if (!QUEUE.isEmpty() && System.currentTimeMillis() - holdStart >= maxDelay.getInt()) flush();
       }
-      if (!QUEUE.isEmpty() && System.currentTimeMillis() - holdStart >= maxDelay.getInt()) flush();
    }
 
    @Override
