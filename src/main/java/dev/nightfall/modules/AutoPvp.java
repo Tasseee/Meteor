@@ -239,11 +239,14 @@ public class AutoPvp extends Module {
    }
 
    private void cancelSlam(boolean restoreSlot) {
-      if (mc.field_1690 != null) {
+      boolean wasActive = this.slamPhase != AutoPvp.SlamPhase.NONE;
+      if (wasActive && mc.field_1690 != null) {
          mc.field_1690.field_1903.method_23481(this.wasJump);
       }
 
-      if (restoreSlot && this.originalSlot >= 0 && mc.field_1724 != null) {
+      // Restore only if the current slot is still one selected by this sequence.
+      if (wasActive && restoreSlot && this.originalSlot >= 0 && mc.field_1724 != null
+         && (InvUtil.selected() == this.windSlot || InvUtil.selected() == this.maceSlot)) {
          InvUtil.select(this.originalSlot);
       }
 
