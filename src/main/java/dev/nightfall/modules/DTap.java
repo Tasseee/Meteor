@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.CombatUtil;
 import dev.nightfall.util.InvUtil;
@@ -76,6 +77,10 @@ public class DTap extends Module {
       trackedTargetId = -1;
       queuedTargetId = -1;
       lastTargetHealth = Float.NaN;
+   }
+
+   public boolean isSequenceActive() {
+      return this.phase != IDLE || this.queuedTargetId != -1;
    }
 
    // Called by AutoPvP immediately after it performs a sword attack.
@@ -286,6 +291,8 @@ public class DTap extends Module {
    public void onTick() {
       class_746 player = mc.field_1724;
       if (player == null || mc.field_1687 == null || mc.field_1761 == null || mc.field_1755 != null) return;
+      // Preserve queued hits and pause every DTap phase while AutoGap is eating.
+      if (ModuleManager.get(AutoGap.class).isEating()) return;
 
       if (phase == IDLE) {
          // A queued AutoPvP hit is authoritative: never fall back to another
