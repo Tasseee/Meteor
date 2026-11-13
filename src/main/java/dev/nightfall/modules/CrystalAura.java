@@ -183,7 +183,7 @@ public class CrystalAura extends Module {
       if (second == null) return false;
       boolean firstAccepted = placeObsidianAt(player, first);
       boolean secondAccepted = placeObsidianAt(player, second);
-      return firstAccepted || secondAccepted;
+      return firstAccepted && secondAccepted;
    }
 
    @Override
