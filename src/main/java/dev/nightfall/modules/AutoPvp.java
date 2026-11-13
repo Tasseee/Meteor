@@ -28,6 +28,7 @@ public class AutoPvp extends Module {
    private final NumberSetting turnSpeed = this.add(new NumberSetting("Drehgeschwindigkeit", 35.0, 3.0, 45.0, 1.0));
    private final BoolSetting smoothLook = this.add(new BoolSetting("Smooth Rotation", true));
    private final BoolSetting attack = this.add(new BoolSetting("Angreifen", true));
+   private final BoolSetting swordCrits = this.add(new BoolSetting("Schwert-Crits ohne CrystalAura", true));
    private final BoolSetting strafe = this.add(new BoolSetting("Strafen", false));
    private final BoolSetting jump = this.add(new BoolSetting("Springen bei Hindernis", true));
    private final BoolSetting useStunSlam = this.add(new BoolSetting("Stun-Slam (Windcharge -> Mace)", true));
@@ -509,13 +510,24 @@ public class AutoPvp extends Module {
                }
 
                boolean obstacle = p.field_5976;
-               mc.field_1690.field_1903.method_23481(this.jump.get() && obstacle && p.method_24828() && this.clearAbove(p, 2));
+               boolean critMode = this.swordCrits.get() && !this.useCrystalAura.get()
+                  && distance <= this.reach.get() + 0.8 && this.clearAbove(p, 2);
+               if (critMode) {
+                  // Jump repeatedly at melee range and stop sprinting so falling sword hits can crit.
+                  mc.field_1690.field_1867.method_23481(false);
+                  mc.field_1690.field_1903.method_23481(p.method_24828());
+               } else {
+                  mc.field_1690.field_1903.method_23481(this.jump.get() && obstacle && p.method_24828() && this.clearAbove(p, 2));
+               }
                this.driving = true;
                this.updateShieldAxe(target);
                // Do not swing while the camera is still rotating past the target.
                // This prevents orbiting/turning around a player without landing a hit.
+               boolean fallingForCrit = !p.method_24828() && p.field_6017 > 0.08F
+                  && p.method_18798().field_1351 <= 0.0;
                if (this.attack.get() && distance <= this.reach.get()
                   && p.method_6057(target) && this.isAimAligned(p, target)
+                  && (!critMode || fallingForCrit)
                   && p.method_7261(0.5F) >= 0.95F) {
                   if (this.shieldAxeSlot < 0) {
                      int swordSlot = InvUtil.findBestSword();
