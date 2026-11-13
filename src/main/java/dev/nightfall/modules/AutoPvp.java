@@ -38,6 +38,7 @@ public class AutoPvp extends Module {
    private final BoolSetting useCrystalAura = this.add(new BoolSetting("CrystalAura integrieren", false));
    private final BoolSetting useAutoAnchor = this.add(new BoolSetting("AutoAnchor integrieren", false));
    private final BoolSetting useMaceAssist = this.add(new BoolSetting("MaceAssist integrieren", true));
+   private final BoolSetting useDTap = this.add(new BoolSetting("DTap integrieren", true));
    private final BoolSetting crystalCombo = this.add(new BoolSetting("Sprint-Hit + Obsidian + 2 Crystals", true));
    private int crystalComboPhase;
    private int crystalComboTicks;
@@ -55,6 +56,7 @@ public class AutoPvp extends Module {
    private boolean ownsCrystalAura;
    private boolean ownsAutoAnchor;
    private boolean ownsMaceAssist;
+   private boolean ownsDTap;
    private int strafeDir = 1;
    private int strafeTimer;
    private int shieldPreviousSlot = -1;
@@ -95,6 +97,7 @@ public class AutoPvp extends Module {
       this.ownsCrystalAura = this.syncModule(CrystalAura.class, this.useCrystalAura.get(), this.ownsCrystalAura);
       this.ownsAutoAnchor = this.syncModule(AutoAnchor.class, this.useAutoAnchor.get(), this.ownsAutoAnchor);
       this.ownsMaceAssist = this.syncModule(MaceAssist.class, this.useMaceAssist.get(), this.ownsMaceAssist);
+      this.ownsDTap = this.syncModule(DTap.class, this.useDTap.get(), this.ownsDTap);
    }
 
    private <T extends Module> boolean syncModule(Class<T> type, boolean requested, boolean owned) {
@@ -121,7 +124,8 @@ public class AutoPvp extends Module {
       this.disableIfOwned(CrystalAura.class, this.ownsCrystalAura);
       this.disableIfOwned(AutoAnchor.class, this.ownsAutoAnchor);
       this.disableIfOwned(MaceAssist.class, this.ownsMaceAssist);
-      this.ownsAutoGap = this.ownsAutoTotem = this.ownsCrystalAura = this.ownsAutoAnchor = this.ownsMaceAssist = false;
+      this.disableIfOwned(DTap.class, this.ownsDTap);
+      this.ownsAutoGap = this.ownsAutoTotem = this.ownsCrystalAura = this.ownsAutoAnchor = this.ownsMaceAssist = this.ownsDTap = false;
    }
 
    private <T extends Module> void disableIfOwned(Class<T> type, boolean owned) {
@@ -714,10 +718,12 @@ public class AutoPvp extends Module {
                   mc.field_1690.field_1867.method_23481(false);
                   mc.field_1690.field_1903.method_23481(p.method_24828());
                } else {
-                  // CrystalAura mode does not prepare sword crits: keep sprinting.
-                  // Still avoid jumping over obsidian or triggering obstacle jumps in CrystalAura mode.
+                  // Keep a sprint-jump rhythm while closing distance; pause it only for a timed sword crit.
+                  // Obsidian in the path is handled by the lateral detour instead of jumping into it.
+                  boolean chaseJump = approach && distance > this.stop.get() - 0.2
+                     && this.jump.get() && p.method_24828() && this.clearAbove(p, 2);
                   mc.field_1690.field_1903.method_23481(!this.useCrystalAura.get() && !obsidianInPath
-                     && this.jump.get() && obstacle && p.method_24828() && this.clearAbove(p, 2));
+                     && (chaseJump || (obstacle && this.jump.get() && p.method_24828() && this.clearAbove(p, 2))));
                }
                this.driving = true;
                this.updateShieldAxe(target);
