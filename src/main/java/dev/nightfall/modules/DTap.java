@@ -65,6 +65,15 @@ public class DTap extends Module {
       return count;
    }
 
+   private boolean isTargetAirborne(class_1657 target) {
+      return !target.method_24828();
+   }
+
+   private boolean isCrystalHeight(class_1657 target) {
+      double heightAboveBlock = target.method_23318() - target.method_24515().method_10264();
+      return this.isTargetAirborne(target) && heightAboveBlock >= 0.75;
+   }
+
    private boolean entityFree(class_2338 pos, double minY, double maxY) {
       class_238 box = new class_238(pos.method_10263(), pos.method_10264() + minY, pos.method_10260(),
          pos.method_10263() + 1.0, pos.method_10264() + maxY, pos.method_10260() + 1.0);
@@ -211,12 +220,17 @@ public class DTap extends Module {
 
       switch (phase) {
          case 1:
+            // Obsidian may be placed as soon as the target leaves the ground.
+            if (!this.isTargetAirborne(target)) return;
             if (placeObsidian(player, firstBase)) { phase = 2; ticks = 0; }
             break;
          case 2:
+            if (!this.isTargetAirborne(target)) return;
             if (placeObsidian(player, secondBase)) { phase = 3; ticks = 0; }
             break;
          case 3:
+            // Both DTap crystals wait until the target is at least 0.75 blocks above its block level.
+            if (!this.isCrystalHeight(target)) return;
             if (findCrystal(firstBase) == null) placeCrystal(player, firstBase);
             if (findCrystal(firstBase) != null) { phase = 4; ticks = 0; }
             break;
@@ -225,6 +239,7 @@ public class DTap extends Module {
             if (findCrystal(firstBase) == null && ticks > 0) { phase = 5; ticks = 0; }
             break;
          case 5:
+            if (!this.isCrystalHeight(target)) return;
             if (findCrystal(secondBase) == null) placeCrystal(player, secondBase);
             if (findCrystal(secondBase) != null) { phase = 6; ticks = 0; }
             break;
