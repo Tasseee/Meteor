@@ -149,6 +149,7 @@ public final class StructureESP extends Module {
       this.scanning = false;
       this.cursor = 0;
       this.total = 0;
+      this.timer = 0;
       this.working.clear();
       this.scanChunk = null;
       this.scanChunkX = Integer.MIN_VALUE;
