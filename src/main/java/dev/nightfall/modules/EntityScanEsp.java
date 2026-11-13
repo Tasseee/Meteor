@@ -3,7 +3,7 @@ package dev.nightfall.modules;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.util.Projection;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
-import net.minecraft.class_1921;
+import net.minecraft.class_12249;
 import net.minecraft.class_243;
 import net.minecraft.class_4587;
 import net.minecraft.class_4588;
@@ -36,8 +36,8 @@ public abstract class EntityScanEsp extends EspBase {
          return;
       }
 
-      float tickDelta = context.tickCounter().method_60637(false);
-      class_243 camera = context.camera().method_71156();
+      float tickDelta = Projection.tickDelta();
+      class_243 camera = mc.field_1773.method_19418().method_71156();
       double cameraX = camera.field_1352;
       double cameraY = camera.field_1351;
       double cameraZ = camera.field_1350;
@@ -119,11 +119,11 @@ public abstract class EntityScanEsp extends EspBase {
 
    private void drawWorldLine(WorldRenderContext context, double x0, double y0, double z0, double x1, double y1, double z1, int rgb) {
       class_4587 matrices = context.matrices();
-      class_4588 vertices = context.consumers().method_73477(class_1921.method_23594());
+      class_4588 vertices = context.consumers().method_73477(class_12249.method_76015());
       float r = (rgb >> 16 & 255) / 255.0F;
       float g = (rgb >> 8 & 255) / 255.0F;
       float b = (rgb & 255) / 255.0F;
-      float a = (float)this.opacity.get();
+      float a = this.opacity.get().floatValue();
       var matrix = matrices.method_23760().method_23761();
       vertices.method_22918(matrix, (float)x0, (float)y0, (float)z0).method_22915(r, g, b, a);
       vertices.method_22918(matrix, (float)x1, (float)y1, (float)z1).method_22915(r, g, b, a);
