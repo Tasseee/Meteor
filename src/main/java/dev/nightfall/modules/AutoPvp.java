@@ -190,7 +190,7 @@ public class AutoPvp extends Module {
    private void release() {
       if (this.driving && mc.field_1690 != null) {
          mc.field_1690.field_1894.method_23481(this.wasForward);
-         mc.field_1690.field_1905.method_23481(this.wasBack);
+         mc.field_1690.field_1881.method_23481(this.wasBack);
          mc.field_1690.field_1867.method_23481(this.wasSprint);
          mc.field_1690.field_1913.method_23481(this.wasLeft);
          mc.field_1690.field_1849.method_23481(this.wasRight);
@@ -672,7 +672,7 @@ public class AutoPvp extends Module {
          } else {
             if (!this.driving) {
                this.wasForward = mc.field_1690.field_1894.method_1434();
-               this.wasBack = mc.field_1690.field_1905.method_1434();
+               this.wasBack = mc.field_1690.field_1881.method_1434();
                this.wasSprint = mc.field_1690.field_1867.method_1434();
                this.wasLeft = mc.field_1690.field_1913.method_1434();
                this.wasRight = mc.field_1690.field_1849.method_1434();
@@ -692,7 +692,7 @@ public class AutoPvp extends Module {
                   if (dtap != null && dtap.needsRetreat()) {
                      this.aimAt(target.method_23317(), target.method_23323(0.5), target.method_23321());
                      mc.field_1690.field_1894.method_23481(false);
-                     mc.field_1690.field_1905.method_23481(true);
+                     mc.field_1690.field_1881.method_23481(true);
                      mc.field_1690.field_1867.method_23481(false);
                      mc.field_1690.field_1913.method_23481(false);
                      mc.field_1690.field_1849.method_23481(false);
@@ -705,7 +705,7 @@ public class AutoPvp extends Module {
                int obsidianSide = obsidianInPath ? this.obsidianDetourSide(p, target) : 0;
                boolean detouring = obsidianSide != 0;
                boolean approach = distance > this.stop.get() && (detouring || this.safeForward(p, target));
-               mc.field_1690.field_1905.method_23481(false);
+               mc.field_1690.field_1881.method_23481(false);
                mc.field_1690.field_1894.method_23481(approach);
                // CrystalAura mode keeps sprint enabled for sprint-hit combos;
                // sword-only mode manages sprint separately for critical hits.
