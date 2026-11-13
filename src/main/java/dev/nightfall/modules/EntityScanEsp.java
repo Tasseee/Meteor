@@ -85,10 +85,18 @@ public abstract class EntityScanEsp extends EspBase {
       }
 
       int count = Math.min(this.buf.size(), this.maxObjects.getInt());
+      // Acquire the line layer and current pose once per frame, not once per edge.
+      class_4588 vertices = context.consumers().method_73477(class_12249.method_76015());
+      var matrix = context.matrices().method_23760().method_23761();
+      int rgb = this.color.rgb();
+      float red = (rgb >> 16 & 255) / 255.0F;
+      float green = (rgb >> 8 & 255) / 255.0F;
+      float blue = (rgb & 255) / 255.0F;
+      float alpha = this.opacity.get().floatValue();
       for (int i = 0; i < count && !this.capReached(); i++) {
          RenderTarget target = this.buf.get(i);
          if (this.style.is("3D")) {
-            this.drawWorldBox(context, target.box(), this.color.rgb());
+            this.drawWorldBox(vertices, matrix, target.box(), red, green, blue, alpha);
          }
 
          if (this.tracers.get()) {
@@ -97,34 +105,33 @@ public abstract class EntityScanEsp extends EspBase {
                ? (target.box().field_1322 + target.box().field_1325) * 0.5
                : target.box().field_1322;
             double tz = (target.box().field_1321 + target.box().field_1324) * 0.5;
-            this.drawWorldLine(context, cameraX, cameraY, cameraZ, tx, ty, tz, this.color.rgb());
+            this.drawWorldLine(vertices, matrix, cameraX, cameraY, cameraZ, tx, ty, tz, red, green, blue, alpha);
          }
       }
    }
 
-   private void drawWorldBox(WorldRenderContext context, class_238 box, int rgb) {
-      this.drawWorldLine(context, box.field_1323, box.field_1322, box.field_1321, box.field_1320, box.field_1322, box.field_1321, rgb);
-      this.drawWorldLine(context, box.field_1323, box.field_1325, box.field_1321, box.field_1320, box.field_1325, box.field_1321, rgb);
-      this.drawWorldLine(context, box.field_1323, box.field_1322, box.field_1324, box.field_1320, box.field_1322, box.field_1324, rgb);
-      this.drawWorldLine(context, box.field_1323, box.field_1325, box.field_1324, box.field_1320, box.field_1325, box.field_1324, rgb);
-      this.drawWorldLine(context, box.field_1323, box.field_1322, box.field_1321, box.field_1323, box.field_1325, box.field_1321, rgb);
-      this.drawWorldLine(context, box.field_1320, box.field_1322, box.field_1321, box.field_1320, box.field_1325, box.field_1321, rgb);
-      this.drawWorldLine(context, box.field_1323, box.field_1322, box.field_1324, box.field_1323, box.field_1325, box.field_1324, rgb);
-      this.drawWorldLine(context, box.field_1320, box.field_1322, box.field_1324, box.field_1320, box.field_1325, box.field_1324, rgb);
-      this.drawWorldLine(context, box.field_1323, box.field_1322, box.field_1321, box.field_1323, box.field_1322, box.field_1324, rgb);
-      this.drawWorldLine(context, box.field_1320, box.field_1322, box.field_1321, box.field_1320, box.field_1322, box.field_1324, rgb);
-      this.drawWorldLine(context, box.field_1323, box.field_1325, box.field_1321, box.field_1323, box.field_1325, box.field_1324, rgb);
-      this.drawWorldLine(context, box.field_1320, box.field_1325, box.field_1321, box.field_1320, box.field_1325, box.field_1324, rgb);
+   private void drawWorldBox(class_4588 vertices, org.joml.Matrix4f matrix, class_238 box,
+                             float r, float g, float b, float a) {
+      double minX = box.field_1323, minY = box.field_1322, minZ = box.field_1321;
+      double maxX = box.field_1320, maxY = box.field_1325, maxZ = box.field_1324;
+      // 12 edges / 24 vertices, all written to the same buffered line consumer.
+      this.drawWorldLine(vertices, matrix, minX, minY, minZ, maxX, minY, minZ, r, g, b, a);
+      this.drawWorldLine(vertices, matrix, minX, maxY, minZ, maxX, maxY, minZ, r, g, b, a);
+      this.drawWorldLine(vertices, matrix, minX, minY, maxZ, maxX, minY, maxZ, r, g, b, a);
+      this.drawWorldLine(vertices, matrix, minX, maxY, maxZ, maxX, maxY, maxZ, r, g, b, a);
+      this.drawWorldLine(vertices, matrix, minX, minY, minZ, minX, maxY, minZ, r, g, b, a);
+      this.drawWorldLine(vertices, matrix, maxX, minY, minZ, maxX, maxY, minZ, r, g, b, a);
+      this.drawWorldLine(vertices, matrix, minX, minY, maxZ, minX, maxY, maxZ, r, g, b, a);
+      this.drawWorldLine(vertices, matrix, maxX, minY, maxZ, maxX, maxY, maxZ, r, g, b, a);
+      this.drawWorldLine(vertices, matrix, minX, minY, minZ, minX, minY, maxZ, r, g, b, a);
+      this.drawWorldLine(vertices, matrix, maxX, minY, minZ, maxX, minY, maxZ, r, g, b, a);
+      this.drawWorldLine(vertices, matrix, minX, maxY, minZ, minX, maxY, maxZ, r, g, b, a);
+      this.drawWorldLine(vertices, matrix, maxX, maxY, minZ, maxX, maxY, maxZ, r, g, b, a);
    }
 
-   private void drawWorldLine(WorldRenderContext context, double x0, double y0, double z0, double x1, double y1, double z1, int rgb) {
-      class_4587 matrices = context.matrices();
-      class_4588 vertices = context.consumers().method_73477(class_12249.method_76015());
-      float r = (rgb >> 16 & 255) / 255.0F;
-      float g = (rgb >> 8 & 255) / 255.0F;
-      float b = (rgb & 255) / 255.0F;
-      float a = this.opacity.get().floatValue();
-      var matrix = matrices.method_23760().method_23761();
+   private void drawWorldLine(class_4588 vertices, org.joml.Matrix4f matrix,
+                              double x0, double y0, double z0, double x1, double y1, double z1,
+                              float r, float g, float b, float a) {
       vertices.method_22918(matrix, (float)x0, (float)y0, (float)z0).method_22915(r, g, b, a);
       vertices.method_22918(matrix, (float)x1, (float)y1, (float)z1).method_22915(r, g, b, a);
    }
