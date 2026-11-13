@@ -75,7 +75,9 @@ public class AutoPvp extends Module {
    }
 
    public boolean isCrystalComboEnabled() {
-      return this.isEnabled() && this.crystalCombo.get() && this.crystalComboPhase > 0;
+      if (this.isEnabled() && this.crystalCombo.get() && this.crystalComboPhase > 0) return true;
+      DTap dtap = ModuleManager.get(DTap.class);
+      return dtap != null && dtap.isEnabled() && dtap.isSequenceActive();
    }
 
    @Override
@@ -663,6 +665,15 @@ public class AutoPvp extends Module {
       this.syncAssistModules();
       class_746 p = mc.field_1724;
       if (p != null && mc.field_1755 == null && mc.field_1761 != null && mc.field_1687 != null) {
+         // AutoGap owns the hotbar and use key until its eating sequence finishes.
+         if (ModuleManager.get(AutoGap.class).isEating()) {
+            this.resetCrystalCombo();
+            this.cancelSlam(true);
+            this.releaseShieldAxe();
+            this.release();
+            return;
+         }
+
          class_1657 target = CombatUtil.nearestPlayer(this.follow.get());
          if (target == null) {
             this.resetCrystalCombo();
@@ -759,9 +770,11 @@ public class AutoPvp extends Module {
                if (this.attack.get() && distance <= this.reach.get()
                   && p.method_6057(target)
                   && p.method_7261(0.5F) >= 0.90F) {
+                  boolean maceForSmash = this.useMaceAssist.get() && !p.method_24828()
+                     && p.method_6047().method_31574(class_1802.field_49814);
                   int weaponSlot = this.shieldAxeSlot >= 0
                      ? this.shieldAxeSlot
-                     : InvUtil.findBestSword();
+                     : (maceForSmash ? InvUtil.selected() : InvUtil.findBestSword());
                   if (weaponSlot >= 0) {
                      if (this.shieldAxeSlot < 0) InvUtil.select(weaponSlot);
 
@@ -775,7 +788,8 @@ public class AutoPvp extends Module {
                      mc.field_1761.method_2918(p, target);
                      p.method_6104(class_1268.field_5808);
                      // Start DTap only after an actual sword hit, never after the shield-breaking axe hit.
-                     if (this.useDTap.get() && this.shieldAxeSlot < 0) {
+                     if (this.useDTap.get() && this.shieldAxeSlot < 0
+                        && !p.method_6047().method_31574(class_1802.field_49814)) {
                         DTap dtap = ModuleManager.get(DTap.class);
                         if (dtap != null) dtap.triggerFromAutoPvp(target);
                      }
