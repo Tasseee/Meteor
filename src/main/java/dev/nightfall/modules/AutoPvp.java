@@ -47,6 +47,7 @@ public class AutoPvp extends Module {
    private class_2338 lastCrystalObsidianBase;
    private boolean driving;
    private boolean wasForward;
+   private boolean wasBack;
    private boolean wasSprint;
    private boolean wasLeft;
    private boolean wasRight;
@@ -189,6 +190,7 @@ public class AutoPvp extends Module {
    private void release() {
       if (this.driving && mc.field_1690 != null) {
          mc.field_1690.field_1894.method_23481(this.wasForward);
+         mc.field_1690.field_1905.method_23481(this.wasBack);
          mc.field_1690.field_1867.method_23481(this.wasSprint);
          mc.field_1690.field_1913.method_23481(this.wasLeft);
          mc.field_1690.field_1849.method_23481(this.wasRight);
@@ -688,6 +690,7 @@ public class AutoPvp extends Module {
          } else {
             if (!this.driving) {
                this.wasForward = mc.field_1690.field_1894.method_1434();
+               this.wasBack = mc.field_1690.field_1905.method_1434();
                this.wasSprint = mc.field_1690.field_1867.method_1434();
                this.wasLeft = mc.field_1690.field_1913.method_1434();
                this.wasRight = mc.field_1690.field_1849.method_1434();
@@ -704,6 +707,7 @@ public class AutoPvp extends Module {
                int obsidianSide = obsidianInPath ? this.obsidianDetourSide(p, target) : 0;
                boolean detouring = obsidianSide != 0;
                boolean approach = distance > this.stop.get() && (detouring || this.safeForward(p, target));
+               mc.field_1690.field_1905.method_23481(false);
                mc.field_1690.field_1894.method_23481(approach);
                // CrystalAura mode keeps sprint enabled for sprint-hit combos;
                // sword-only mode manages sprint separately for critical hits.
