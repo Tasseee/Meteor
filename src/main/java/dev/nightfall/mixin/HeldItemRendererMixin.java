@@ -6,6 +6,7 @@ import dev.nightfall.modules.WeaponAnimations;
 import net.minecraft.class_11659;
 import net.minecraft.class_1268;
 import net.minecraft.class_1306;
+import net.minecraft.class_1747;
 import net.minecraft.class_1799;
 import net.minecraft.class_4587;
 import net.minecraft.class_742;
@@ -80,6 +81,14 @@ public abstract class HeldItemRendererMixin {
          try {
             if (styleEnabled) {
                ModuleManager.get(FirstPersonStyle.class).transform(matrices, leftHand);
+            }
+
+            if (item != null && !item.method_7960() && item.method_7909() instanceof class_1747) {
+               // Scale block items to half size around their model center so their
+               // visual center stays aligned with other held items.
+               matrices.method_22904(0.25, 0.25, 0.25);
+               matrices.method_22905(0.5F, 0.5F, 0.5F);
+               matrices.method_22904(-0.5, -0.5, -0.5);
             }
 
             if (item != null && !item.method_7960() && class_7923.field_41178.method_10221(item.method_7909()).method_12832().endsWith("_sword")) {
