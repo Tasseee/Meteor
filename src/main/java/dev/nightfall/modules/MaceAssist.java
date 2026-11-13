@@ -23,6 +23,8 @@ public class MaceAssist extends Module {
    private final BoolSetting mobs = this.add(new BoolSetting("Mobs", false));
    public double estimate;
    private int prevSlot = -1;
+   private int activeSlot = -1;
+   private boolean manualOverride;
 
    public MaceAssist() {
       super("MaceAssist", "Mace-Smash: Auto-Switch und Angriff bei ausreichender Fallhoehe.", Category.COMBAT);
@@ -41,11 +43,14 @@ public class MaceAssist extends Module {
    }
 
    private void restoreSlot() {
-      if (this.switchBack.get() && this.prevSlot >= 0 && mc.field_1724 != null) {
+      if (this.switchBack.get() && this.prevSlot >= 0 && this.activeSlot >= 0
+         && mc.field_1724 != null && InvUtil.selected() == this.activeSlot) {
          InvUtil.select(this.prevSlot);
       }
 
       this.prevSlot = -1;
+      this.activeSlot = -1;
+      this.manualOverride = false;
    }
 
    public static double smashDamage(double fall) {
@@ -57,50 +62,58 @@ public class MaceAssist extends Module {
    public void onTick() {
       class_746 p = mc.field_1724;
       this.estimate = 0.0;
-      if (p != null && mc.field_1755 == null && mc.field_1761 != null) {
-         double fall = p.field_6017;
-         if (!p.method_24828() && !(fall < this.minFall.get()) && !p.method_5799() && !p.method_6128()) {
-            if (!p.method_6047().method_31574(class_1802.field_49814)) {
-               if (!this.autoSwitch.get()) {
-                  return;
-               }
+      if (p == null || mc.field_1755 != null || mc.field_1761 == null) return;
 
-               int s = InvUtil.findHotbar(class_1802.field_49814);
-               if (s < 0) {
-                  return;
-               }
+      boolean grounded = p.method_24828();
+      if (this.activeSlot >= 0 && InvUtil.selected() != this.activeSlot) {
+         // A changed slot means the player took manual control. Do not fight it.
+         this.activeSlot = -1;
+         this.prevSlot = -1;
+         this.manualOverride = !grounded;
+      }
 
-               if (this.prevSlot < 0) {
-                  this.prevSlot = InvUtil.selected();
-               }
+      if (grounded) {
+         if (this.switchBack.get() && this.prevSlot >= 0 && this.activeSlot >= 0
+            && InvUtil.selected() == this.activeSlot) {
+            InvUtil.select(this.prevSlot);
+         }
+         this.prevSlot = -1;
+         this.activeSlot = -1;
+         this.manualOverride = false;
+         return;
+      }
 
-               InvUtil.select(s);
-            }
+      if (this.manualOverride) return;
 
-            this.estimate = smashDamage(fall);
-            if (this.autoAttack.get() && mc.field_1692 instanceof class_1309 le && le.method_5805()) {
-               if (le instanceof class_1657 pe) {
-                  if (!this.players.get() || CombatUtil.isFriend(pe)) {
-                     return;
-                  }
-               } else if (!this.mobs.get()) {
-                  return;
-               }
+      double fall = p.field_6017;
+      if (fall < this.minFall.get() || p.method_5799() || p.method_6128()) return;
 
-               if (!(p.method_5739(le) > this.range.get())) {
-                  if (!this.visibleOnly.get() || p.method_6057(le)) {
-                     if (!(p.method_7261(0.5F) < 0.95F)) {
-                        mc.field_1761.method_2918(p, le);
-                        p.method_6104(class_1268.field_5808);
-                     }
-                  }
-               }
-            }
-         } else {
-            if (p.method_24828() && this.prevSlot >= 0 && this.switchBack.get()) {
-               InvUtil.select(this.prevSlot);
-               this.prevSlot = -1;
-            }
+      if (!p.method_6047().method_31574(class_1802.field_49814)) {
+         if (!this.autoSwitch.get()) return;
+
+         int slot = InvUtil.findHotbar(class_1802.field_49814);
+         if (slot < 0) return;
+
+         if (this.activeSlot < 0) {
+            this.prevSlot = InvUtil.selected();
+            this.activeSlot = slot;
+         }
+         InvUtil.select(slot);
+      }
+
+      this.estimate = smashDamage(fall);
+      if (this.autoAttack.get() && mc.field_1692 instanceof class_1309 target && target.method_5805()) {
+         if (target instanceof class_1657 playerTarget) {
+            if (!this.players.get() || CombatUtil.isFriend(playerTarget)) return;
+         } else if (!this.mobs.get()) {
+            return;
+         }
+
+         if (p.method_5739(target) <= this.range.get()
+            && (!this.visibleOnly.get() || p.method_6057(target))
+            && p.method_7261(0.5F) >= 0.95F) {
+            mc.field_1761.method_2918(p, target);
+            p.method_6104(class_1268.field_5808);
          }
       }
    }
