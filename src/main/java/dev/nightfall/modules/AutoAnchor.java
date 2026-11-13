@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.CombatUtil;
 import dev.nightfall.util.InvUtil;
@@ -57,7 +58,8 @@ public class AutoAnchor extends Module {
    @Override
    public void onTick() {
       class_746 p = mc.field_1724;
-      if (p != null && mc.field_1687 != null && mc.field_1761 != null && mc.field_1755 == null) {
+      if (p != null && mc.field_1687 != null && mc.field_1761 != null && mc.field_1755 == null
+         && !ModuleManager.get(AutoGap.class).isEating()) {
          if (!"the_nether".equals(mc.field_1687.method_27983().method_29177().method_12832())) {
             if (this.timer > 0) {
                this.timer--;
