@@ -70,7 +70,7 @@ public class AutoPvp extends Module {
    }
 
    public boolean isCrystalComboEnabled() {
-      return this.isEnabled() && this.crystalCombo.get();
+      return this.isEnabled() && this.crystalCombo.get() && this.crystalComboPhase > 0;
    }
 
    @Override
