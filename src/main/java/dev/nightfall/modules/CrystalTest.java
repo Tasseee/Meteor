@@ -26,18 +26,20 @@ public final class CrystalTest extends Module {
    private final NumberSetting placeDelay = this.add(new NumberSetting("Platzierdelay", 1.0, 0.0, 15.0, 1.0));
    private final NumberSetting spawnTimeout = this.add(new NumberSetting("Spawn-Timeout", 15.0, 3.0, 40.0, 1.0));
    private final NumberSetting betweenCrystals = this.add(new NumberSetting("Pause zwischen Crystals", 3.0, 0.0, 20.0, 1.0));
+   private final NumberSetting obsidianSpacing = this.add(new NumberSetting("Abstand zwischen Obsidian", 2.0, 1.0, 6.0, 1.0));
 
    private static final int IDLE = 0, LOOK_OBSIDIAN = 1, PLACE_OBSIDIAN = 2,
       WAIT_OBSIDIAN = 3, LOOK_CRYSTAL_1 = 4, PLACE_CRYSTAL_1 = 5,
       WAIT_CRYSTAL_1 = 6, BREAK_CRYSTAL_1 = 7, WAIT_BETWEEN = 8,
-      LOOK_CRYSTAL_2 = 9, PLACE_CRYSTAL_2 = 10, WAIT_CRYSTAL_2 = 11,
-      BREAK_CRYSTAL_2 = 12;
+      LOOK_OBSIDIAN_2 = 9, PLACE_OBSIDIAN_2 = 10, LOOK_CRYSTAL_2 = 11,
+      PLACE_CRYSTAL_2 = 12, BREAK_CRYSTAL_2 = 13;
 
    private int phase;
    private int ticks;
    private int targetId = -1;
    private float lastHealth = Float.NaN;
    private class_2338 base;
+   private class_2338 secondBase;
    private boolean queuedHit;
 
    public CrystalTest() {
@@ -54,6 +56,7 @@ public final class CrystalTest extends Module {
       targetId = -1;
       lastHealth = Float.NaN;
       base = null;
+      secondBase = null;
       queuedHit = false;
    }
 
@@ -82,6 +85,22 @@ public final class CrystalTest extends Module {
       int[][] offsets = {{1,0},{-1,0},{0,1},{0,-1},{1,1},{1,-1},{-1,1},{-1,-1}};
       for (int[] offset : offsets) {
          class_2338 pos = feet.method_10069(offset[0], 0, offset[1]);
+         if (!mc.field_1687.method_8320(pos).method_45474()) continue;
+         class_2338 support = pos.method_10074();
+         if (mc.field_1687.method_8320(support).method_26220(mc.field_1687, support).method_1110()) continue;
+         if (!clearForCrystal(pos)) continue;
+         class_243 aim = new class_243(pos.method_10263() + 0.5, pos.method_10264() + 1.0, pos.method_10260() + 0.5);
+         if (player.method_33571().method_1022(aim) > placeRange.get()) continue;
+         return pos;
+      }
+      return null;
+   }
+
+   private class_2338 findSecondBase(class_746 player, class_2338 first) {
+      int distance = obsidianSpacing.getInt();
+      int[][] directions = {{1,0},{-1,0},{0,1},{0,-1}};
+      for (int[] direction : directions) {
+         class_2338 pos = first.method_10069(direction[0] * distance, 0, direction[1] * distance);
          if (!mc.field_1687.method_8320(pos).method_45474()) continue;
          class_2338 support = pos.method_10074();
          if (mc.field_1687.method_8320(support).method_26220(mc.field_1687, support).method_1110()) continue;
@@ -214,6 +233,8 @@ public final class CrystalTest extends Module {
          if (!queuedHit) return;
          base = findBase(player, target);
          if (base == null) return;
+         secondBase = findSecondBase(player, base);
+         if (secondBase == null) { base = null; return; }
          queuedHit = false;
          next(LOOK_OBSIDIAN);
          return;
@@ -244,7 +265,18 @@ public final class CrystalTest extends Module {
             else attack(player);
             break;
          case WAIT_BETWEEN:
-            if (ticks >= betweenCrystals.getInt()) next(LOOK_CRYSTAL_2);
+            if (ticks >= betweenCrystals.getInt()) {
+               base = secondBase;
+               next(LOOK_OBSIDIAN_2);
+            }
+            break;
+         case LOOK_OBSIDIAN_2:
+            lookAt(player, obsidianAim());
+            if (facing(player, obsidianAim())) next(PLACE_OBSIDIAN_2);
+            break;
+         case PLACE_OBSIDIAN_2:
+            if (isObsidian(base)) next(LOOK_CRYSTAL_2);
+            else if (ticks > placeDelay.getInt()) placeObsidian(player);
             break;
          case LOOK_CRYSTAL_2:
             lookAt(player, crystalAim());
@@ -255,7 +287,7 @@ public final class CrystalTest extends Module {
             else if (ticks > placeDelay.getInt()) placeCrystal(player);
             break;
          case BREAK_CRYSTAL_2:
-            if (findCrystal() == null) { next(IDLE); base = null; }
+            if (findCrystal() == null) { next(IDLE); base = null; secondBase = null; }
             else attack(player);
             break;
          default:
