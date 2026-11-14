@@ -25,8 +25,8 @@ public final class FakeLag extends Module {
    private static float serverPitch;
    private static boolean serverPositionInitialized;
 
-   private final NumberSetting maxDelay = this.add(new NumberSetting("Max. Delay (ms)", 350.0, 50.0, 1000.0, 25.0));
-   private final NumberSetting maxPackets = this.add(new NumberSetting("Max. Pakete", 25.0, 5.0, 60.0, 1.0));
+   private final NumberSetting maxDelay = this.add(new NumberSetting("Max. Delay (ms)", 100.0, 50.0, 250.0, 25.0));
+   private final NumberSetting maxPackets = this.add(new NumberSetting("Max. Pakete", 8.0, 4.0, 20.0, 1.0));
    private final BoolSetting flushOnAttack = this.add(new BoolSetting("Bei Angriff senden", true));
    private final BoolSetting flushOnScreen = this.add(new BoolSetting("Bei GUI senden", true));
 
