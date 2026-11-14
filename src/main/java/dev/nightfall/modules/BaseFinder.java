@@ -48,7 +48,7 @@ public class BaseFinder extends Module {
    private final NumberSetting budgetMs = this.add(new NumberSetting("Budget ms/Tick", 2.5, 0.2, 5.0, 0.1));
    private final NumberSetting rescan = this.add(new NumberSetting("Rescan (s)", 8.0, 2.0, 120.0, 1.0));
    private final NumberSetting threshold = this.add(new NumberSetting("Min Score", 6.0, 3.0, 100.0, 1.0));
-   private final NumberSetting minSignals = this.add(new NumberSetting("Min. Signaltypen", 1.0, 1.0, 10.0, 1.0));
+   private final NumberSetting minSignals = this.add(new NumberSetting("Min. Signaltypen", 2.0, 1.0, 10.0, 1.0));
    private final NumberSetting wStorage = this.add(new NumberSetting("Gewicht Storage", 1.0, 0.1, 5.0, 0.1));
    private final NumberSetting wHopper = this.add(new NumberSetting("Gewicht Hopper", 1.5, 0.1, 5.0, 0.1));
    private final NumberSetting wFurnace = this.add(new NumberSetting("Gewicht Furnace", 0.7, 0.1, 5.0, 0.1));
@@ -192,6 +192,9 @@ public class BaseFinder extends Module {
       this.marksDirty = false;
       this.candidatesLastRefill = 0;
       this.scannedSinceRefill = 0;
+      this.lastScanned = 0;
+      this.lastScanNanos = 0L;
+      this.mobClusterMaxByChunk.clear();
    }
 
    public void clearMarks() {
@@ -220,7 +223,7 @@ public class BaseFinder extends Module {
          }
 
          this.tick++;
-         if (this.detectMobClusters.get() && this.tick % 5L == 0L) {
+         if (this.detectMobClusters.get() && this.tick % 20L == 0L) {
             this.rebuildMobClusterCounts(w);
          } else if (!this.detectMobClusters.get()) {
             this.mobClusterMaxByChunk.clear();
@@ -741,6 +744,8 @@ public class BaseFinder extends Module {
    }
 
    private static boolean similar(int a, int b) {
+      // A missing signal must not be treated as equivalent to a small positive count.
+      if (a == 0 || b == 0) return a == b;
       return Math.abs(a - b) <= Math.max(2, Math.round(Math.max(a, b) * 0.25F));
    }
 
