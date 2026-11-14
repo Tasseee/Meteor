@@ -24,6 +24,7 @@ public final class FakeLag extends Module {
    private static float serverYaw;
    private static float serverPitch;
    private static boolean serverPositionInitialized;
+   private static long ghostHoldUntil;
 
    private final NumberSetting maxDelay = this.add(new NumberSetting("Max. Delay (ms)", 100.0, 50.0, 250.0, 25.0));
    private final NumberSetting maxPackets = this.add(new NumberSetting("Max. Pakete", 8.0, 4.0, 20.0, 1.0));
@@ -57,7 +58,7 @@ public final class FakeLag extends Module {
    }
 
    public static boolean hasPendingServerPosition() {
-      return !QUEUE.isEmpty() && serverPositionInitialized;
+      return serverPositionInitialized && (!QUEUE.isEmpty() || System.currentTimeMillis() < ghostHoldUntil);
    }
 
    public static double serverX() {
@@ -100,7 +101,11 @@ public final class FakeLag extends Module {
       }
 
       if (packet instanceof class_2824) {
-         if (module.flushOnAttack.get()) flush();
+         if (module.flushOnAttack.get() && !QUEUE.isEmpty()) {
+            flush();
+            // Keep the ghost visible briefly at the position just sent before the hit.
+            ghostHoldUntil = System.currentTimeMillis() + 400L;
+         }
          return;
       }
       if (!(packet instanceof class_2828 movement)) return;
@@ -154,6 +159,7 @@ public final class FakeLag extends Module {
       connection = null;
       holdStart = 0L;
       serverPositionInitialized = false;
+      ghostHoldUntil = 0L;
       serverX = serverY = serverZ = 0.0;
       serverYaw = serverPitch = 0.0F;
    }
