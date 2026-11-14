@@ -26,6 +26,7 @@ public final class FakeLag extends Module {
    private static boolean serverPositionInitialized;
    private static long ghostHoldUntil;
    private static int lastHurtTime;
+   private static float lastHealth = Float.NaN;
 
    private final NumberSetting maxDelay = this.add(new NumberSetting("Max. Delay (ms)", 100.0, 50.0, 250.0, 25.0));
    private final NumberSetting maxPackets = this.add(new NumberSetting("Max. Pakete", 8.0, 4.0, 20.0, 1.0));
@@ -153,6 +154,7 @@ public final class FakeLag extends Module {
    @Override
    protected void onEnable() {
       lastHurtTime = mc.field_1724 != null ? mc.field_1724.field_6235 : 0;
+      lastHealth = mc.field_1724 != null ? mc.field_1724.method_6032() : Float.NaN;
       if (!serverPositionInitialized && mc.field_1724 != null) {
          serverX = mc.field_1724.method_23317();
          serverY = mc.field_1724.method_23318();
@@ -177,6 +179,7 @@ public final class FakeLag extends Module {
       serverPositionInitialized = false;
       ghostHoldUntil = 0L;
       lastHurtTime = 0;
+      lastHealth = Float.NaN;
       serverX = serverY = serverZ = 0.0;
       serverYaw = serverPitch = 0.0F;
    }
@@ -186,17 +189,22 @@ public final class FakeLag extends Module {
       if (mc.field_1724 == null || mc.field_1687 == null || (flushOnScreen.get() && mc.field_1755 != null)) {
          flush();
          lastHurtTime = 0;
+         lastHealth = Float.NaN;
          return;
       }
 
       // hurtTime is updated when the client receives a confirmed damage event.
       // Flush once when a new hurt animation starts, not on every tick while hurt.
       int hurtTime = mc.field_1724.field_6235;
-      if (flushOnDamage.get() && hurtTime > lastHurtTime && !QUEUE.isEmpty()) {
+      float health = mc.field_1724.method_6032();
+      boolean hurtAnimationStarted = hurtTime > lastHurtTime;
+      boolean healthDropped = !Float.isNaN(lastHealth) && health < lastHealth;
+      if (flushOnDamage.get() && (hurtAnimationStarted || healthDropped) && !QUEUE.isEmpty()) {
          flush();
          ghostHoldUntil = System.currentTimeMillis() + 400L;
       }
       lastHurtTime = hurtTime;
+      lastHealth = health;
 
       if (!QUEUE.isEmpty() && System.currentTimeMillis() - holdStart >= maxDelay.getInt()) flush();
    }
