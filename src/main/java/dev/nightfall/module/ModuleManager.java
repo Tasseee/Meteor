@@ -100,6 +100,7 @@ import dev.nightfall.modules.Waypoints;
 import dev.nightfall.modules.WeaponAnimations;
 import dev.nightfall.modules.WorldLyrics;
 import dev.nightfall.util.Projection;
+import dev.nightfall.util.OwnMeleeHitTracker;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -294,6 +295,7 @@ public final class ModuleManager {
    }
 
    public static void onWorldLeave() {
+      OwnMeleeHitTracker.clear();
       for (Module m : MODULES) {
          try {
             m.onWorldLeave();
@@ -306,6 +308,7 @@ public final class ModuleManager {
    public static void tick() {
       class_310 mc = class_310.method_1551();
       if (mc.field_1724 != null && mc.field_1687 != null) {
+         OwnMeleeHitTracker.tick();
          for (Module m : MODULES) {
             if (m.isEnabled()) {
                try {
