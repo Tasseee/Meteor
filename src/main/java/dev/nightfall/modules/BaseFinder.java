@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import net.minecraft.class_2246;
+import net.minecraft.class_2248;
 import net.minecraft.class_2561;
 import net.minecraft.class_2586;
 import net.minecraft.class_2595;
@@ -68,6 +69,7 @@ public class BaseFinder extends Module {
    private final NumberSetting wTunnel = this.add(new NumberSetting("Gewicht Tunnel", 1.5, 0.0, 5.0, 0.1));
    private final BoolSetting chat = this.add(new BoolSetting("Chat-Meldung", true));
    private static final Gson GSON = new Gson();
+   private static final Map<class_2248, String> BLOCK_NAME_CACHE = new HashMap<>();
    private static final Type MARK_LIST = (new TypeToken<List<BaseFinder.Mark>>() {}).getType();
    private static final Type FAKE_LIST = (new TypeToken<List<BaseFinder.FakePattern>>() {}).getType();
    private final Map<Long, ChunkResult> results = new HashMap<>();
@@ -85,6 +87,7 @@ public class BaseFinder extends Module {
    private int candidatesLastRefill;
    private int scannedSinceRefill;
    private boolean paused;
+   private final Map<Long, Integer> mobClusterMaxByChunk = new HashMap<>();
 
    public BaseFinder() {
       super("BaseFinder", "Findet verdaechtige Chunks anhand von Storage, Tunnelspuren, Hoppern und weiteren Signalen in geladenen Chunks.", Category.BASEFINDER);
@@ -217,6 +220,11 @@ public class BaseFinder extends Module {
          }
 
          this.tick++;
+         if (this.detectMobClusters.get() && this.tick % 5L == 0L) {
+            this.rebuildMobClusterCounts(w);
+         } else if (!this.detectMobClusters.get()) {
+            this.mobClusterMaxByChunk.clear();
+         }
          if (this.paused) {
             this.lastScanned = 0;
             this.lastScanNanos = 0L;
@@ -329,20 +337,6 @@ public class BaseFinder extends Module {
             }
          }
 
-         Map<Integer, Integer> mobCells = new HashMap<>();
-         if (this.detectMobClusters.get()) {
-            for (class_1297 entity : w.method_18112()) {
-               if (entity instanceof class_1309 && !(entity instanceof class_1657)
-                  && (entity.method_23317() >= cx * 16.0 && entity.method_23317() < cx * 16.0 + 16.0)
-                  && (entity.method_23321() >= cz * 16.0 && entity.method_23321() < cz * 16.0 + 16.0)) {
-                  int ex = ((int)Math.floor(entity.method_23317())) & 15;
-                  int ez = ((int)Math.floor(entity.method_23321())) & 15;
-                  int ey = (int)Math.floor(entity.method_23318());
-                  mobCells.merge(ex >> 2 | ez >> 2 << 2 | (ey >> 2) + 32 << 4, 1, Integer::sum);
-               }
-            }
-         }
-
          class_2826[] sections = ch.method_12006();
          byte[] air = new byte[sections.length * 4096];
          for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
@@ -357,10 +351,12 @@ public class BaseFinder extends Module {
                for (int z = 0; z < 16; z++) {
                   for (int x = 0; x < 16; x++) {
                      class_2680 state = section.method_12254(x, y, z);
-                     String blockName = state.method_26204().toString().toLowerCase(Locale.ROOT);
-                     String stateText = state.toString().toLowerCase(Locale.ROOT);
-                     if (blockName.contains("deepslate") && (stateText.contains("facing=") || stateText.contains("axis=") || stateText.contains("rotation="))) {
-                        rotatedDeepslate++;
+                     String blockName = BLOCK_NAME_CACHE.computeIfAbsent(state.method_26204(), block -> block.toString().toLowerCase(Locale.ROOT));
+                     if (blockName.contains("deepslate")) {
+                        String stateText = state.toString().toLowerCase(Locale.ROOT);
+                        if (stateText.contains("facing=") || stateText.contains("axis=") || stateText.contains("rotation=")) {
+                           rotatedDeepslate++;
+                        }
                      }
                      if (state.method_26213() >= 8) {
                         lightSources++;
@@ -423,14 +419,10 @@ public class BaseFinder extends Module {
          int tunnelBlocks = tunnelInfo[1];
 
          int maxCell = 0;
-         int maxMobCell = 0;
+         int maxMobCell = this.mobClusterMaxByChunk.getOrDefault(k, 0);
 
          for (int v : cells.values()) {
             maxCell = Math.max(maxCell, v);
-         }
-
-         for (int v : mobCells.values()) {
-            maxMobCell = Math.max(maxMobCell, v);
          }
 
          double cluster = maxCell >= 6 ? (maxCell - 5) * this.wCluster.get() : 0.0;
@@ -599,6 +591,33 @@ public class BaseFinder extends Module {
          if (old == null) {
             this.results.put(k, res);
          }
+      }
+   }
+
+   private void rebuildMobClusterCounts(class_638 world) {
+      Map<Long, Map<Integer, Integer>> cellsByChunk = new HashMap<>();
+      for (class_1297 entity : world.method_18112()) {
+         if (entity instanceof class_1309 && !(entity instanceof class_1657)) {
+            double x = entity.method_23317();
+            double y = entity.method_23318();
+            double z = entity.method_23321();
+            int cx = ((int)Math.floor(x)) >> 4;
+            int cz = ((int)Math.floor(z)) >> 4;
+            int localX = ((int)Math.floor(x)) & 15;
+            int localZ = ((int)Math.floor(z)) & 15;
+            int cellY = ((int)Math.floor(y) >> 2) + 32;
+            int cell = localX >> 2 | localZ >> 2 << 2 | cellY << 4;
+            cellsByChunk.computeIfAbsent(key(cx, cz), ignored -> new HashMap<>()).merge(cell, 1, Integer::sum);
+         }
+      }
+
+      this.mobClusterMaxByChunk.clear();
+      for (Map.Entry<Long, Map<Integer, Integer>> entry : cellsByChunk.entrySet()) {
+         int max = 0;
+         for (int count : entry.getValue().values()) {
+            max = Math.max(max, count);
+         }
+         this.mobClusterMaxByChunk.put(entry.getKey(), max);
       }
    }
 
