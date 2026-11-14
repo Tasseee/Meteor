@@ -325,18 +325,11 @@ public final class ModuleManager {
    }
 
    public static void renderWorld(WorldRenderContext context) {
+      // EntityScanEsp is rendered entirely from the HUD projection now.
+      // Do not invoke its legacy world-vertex path: on current Minecraft
+      // vertex formats that path can submit incomplete vertices and crash
+      // during the render-buffer flush (Normal/LineWidth missing).
       EspBase.drawn = 0;
-      for (Module m : MODULES) {
-         if (m.isEnabled() && m instanceof EntityScanEsp esp) {
-            try {
-               esp.renderWorld(context);
-            } catch (Throwable var4) {
-               Nightfall.LOGGER.error("World-Render-Fehler in Modul {} - Modul wird deaktiviert", m.getName(), var4);
-               errorCount++;
-               m.setEnabled(false);
-            }
-         }
-      }
    }
 
    public static void renderHud(class_332 ctx, float tickDelta) {
