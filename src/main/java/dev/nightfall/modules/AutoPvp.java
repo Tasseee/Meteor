@@ -31,7 +31,7 @@ public class AutoPvp extends Module {
    private final BoolSetting swordCrits = this.add(new BoolSetting("Schwert-Crits ohne CrystalAura", true));
    private final BoolSetting strafe = this.add(new BoolSetting("Strafen", false));
    private final BoolSetting jump = this.add(new BoolSetting("Springen bei Hindernis", true));
-   private final BoolSetting useStunSlam = this.add(new BoolSetting("Stun-Slam (Windcharge -> Mace)", false));
+   private final BoolSetting useWindchargeMace = this.add(new BoolSetting("Windcharge -> Mace", false));
    private final BoolSetting useShieldBreak = this.add(new BoolSetting("Schild mit Axt kontern", true));
    private final BoolSetting useAutoGap = this.add(new BoolSetting("AutoGap integrieren", true));
    private final BoolSetting useAutoTotem = this.add(new BoolSetting("AutoTotem integrieren", true));
@@ -63,9 +63,9 @@ public class AutoPvp extends Module {
    private int shieldPreviousSlot = -1;
    private int shieldAxeSlot = -1;
    private int shieldTargetId = -1;
-   private AutoPvp.SlamPhase slamPhase = AutoPvp.SlamPhase.NONE;
-   private class_1657 slamTarget;
-   private int slamTicks;
+   private AutoPvp.WindchargeMacePhase windchargeMacePhase = AutoPvp.WindchargeMacePhase.NONE;
+   private class_1657 windchargeMaceTarget;
+   private int windchargeMaceTicks;
    private int originalSlot = -1;
    private int windSlot = -1;
    private int maceSlot = -1;
@@ -87,7 +87,7 @@ public class AutoPvp extends Module {
    protected void onDisable() {
       this.pearlUseDelay = 0;
       this.resetCrystalCombo();
-      this.cancelSlam(true);
+      this.cancelWindchargeMace(true);
       this.releaseShieldAxe();
       this.release();
       this.disableOwnedAssistModules();
@@ -357,8 +357,8 @@ public class AutoPvp extends Module {
       }
    }
 
-   private void cancelSlam(boolean restoreSlot) {
-      boolean wasActive = this.slamPhase != AutoPvp.SlamPhase.NONE;
+   private void cancelWindchargeMace(boolean restoreSlot) {
+      boolean wasActive = this.windchargeMacePhase != AutoPvp.WindchargeMacePhase.NONE;
       if (wasActive && mc.field_1690 != null) {
          mc.field_1690.field_1903.method_23481(this.wasJump);
       }
@@ -369,21 +369,21 @@ public class AutoPvp extends Module {
          InvUtil.select(this.originalSlot);
       }
 
-      this.slamPhase = AutoPvp.SlamPhase.NONE;
-      this.slamTarget = null;
-      this.slamTicks = 0;
+      this.windchargeMacePhase = AutoPvp.WindchargeMacePhase.NONE;
+      this.windchargeMaceTarget = null;
+      this.windchargeMaceTicks = 0;
       this.originalSlot = this.windSlot = this.maceSlot = -1;
    }
 
-   private boolean tickStunSlam(class_746 p, class_1657 target, double distance) {
-      if (!this.useStunSlam.get()) {
-         if (this.slamPhase != AutoPvp.SlamPhase.NONE) {
-            this.cancelSlam(true);
+   private boolean tickWindchargeMace(class_746 p, class_1657 target, double distance) {
+      if (!this.useWindchargeMace.get()) {
+         if (this.windchargeMacePhase != AutoPvp.WindchargeMacePhase.NONE) {
+            this.cancelWindchargeMace(true);
          }
 
          return false;
       } else {
-         if (this.slamPhase == AutoPvp.SlamPhase.NONE) {
+         if (this.windchargeMacePhase == AutoPvp.WindchargeMacePhase.NONE) {
             if (!p.method_24828() || distance < 3.5 || distance > 7.5 || !p.method_6057(target) || !this.clearAbove(p, 4)) {
                return false;
             }
@@ -395,19 +395,19 @@ public class AutoPvp extends Module {
             }
 
             this.originalSlot = InvUtil.selected();
-            this.slamTarget = target;
-            this.slamPhase = AutoPvp.SlamPhase.JUMP;
-            this.slamTicks = 0;
+            this.windchargeMaceTarget = target;
+            this.windchargeMacePhase = AutoPvp.WindchargeMacePhase.JUMP;
+            this.windchargeMaceTicks = 0;
          }
 
-         if (this.slamTarget == target && target.method_5805() && this.clearAbove(p, 3) && this.slamTicks++ <= 45) {
-            switch (this.slamPhase) {
+         if (this.windchargeMaceTarget == target && target.method_5805() && this.clearAbove(p, 3) && this.windchargeMaceTicks++ <= 45) {
+            switch (this.windchargeMacePhase) {
                case JUMP:
                   mc.field_1690.field_1903.method_23481(true);
                   if (!p.method_24828()) {
                      mc.field_1690.field_1903.method_23481(this.wasJump);
-                     this.slamPhase = AutoPvp.SlamPhase.AIM_AND_CHARGE;
-                     this.slamTicks = 0;
+                     this.windchargeMacePhase = AutoPvp.WindchargeMacePhase.AIM_AND_CHARGE;
+                     this.windchargeMaceTicks = 0;
                   }
 
                   return true;
@@ -417,17 +417,17 @@ public class AutoPvp extends Module {
                      InvUtil.select(this.windSlot);
                      mc.field_1761.method_2919(p, class_1268.field_5808);
                      p.method_6104(class_1268.field_5808);
-                     this.slamPhase = AutoPvp.SlamPhase.RISING;
-                     this.slamTicks = 0;
+                     this.windchargeMacePhase = AutoPvp.WindchargeMacePhase.RISING;
+                     this.windchargeMaceTicks = 0;
                   }
 
                   return true;
                case RISING:
                   if (p.method_18798().field_1351 > 0.12) {
-                     this.slamPhase = AutoPvp.SlamPhase.FALLING;
+                     this.windchargeMacePhase = AutoPvp.WindchargeMacePhase.FALLING;
                      InvUtil.select(this.maceSlot);
-                  } else if (this.slamTicks > 8) {
-                     this.cancelSlam(true);
+                  } else if (this.windchargeMaceTicks > 8) {
+                     this.cancelWindchargeMace(true);
                      return false;
                   }
 
@@ -442,12 +442,12 @@ public class AutoPvp extends Module {
                      && p.method_7261(0.5F) >= 0.95F) {
                      mc.field_1761.method_2918(p, target);
                      p.method_6104(class_1268.field_5808);
-                     this.cancelSlam(true);
+                     this.cancelWindchargeMace(true);
                      return true;
                   }
 
                   if (p.method_24828()) {
-                     this.cancelSlam(true);
+                     this.cancelWindchargeMace(true);
                   }
 
                   return true;
@@ -455,7 +455,7 @@ public class AutoPvp extends Module {
                   return false;
             }
          } else {
-            this.cancelSlam(true);
+            this.cancelWindchargeMace(true);
             return false;
          }
       }
@@ -732,7 +732,7 @@ public class AutoPvp extends Module {
       this.pearlUseDelay = 0;
       this.resetCrystalCombo();
       this.lastCrystalObsidianBase = null;
-      this.cancelSlam(true);
+      this.cancelWindchargeMace(true);
       this.releaseShieldAxe();
       this.release();
       this.disableOwnedAssistModules();
@@ -749,7 +749,7 @@ public class AutoPvp extends Module {
          class_1657 target = CombatUtil.nearestPlayer(this.follow.get());
          if (target == null) {
             this.resetCrystalCombo();
-            this.cancelSlam(true);
+            this.cancelWindchargeMace(true);
             this.releaseShieldAxe();
             this.release();
          } else {
@@ -764,7 +764,7 @@ public class AutoPvp extends Module {
             this.aimAt(target.method_23317(), target.method_23323(0.5), target.method_23321());
             double distance = p.method_5739(target);
             if (this.tickCrystalCombo(p, target)) { this.driving = true; return; }
-            if (this.tickStunSlam(p, target, distance)) {
+            if (this.tickWindchargeMace(p, target, distance)) {
                this.driving = true;
             } else if (!target.method_24828() && this.distanceToLandingPoint(p, target) > 3.8) {
                class_243 landing = this.predictLandingPoint(target);
@@ -862,13 +862,13 @@ public class AutoPvp extends Module {
             }
          }
       } else {
-         this.cancelSlam(true);
+         this.cancelWindchargeMace(true);
          this.releaseShieldAxe();
          this.release();
       }
    }
 
-   private static enum SlamPhase {
+   private static enum WindchargeMacePhase {
       NONE,
       JUMP,
       AIM_AND_CHARGE,
