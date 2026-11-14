@@ -75,7 +75,8 @@ public final class ChunkEsp extends Module {
          visited.add(key(seed.cx, seed.cz));
 
          // Flood-fill adjacent chunks with the same status into one readable marker.
-         for (int i = 0; i < queue.size() && queue.size() < 64; i++) {
+         // Process every queued chunk; never mark an unqueued chunk as visited at the 64-item cap.
+         for (int i = 0; i < queue.size(); i++) {
             ChunkResult current = queue.get(i);
             group.add(current);
             for (int ox = -1; ox <= 1; ox++) {
@@ -83,7 +84,8 @@ public final class ChunkEsp extends Module {
                   if (Math.abs(ox) + Math.abs(oz) != 1) continue;
                   long nextKey = key(current.cx + ox, current.cz + oz);
                   ChunkResult next = candidates.get(nextKey);
-                  if (next != null && next.status == seed.status && visited.add(nextKey)) {
+                  if (next != null && next.status == seed.status
+                     && queue.size() < 64 && visited.add(nextKey)) {
                      queue.add(next);
                   }
                }
