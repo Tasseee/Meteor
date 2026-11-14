@@ -21,14 +21,27 @@ public final class StructureESP extends Module {
    private final BoolSetting trial = this.add(new BoolSetting("Trial-Spawner", true));
    private final BoolSetting chests = this.add(new BoolSetting("Kisten", true));
    private final BoolSetting suspicious = this.add(new BoolSetting("Verdächtige Bloecke", true));
+   private final BoolSetting extraContainers = this.add(new BoolSetting("Weitere Truhen und Fässer", true));
+   private final BoolSetting pots = this.add(new BoolSetting("Dekotöpfe", true));
+   private final BoolSetting beeHomes = this.add(new BoolSetting("Bienenstöcke", true));
+   private final BoolSetting gateways = this.add(new BoolSetting("End-Gateways", true));
+   private final BoolSetting shulkers = this.add(new BoolSetting("Shulkerboxen", true));
+   private final BoolSetting vaults = this.add(new BoolSetting("Tresore", true));
    private final List<class_238> positions = new ArrayList<>();
    private int timer;
 
    public StructureESP() {
-      super("StructureESP", "Markiert Struktur-Hinweise in bereits geladenen Chunks.", Category.VISUALS);
+      super("StructureESP", "Markiert weitere Struktur-Hinweise in bereits geladenen Chunks.", Category.VISUALS);
    }
 
    private boolean match(class_2248 b) {
+      String id = ((net.minecraft.class_2378)net.minecraft.class_7923.field_41175).method_10221(b).toString();
+      if (this.extraContainers.get() && (id.equals("minecraft:barrel") || id.equals("minecraft:ender_chest") || id.equals("minecraft:trapped_chest"))) return true;
+      if (this.pots.get() && id.equals("minecraft:decorated_pot")) return true;
+      if (this.beeHomes.get() && (id.equals("minecraft:beehive") || id.equals("minecraft:bee_nest"))) return true;
+      if (this.gateways.get() && id.equals("minecraft:end_gateway")) return true;
+      if (this.shulkers.get() && id.endsWith("_shulker_box")) return true;
+      if (this.vaults.get() && (id.equals("minecraft:vault") || id.equals("minecraft:trial_spawner"))) return true;
       return this.spawners.get() && b == class_2246.field_10260
          || this.portals.get() && b == class_2246.field_10398
          || this.trial.get() && (b == class_2246.field_47336 || b == class_2246.field_48851)
