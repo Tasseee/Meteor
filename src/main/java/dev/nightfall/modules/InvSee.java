@@ -195,8 +195,6 @@ public final class InvSee extends HudModule {
                } else if (menuStacks.stream().filter(stackx -> !stackx.method_7960()).count() > row) {
                   ctx.method_51433(mc.field_1772, "… weitere Slots vorhanden", 8, top + 46 + row * 12, -5196347, false);
                }
-            } else {
-               ctx.method_51433(mc.field_1772, menuStatus, 8, top + 46, -5196347, false);
             }
          }
       }
