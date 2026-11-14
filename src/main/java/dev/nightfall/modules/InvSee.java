@@ -4,6 +4,7 @@ import dev.nightfall.module.HudModule;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.module.setting.StringSetting;
+import dev.nightfall.util.CombatUtil;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.class_1304;
@@ -61,8 +62,7 @@ public final class InvSee extends HudModule {
    @Override
    protected void draw(class_332 ctx) {
       if (mc.field_1724 != null) {
-         class_1657 aimedPlayer = mc.field_1692 instanceof class_1657 player && player != mc.field_1724 && player.method_5805() ? player : null;
-         class_1657 target = aimedPlayer != null && aimedPlayer.method_5739(mc.field_1724) <= this.targetRange.get() ? aimedPlayer : null;
+         class_1657 target = CombatUtil.nearestPlayer(this.targetRange.get());
          boolean menuOpen = this.showMenuData.get() && mc.field_1755 instanceof class_465;
          String menuTitle = "";
          String menuStatus = !this.showMenuData.get() ? "Menue-Anzeige deaktiviert" : "Kein Server-Menue geoeffnet";
@@ -93,9 +93,15 @@ public final class InvSee extends HudModule {
             this.crystalCount = this.elytraCount = this.maceCount = this.totemCount = 0;
          }
 
+         boolean hasMenuContent = menuOpen && menuMatches && menuStacks.stream().anyMatch(stack -> !stack.method_7960());
+         if (target == null && !hasMenuContent) {
+            this.w = 178;
+            this.h = 0;
+            return;
+         }
          int screenHeight = mc.method_22683().method_4502();
-         int rows = menuOpen && menuMatches && !menuStacks.isEmpty() ? Math.min(this.maxEntries.getInt(), Math.max(1, (screenHeight - 160) / 12)) : 0;
-         int menuHeight = this.showMenuData.get() ? 58 + rows * 12 : 0;
+         int rows = hasMenuContent ? Math.min(this.maxEntries.getInt(), Math.max(1, (screenHeight - 160) / 12)) : 0;
+         int menuHeight = hasMenuContent ? 58 + rows * 12 : 0;
          this.h = 78 + menuHeight;
          ctx.method_25294(0, 0, this.w, this.h, -451931621);
          ctx.method_25294(0, 0, this.w, 2, -10099035);
@@ -107,8 +113,8 @@ public final class InvSee extends HudModule {
 
          ctx.method_51433(mc.field_1772, title, 7, 7, -10099035, true);
          String targetStatus = target != null
-            ? String.format(Locale.ROOT, "Ausrüstung · %.1f Blöcke", target.method_5739(mc.field_1724))
-            : (aimedPlayer != null ? "Spieler zu weit entfernt" : "Spieler im Fadenkreuz anvisieren");
+            ? String.format(Locale.ROOT, "Nächster Spieler · %.1f Blöcke", target.method_5739(mc.field_1724))
+            : "Kein Spieler in Reichweite";
          ctx.method_51433(mc.field_1772, targetStatus, 7, 20, -4669227, false);
 
          for (int i = 0; i < SLOTS.length; i++) {
@@ -126,23 +132,23 @@ public final class InvSee extends HudModule {
             }
          }
 
-         if (this.showMenuData.get()) {
-            int top = 77;
+         if (hasMenuContent) {
+            int top = target != null ? 77 : 4;
             ctx.method_25294(5, top, this.w - 5, top + 18, 1429092680);
-            String header = menuOpen && menuMatches ? "SERVER-MENUE · " + menuTitle : "SERVER-MENUE";
+            String header = "SERVER-MENUE · " + menuTitle;
 
             while (mc.field_1772.method_1727(header) > this.w - 16 && header.length() > 10) {
                header = header.substring(0, header.length() - 2) + "…";
             }
 
             ctx.method_51433(mc.field_1772, header, 8, top + 5, -10099035, false);
-            if (menuOpen && menuMatches) {
+            {
                String summary = "CR " + this.crystalCount + "  Elytra " + this.elytraCount + "  Mace " + this.maceCount + "  Totem " + this.totemCount;
                ctx.method_51433(mc.field_1772, summary, 8, top + 19, -1518198, false);
                ctx.method_51433(mc.field_1772, "Aktualisierung alle 5 s", 8, top + 31, -6444866, false);
             }
 
-            if (menuOpen && menuMatches) {
+            {
                int row = 0;
 
                for (int ix = 0; ix < menuStacks.size() && row < rows; ix++) {
