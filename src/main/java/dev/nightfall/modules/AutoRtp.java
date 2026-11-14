@@ -78,6 +78,11 @@ public final class AutoRtp extends Module {
 
       if (this.stopOnSus.get()) {
          BaseFinder finder = ModuleManager.get(BaseFinder.class);
+         if (!finder.isEnabled()) {
+            NotificationCenter.push("AutoRTP", "Bitte BaseFinder aktivieren, damit SUS-Chunks erkannt werden koennen.");
+            this.setEnabled(false);
+            return;
+         }
          if (finder.isEnabled()) {
             int pcx = mc.field_1724.method_31477() >> 4;
             int pcz = mc.field_1724.method_31479() >> 4;
