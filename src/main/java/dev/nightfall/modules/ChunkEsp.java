@@ -158,7 +158,7 @@ public final class ChunkEsp extends Module {
       float y = (float)point[1];
       double phase = now / 1_000_000_000.0 * this.pulseSpeed.get();
       float pulse = (float)(0.5 + 0.5 * Math.sin(phase * Math.PI * 2.0));
-      float radius = (float)this.markerSize.get() + (float)Math.min(5.0, Math.sqrt(region.count) * 1.4);
+      float radius = this.markerSize.get().floatValue() + (float)Math.min(5.0, Math.sqrt(region.count) * 1.4);
       int strong = alpha(baseColor, this.opacity.get() * fade);
       int soft = alpha(baseColor, this.opacity.get() * fade * 0.28);
 
