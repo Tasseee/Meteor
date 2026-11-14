@@ -227,50 +227,6 @@ public final class Commands {
                   )
             )
       );
-      root.then(
-         ((LiteralArgumentBuilder)((LiteralArgumentBuilder)ClientCommandManager.literal("fake")
-                  .then(ClientCommandManager.literal("add").then(ClientCommandManager.argument("name", StringArgumentType.word()).executes(c -> {
-                     class_310 mc = class_310.method_1551();
-                     if (mc.field_1724 == null) {
-                        return 0;
-                     } else {
-                        WaypointManager.add(
-                           str(c, "name"), "FakeBase", mc.field_1724.method_31477(), mc.field_1724.method_31478(), mc.field_1724.method_31479()
-                        );
-                        return say(c, "Lokale TEST/DECOY-Markierung gesetzt: " + str(c, "name"));
-                     }
-                  }))))
-               .then(ClientCommandManager.literal("del").then(ClientCommandManager.argument("name", StringArgumentType.word()).executes(c -> {
-                  String name = str(c, "name");
-                  Waypoint found = null;
-
-                  for (Waypoint w : WaypointManager.all()) {
-                     if ("FakeBase".equalsIgnoreCase(w.category) && w.name.equalsIgnoreCase(name)) {
-                        found = w;
-                        break;
-                     }
-                  }
-
-                  if (found == null) {
-                     return say(c, "Fake-Markierung nicht gefunden");
-                  } else {
-                     WaypointManager.remove(found);
-                     return say(c, "Fake-Markierung entfernt: " + name);
-                  }
-               }))))
-            .then(ClientCommandManager.literal("list").executes(c -> {
-               int n = 0;
-
-               for (Waypoint w : WaypointManager.all()) {
-                  if ("FakeBase".equalsIgnoreCase(w.category)) {
-                     say(c, "[TEST/DECOY] " + w.name + " " + w.x + " " + w.y + " " + w.z);
-                     n++;
-                  }
-               }
-
-               return say(c, n + " lokale Fake-Markierung(en)");
-            }))
-      );
       StaffWatch staff = ModuleManager.get(StaffWatch.class);
       root.then(
          ((LiteralArgumentBuilder)((LiteralArgumentBuilder)ClientCommandManager.literal("staff")
