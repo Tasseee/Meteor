@@ -16,6 +16,7 @@ import dev.nightfall.modules.AutoGap;
 import dev.nightfall.modules.AutoPvp;
 import dev.nightfall.modules.DTap;
 import dev.nightfall.modules.AutoReconnect;
+import dev.nightfall.modules.AutoRtp;
 import dev.nightfall.modules.AutoRespawn;
 import dev.nightfall.modules.AutoShield;
 import dev.nightfall.modules.AutoSign;
@@ -188,6 +189,7 @@ public final class ModuleManager {
       MODULES.add(new AutoSmelter());
       MODULES.add(new AutoCraftPlanner());
       MODULES.add(new BaseFinder());
+      MODULES.add(new AutoRtp());
       MODULES.add(new AutoReconnect());
       MODULES.add(new AutoSign());
       MODULES.add(new AutoTpa());
