@@ -148,12 +148,10 @@ public final class ChunkEsp extends Module {
       for (ChunkEsp.Region r : this.cachedRegions) {
          if (drawn >= this.maxObj.getInt() || EspBase.drawn >= 2048) break;
 
-         float scoreT = (float)Math.max(0.0, Math.min(1.0, r.score / (finder.thresholdValue() * 3.0)));
          int base = r.status == ChunkResult.Status.GONE ? this.goneColor.rgb() : this.susColor.rgb();
          if (r.favorite && this.showFavorites.get()) base = this.favoriteColor.rgb();
          int alpha = (int)(this.opacity.get() * 255.0);
          int outline = Theme.withAlpha(base, alpha);
-         int softFill = Theme.withAlpha(base, Math.max(18, alpha / 9));
 
          double x0 = r.cx * 16.0;
          double z0 = r.cz * 16.0;
@@ -170,7 +168,6 @@ public final class ChunkEsp extends Module {
 
          int lineAlpha = (int)(alpha * fade);
          outline = Theme.withAlpha(base, lineAlpha);
-         softFill = Theme.withAlpha(base, Math.max(12, (int)(lineAlpha * 0.10)));
 
          // A thin, flat footprint keeps the marked chunk readable without a huge
          // opaque vertical cage through the terrain.
