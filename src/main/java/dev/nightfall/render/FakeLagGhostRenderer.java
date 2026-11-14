@@ -52,12 +52,26 @@ public final class FakeLagGhostRenderer {
          state.field_53337 = null;
          state.field_53338 = null;
 
-         ((class_897)playerRenderer).method_3936(
-            (class_10017)state,
-            context.matrices(),
-            context.commandQueue(),
-            context.worldState().field_63082
-         );
+         // EntityRenderer.render expects the matrix stack to be translated to
+         // the entity's camera-relative position. Without this, the ghost is drawn
+         // at the render origin (which looks like it is attached to the camera/head).
+         var cameraPos = mc.field_1773.method_19418().method_71156();
+         context.matrices().method_22903();
+         try {
+            context.matrices().method_22904(
+               FakeLag.serverX() - cameraPos.field_1352,
+               FakeLag.serverY() - cameraPos.field_1351,
+               FakeLag.serverZ() - cameraPos.field_1350
+            );
+            ((class_897)playerRenderer).method_3936(
+               (class_10017)state,
+               context.matrices(),
+               context.commandQueue(),
+               context.worldState().field_63082
+            );
+         } finally {
+            context.matrices().method_22909();
+         }
       } catch (Throwable ignored) {
          // A render-only helper must never interrupt the normal world render.
       }
