@@ -12,7 +12,7 @@ import java.util.Locale;
 import net.minecraft.class_1657;
 
 public final class AutoRtp extends Module {
-   private final NumberSetting interval = this.add(new NumberSetting("RTP Intervall (Sek.)", 45.0, 30.0, 300.0, 5.0));
+   private final NumberSetting interval = this.add(new NumberSetting("RTP Intervall (Sek.)", 10.0, 5.0, 120.0, 1.0));
    private final BoolSetting stopOnPlayer = this.add(new BoolSetting("Stop bei Spieler", true));
    private final NumberSetting playerRadius = this.add(new NumberSetting("Spieler-Radius", 64.0, 16.0, 128.0, 8.0));
    private final BoolSetting stopOnSus = this.add(new BoolSetting("Stop bei SUS-Chunk", true));
