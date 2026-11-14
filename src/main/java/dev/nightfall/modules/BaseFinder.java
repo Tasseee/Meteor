@@ -317,7 +317,7 @@ public class BaseFinder extends Module {
                furnace++;
             } else if (be instanceof class_2601 || be instanceof class_2599 || be instanceof class_8887) {
                redstone++;
-            } else if (be instanceof class_2636) {
+            } else if (be instanceof class_2636 && this.detectSpawners.get()) {
                spawner++;
             }
 
@@ -357,6 +357,34 @@ public class BaseFinder extends Module {
                for (int z = 0; z < 16; z++) {
                   for (int x = 0; x < 16; x++) {
                      class_2680 state = section.method_12254(x, y, z);
+                     String blockName = state.method_26204().toString().toLowerCase(Locale.ROOT);
+                     String stateText = state.toString().toLowerCase(Locale.ROOT);
+                     if (blockName.contains("deepslate") && (stateText.contains("facing=") || stateText.contains("axis=") || stateText.contains("rotation="))) {
+                        rotatedDeepslate++;
+                     }
+                     if (state.method_26213() >= 8) {
+                        lightSources++;
+                     }
+                     if ((blockName.contains("redstone") && !blockName.contains("redstone_ore"))
+                        || blockName.contains("repeater")
+                        || blockName.contains("comparator")
+                        || blockName.contains("observer")
+                        || blockName.contains("piston")
+                        || blockName.contains("dispenser")
+                        || blockName.contains("dropper")
+                        || blockName.contains("lever")) {
+                        redstoneBlocks++;
+                     }
+                     if (blockName.contains("farmland")
+                        || blockName.contains("wheat")
+                        || blockName.contains("carrots")
+                        || blockName.contains("potatoes")
+                        || blockName.contains("beetroots")
+                        || blockName.contains("melon_stem")
+                        || blockName.contains("pumpkin_stem")
+                        || blockName.contains("sugar_cane")) {
+                        farmBlocks++;
+                     }
                      int localIndex = y * 256 + z * 16 + x;
                      if (state.method_26215()) {
                         air[sectionOffset + localIndex] = 1;
