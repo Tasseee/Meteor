@@ -85,6 +85,7 @@ public class AutoPvp extends Module {
 
    @Override
    protected void onDisable() {
+      this.pearlUseDelay = 0;
       this.resetCrystalCombo();
       this.cancelSlam(true);
       this.releaseShieldAxe();
@@ -728,6 +729,7 @@ public class AutoPvp extends Module {
 
    @Override
    public void onWorldLeave() {
+      this.pearlUseDelay = 0;
       this.resetCrystalCombo();
       this.lastCrystalObsidianBase = null;
       this.cancelSlam(true);
