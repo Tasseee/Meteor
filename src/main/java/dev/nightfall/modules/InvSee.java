@@ -102,32 +102,41 @@ public final class InvSee extends HudModule {
          int screenHeight = mc.method_22683().method_4502();
          int rows = hasMenuContent ? Math.min(this.maxEntries.getInt(), Math.max(1, (screenHeight - 160) / 12)) : 0;
          int menuHeight = hasMenuContent ? 58 + rows * 12 : 0;
-         this.h = 78 + menuHeight;
-         ctx.method_25294(0, 0, this.w, this.h, -451931621);
-         ctx.method_25294(0, 0, this.w, 2, -10099035);
-         String title = target != null ? "INVSEE · " + target.method_5477().getString() : "INVSEE · KEIN SPIELER";
+         this.h = (target != null ? 77 : 4) + menuHeight;
+         this.w = 178;
 
-         while (mc.field_1772.method_1727(title) > this.w - 14 && title.length() > 12) {
-            title = title.substring(0, title.length() - 2) + "…";
-         }
+         if (target != null) {
+            ctx.method_25294(0, 0, this.w, 77, -451931621);
+            ctx.method_25294(0, 0, this.w, 2, -10099035);
+            String title = "INVSEE · " + target.method_5477().getString();
+            while (mc.field_1772.method_1727(title) > this.w - 14 && title.length() > 12) {
+               title = title.substring(0, title.length() - 2) + "…";
+            }
+            ctx.method_51433(mc.field_1772, title, 7, 7, -10099035, true);
+            String targetStatus = String.format(Locale.ROOT, "Nächster Spieler · %.1f Blöcke", target.method_5739(mc.field_1724));
+            ctx.method_51433(mc.field_1772, targetStatus, 7, 20, -4669227, false);
 
-         ctx.method_51433(mc.field_1772, title, 7, 7, -10099035, true);
-         String targetStatus = target != null
-            ? String.format(Locale.ROOT, "Nächster Spieler · %.1f Blöcke", target.method_5739(mc.field_1724))
-            : "Kein Spieler in Reichweite";
-         ctx.method_51433(mc.field_1772, targetStatus, 7, 20, -4669227, false);
-
-         for (int i = 0; i < SLOTS.length; i++) {
-            int x = 7 + i * 28;
-            ctx.method_51433(mc.field_1772, SLOT_LABELS[i], x + 7, 34, -4669227, false);
-            ctx.method_25294(x, 44, x + 24, 68, 1714699085);
-            class_1799 stack = target == null ? class_1799.field_8037 : target.method_6118(SLOTS[i]);
-            if (stack.method_7960()) {
-               ctx.method_51433(mc.field_1772, target == null ? "?" : "–", x + 9, 52, target == null ? -9208945 : -5196347, false);
-            } else {
-               ctx.method_51427(stack, x + 4, 48);
-               if (stack.method_7947() > 1) {
-                  ctx.method_51433(mc.field_1772, Integer.toString(stack.method_7947()), x + 13, 60, -1, true);
+            for (int i = 0; i < SLOTS.length; i++) {
+               int x = 7 + i * 28;
+               class_1799 stack = target.method_6118(SLOTS[i]);
+               if (i >= 2 && !stack.method_7960() && stack.method_7963()) {
+                  int max = stack.method_7936();
+                  int remaining = Math.max(0, max - stack.method_7919());
+                  int pct = max <= 0 ? 100 : Math.round(remaining * 100.0F / max);
+                  int color = pct > 50 ? -12397678 : (pct > 20 ? -14249 : -41620);
+                  String durability = pct + "%";
+                  ctx.method_51433(mc.field_1772, durability, x + (24 - mc.field_1772.method_1727(durability)) / 2, 34, color, true);
+               } else {
+                  ctx.method_51433(mc.field_1772, SLOT_LABELS[i], x + 7, 34, -4669227, false);
+               }
+               ctx.method_25294(x, 44, x + 24, 68, 1714699085);
+               if (stack.method_7960()) {
+                  ctx.method_51433(mc.field_1772, "–", x + 9, 52, -5196347, false);
+               } else {
+                  ctx.method_51427(stack, x + 4, 48);
+                  if (stack.method_7947() > 1) {
+                     ctx.method_51433(mc.field_1772, Integer.toString(stack.method_7947()), x + 13, 60, -1, true);
+                  }
                }
             }
          }
