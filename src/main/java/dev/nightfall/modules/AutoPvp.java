@@ -31,7 +31,7 @@ public class AutoPvp extends Module {
    private final BoolSetting swordCrits = this.add(new BoolSetting("Schwert-Crits ohne CrystalAura", true));
    private final BoolSetting strafe = this.add(new BoolSetting("Strafen", false));
    private final BoolSetting jump = this.add(new BoolSetting("Springen bei Hindernis", true));
-   private final BoolSetting useStunSlam = this.add(new BoolSetting("Stun-Slam (Windcharge -> Mace)", false));
+   private final BoolSetting useStunSlam = this.add(new BoolSetting("Windcharge -> Mace", false));
    private final BoolSetting useShieldBreak = this.add(new BoolSetting("Schild mit Axt kontern", true));
    private final BoolSetting useAutoGap = this.add(new BoolSetting("AutoGap integrieren", true));
    private final BoolSetting useAutoTotem = this.add(new BoolSetting("AutoTotem integrieren", true));
