@@ -746,7 +746,9 @@ public class BaseFinder extends Module {
    private static boolean similar(int a, int b) {
       // A missing signal must not be treated as equivalent to a small positive count.
       if (a == 0 || b == 0) return a == b;
-      return Math.abs(a - b) <= Math.max(2, Math.round(Math.max(a, b) * 0.25F));
+      // Compare block-entity counts rather than positions or block-state orientation.
+      // This keeps rotated builds and small edits within the same fingerprint.
+      return Math.abs(a - b) <= Math.max(3, Math.round(Math.max(a, b) * 0.35F));
    }
 
    private Path fakePatternsFile() {
