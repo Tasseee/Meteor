@@ -81,6 +81,19 @@ public final class FakeLag extends Module {
       return serverPitch;
    }
 
+   /** Flush queued movement immediately before the client performs an entity attack. */
+   public static void beforeAttack() {
+      FakeLag module;
+      try {
+         module = dev.nightfall.module.ModuleManager.get(FakeLag.class);
+      } catch (IllegalStateException ignored) {
+         return;
+      }
+      if (!module.isEnabled() || !module.flushOnAttack.get() || QUEUE.isEmpty()) return;
+      flush();
+      ghostHoldUntil = System.currentTimeMillis() + 400L;
+   }
+
    public static void intercept(class_2535 conn, class_2596<?> packet, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
       if (bypass) {
          if (packet instanceof class_2828 movement) recordSentMovement(movement);
