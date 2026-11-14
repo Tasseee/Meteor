@@ -102,7 +102,7 @@ public final class InvSee extends HudModule {
          int screenHeight = mc.method_22683().method_4502();
          int rows = hasMenuContent ? Math.min(this.maxEntries.getInt(), Math.max(1, (screenHeight - 160) / 12)) : 0;
          int menuHeight = hasMenuContent ? 58 + rows * 12 : 0;
-         this.h = (target != null ? 77 : 4) + menuHeight;
+         this.h = (target != null ? 88 : 4) + menuHeight;
          this.w = 178;
 
          if (target != null) {
@@ -113,8 +113,17 @@ public final class InvSee extends HudModule {
                title = title.substring(0, title.length() - 2) + "…";
             }
             ctx.method_51433(mc.field_1772, title, 7, 7, -10099035, true);
+            int visibleCrystals = 0;
+            for (class_1304 slot : SLOTS) {
+               class_1799 equipped = target.method_6118(slot);
+               if (!equipped.method_7960() && equipped.method_31574(class_1802.field_8301)) {
+                  visibleCrystals += equipped.method_7947();
+               }
+            }
             String targetStatus = String.format(Locale.ROOT, "Nächster Spieler · %.1f Blöcke", target.method_5739(mc.field_1724));
             ctx.method_51433(mc.field_1772, targetStatus, 7, 20, -4669227, false);
+            String crystalStatus = "CR sichtbar: " + visibleCrystals;
+            ctx.method_51433(mc.field_1772, crystalStatus, 7, 31, -1518198, false);
 
             for (int i = 0; i < SLOTS.length; i++) {
                int x = 7 + i * 28;
