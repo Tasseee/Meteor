@@ -77,7 +77,7 @@ public class BaseFinder extends Module {
    private boolean paused;
 
    public BaseFinder() {
-      super("BaseFinder", "Findet verdaechtige Chunks (Storage, Hopper, Redstone) in geladenen Chunks.", Category.BASEFINDER);
+      super("BaseFinder", "Findet verdaechtige Chunks anhand von Storage, Tunnelspuren, Hoppern und weiteren Signalen in geladenen Chunks.", Category.BASEFINDER);
    }
 
    private static long key(int cx, int cz) {
@@ -389,7 +389,8 @@ public class BaseFinder extends Module {
             + redstone * this.wRedstone.get()
             + spawner * this.wSpawner.get()
             + cluster
-            + naturalSignalScore;
+            + naturalSignalScore
+            + tunnelScore;
          int signalKinds = (storage + shulker > 0 ? 1 : 0)
             + (hopper > 0 ? 1 : 0)
             + (furnace > 0 ? 1 : 0)
