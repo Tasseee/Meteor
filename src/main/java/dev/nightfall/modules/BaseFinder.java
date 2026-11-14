@@ -291,7 +291,11 @@ public class BaseFinder extends Module {
          int hopper = 0;
          int furnace = 0;
          int redstone = 0;
-         int spawner = 0;\n         int rotatedDeepslate = 0;\n         int lightSources = 0;\n         int redstoneBlocks = 0;\n         int farmBlocks = 0;
+         int spawner = 0;
+         int rotatedDeepslate = 0;
+         int lightSources = 0;
+         int redstoneBlocks = 0;
+         int farmBlocks = 0;
          int buddingAmethyst = 0;
          int amethystClusters = 0;
          int geodeShell = 0;
@@ -325,7 +329,21 @@ public class BaseFinder extends Module {
             }
          }
 
-         Map<Integer, Integer> mobCells = new HashMap<>();\n         if (this.detectMobClusters.get()) {\n            for (class_1297 entity : w.method_18112()) {\n               if (entity instanceof class_1309 && !(entity instanceof class_1657)\n                  && (entity.method_23317() >= cx * 16.0 && entity.method_23317() < cx * 16.0 + 16.0)\n                  && (entity.method_23321() >= cz * 16.0 && entity.method_23321() < cz * 16.0 + 16.0)) {\n                  int ex = ((int)Math.floor(entity.method_23317())) & 15;\n                  int ez = ((int)Math.floor(entity.method_23321())) & 15;\n                  int ey = (int)Math.floor(entity.method_23318());\n                  mobCells.merge(ex >> 2 | ez >> 2 << 2 | (ey >> 2) + 32 << 4, 1, Integer::sum);\n               }\n            }\n         }\n\n         class_2826[] sections = ch.method_12006();
+         Map<Integer, Integer> mobCells = new HashMap<>();
+         if (this.detectMobClusters.get()) {
+            for (class_1297 entity : w.method_18112()) {
+               if (entity instanceof class_1309 && !(entity instanceof class_1657)
+                  && (entity.method_23317() >= cx * 16.0 && entity.method_23317() < cx * 16.0 + 16.0)
+                  && (entity.method_23321() >= cz * 16.0 && entity.method_23321() < cz * 16.0 + 16.0)) {
+                  int ex = ((int)Math.floor(entity.method_23317())) & 15;
+                  int ez = ((int)Math.floor(entity.method_23321())) & 15;
+                  int ey = (int)Math.floor(entity.method_23318());
+                  mobCells.merge(ex >> 2 | ez >> 2 << 2 | (ey >> 2) + 32 << 4, 1, Integer::sum);
+               }
+            }
+         }
+
+         class_2826[] sections = ch.method_12006();
          byte[] air = new byte[sections.length * 4096];
          for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
             class_2826 section = sections[sectionIndex];
@@ -376,7 +394,8 @@ public class BaseFinder extends Module {
          int tunnelRuns = tunnelInfo[0];
          int tunnelBlocks = tunnelInfo[1];
 
-         int maxCell = 0;\n         int maxMobCell = 0;
+         int maxCell = 0;
+         int maxMobCell = 0;
 
          for (int v : cells.values()) {
             maxCell = Math.max(maxCell, v);
@@ -410,7 +429,12 @@ public class BaseFinder extends Module {
             + spawner * this.wSpawner.get()
             + cluster
             + naturalSignalScore
-            + tunnelScore\n            + rotatedDeepslateScore\n            + lightScore\n            + redstonePatternScore\n            + farmScore\n            + mobClusterScore;
+            + tunnelScore
+            + rotatedDeepslateScore
+            + lightScore
+            + redstonePatternScore
+            + farmScore
+            + mobClusterScore;
          int signalKinds = (storage + shulker > 0 ? 1 : 0)
             + (hopper > 0 ? 1 : 0)
             + (furnace > 0 ? 1 : 0)
@@ -419,7 +443,12 @@ public class BaseFinder extends Module {
             + (cluster > 0.0 ? 1 : 0)
             + (amethystScore > 0.0 ? 1 : 0)
             + (sculkScore > 0.0 ? 1 : 0)
-            + (tunnelScore > 0.0 ? 1 : 0)\n            + (rotatedDeepslateScore > 0.0 ? 1 : 0)\n            + (lightScore > 0.0 ? 1 : 0)\n            + (redstonePatternScore > 0.0 ? 1 : 0)\n            + (farmScore > 0.0 ? 1 : 0)\n            + (mobClusterScore > 0.0 ? 1 : 0);
+            + (tunnelScore > 0.0 ? 1 : 0)
+            + (rotatedDeepslateScore > 0.0 ? 1 : 0)
+            + (lightScore > 0.0 ? 1 : 0)
+            + (redstonePatternScore > 0.0 ? 1 : 0)
+            + (farmScore > 0.0 ? 1 : 0)
+            + (mobClusterScore > 0.0 ? 1 : 0);
          ChunkResult old = this.results.get(k);
          ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
          ChunkResult.Status prev = res.status;
