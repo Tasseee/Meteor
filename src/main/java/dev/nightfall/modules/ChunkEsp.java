@@ -125,93 +125,73 @@ public final class ChunkEsp extends Module {
 
    @Override
    public void renderHud(class_332 ctx) {
-      if (mc.field_1724 != null && Projection.valid()) {
-         BaseFinder finder = ModuleManager.get(BaseFinder.class);
-         if (finder.isEnabled()) {
-            int pcx = mc.field_1724.method_31477() >> 4;
-            int pcz = mc.field_1724.method_31479() >> 4;
-            long now = System.nanoTime();
-            int markCount = finder.marks().size();
-            if (now - this.lastRegionBuildNanos >= 50_000_000L
-               || pcx != this.cachedPlayerChunkX || pcz != this.cachedPlayerChunkZ
-               || markCount != this.cachedMarkCount) {
-               this.cachedRegions = this.mergeAdjacent(finder.marks(), pcx, pcz, this.dist.getInt());
-               this.lastRegionBuildNanos = now;
-               this.cachedPlayerChunkX = pcx;
-               this.cachedPlayerChunkZ = pcz;
-               this.cachedMarkCount = markCount;
-            }
-            List<ChunkEsp.Region> regions = this.cachedRegions;
-            double phase = System.currentTimeMillis() % 100000L / 1000.0 * this.speed.get();
-            double pulse = 0.5 + 0.5 * Math.sin(phase * Math.PI * 2.0);
-            double py = Math.floor(mc.field_1724.method_23318());
-            int drawn = 0;
+      if (mc.field_1724 == null || !Projection.valid()) return;
+      BaseFinder finder = ModuleManager.get(BaseFinder.class);
+      if (!finder.isEnabled()) return;
 
-            for (ChunkEsp.Region r : regions) {
-               if (drawn >= this.maxObj.getInt() || EspBase.drawn >= 2048) {
-                  break;
-               }
+      int pcx = mc.field_1724.method_31477() >> 4;
+      int pcz = mc.field_1724.method_31479() >> 4;
+      long now = System.nanoTime();
+      int markCount = finder.marks().size();
+      if (now - this.lastRegionBuildNanos >= 100_000_000L
+         || pcx != this.cachedPlayerChunkX || pcz != this.cachedPlayerChunkZ
+         || markCount != this.cachedMarkCount) {
+         this.cachedRegions = this.mergeAdjacent(finder.marks(), pcx, pcz, this.dist.getInt());
+         this.lastRegionBuildNanos = now;
+         this.cachedPlayerChunkX = pcx;
+         this.cachedPlayerChunkZ = pcz;
+         this.cachedMarkCount = markCount;
+      }
 
-               float scoreT = (float)Math.max(0.0, Math.min(1.0, r.score / (finder.thresholdValue() * 3.0)));
-               int baseColor = r.status == ChunkResult.Status.GONE ? this.goneColor.rgb() : Theme.lerp(this.susColor.rgb(), -44434, scoreT);
-               if (r.favorite && this.showFavorites.get()) {
-                  baseColor = this.favoriteColor.rgb();
-               }
+      double y = Math.floor(mc.field_1724.method_23318()) + 0.035;
+      int drawn = 0;
+      for (ChunkEsp.Region r : this.cachedRegions) {
+         if (drawn >= this.maxObj.getInt() || EspBase.drawn >= 2048) break;
 
-               double x0 = r.cx * 16.0;
-               double z0 = r.cz * 16.0;
-               double x1 = x0 + r.width * 16.0;
-               double z1 = z0 + r.depth * 16.0;
-               double h = this.height.get();
-               double y0 = py - h / 2.0;
-               double rdx = (x0 + x1) * 0.5 - Projection.eyeX();
-               double rdz = (z0 + z1) * 0.5 - Projection.eyeZ();
-               double regionDistance = Math.sqrt(rdx * rdx + rdz * rdz);
-               double fade = 1.0;
-               if (this.fadeDistance.get()) {
-                  double normalized = regionDistance / Math.max(16.0, this.dist.get() * 16.0);
-                  double progress = (normalized - this.fadeStart.get()) / Math.max(0.01, 1.0 - this.fadeStart.get());
-                  fade = Math.max(0.0, Math.min(1.0, 1.0 - progress));
-               }
+         float scoreT = (float)Math.max(0.0, Math.min(1.0, r.score / (finder.thresholdValue() * 3.0)));
+         int base = r.status == ChunkResult.Status.GONE ? this.goneColor.rgb() : this.susColor.rgb();
+         if (r.favorite && this.showFavorites.get()) base = this.favoriteColor.rgb();
+         int alpha = (int)(this.opacity.get() * 255.0);
+         int outline = Theme.withAlpha(base, alpha);
+         int softFill = Theme.withAlpha(base, Math.max(18, alpha / 9));
 
-               if (!(fade <= 0.005)) {
-                  int alpha = (int)(this.opacity.get() * 255.0 * fade);
-                  int color = 0xFF000000 | baseColor & 16777215;
-                  String label = this.mode.get();
-                  double boxMinY;
-                  double boxMaxY;
-                  switch (label) {
-                     case "Surface":
-                        boxMinY = py - 0.06;
-                        boxMaxY = py - 0.02;
-                        break;
-                     case "Pulse":
-                        double hh = h * (0.65 + 0.35 * pulse);
-                        boxMinY = py - hh / 2.0;
-                        boxMaxY = py + hh / 2.0;
-                        alpha = (int)(alpha * (0.55 + 0.45 * pulse));
-                        break;
-                     default:
-                        boxMinY = y0;
-                        boxMaxY = y0 + h;
-                  }
+         double x0 = r.cx * 16.0;
+         double z0 = r.cz * 16.0;
+         double x1 = x0 + r.width * 16.0;
+         double z1 = z0 + r.depth * 16.0;
 
-                  if (Draw.box(ctx, x0, boxMinY, z0, x1, boxMaxY, z1,
-                     Theme.withAlpha(color, alpha), this.thick.getInt(), true, true)) {
-                     label = (r.favorite && this.showFavorites.get() ? "★ " : "")
-                        + (r.status == ChunkResult.Status.GONE ? "SUS WEG" : "SUS")
-                        + (r.count > 1 ? " · " + r.count + " Chunks" : "")
-                        + (this.showScore.get() ? " · " + String.format(Locale.ROOT, "%.1f", r.score) : "");
-                     int tw = mc.field_1772.method_1727(label);
-                     int lx = Math.round(Draw.topX - tw / 2.0F);
-                     int ly = Math.round(Draw.topY - 14.0F);
-                     ctx.method_51433(mc.field_1772, label, lx, ly, -657670, true);
-                     drawn++;
-                     EspBase.drawn++;
-                  }
-               }
-            }
-         }
+         double dx = (x0 + x1) * 0.5 - Projection.eyeX();
+         double dz = (z0 + z1) * 0.5 - Projection.eyeZ();
+         double distance = Math.sqrt(dx * dx + dz * dz);
+         double fade = this.fadeDistance.get()
+            ? Math.max(0.12, Math.min(1.0, 1.0 - Math.max(0.0, distance / Math.max(16.0, this.dist.get() * 16.0) - this.fadeStart.get()) / Math.max(0.01, 1.0 - this.fadeStart.get())))
+            : 1.0;
+         if (fade <= 0.01) continue;
+
+         int lineAlpha = (int)(alpha * fade);
+         outline = Theme.withAlpha(base, lineAlpha);
+         softFill = Theme.withAlpha(base, Math.max(12, (int)(lineAlpha * 0.10)));
+
+         // A thin, flat footprint keeps the marked chunk readable without a huge
+         // opaque vertical cage through the terrain.
+         boolean visible = Draw.box(ctx, x0, y, z0, x1, y + 0.025, z1, outline, Math.max(1, this.thick.getInt()), true, true);
+         if (!visible) continue;
+
+         String status = r.status == ChunkResult.Status.GONE ? "SUS · NICHT MEHR GELADEN" : "SUS CHUNK";
+         String score = this.showScore.get() ? String.format(Locale.ROOT, "  %.1f", r.score) : "";
+         String label = (r.favorite && this.showFavorites.get() ? "★ " : "") + status
+            + (r.count > 1 ? "  ·  " + r.count + "x" : "") + score;
+         int textWidth = mc.field_1772.method_1727(label);
+         int panelWidth = textWidth + 12;
+         int panelHeight = 14;
+         int lx = Math.max(2, Math.min(Projection.width() - panelWidth - 2, Math.round(Draw.topX - panelWidth / 2.0F)));
+         int ly = Math.max(2, Math.min(Projection.height() - panelHeight - 2, Math.round(Draw.topY - 19.0F)));
+         ctx.method_25294(lx, ly, lx + panelWidth, ly + panelHeight, Theme.withAlpha(0xFF10151D, (int)(210 * fade)));
+         ctx.method_25294(lx, ly, lx + 2, ly + panelHeight, outline);
+         ctx.method_51433(mc.field_1772, label, lx + 6, ly + 3, -1, true);
+
+         drawn++;
+         EspBase.drawn++;
       }
    }
 
