@@ -90,14 +90,11 @@ public final class ObiTrapBot extends Module {
          return;
       }
 
-      // Follow the target's current block position; restart the perimeter if it moved.
+      // Follow a moving target without restarting the whole build on every block change.
+      // Keep any in-flight placement pending; the next position is recalculated around the new anchor.
       class_2338 currentAnchor = this.target.method_24515();
       if (!currentAnchor.equals(this.anchor)) {
          this.anchor = currentAnchor;
-         this.pendingPosition = null;
-         this.pendingTicks = 0;
-         this.idleTicks = 0;
-         this.phase = "obsidian";
       }
 
       // Never assume an accepted click means the server placed the block.
@@ -108,7 +105,7 @@ public final class ObiTrapBot extends Module {
             this.pendingPosition = null;
             this.pendingTicks = 0;
             this.idleTicks = 0;
-         } else if (++this.pendingTicks < 5) {
+         } else if (++this.pendingTicks < 2) {
             return;
          } else {
             this.pendingPosition = null;
