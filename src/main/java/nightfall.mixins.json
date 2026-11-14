@@ -12,6 +12,7 @@
     "SeedCrackerProgressMixin",
     "SeedCrackerDataIntegrityMixin",
     "AutoShieldNetworkMixin",
+    "MeleeHitMixin",
     "ItemStackGlintMixin",
     "ItemRendererGlintColorMixin"
   ],
