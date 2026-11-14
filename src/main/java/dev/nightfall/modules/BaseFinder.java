@@ -33,6 +33,9 @@ import net.minecraft.class_2614;
 import net.minecraft.class_2627;
 import net.minecraft.class_2636;
 import net.minecraft.class_2680;
+import net.minecraft.class_1297;
+import net.minecraft.class_1309;
+import net.minecraft.class_1657;
 import net.minecraft.class_2818;
 import net.minecraft.class_2826;
 import net.minecraft.class_3719;
@@ -50,6 +53,13 @@ public class BaseFinder extends Module {
    private final NumberSetting wFurnace = this.add(new NumberSetting("Gewicht Furnace", 0.7, 0.1, 5.0, 0.1));
    private final NumberSetting wRedstone = this.add(new NumberSetting("Gewicht Redstone", 1.2, 0.1, 5.0, 0.1));
    private final NumberSetting wSpawner = this.add(new NumberSetting("Gewicht Spawner", 2.0, 0.1, 10.0, 0.1));
+   private final BoolSetting detectSpawners = this.add(new BoolSetting("Mob-Spawner erkennen", true));
+   private final BoolSetting detectMobClusters = this.add(new BoolSetting("Mob-Cluster erkennen", true));
+   private final NumberSetting wRotatedDeepslate = this.add(new NumberSetting("Gewicht Rotated Deepslate", 1.0, 0.0, 6.0, 0.1));
+   private final NumberSetting wLightSources = this.add(new NumberSetting("Gewicht Lichtquellen", 0.8, 0.0, 6.0, 0.1));
+   private final NumberSetting wRedstonePattern = this.add(new NumberSetting("Gewicht Redstone-Muster", 1.0, 0.0, 6.0, 0.1));
+   private final NumberSetting wFarm = this.add(new NumberSetting("Gewicht Farm-Struktur", 1.0, 0.0, 6.0, 0.1));
+   private final NumberSetting wMobCluster = this.add(new NumberSetting("Gewicht Mob-Cluster", 1.0, 0.0, 6.0, 0.1));
    private final NumberSetting wCluster = this.add(new NumberSetting("Gewicht Lagerzone", 1.5, 0.0, 5.0, 0.1));
    private final NumberSetting clusterWeight = this.add(new NumberSetting("Gewicht Amethyst-Cluster", 0.25, 0.0, 2.0, 0.05));
    private final NumberSetting minClusters = this.add(new NumberSetting("Min. Amethyst-Cluster", 6.0, 1.0, 64.0, 1.0));
@@ -281,7 +291,7 @@ public class BaseFinder extends Module {
          int hopper = 0;
          int furnace = 0;
          int redstone = 0;
-         int spawner = 0;
+         int spawner = 0;\n         int rotatedDeepslate = 0;\n         int lightSources = 0;\n         int redstoneBlocks = 0;\n         int farmBlocks = 0;
          int buddingAmethyst = 0;
          int amethystClusters = 0;
          int geodeShell = 0;
@@ -315,7 +325,7 @@ public class BaseFinder extends Module {
             }
          }
 
-         class_2826[] sections = ch.method_12006();
+         Map<Integer, Integer> mobCells = new HashMap<>();\n         if (this.detectMobClusters.get()) {\n            for (class_1297 entity : w.method_18112()) {\n               if (entity instanceof class_1309 && !(entity instanceof class_1657)\n                  && (entity.method_23317() >= cx * 16.0 && entity.method_23317() < cx * 16.0 + 16.0)\n                  && (entity.method_23321() >= cz * 16.0 && entity.method_23321() < cz * 16.0 + 16.0)) {\n                  int ex = ((int)Math.floor(entity.method_23317())) & 15;\n                  int ez = ((int)Math.floor(entity.method_23321())) & 15;\n                  int ey = (int)Math.floor(entity.method_23318());\n                  mobCells.merge(ex >> 2 | ez >> 2 << 2 | (ey >> 2) + 32 << 4, 1, Integer::sum);\n               }\n            }\n         }\n\n         class_2826[] sections = ch.method_12006();
          byte[] air = new byte[sections.length * 4096];
          for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
             class_2826 section = sections[sectionIndex];
@@ -366,13 +376,23 @@ public class BaseFinder extends Module {
          int tunnelRuns = tunnelInfo[0];
          int tunnelBlocks = tunnelInfo[1];
 
-         int maxCell = 0;
+         int maxCell = 0;\n         int maxMobCell = 0;
 
          for (int v : cells.values()) {
             maxCell = Math.max(maxCell, v);
          }
 
+         for (int v : mobCells.values()) {
+            maxMobCell = Math.max(maxMobCell, v);
+         }
+
          double cluster = maxCell >= 6 ? (maxCell - 5) * this.wCluster.get() : 0.0;
+         double rotatedDeepslateScore = rotatedDeepslate >= 3 ? Math.min(6.0, (rotatedDeepslate - 2) * this.wRotatedDeepslate.get()) : 0.0;
+         double lightScore = lightSources >= 4 ? Math.min(5.0, (lightSources - 3) * this.wLightSources.get() * 0.25) : 0.0;
+         double redstonePatternScore = redstoneBlocks >= 5 ? Math.min(6.0, (redstoneBlocks - 4) * this.wRedstonePattern.get() * 0.5) : 0.0;
+         double farmScore = farmBlocks >= 12 ? Math.min(5.0, (farmBlocks - 11) * this.wFarm.get() * 0.15) : 0.0;
+         double mobClusterScore = this.detectMobClusters.get() && maxMobCell >= 5
+            ? Math.min(5.0, (maxMobCell - 4) * this.wMobCluster.get()) : 0.0;
          boolean geodeSignature = buddingAmethyst > 0 && amethystClusters > 0 && geodeShell >= 8;
          double amethystScore = amethystClusters >= this.minClusters.getInt()
             ? Math.min(8.0, amethystClusters * this.clusterWeight.get()) * (geodeSignature ? 0.15 : 1.0)
@@ -390,7 +410,7 @@ public class BaseFinder extends Module {
             + spawner * this.wSpawner.get()
             + cluster
             + naturalSignalScore
-            + tunnelScore;
+            + tunnelScore\n            + rotatedDeepslateScore\n            + lightScore\n            + redstonePatternScore\n            + farmScore\n            + mobClusterScore;
          int signalKinds = (storage + shulker > 0 ? 1 : 0)
             + (hopper > 0 ? 1 : 0)
             + (furnace > 0 ? 1 : 0)
@@ -399,7 +419,7 @@ public class BaseFinder extends Module {
             + (cluster > 0.0 ? 1 : 0)
             + (amethystScore > 0.0 ? 1 : 0)
             + (sculkScore > 0.0 ? 1 : 0)
-            + (tunnelScore > 0.0 ? 1 : 0);
+            + (tunnelScore > 0.0 ? 1 : 0)\n            + (rotatedDeepslateScore > 0.0 ? 1 : 0)\n            + (lightScore > 0.0 ? 1 : 0)\n            + (redstonePatternScore > 0.0 ? 1 : 0)\n            + (farmScore > 0.0 ? 1 : 0)\n            + (mobClusterScore > 0.0 ? 1 : 0);
          ChunkResult old = this.results.get(k);
          ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
          ChunkResult.Status prev = res.status;
@@ -462,6 +482,12 @@ public class BaseFinder extends Module {
          if (tunnelScore > 0.0) {
             res.reasons.add("Tunnelspuren (" + tunnelRuns + " Abschnitte, " + tunnelBlocks + " Bloecke, +" + fmt(tunnelScore) + ")");
          }
+
+         if (rotatedDeepslateScore > 0.0) res.reasons.add("Rotated Deepslate (" + rotatedDeepslate + ", +" + fmt(rotatedDeepslateScore) + ")");
+         if (lightScore > 0.0) res.reasons.add("Ungewoehnliche Lichtquellen (" + lightSources + ", +" + fmt(lightScore) + ")");
+         if (redstonePatternScore > 0.0) res.reasons.add("Redstone-Muster (" + redstoneBlocks + ", +" + fmt(redstonePatternScore) + ")");
+         if (farmScore > 0.0) res.reasons.add("Farm-Struktur (" + farmBlocks + ", +" + fmt(farmScore) + ")");
+         if (mobClusterScore > 0.0) res.reasons.add("Mob-Cluster (" + maxMobCell + " in 4x4x4, +" + fmt(mobClusterScore) + ")");
 
          boolean repeatedFakePattern = score >= this.threshold.get()
             && signalKinds >= this.minSignals.getInt()
