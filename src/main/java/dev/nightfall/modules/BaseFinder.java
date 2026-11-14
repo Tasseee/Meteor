@@ -797,6 +797,8 @@ public class BaseFinder extends Module {
       this.marks.clear();
 
       for (ChunkResult r : this.results.values()) {
+         // Fake bases stay detected internally, but never enter the visible lists.
+         if (this.isFakeChunk(r.cx, r.cz)) continue;
          if (r.status == ChunkResult.Status.SUS) {
             this.top.add(r);
             this.marks.add(r);
@@ -819,7 +821,7 @@ public class BaseFinder extends Module {
             List<BaseFinder.Mark> out = new ArrayList<>();
 
             for (ChunkResult r : this.results.values()) {
-               if (r.status != ChunkResult.Status.CLEAN) {
+               if (!this.isFakeChunk(r.cx, r.cz) && r.status != ChunkResult.Status.CLEAN) {
                   BaseFinder.Mark m = new BaseFinder.Mark();
                   m.cx = r.cx;
                   m.cz = r.cz;
