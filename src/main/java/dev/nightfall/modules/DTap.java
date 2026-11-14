@@ -53,7 +53,6 @@ public class DTap extends Module {
    private int targetId = -1;
    private class_2338 base;
    private int trackedTargetId = -1;
-   private float lastTargetHealth = Float.NaN;
    private boolean pendingHit;
 
    public DTap() {
@@ -83,13 +82,23 @@ public class DTap extends Module {
       targetId = -1;
       base = null;
       trackedTargetId = -1;
-      lastTargetHealth = Float.NaN;
       pendingHit = false;
    }
 
    private void setPhase(int next) {
       phase = next;
       phaseTicks = 0;
+   }
+
+   public void onConfirmedMeleeHit(class_1657 target) {
+      if (!isEnabled() || mc.field_1724 == null || mc.field_1687 == null) return;
+      if (CombatUtil.nearestPlayer(targetRange.get()) != target) return;
+      if (phase == IDLE) {
+         trackedTargetId = target.method_5628();
+         pendingHit = true;
+      } else if (targetId == target.method_5628()) {
+         pendingHit = true;
+      }
    }
 
    private int countInventory(class_746 player, class_1792 item) {
@@ -264,10 +273,8 @@ public class DTap extends Module {
       base = null;
       if (target != null && target.method_5805()) {
          trackedTargetId = target.method_5628();
-         lastTargetHealth = target.method_6032();
       } else {
          trackedTargetId = -1;
-         lastTargetHealth = Float.NaN;
          pendingHit = false;
       }
    }
@@ -281,20 +288,14 @@ public class DTap extends Module {
          class_1657 target = CombatUtil.nearestPlayer(targetRange.get());
          if (target == null) {
             trackedTargetId = -1;
-            lastTargetHealth = Float.NaN;
             return;
          }
 
          if (trackedTargetId != target.method_5628()) {
             trackedTargetId = target.method_5628();
-            lastTargetHealth = target.method_6032();
             return;
          }
 
-         float health = target.method_6032();
-         boolean wasHit = !Float.isNaN(lastTargetHealth) && health < lastTargetHealth - 0.01F;
-         lastTargetHealth = health;
-         if (wasHit) pendingHit = true;
          if (!pendingHit || countInventory(player, class_1802.field_8301) < 2) return;
 
          pendingHit = false;
@@ -316,10 +317,6 @@ public class DTap extends Module {
 
       // Do not lose hits that happen while the two-crystal sequence is running.
       // Queue the next DTap and start it as soon as the current sequence finishes.
-      float activeHealth = target.method_6032();
-      if (!Float.isNaN(lastTargetHealth) && activeHealth < lastTargetHealth - 0.01F) pendingHit = true;
-      lastTargetHealth = activeHealth;
-
       if (hitDelayTicks > 0) {
          hitDelayTicks--;
          return;
