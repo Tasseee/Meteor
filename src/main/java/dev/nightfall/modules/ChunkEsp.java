@@ -51,9 +51,11 @@ public final class ChunkEsp extends Module {
       return (long)cx << 32 ^ cz & 4294967295L;
    }
 
-   private List<Region> collectRegions(Collection<ChunkResult> source, int pcx, int pcz, int maxRange) {
+   private List<Region> collectRegions(Collection<ChunkResult> source, BaseFinder finder, int pcx, int pcz, int maxRange) {
       Map<Long, ChunkResult> candidates = new HashMap<>();
       for (ChunkResult result : source) {
+         // Never render chunks classified as repeated fake-base patterns.
+         if (finder.isFakeChunk(result.cx, result.cz)) continue;
          if (result.status == ChunkResult.Status.GONE && !this.showGone.get()) continue;
          int dx = result.cx - pcx;
          int dz = result.cz - pcz;
@@ -210,7 +212,7 @@ public final class ChunkEsp extends Module {
          || playerChunkX != this.cachedPlayerChunkX
          || playerChunkZ != this.cachedPlayerChunkZ
          || markCount != this.cachedMarkCount) {
-         this.cachedRegions = this.collectRegions(finder.marks(), playerChunkX, playerChunkZ, this.range.getInt());
+         this.cachedRegions = this.collectRegions(finder.marks(), finder, playerChunkX, playerChunkZ, this.range.getInt());
          this.lastRegionBuildNanos = now;
          this.cachedPlayerChunkX = playerChunkX;
          this.cachedPlayerChunkZ = playerChunkZ;
