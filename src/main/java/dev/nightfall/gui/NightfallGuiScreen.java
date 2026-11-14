@@ -848,6 +848,9 @@ public final class NightfallGuiScreen extends class_437 {
          mods.removeIf(m -> !m.isFavorite());
       }
 
+      // Keep module navigation predictable, regardless of registration order.
+      mods.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
+
       Set<String> expanded = EXPANDED.computeIfAbsent(tab, k -> new HashSet<>());
       int visible = 0;
 
@@ -866,6 +869,11 @@ public final class NightfallGuiScreen extends class_437 {
       this.panel(ctx, x, y, w, 25 + bodyH);
       roundedRect(ctx, x, y, w, 25, Config.cornerRadius, Theme.withAlpha(-300937959, Math.max(0, (100 - Config.guiTransparency) * 255 / 100)));
       ctx.method_51433(mc.field_1772, icon(tab) + "  " + tab, x + 10, y + 9, Theme.TEXT, true);
+      if (!tab.equals("Config")) {
+         String moduleCount = Integer.toString(mods.size());
+         int countWidth = mc.field_1772.method_1727(moduleCount);
+         ctx.method_51433(mc.field_1772, moduleCount, x + w - countWidth - 10, y + 9, Theme.TEXT_DIM, true);
+      }
       if (click && inside(mx, my, x, y, w, 25)) {
          this.draggingWindow = true;
          this.dragPanel = tab;
@@ -951,6 +959,8 @@ public final class NightfallGuiScreen extends class_437 {
                      roundedRect(ctx, x + 4, rowY, w - 8, 21, Math.min(10, Config.cornerRadius), Theme.withAlpha(Theme.ACCENT, rowHover));
                   }
 
+                  ctx.method_25294(x + 4, rowY + 5, x + 6, rowY + 17,
+                     mod.isEnabled() ? Theme.ACCENT : Theme.withAlpha(Theme.TEXT_DIM, 70));
                   ctx.method_51433(mc.field_1772, mod.getName(), x + 10, rowY + 7, mod.isEnabled() ? Theme.TEXT : Theme.TEXT_DIM, false);
                   int starX = x + w - 112;
                   int keyX = x + w - 88;
@@ -966,6 +976,8 @@ public final class NightfallGuiScreen extends class_437 {
                   ctx.method_51433(mc.field_1772, keyText, keyX + 3, rowY + 7, this.bindingModule == mod ? Theme.TEXT : Theme.TEXT_DIM, false);
                   ctx.method_25294(tx, ty, tx + 24, ty + 12, mod.isEnabled() ? Theme.ACCENT : -12238002);
                   ctx.method_25294(mod.isEnabled() ? tx + 14 : tx + 2, ty + 2, mod.isEnabled() ? tx + 22 : tx + 10, ty + 10, -658182);
+                  // Soft separators keep long category lists readable without heavy cards.
+                  ctx.method_25294(x + 10, rowY + 21, x + w - 8, rowY + 22, Theme.withAlpha(Theme.TEXT_DIM, 42));
                   if (click && over) {
                      if (mx >= tx - 3) {
                         mod.toggle();
