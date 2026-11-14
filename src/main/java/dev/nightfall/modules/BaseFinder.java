@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -53,6 +54,8 @@ public class BaseFinder extends Module {
    private final NumberSetting clusterWeight = this.add(new NumberSetting("Gewicht Amethyst-Cluster", 0.25, 0.0, 2.0, 0.05));
    private final NumberSetting minClusters = this.add(new NumberSetting("Min. Amethyst-Cluster", 6.0, 1.0, 64.0, 1.0));
    private final NumberSetting wSculk = this.add(new NumberSetting("Gewicht Sculk", 1.2, 0.0, 8.0, 0.1));
+   private final NumberSetting minTunnelLength = this.add(new NumberSetting("Min. Tunnel-Laenge", 6.0, 5.0, 12.0, 1.0));
+   private final NumberSetting wTunnel = this.add(new NumberSetting("Gewicht Tunnel", 1.5, 0.0, 5.0, 0.1));
    private final BoolSetting chat = this.add(new BoolSetting("Chat-Meldung", true));
    private static final Gson GSON = new Gson();
    private static final Type MARK_LIST = (new TypeToken<List<BaseFinder.Mark>>() {}).getType();
@@ -312,40 +315,56 @@ public class BaseFinder extends Module {
             }
          }
 
-         for (class_2826 section : ch.method_12006()) {
-            if (section != null && !section.method_38292()) {
-               for (int y = 0; y < 16; y++) {
-                  for (int z = 0; z < 16; z++) {
-                     for (int x = 0; x < 16; x++) {
-                        class_2680 state = section.method_12254(x, y, z);
-                        if (state.method_27852(class_2246.field_27160)) {
-                           buddingAmethyst++;
-                        }
+         class_2826[] sections = ch.method_12006();
+         byte[] air = new byte[sections.length * 4096];
+         for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
+            class_2826 section = sections[sectionIndex];
+            int sectionOffset = sectionIndex * 4096;
+            if (section == null || section.method_38292()) {
+               Arrays.fill(air, sectionOffset, sectionOffset + 4096, (byte)1);
+               continue;
+            }
 
-                        if (state.method_27852(class_2246.field_27161)
-                           || state.method_27852(class_2246.field_27162)
-                           || state.method_27852(class_2246.field_27163)
-                           || state.method_27852(class_2246.field_27164)) {
-                           amethystClusters++;
-                        }
+            for (int y = 0; y < 16; y++) {
+               for (int z = 0; z < 16; z++) {
+                  for (int x = 0; x < 16; x++) {
+                     class_2680 state = section.method_12254(x, y, z);
+                     int localIndex = y * 256 + z * 16 + x;
+                     if (state.method_26215()) {
+                        air[sectionOffset + localIndex] = 1;
+                     }
 
-                        if (state.method_27852(class_2246.field_27114)
-                           || state.method_27852(class_2246.field_29032)
-                           || state.method_27852(class_2246.field_27159)) {
-                           geodeShell++;
-                        }
+                     if (state.method_27852(class_2246.field_27160)) {
+                        buddingAmethyst++;
+                     }
 
-                        if (state.method_27852(class_2246.field_28108)
-                           || state.method_27852(class_2246.field_43231)
-                           || state.method_27852(class_2246.field_37571)
-                           || state.method_27852(class_2246.field_37570)) {
-                           sculk++;
-                        }
+                     if (state.method_27852(class_2246.field_27161)
+                        || state.method_27852(class_2246.field_27162)
+                        || state.method_27852(class_2246.field_27163)
+                        || state.method_27852(class_2246.field_27164)) {
+                        amethystClusters++;
+                     }
+
+                     if (state.method_27852(class_2246.field_27114)
+                        || state.method_27852(class_2246.field_29032)
+                        || state.method_27852(class_2246.field_27159)) {
+                        geodeShell++;
+                     }
+
+                     if (state.method_27852(class_2246.field_28108)
+                        || state.method_27852(class_2246.field_43231)
+                        || state.method_27852(class_2246.field_37571)
+                        || state.method_27852(class_2246.field_37570)) {
+                        sculk++;
                      }
                   }
                }
             }
          }
+
+         int[] tunnelInfo = this.countTunnelRuns(air, sections.length * 16);
+         int tunnelRuns = tunnelInfo[0];
+         int tunnelBlocks = tunnelInfo[1];
 
          int maxCell = 0;
 
@@ -359,6 +378,9 @@ public class BaseFinder extends Module {
             ? Math.min(8.0, amethystClusters * this.clusterWeight.get()) * (geodeSignature ? 0.15 : 1.0)
             : 0.0;
          double sculkScore = sculk >= 3 ? (sculk - 2) * this.wSculk.get() : 0.0;
+         double tunnelScore = tunnelRuns > 0
+            ? Math.min(6.0, tunnelRuns * this.wTunnel.get() + Math.max(0, tunnelBlocks - tunnelRuns * this.minTunnelLength.getInt()) * this.wTunnel.get() * 0.25)
+            : 0.0;
          double naturalSignalScore = amethystScore + sculkScore;
          double score = storage * this.wStorage.get()
             + shulker * this.wStorage.get() * 1.5
@@ -375,7 +397,8 @@ public class BaseFinder extends Module {
             + (spawner > 0 ? 1 : 0)
             + (cluster > 0.0 ? 1 : 0)
             + (amethystScore > 0.0 ? 1 : 0)
-            + (sculkScore > 0.0 ? 1 : 0);
+            + (sculkScore > 0.0 ? 1 : 0)
+            + (tunnelScore > 0.0 ? 1 : 0);
          ChunkResult old = this.results.get(k);
          ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
          ChunkResult.Status prev = res.status;
@@ -435,6 +458,10 @@ public class BaseFinder extends Module {
             res.reasons.add("Sculk-Cluster (" + sculk + ", +" + fmt(sculkScore) + ")");
          }
 
+         if (tunnelScore > 0.0) {
+            res.reasons.add("Tunnelspuren (" + tunnelRuns + " Abschnitte, " + tunnelBlocks + " Bloecke, +" + fmt(tunnelScore) + ")");
+         }
+
          boolean repeatedFakePattern = score >= this.threshold.get()
             && signalKinds >= this.minSignals.getInt()
             && storage + shulker + hopper + furnace + redstone + spawner > 0
@@ -489,6 +516,73 @@ public class BaseFinder extends Module {
             this.results.put(k, res);
          }
       }
+   }
+
+   private int[] countTunnelRuns(byte[] air, int height) {
+      int minLength = this.minTunnelLength.getInt();
+      int runs = 0;
+      int blocks = 0;
+
+      // Look for straight, two-block-high passages with a floor, ceiling and
+      // two side walls. Only data from this already-loaded chunk is inspected.
+      for (int y = 1; y + 2 < height; y++) {
+         for (int z = 1; z < 15; z++) {
+            int length = 0;
+            for (int x = 0; x < 16; x++) {
+               if (this.isTunnelCell(air, height, x, y, z, true)) {
+                  length++;
+               } else {
+                  if (length >= minLength) {
+                     runs++;
+                     blocks += length;
+                  }
+                  length = 0;
+               }
+            }
+            if (length >= minLength) {
+               runs++;
+               blocks += length;
+            }
+         }
+
+         for (int x = 1; x < 15; x++) {
+            int length = 0;
+            for (int z = 0; z < 16; z++) {
+               if (this.isTunnelCell(air, height, x, y, z, false)) {
+                  length++;
+               } else {
+                  if (length >= minLength) {
+                     runs++;
+                     blocks += length;
+                  }
+                  length = 0;
+               }
+            }
+            if (length >= minLength) {
+               runs++;
+               blocks += length;
+            }
+         }
+      }
+
+      return new int[]{runs, blocks};
+   }
+
+   private static boolean isTunnelCell(byte[] air, int height, int x, int y, int z, boolean alongX) {
+      if (y < 1 || y + 2 >= height) {
+         return false;
+      }
+
+      int index = (y * 16 + z) * 16 + x;
+      int sideA = alongX ? index - 16 : index - 1;
+      int sideB = alongX ? index + 16 : index + 1;
+
+      return air[index] != 0
+         && air[index + 256] != 0
+         && air[index - 256] == 0
+         && air[index + 512] == 0
+         && air[sideA] == 0
+         && air[sideB] == 0;
    }
 
    private boolean isRepeatedFakePattern(int storage, int shulker, int hopper, int furnace, int redstone, int spawner, int cx, int cz) {
