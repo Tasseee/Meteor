@@ -435,7 +435,17 @@ public class BaseFinder extends Module {
             res.reasons.add("Sculk-Cluster (" + sculk + ", +" + fmt(sculkScore) + ")");
          }
 
-         if (score >= this.threshold.get() && signalKinds >= this.minSignals.getInt()) {
+         boolean repeatedFakePattern = score >= this.threshold.get()
+            && signalKinds >= this.minSignals.getInt()
+            && storage + shulker + hopper + furnace + redstone + spawner > 0
+            && this.isRepeatedFakePattern(storage, shulker, hopper, furnace, redstone, spawner, cx, cz);
+
+         if (repeatedFakePattern) {
+            res.status = ChunkResult.Status.CLEAN;
+            res.reasons.clear();
+            this.dirty = true;
+            this.marksDirty = true;
+         } else if (score >= this.threshold.get() && signalKinds >= this.minSignals.getInt()) {
             res.status = ChunkResult.Status.SUS;
             if (prev != ChunkResult.Status.SUS) {
                res.foundAtMillis = System.currentTimeMillis();
