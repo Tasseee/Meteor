@@ -35,9 +35,9 @@ public final class CrystalTest extends Module {
    private int phase;
    private int ticks;
    private int targetId = -1;
-   private float lastHealth = Float.NaN;
    private class_2338 base;
-   private boolean queuedHit;
+   private int queuedHits;
+   private int queuedHitTargetId = -1;
 
    public CrystalTest() {
       super("CrystalTest", "Test-CrystalAura: schaut vor jeder Obsidian- und Crystal-Interaktion auf den Zielblock.", Category.COMBAT);
@@ -51,12 +51,22 @@ public final class CrystalTest extends Module {
       phase = IDLE;
       ticks = 0;
       targetId = -1;
-      lastHealth = Float.NaN;
       base = null;
-      queuedHit = false;
+      queuedHits = 0;
+      queuedHitTargetId = -1;
    }
 
    private void next(int value) { phase = value; ticks = 0; }
+
+   public void onConfirmedMeleeHit(class_1657 target) {
+      if (!isEnabled() || mc.field_1724 == null || mc.field_1687 == null) return;
+      if (CombatUtil.nearestPlayer(targetRange.get()) != target) return;
+      if (queuedHitTargetId != target.method_5628()) {
+         queuedHitTargetId = target.method_5628();
+         queuedHits = 0;
+      }
+      queuedHits = Math.min(queuedHits + 1, 32);
+   }
 
    private class_1657 findTarget(int id) {
       for (class_1657 p : mc.field_1687.method_18456())
@@ -78,16 +88,23 @@ public final class CrystalTest extends Module {
 
    private class_2338 findBase(class_746 player, class_1657 target) {
       class_2338 feet = target.method_24515();
-      int[][] offsets = {{1,0},{-1,0},{0,1},{0,-1},{1,1},{1,-1},{-1,1},{-1,-1}};
-      for (int[] offset : offsets) {
-         class_2338 pos = feet.method_10069(offset[0], 0, offset[1]);
-         if (!mc.field_1687.method_8320(pos).method_45474()) continue;
-         class_2338 support = pos.method_10074();
-         if (mc.field_1687.method_8320(support).method_26220(mc.field_1687, support).method_1110()) continue;
-         if (!clearForCrystal(pos)) continue;
-         class_243 aim = new class_243(pos.method_10263() + 0.5, pos.method_10264() + 1.0, pos.method_10260() + 0.5);
-         if (player.method_33571().method_1022(aim) > placeRange.get()) continue;
-         return pos;
+      // Search outward in rings and skip already occupied obsidian positions.
+      for (int drop = 0; drop <= 3; drop++) {
+         for (int radius = 1; radius <= 5; radius++) {
+            for (int x = -radius; x <= radius; x++) {
+               for (int z = -radius; z <= radius; z++) {
+                  if (Math.max(Math.abs(x), Math.abs(z)) != radius) continue;
+                  class_2338 pos = feet.method_10069(x, -drop, z);
+                  if (!mc.field_1687.method_8320(pos).method_45474()) continue;
+                  class_2338 support = pos.method_10074();
+                  if (mc.field_1687.method_8320(support).method_26220(mc.field_1687, support).method_1110()) continue;
+                  if (!clearForCrystal(pos)) continue;
+                  class_243 aim = new class_243(pos.method_10263() + 0.5, pos.method_10264() + 1.0, pos.method_10260() + 0.5);
+                  if (player.method_33571().method_1022(aim) > placeRange.get()) continue;
+                  return pos;
+               }
+            }
+         }
       }
       return null;
    }
@@ -200,19 +217,19 @@ public final class CrystalTest extends Module {
 
       if (phase == IDLE) {
          class_1657 target = CombatUtil.nearestPlayer(targetRange.get());
-         if (target == null) { targetId = -1; lastHealth = Float.NaN; return; }
-         if (targetId != target.method_5628()) {
-            targetId = target.method_5628();
-            lastHealth = target.method_6032();
+         if (target == null) {
+            targetId = -1;
             return;
          }
-         float health = target.method_6032();
-         if (!Float.isNaN(lastHealth) && health < lastHealth - 0.01F) queuedHit = true;
-         lastHealth = health;
-         if (!queuedHit) return;
+         targetId = target.method_5628();
+         if (queuedHitTargetId != targetId || queuedHits <= 0) return;
+
+         queuedHits--;
          base = findBase(player, target);
-         if (base == null) return;
-         queuedHit = false;
+         if (base == null) {
+            queuedHits++;
+            return;
+         }
          next(LOOK_OBSIDIAN);
          return;
       }
