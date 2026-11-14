@@ -32,123 +32,10 @@ public abstract class EntityScanEsp extends EspBase {
    }
 
    public void renderWorld(WorldRenderContext context) {
-      if (mc.field_1687 == null || mc.field_1724 == null || context.matrices() == null || context.consumers() == null) {
-         return;
-      }
-
-      float tickDelta = Projection.tickDelta();
-      class_243 camera = mc.field_1773.method_19418().method_71156();
-      double cameraX = camera.field_1352;
-      double cameraY = camera.field_1351;
-      double cameraZ = camera.field_1350;
-      double rangeSquared = this.range.get() * this.range.get();
-      this.buf.clear();
-
-      for (class_1297 entity : mc.field_1687.method_18112()) {
-         if (entity == mc.field_1724 || !this.accept(entity)) {
-            continue;
-         }
-
-         double currentX = entity.method_23317();
-         double currentY = entity.method_23318();
-         double currentZ = entity.method_23321();
-         double ix = entity.field_6038 + (currentX - entity.field_6038) * tickDelta;
-         double iy = entity.field_5971 + (currentY - entity.field_5971) * tickDelta;
-         double iz = entity.field_5989 + (currentZ - entity.field_5989) * tickDelta;
-
-         class_238 currentBox = entity.method_5829();
-         double dx = ix - currentX;
-         double dy = iy - currentY;
-         double dz = iz - currentZ;
-         class_238 box = new class_238(
-            currentBox.field_1323 + dx, currentBox.field_1322 + dy, currentBox.field_1321 + dz,
-            currentBox.field_1320 + dx, currentBox.field_1325 + dy, currentBox.field_1324 + dz
-         );
-
-         double rx = ix - cameraX;
-         double ry = iy - cameraY;
-         double rz = iz - cameraZ;
-         double distanceSquared = rx * rx + ry * ry + rz * rz;
-         if (distanceSquared > rangeSquared) {
-            continue;
-         }
-
-         if (this.visibleOnly.get() && !Projection.canSeeFromCamera(mc, entity, box)) {
-            continue;
-         }
-
-         this.buf.add(new RenderTarget(entity, box, distanceSquared));
-      }
-
-      if (this.buf.size() > this.maxObjects.getInt()) {
-         this.buf.sort(BY_DIST);
-      }
-
-      int count = Math.min(this.buf.size(), this.maxObjects.getInt());
-      // WorldRenderContext does not apply the camera translation to custom vertices.
-      // Match the established world-render pattern used by HatsRenderer: translate the
-      // matrix stack by the negative camera position before submitting world coordinates.
-      class_4587 matrices = context.matrices();
-      matrices.method_22903();
-      try {
-         matrices.method_22904(-cameraX, -cameraY, -cameraZ);
-         class_4588 vertices = context.consumers().method_73477(class_12249.method_76015());
-         var matrix = matrices.method_23760().method_23761();
-         int rgb = this.color.rgb();
-         float red = (rgb >> 16 & 255) / 255.0F;
-         float green = (rgb >> 8 & 255) / 255.0F;
-         float blue = (rgb & 255) / 255.0F;
-         float alpha = this.opacity.get().floatValue();
-         boolean drawTracers = this.tracers.get();
-         boolean drawBoxes = this.style.is("3D");
-         boolean centerOrigin = this.origin.is("Mitte");
-
-         for (int i = 0; i < count && !this.capReached(); i++) {
-            RenderTarget target = this.buf.get(i);
-            if (drawBoxes) {
-               this.drawWorldBox(vertices, matrix, target.box(), red, green, blue, alpha);
-            }
-
-            if (drawTracers) {
-               double tx = (target.box().field_1323 + target.box().field_1320) * 0.5;
-               double ty = centerOrigin
-                  ? (target.box().field_1322 + target.box().field_1325) * 0.5
-                  : target.box().field_1322;
-               double tz = (target.box().field_1321 + target.box().field_1324) * 0.5;
-               // Camera is now the local origin (0, 0, 0) in this matrix space.
-               this.drawWorldLine(vertices, matrix, 0.0, 0.0, 0.0, tx, ty, tz, red, green, blue, alpha);
-            }
-         }
-      } finally {
-         matrices.method_22904(cameraX, cameraY, cameraZ);
-         matrices.method_22909();
-      }
-   }
-
-   private void drawWorldBox(class_4588 vertices, org.joml.Matrix4f matrix, class_238 box,
-                             float r, float g, float b, float a) {
-      double minX = box.field_1323, minY = box.field_1322, minZ = box.field_1321;
-      double maxX = box.field_1320, maxY = box.field_1325, maxZ = box.field_1324;
-      // 12 edges / 24 vertices, all written to the same buffered line consumer.
-      this.drawWorldLine(vertices, matrix, minX, minY, minZ, maxX, minY, minZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, maxY, minZ, maxX, maxY, minZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, minY, maxZ, maxX, minY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, maxY, maxZ, maxX, maxY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, minY, minZ, minX, maxY, minZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, maxX, minY, minZ, maxX, maxY, minZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, minY, maxZ, minX, maxY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, maxX, minY, maxZ, maxX, maxY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, minY, minZ, minX, minY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, maxX, minY, minZ, maxX, minY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, minX, maxY, minZ, minX, maxY, maxZ, r, g, b, a);
-      this.drawWorldLine(vertices, matrix, maxX, maxY, minZ, maxX, maxY, maxZ, r, g, b, a);
-   }
-
-   private void drawWorldLine(class_4588 vertices, org.joml.Matrix4f matrix,
-                              double x0, double y0, double z0, double x1, double y1, double z1,
-                              float r, float g, float b, float a) {
-      vertices.method_22918(matrix, (float)x0, (float)y0, (float)z0).method_22915(r, g, b, a);
-      vertices.method_22918(matrix, (float)x1, (float)y1, (float)z1).method_22915(r, g, b, a);
+      // Do not submit custom world vertices here. The line pipeline used by this
+      // Minecraft version requires additional vertex attributes (Normal and
+      // LineWidth); omitting them crashes during buffer flush, especially with
+      // ImmediatelyFast. Entity ESP is rendered through the HUD projection below.
    }
 
    @Override
@@ -219,11 +106,9 @@ public abstract class EntityScanEsp extends EspBase {
                label = label + " " + Math.round(living.method_6032()) + "hp";
             }
 
-            if (this.style.is("3D")) {
-               this.drawLabelOnly(ctx, target.box(), label);
-            } else {
-               this.drawTarget(ctx, target.box(), label, this.color.rgb());
-            }
+            // Render boxes and tracers through the HUD renderer. This avoids
+            // incomplete world-line vertices while preserving ESP functionality.
+            this.drawTarget(ctx, target.box(), label, this.color.rgb());
          }
       }
    }
