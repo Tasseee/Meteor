@@ -51,6 +51,7 @@ public class Nightfall implements ClientModInitializer {
       Config.load();
       SkyVisualRenderer.register();
       HatsRenderer.register();
+      FakeLagGhostRenderer.register();
       WorldRenderEvents.AFTER_ENTITIES.register(ModuleManager::renderWorld);
       ClientLifecycleEvents.CLIENT_STARTED.register((ClientStarted)client -> SeedCracker.syncState());
       ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
