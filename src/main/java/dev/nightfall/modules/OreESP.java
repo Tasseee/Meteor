@@ -17,6 +17,7 @@ import net.minecraft.class_2338;
 import net.minecraft.class_238;
 import net.minecraft.class_2561;
 import net.minecraft.class_332;
+import net.minecraft.class_7923;
 
 public final class OreESP extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 48.0, 8.0, 96.0, 4.0));
@@ -35,8 +36,7 @@ public final class OreESP extends Module {
    }
 
    private boolean isOre(class_2248 block) {
-      class_2378 registry = (class_2378)class_7923.field_41175;
-      String id = registry.method_10221(block).toString();
+      String id = class_7923.field_41175.method_10221(block).toString();
       if (id.equals("minecraft:ancient_debris")) return true;
       if (id.equals("minecraft:nether_quartz_ore") || id.equals("minecraft:nether_gold_ore")) return false;
       return id.endsWith("_ore");
