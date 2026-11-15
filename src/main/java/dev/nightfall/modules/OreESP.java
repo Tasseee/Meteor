@@ -180,7 +180,8 @@ public final class OreESP extends Module {
    public void onWorldLeave() {
       this.found.clear();
       this.announcedVeins.clear();
-      this.resetSession();
+      // Keep session mining statistics across world changes, but don't compare ore positions between worlds.
+      this.previousOres.clear();
       this.timer = 0;
    }
 
