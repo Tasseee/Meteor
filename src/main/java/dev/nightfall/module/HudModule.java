@@ -61,10 +61,13 @@ public abstract class HudModule extends Module {
       float sc = this.scalable ? this.scale() : 1.0F;
       Matrix3x2fStack m = ctx.method_51448();
       m.pushMatrix();
-      m.translate(p[0], p[1]);
-      m.scale(sc, sc);
-      this.draw(ctx);
-      m.popMatrix();
+      try {
+         m.translate(p[0], p[1]);
+         m.scale(sc, sc);
+         this.draw(ctx);
+      } finally {
+         m.popMatrix();
+      }
    }
 
    public void drawForEditor(class_332 ctx) {
