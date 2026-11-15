@@ -232,6 +232,8 @@ public final class Config {
                      }
                   }
 
+                  }
+
                   if (o.has("key")) {
                      m.setKey(o.get("key").getAsInt());
                   }
