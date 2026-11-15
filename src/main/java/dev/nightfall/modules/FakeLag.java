@@ -28,8 +28,8 @@ public final class FakeLag extends Module {
    private static int lastHurtTime;
    private static float lastHealth = Float.NaN;
 
-   private final NumberSetting maxDelay = this.add(new NumberSetting("Max. Delay (ms)", 100.0, 50.0, 250.0, 25.0));
-   private final NumberSetting maxPackets = this.add(new NumberSetting("Max. Pakete", 8.0, 4.0, 20.0, 1.0));
+   private final NumberSetting maxDelay = this.add(new NumberSetting("Max. Delay (ms)", 5000.0, 50.0, 5000.0, 50.0));
+   private final NumberSetting maxPackets = this.add(new NumberSetting("Max. Pakete", 128.0, 4.0, 128.0, 1.0));
    private final BoolSetting flushOnAttack = this.add(new BoolSetting("Bei Angriff senden", true));
    private final BoolSetting flushOnDamage = this.add(new BoolSetting("Bei Treffer senden", true));
    private final BoolSetting flushOnScreen = this.add(new BoolSetting("Bei GUI senden", true));
