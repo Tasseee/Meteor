@@ -202,8 +202,9 @@ public class MapScreen extends class_437 {
          ctx.method_25294(6, 5, 8, 24, Theme.ACCENT);
          ctx.method_51433(mc.field_1772, coords, 13, 10, Theme.TEXT, true);
          if (hr != null && hr.status != ChunkResult.Status.CLEAN) {
-            String t1 = (hr.status == ChunkResult.Status.SUS ? "SUS" : "SUS WEG") + "  Score " + String.format("%.1f", hr.score);
-            String t2 = String.join(", ", hr.reasons);
+            String t1 = (hr.status == ChunkResult.Status.SUS ? "SUS" : "SUS WEG") + "  Score "
+               + String.format("%.1f", hr.score) + "  Vertrauen: " + hr.confidence.label();
+            String t2 = hr.naturalness.label() + " | " + String.join(", ", hr.reasons);
             String t3 = hr.foundAtMillis > 0L ? "erkannt vor " + ago(System.currentTimeMillis() - hr.foundAtMillis) : "";
             int tw = Math.max(mc.field_1772.method_1727(t1), Math.max(mc.field_1772.method_1727(t2), mc.field_1772.method_1727(t3))) + 10;
             int tx = Math.min(mx + 10, this.field_22789 - tw - 4);

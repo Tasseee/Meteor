@@ -41,7 +41,8 @@ public class ScannerHud extends HudModule {
          ctx.method_25294(0, 0, 2, this.h, Theme.ACCENT);
          ctx.method_51433(
             mc.field_1772,
-            "BaseFinder" + (bf.isPaused() ? "  PAUSE" : "") + "  " + String.format("%.1f ms", bf.lastScanMs()) + "  q" + bf.queueSize(),
+            "BF " + (bf.isPaused() ? "PAUSE " : "") + bf.versionStatus() + "  "
+               + String.format("%.1f ms", bf.lastScanMs()) + " q" + bf.queueSize(),
             6,
             2,
             bf.isPaused() ? -14249 : Theme.TEXT_DIM,
@@ -55,7 +56,8 @@ public class ScannerHud extends HudModule {
 
          for (int i = 0; i < shown; i++) {
             ChunkResult rx = top.get(i);
-            ctx.method_51433(mc.field_1772, "SUS " + rx.blockX() + ", " + rx.blockZ() + "  " + String.format("%.1f", rx.score), 6, y, Theme.TEXT, false);
+            ctx.method_51433(mc.field_1772, "SUS " + rx.blockX() + ", " + rx.blockZ() + "  " + String.format("%.1f", rx.score)
+               + " [" + rx.confidence.label() + "]", 6, y, Theme.TEXT, false);
             y += 10;
          }
 
