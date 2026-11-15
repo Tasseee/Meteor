@@ -541,10 +541,24 @@ public class BaseFinder extends Module {
          if (farmScore > 0.0) res.reasons.add("Farm-Struktur (" + farmBlocks + ", +" + fmt(farmScore) + ")");
          if (mobClusterScore > 0.0) res.reasons.add("Mob-Cluster (" + maxMobCell + " in 4x4x4, +" + fmt(mobClusterScore) + ")");
 
+         int fakeSignalKinds = (storage > 0 || shulker > 0 ? 1 : 0)
+            + (hopper > 0 ? 1 : 0)
+            + (furnace > 0 ? 1 : 0)
+            + (redstone > 0 ? 1 : 0)
+            + (spawner > 0 ? 1 : 0)
+            + (tunnelRuns > 0 ? 1 : 0)
+            + (sculk >= 3 && !geodeSignature ? 1 : 0)
+            + (lightSources >= 4 ? 1 : 0)
+            + (redstoneBlocks >= 5 ? 1 : 0)
+            + (farmBlocks >= 12 ? 1 : 0)
+            + (rotatedDeepslate >= 3 ? 1 : 0)
+            + (amethystScore > 0.0 && !geodeSignature ? 1 : 0);
          boolean repeatedFakePattern = score >= this.threshold.get()
             && signalKinds >= this.minSignals.getInt()
-            && storage + shulker + hopper + furnace + redstone + spawner > 0
-            && this.isRepeatedFakePattern(storage, shulker, hopper, furnace, redstone, spawner, cx, cz);
+            && fakeSignalKinds >= 2
+            && this.isRepeatedFakePattern(storage, shulker, hopper, furnace, redstone, spawner,
+               rotatedDeepslate, lightSources, redstoneBlocks, farmBlocks, amethystClusters,
+               sculk, tunnelRuns, tunnelBlocks, cx, cz);
 
          if (repeatedFakePattern) {
             res.status = ChunkResult.Status.CLEAN;
@@ -691,14 +705,25 @@ public class BaseFinder extends Module {
          && air[sideB] == 0;
    }
 
-   private boolean isRepeatedFakePattern(int storage, int shulker, int hopper, int furnace, int redstone, int spawner, int cx, int cz) {
+   private boolean isRepeatedFakePattern(int storage, int shulker, int hopper, int furnace, int redstone, int spawner,
+      int rotatedDeepslate, int lightSources, int redstoneBlocks, int farmBlocks, int amethystClusters,
+      int sculk, int tunnelRuns, int tunnelBlocks, int cx, int cz) {
       for (BaseFinder.FakePattern p : this.fakePatterns) {
-         if (similar(p.storage, storage)
+         if (p.version >= 2
+            && similar(p.storage, storage)
             && similar(p.shulker, shulker)
             && similar(p.hopper, hopper)
             && similar(p.furnace, furnace)
             && similar(p.redstone, redstone)
-            && similar(p.spawner, spawner)) {
+            && similar(p.spawner, spawner)
+            && similar(p.rotatedDeepslate, rotatedDeepslate)
+            && similar(p.lightSources, lightSources)
+            && similar(p.redstoneBlocks, redstoneBlocks)
+            && similar(p.farmBlocks, farmBlocks)
+            && similar(p.amethystClusters, amethystClusters)
+            && similar(p.sculk, sculk)
+            && similar(p.tunnelRuns, tunnelRuns)
+            && similar(p.tunnelBlocks, tunnelBlocks)) {
             String location = cx + "," + cz;
             if (!p.seenChunks.contains(location)) {
                p.seenChunks.add(location);
@@ -731,12 +756,21 @@ public class BaseFinder extends Module {
       }
 
       BaseFinder.FakePattern px = new BaseFinder.FakePattern();
+      px.version = 2;
       px.storage = storage;
       px.shulker = shulker;
       px.hopper = hopper;
       px.furnace = furnace;
       px.redstone = redstone;
       px.spawner = spawner;
+      px.rotatedDeepslate = rotatedDeepslate;
+      px.lightSources = lightSources;
+      px.redstoneBlocks = redstoneBlocks;
+      px.farmBlocks = farmBlocks;
+      px.amethystClusters = amethystClusters;
+      px.sculk = sculk;
+      px.tunnelRuns = tunnelRuns;
+      px.tunnelBlocks = tunnelBlocks;
       px.seenChunks.add(cx + "," + cz);
       this.fakePatterns.add(px);
       this.saveFakePatterns();
@@ -876,12 +910,21 @@ public class BaseFinder extends Module {
    }
 
    private static final class FakePattern {
+      int version;
       int storage;
       int shulker;
       int hopper;
       int furnace;
       int redstone;
       int spawner;
+      int rotatedDeepslate;
+      int lightSources;
+      int redstoneBlocks;
+      int farmBlocks;
+      int amethystClusters;
+      int sculk;
+      int tunnelRuns;
+      int tunnelBlocks;
       List<String> seenChunks = new ArrayList<>();
    }
 
