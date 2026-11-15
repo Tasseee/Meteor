@@ -228,11 +228,7 @@ public final class Config {
                      for (Setting<?> st : m.getSettings()) {
                         if (s.has(st.getName())) {
                            st.load(s.get(st.getName()));
-                        } else if (m.getName().equals("AutoPvP")
-                           && st.getName().equals("Windcharge -> Mace")
-                           && s.has("Stun-Slam (Windcharge -> Mace)")) {
-                           st.load(s.get("Stun-Slam (Windcharge -> Mace)"));
-                        }
+
                      }
                   }
 
