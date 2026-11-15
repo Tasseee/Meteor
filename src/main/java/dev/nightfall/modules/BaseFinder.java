@@ -49,7 +49,7 @@ public class BaseFinder extends Module {
    private final NumberSetting rescan = this.add(new NumberSetting("Rescan (s)", 8.0, 2.0, 120.0, 1.0));
    private final NumberSetting threshold = this.add(new NumberSetting("Min Score", 6.0, 3.0, 100.0, 1.0));
    private final NumberSetting minSignals = this.add(new NumberSetting("Min. Signaltypen", 2.0, 1.0, 10.0, 1.0));
-   private final NumberSetting fakeSimilarity = this.add(new NumberSetting("Fake-Base-Aehnlichkeit (%)", 35.0, 5.0, 75.0, 5.0));
+   private final NumberSetting fakeSimilarity = this.add(new NumberSetting("Fake-Base-Aehnlichkeit (%)", 70.0, 5.0, 75.0, 5.0));
    private final NumberSetting wStorage = this.add(new NumberSetting("Gewicht Storage", 1.0, 0.1, 5.0, 0.1));
    private final NumberSetting wHopper = this.add(new NumberSetting("Gewicht Hopper", 1.5, 0.1, 5.0, 0.1));
    private final NumberSetting wFurnace = this.add(new NumberSetting("Gewicht Furnace", 0.7, 0.1, 5.0, 0.1));
