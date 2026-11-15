@@ -497,8 +497,9 @@ public class BaseFinder extends Module {
          double connectedScore = largestConnectedGroup >= 3
             ? Math.min(3.0, (largestConnectedGroup - 2) * 0.35) : 0.0;
          String generatedStructure = findGeneratedStructureContext(w, cx, cz);
-         double structureHintMultiplier = generatedStructure != null ? 0.35 : 1.0;
-         double isolatedEntityMultiplier = generatedStructure != null && connectedBlockEntities < 2 ? 0.65 : 1.0;
+         boolean generatedNaturalContext = generatedStructure != null || geodeSignature;
+         double structureHintMultiplier = generatedNaturalContext ? 0.35 : 1.0;
+         double isolatedEntityMultiplier = generatedNaturalContext && connectedBlockEntities < 2 ? 0.65 : 1.0;
          rotatedDeepslateScore *= structureHintMultiplier;
          lightScore *= structureHintMultiplier;
          farmScore *= structureHintMultiplier;
