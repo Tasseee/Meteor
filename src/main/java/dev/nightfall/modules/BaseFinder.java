@@ -693,12 +693,7 @@ public class BaseFinder extends Module {
 
    private boolean isRepeatedFakePattern(int storage, int shulker, int hopper, int furnace, int redstone, int spawner, int cx, int cz) {
       for (BaseFinder.FakePattern p : this.fakePatterns) {
-         if (similar(p.storage, storage)
-            && similar(p.shulker, shulker)
-            && similar(p.hopper, hopper)
-            && similar(p.furnace, furnace)
-            && similar(p.redstone, redstone)
-            && similar(p.spawner, spawner)) {
+         if (similarFingerprint(p, storage, shulker, hopper, furnace, redstone, spawner)) {
             String location = cx + "," + cz;
             if (!p.seenChunks.contains(location)) {
                p.seenChunks.add(location);
@@ -743,12 +738,34 @@ public class BaseFinder extends Module {
       return false;
    }
 
-   private static boolean similar(int a, int b) {
-      // A missing signal must not be treated as equivalent to a small positive count.
-      if (a == 0 || b == 0) return a == b;
-      // Compare block-entity counts rather than positions or block-state orientation.
-      // This keeps rotated builds and small edits within the same fingerprint.
-      return Math.abs(a - b) <= Math.max(3, Math.round(Math.max(a, b) * 0.35F));
+   private static boolean similarFingerprint(
+      BaseFinder.FakePattern pattern, int storage, int shulker, int hopper, int furnace, int redstone, int spawner
+   ) {
+      int[] previous = {pattern.storage, pattern.shulker, pattern.hopper, pattern.furnace, pattern.redstone, pattern.spawner};
+      int[] current = {storage, shulker, hopper, furnace, redstone, spawner};
+      int previousTotal = 0;
+      int currentTotal = 0;
+      int sharedTypes = 0;
+
+      for (int i = 0; i < previous.length; i++) {
+         int a = previous[i];
+         int b = current[i];
+         previousTotal += a;
+         currentTotal += b;
+         if (a > 0 && b > 0) sharedTypes++;
+
+         // Permit one added/removed block entity in an otherwise absent category.
+         // For present categories, allow modest count drift from small edits.
+         int tolerance = a == 0 || b == 0
+            ? 1
+            : Math.max(2, Math.round(Math.max(a, b) * 0.35F));
+         if (Math.abs(a - b) > tolerance) return false;
+      }
+
+      // At least one feature type must remain in common, and the overall size
+      // must stay close enough to avoid merging unrelated storage layouts.
+      int totalTolerance = Math.max(4, Math.round(Math.max(previousTotal, currentTotal) * 0.25F));
+      return sharedTypes > 0 && Math.abs(previousTotal - currentTotal) <= totalTolerance;
    }
 
    private Path fakePatternsFile() {
