@@ -31,6 +31,10 @@ public abstract class EntityScanEsp extends EspBase {
       return e.method_5477().getString();
    }
 
+   protected String additionalLabel(class_1297 e) {
+      return "";
+   }
+
    public void renderWorld(WorldRenderContext context) {
       // Do not submit custom world vertices here. The line pipeline used by this
       // Minecraft version requires additional vertex attributes (Normal and
@@ -104,6 +108,10 @@ public abstract class EntityScanEsp extends EspBase {
             String label = this.label(this.nameOf(entity), Math.sqrt(target.distanceSquared()));
             if (this.health.get() && entity instanceof class_1309 living) {
                label = label + " " + Math.round(living.method_6032()) + "hp";
+            }
+            String extra = this.additionalLabel(entity);
+            if (!extra.isEmpty()) {
+               label = label + " " + extra;
             }
 
             // Render boxes and tracers through the HUD renderer. This avoids
