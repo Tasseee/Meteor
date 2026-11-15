@@ -11,6 +11,7 @@ import net.minecraft.class_638;
 
 public class PlayerEsp extends EntityScanEsp {
    private final BoolSetting autoInvsee = this.add(new BoolSetting("Auto Invsee", true));
+   private final BoolSetting showPing = this.add(new BoolSetting("Ping", true));
    private final Set<String> inspectedPlayers = new HashSet<>();
    private class_638 trackedWorld;
 
@@ -21,6 +22,16 @@ public class PlayerEsp extends EntityScanEsp {
    @Override
    protected boolean accept(class_1297 e) {
       return e instanceof class_1657;
+   }
+
+   @Override
+   protected String additionalLabel(class_1297 entity) {
+      if (!this.showPing.get() || !(entity instanceof class_1657 player) || mc.method_1562() == null) {
+         return "";
+      }
+
+      net.minecraft.class_640 entry = mc.method_1562().method_2871(player.method_5667());
+      return entry == null ? "Ping -" : entry.method_2959() + "ms";
    }
 
    @Override
