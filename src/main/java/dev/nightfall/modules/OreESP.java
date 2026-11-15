@@ -15,6 +15,7 @@ import net.minecraft.class_2248;
 import net.minecraft.class_2338;
 import net.minecraft.class_2378;
 import net.minecraft.class_238;
+import net.minecraft.class_2561;
 import net.minecraft.class_332;
 import net.minecraft.class_7923;
 
@@ -23,6 +24,7 @@ public final class OreESP extends Module {
    private final NumberSetting maxBlocks = this.add(new NumberSetting("Max Markierungen", 500.0, 20.0, 1000.0, 20.0));
    private final BoolSetting groupVeins = this.add(new BoolSetting("Adern zusammenfassen", true));
    private final List<class_238> found = new ArrayList<>();
+   private final Set<String> announcedVeins = new HashSet<>();
    private int timer;
 
    public OreESP() {
@@ -60,7 +62,11 @@ public final class OreESP extends Module {
                for (int z = sz; z <= ez && ores.size() < cap; z++) {
                   for (int y = minY; y <= maxY && ores.size() < cap; y++) {
                      class_2338 bp = new class_2338(x, y, z);
-                     if (this.isOre(mc.field_1687.method_8320(bp).method_26204())) ores.add(new OrePos(x, y, z));
+                     class_2248 block = mc.field_1687.method_8320(bp).method_26204();
+                     if (this.isOre(block)) {
+                        String id = ((class_2378)class_7923.field_41175).method_10221(block).toString();
+                        ores.add(new OrePos(x, y, z, id.substring(id.indexOf(':') + 1)));
+                     }
                   }
                }
             }
@@ -87,9 +93,11 @@ public final class OreESP extends Module {
 
          int minX = start.x(), minY = start.y(), minZ = start.z();
          int maxX = minX, maxY = minY, maxZ = minZ;
+         int veinSize = 0;
 
          while (!queue.isEmpty()) {
             OrePos current = queue.removeFirst();
+            veinSize++;
             minX = Math.min(minX, current.x());
             minY = Math.min(minY, current.y());
             minZ = Math.min(minZ, current.z());
@@ -97,20 +105,32 @@ public final class OreESP extends Module {
             maxY = Math.max(maxY, current.y());
             maxZ = Math.max(maxZ, current.z());
 
-            addNeighbor(remaining, queue, current.x() + 1, current.y(), current.z());
-            addNeighbor(remaining, queue, current.x() - 1, current.y(), current.z());
-            addNeighbor(remaining, queue, current.x(), current.y() + 1, current.z());
-            addNeighbor(remaining, queue, current.x(), current.y() - 1, current.z());
-            addNeighbor(remaining, queue, current.x(), current.y(), current.z() + 1);
-            addNeighbor(remaining, queue, current.x(), current.y(), current.z() - 1);
+            addNeighbor(remaining, queue, current, current.x() + 1, current.y(), current.z());
+            addNeighbor(remaining, queue, current, current.x() - 1, current.y(), current.z());
+            addNeighbor(remaining, queue, current, current.x(), current.y() + 1, current.z());
+            addNeighbor(remaining, queue, current, current.x(), current.y() - 1, current.z());
+            addNeighbor(remaining, queue, current, current.x(), current.y(), current.z() + 1);
+            addNeighbor(remaining, queue, current, current.x(), current.y(), current.z() - 1);
          }
 
          this.found.add(new class_238(minX, minY, minZ, maxX + 1.0, maxY + 1.0, maxZ + 1.0));
+         if (veinSize >= 10) {
+            String key = start.oreName() + ":" + minX + ":" + minY + ":" + minZ + ":" + maxX + ":" + maxY + ":" + maxZ + ":" + veinSize;
+            if (this.announcedVeins.add(key) && mc.field_1724 != null) {
+               String oreName = start.oreName().replace('_', ' ');
+               String[] words = oreName.split(" ");
+               StringBuilder displayName = new StringBuilder();
+               for (String word : words) {
+                  if (!word.isEmpty()) displayName.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1)).append(' ');
+               }
+               mc.field_1724.method_7353(class_2561.method_43470("[OreESP] " + veinSize + "x " + displayName.toString().trim() + " vein found!"), false);
+            }
+         }
       }
    }
 
-   private static void addNeighbor(Set<OrePos> remaining, ArrayDeque<OrePos> queue, int x, int y, int z) {
-      OrePos neighbor = new OrePos(x, y, z);
+   private static void addNeighbor(Set<OrePos> remaining, ArrayDeque<OrePos> queue, OrePos current, int x, int y, int z) {
+      OrePos neighbor = new OrePos(x, y, z, current.oreName());
       if (remaining.remove(neighbor)) queue.addLast(neighbor);
    }
 
@@ -120,11 +140,11 @@ public final class OreESP extends Module {
    }
 
    @Override
-   protected void onDisable() { this.found.clear(); }
+   protected void onDisable() { this.found.clear(); this.announcedVeins.clear(); }
 
    @Override
-   public void onWorldLeave() { this.found.clear(); this.timer = 0; }
+   public void onWorldLeave() { this.found.clear(); this.announcedVeins.clear(); this.timer = 0; }
 
-   private record OrePos(int x, int y, int z) {
+   private record OrePos(int x, int y, int z, String oreName) {
    }
 }
