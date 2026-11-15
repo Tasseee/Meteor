@@ -90,4 +90,14 @@ public final class WaypointManager {
          save();
       }
    }
+
+   public static int removeCategory(String category) {
+      int removed = all().size();
+      all().removeIf(w -> category != null && category.equalsIgnoreCase(w.category));
+      removed -= all().size();
+      if (removed > 0) {
+         save();
+      }
+      return removed;
+   }
 }
