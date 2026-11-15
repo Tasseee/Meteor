@@ -23,7 +23,7 @@ import java.util.Set;
 import net.minecraft.class_332;
 
 public final class ChunkEsp extends Module {
-   private final ModeSetting style = this.add(new ModeSetting("Darstellung", "Ring", "Ring", "Triangle", "Pulse", "Beacon"));
+   private final ModeSetting style = this.add(new ModeSetting("Darstellung", "Ring", "Ring", "Triangle", "Square", "Pulse", "Beacon"));
    private final NumberSetting range = this.add(new NumberSetting("Reichweite (Chunks)", 16.0, 2.0, 48.0, 1.0));
    private final NumberSetting markerSize = this.add(new NumberSetting("Marker-Groesse", 8.0, 4.0, 16.0, 1.0));
    private final NumberSetting opacity = this.add(new NumberSetting("Deckkraft", 0.88, 0.2, 1.0, 0.05));
@@ -183,6 +183,11 @@ public final class ChunkEsp extends Module {
 
       if (this.style.is("Triangle")) {
          triangle(ctx, x, y, radius + 2.0F, strong, region.favorite ? 2 : 1);
+      } else if (this.style.is("Square")) {
+         Draw.line(ctx, x - radius, y - radius, x + radius, y - radius, strong, region.favorite ? 2 : 1, true);
+         Draw.line(ctx, x + radius, y - radius, x + radius, y + radius, strong, region.favorite ? 2 : 1, true);
+         Draw.line(ctx, x + radius, y + radius, x - radius, y + radius, strong, region.favorite ? 2 : 1, true);
+         Draw.line(ctx, x - radius, y + radius, x - radius, y - radius, strong, region.favorite ? 2 : 1, true);
       } else {
          ring(ctx, x, y, radius, strong, region.favorite ? 2 : 1);
       }
