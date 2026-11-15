@@ -106,12 +106,12 @@ public abstract class EntityScanEsp extends EspBase {
             RenderTarget target = this.buf.get(i);
             class_1297 entity = target.entity();
             String label = this.label(this.nameOf(entity), Math.sqrt(target.distanceSquared()));
-            if (this.health.get() && entity instanceof class_1309 living) {
-               label = label + " " + Math.round(living.method_6032()) + "hp";
-            }
             String extra = this.additionalLabel(entity);
             if (!extra.isEmpty()) {
                label = label + " " + extra;
+            }
+            if (this.health.get() && entity instanceof class_1309 living) {
+               label = label + " " + Math.round(living.method_6032()) + "hp";
             }
 
             // Render boxes and tracers through the HUD renderer. This avoids
