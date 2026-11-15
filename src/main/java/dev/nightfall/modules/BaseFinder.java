@@ -19,9 +19,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import net.minecraft.class_2246;
 import net.minecraft.class_2248;
 import net.minecraft.class_2561;
@@ -42,8 +44,11 @@ import net.minecraft.class_2826;
 import net.minecraft.class_3719;
 import net.minecraft.class_638;
 import net.minecraft.class_8887;
+import net.minecraft.class_155;
 
 public class BaseFinder extends Module {
+   // Keep this in sync with gradle.properties (minecraft_version).
+   private static final String SUPPORTED_MINECRAFT_VERSION = "1.21.11";
    private final NumberSetting range = this.add(new NumberSetting("Range (Chunks)", 32.0, 2.0, 48.0, 1.0));
    private final NumberSetting budgetMs = this.add(new NumberSetting("Budget ms/Tick", 2.5, 0.2, 5.0, 0.1));
    private final NumberSetting rescan = this.add(new NumberSetting("Rescan (s)", 8.0, 2.0, 120.0, 1.0));
@@ -89,6 +94,9 @@ public class BaseFinder extends Module {
    private int scannedSinceRefill;
    private boolean paused;
    private final Map<Long, Integer> mobClusterMaxByChunk = new HashMap<>();
+   private String gameVersion = "unbekannt";
+   private boolean versionCompatible;
+   private boolean versionChecked;
 
    public BaseFinder() {
       super("BaseFinder", "Findet verdaechtige Chunks anhand von Storage, Tunnelspuren, Hoppern und weiteren Signalen in geladenen Chunks.", Category.BASEFINDER);
@@ -100,6 +108,26 @@ public class BaseFinder extends Module {
 
    public double thresholdValue() {
       return this.threshold.get();
+   }
+
+   public String versionStatus() {
+      return this.gameVersion + (this.versionCompatible ? " | Block-IDs OK" : " | Block-ID-WARNUNG");
+   }
+
+   private void checkGameVersion() {
+      if (this.versionChecked) return;
+      try {
+         var version = class_155.method_16673();
+         this.gameVersion = version == null ? "unbekannt" : version.comp_4025();
+      } catch (RuntimeException | LinkageError error) {
+         this.gameVersion = "unbekannt";
+      }
+      this.versionCompatible = SUPPORTED_MINECRAFT_VERSION.equals(this.gameVersion);
+      this.versionChecked = true;
+      if (!this.versionCompatible) {
+         Nightfall.LOGGER.warn("BaseFinder-Blocksignaturen sind fuer Minecraft {} gebaut; erkannt wurde {}. Ergebnisse koennen unvollstaendig sein.",
+            SUPPORTED_MINECRAFT_VERSION, this.gameVersion);
+      }
    }
 
    public ChunkResult get(int cx, int cz) {
@@ -213,6 +241,7 @@ public class BaseFinder extends Module {
    public void onTick() {
       class_638 w = mc.field_1687;
       if (w != null && mc.field_1724 != null) {
+         this.checkGameVersion();
          if (w != this.lastWorld) {
             this.saveMarks();
             this.clearData();
@@ -313,24 +342,37 @@ public class BaseFinder extends Module {
          int geodeShell = 0;
          int sculk = 0;
          Map<Integer, Integer> cells = new HashMap<>();
+         Set<BlockPosKey> technicalPositions = new HashSet<>();
 
          for (class_2586 be : ch.method_12214().values()) {
             boolean dense = false;
+            boolean technical = false;
             if (be instanceof class_2595 || be instanceof class_3719) {
                storage++;
                dense = true;
+               technical = true;
             } else if (be instanceof class_2627) {
                shulker++;
                dense = true;
+               technical = true;
             } else if (be instanceof class_2614) {
                hopper++;
                dense = true;
+               technical = true;
             } else if (be instanceof class_2609) {
                furnace++;
+               technical = true;
             } else if (be instanceof class_2601 || be instanceof class_2599 || be instanceof class_8887) {
                redstone++;
+               technical = true;
             } else if (be instanceof class_2636 && this.detectSpawners.get()) {
                spawner++;
+               technical = true;
+            }
+
+            if (technical) {
+               technicalPositions.add(new BlockPosKey(be.method_11016().method_10263(),
+                  be.method_11016().method_10264(), be.method_11016().method_10260()));
             }
 
             if (dense) {
@@ -444,7 +486,29 @@ public class BaseFinder extends Module {
          double tunnelScore = tunnelRuns > 0
             ? Math.min(6.0, tunnelRuns * this.wTunnel.get() + Math.max(0, tunnelBlocks - tunnelRuns * this.minTunnelLength.getInt()) * this.wTunnel.get() * 0.25)
             : 0.0;
+         int[] connectivity = connectedComponentStats(technicalPositions);
+         int largestConnectedGroup = connectivity[0];
+         int connectedBlockEntities = connectivity[1];
+         double connectedScore = largestConnectedGroup >= 3
+            ? Math.min(3.0, (largestConnectedGroup - 2) * 0.35) : 0.0;
          double naturalSignalScore = amethystScore + sculkScore;
+         int coreSignalKinds = (storage + shulker > 0 ? 1 : 0)
+            + (hopper > 0 ? 1 : 0) + (furnace > 0 ? 1 : 0)
+            + (redstone > 0 ? 1 : 0) + (spawner > 0 ? 1 : 0);
+         double naturalEvidence = (geodeSignature ? 4.0 : 0.0)
+            + (sculk >= 3 ? Math.min(2.0, sculk * 0.15) : 0.0)
+            + (amethystClusters >= this.minClusters.getInt() ? 1.0 : 0.0);
+         double builtEvidence = coreSignalKinds
+            + (tunnelRuns > 0 ? 1.0 : 0.0)
+            + (connectedBlockEntities >= 2 ? 1.0 : 0.0)
+            + (redstonePatternScore >= 2.0 ? 0.5 : 0.0);
+         ChunkResult.Naturalness naturalness = naturalEvidence >= 2.0 && builtEvidence < 1.5
+            ? ChunkResult.Naturalness.NATURAL
+            : builtEvidence >= 2.0 && naturalEvidence < 0.75
+               ? ChunkResult.Naturalness.PLAYER_MODIFIED
+               : naturalEvidence >= 0.75 && builtEvidence >= 1.0
+                  ? ChunkResult.Naturalness.MIXED : ChunkResult.Naturalness.UNCLEAR;
+         ChunkResult.Confidence confidence = ChunkResult.Confidence.LOW;
          double score = storage * this.wStorage.get()
             + shulker * this.wStorage.get() * 1.5
             + hopper * this.wHopper.get()
@@ -458,7 +522,8 @@ public class BaseFinder extends Module {
             + lightScore
             + redstonePatternScore
             + farmScore
-            + mobClusterScore;
+            + mobClusterScore
+            + connectedScore;
          int signalKinds = (storage + shulker > 0 ? 1 : 0)
             + (hopper > 0 ? 1 : 0)
             + (furnace > 0 ? 1 : 0)
@@ -473,11 +538,21 @@ public class BaseFinder extends Module {
             + (redstonePatternScore > 0.0 ? 1 : 0)
             + (farmScore > 0.0 ? 1 : 0)
             + (mobClusterScore > 0.0 ? 1 : 0);
+         confidence = coreSignalKinds >= 4
+            || (coreSignalKinds >= 3 && largestConnectedGroup >= 3)
+               ? ChunkResult.Confidence.HIGH
+               : coreSignalKinds >= 2 || largestConnectedGroup >= 3
+                  || signalKinds >= 3 && (tunnelScore > 0.0 || redstonePatternScore > 0.0)
+                  ? ChunkResult.Confidence.MEDIUM : ChunkResult.Confidence.LOW;
          ChunkResult old = this.results.get(k);
          ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
          ChunkResult.Status prev = res.status;
          res.score = score;
          res.naturalSignalScore = naturalSignalScore;
+         res.confidence = confidence;
+         res.naturalness = naturalness;
+         res.largestConnectedGroup = largestConnectedGroup;
+         res.connectedBlockEntities = connectedBlockEntities;
          res.lastScanTick = this.tick;
          res.reasons.clear();
          if (storage > 0) {
@@ -541,6 +616,11 @@ public class BaseFinder extends Module {
          if (redstonePatternScore > 0.0) res.reasons.add("Redstone-Muster (" + redstoneBlocks + ", +" + fmt(redstonePatternScore) + ")");
          if (farmScore > 0.0) res.reasons.add("Farm-Struktur (" + farmBlocks + ", +" + fmt(farmScore) + ")");
          if (mobClusterScore > 0.0) res.reasons.add("Mob-Cluster (" + maxMobCell + " in 4x4x4, +" + fmt(mobClusterScore) + ")");
+         if (connectedBlockEntities > 1) {
+            res.reasons.add("Verbundene Technik (groesste Gruppe " + largestConnectedGroup
+               + ", gesamt " + connectedBlockEntities + ", +" + fmt(connectedScore) + ")");
+         }
+         res.reasons.add("Einschaetzung: Vertrauen " + confidence.label() + ", " + naturalness.label());
 
          boolean repeatedFakePattern = score >= this.threshold.get()
             && signalKinds >= this.minSignals.getInt()
@@ -572,7 +652,7 @@ public class BaseFinder extends Module {
                               + res.blockZ()
                               + ") Score "
                               + fmt(score)
-                              + " - "
+                              + " [" + res.confidence.label() + "/" + res.naturalness.label() + "] - "
                               + String.join(", ", res.reasons)
                         ),
                         false
@@ -596,6 +676,39 @@ public class BaseFinder extends Module {
             this.results.put(k, res);
          }
       }
+   }
+
+   private static int[] connectedComponentStats(Set<BlockPosKey> positions) {
+      Set<BlockPosKey> remaining = new HashSet<>(positions);
+      int largest = 0;
+      int connected = 0;
+      while (!remaining.isEmpty()) {
+         BlockPosKey seed = remaining.iterator().next();
+         remaining.remove(seed);
+         ArrayDeque<BlockPosKey> queue = new ArrayDeque<>();
+         queue.add(seed);
+         int size = 0;
+         while (!queue.isEmpty()) {
+            BlockPosKey current = queue.poll();
+            size++;
+            BlockPosKey[] neighbors = {
+               new BlockPosKey(current.x() + 1, current.y(), current.z()),
+               new BlockPosKey(current.x() - 1, current.y(), current.z()),
+               new BlockPosKey(current.x(), current.y() + 1, current.z()),
+               new BlockPosKey(current.x(), current.y() - 1, current.z()),
+               new BlockPosKey(current.x(), current.y(), current.z() + 1),
+               new BlockPosKey(current.x(), current.y(), current.z() - 1)
+            };
+            for (BlockPosKey neighbor : neighbors) {
+               if (remaining.remove(neighbor)) queue.add(neighbor);
+            }
+         }
+         if (size > 1) {
+            connected += size;
+            largest = Math.max(largest, size);
+         }
+      }
+      return new int[]{largest, connected};
    }
 
    private void rebuildMobClusterCounts(class_638 world) {
@@ -847,6 +960,10 @@ public class BaseFinder extends Module {
                   m.status = r.status.name();
                   m.found = r.foundAtMillis;
                   m.reasons = new ArrayList<>(r.reasons);
+                  m.confidence = r.confidence.name();
+                  m.naturalness = r.naturalness.name();
+                  m.largestConnectedGroup = r.largestConnectedGroup;
+                  m.connectedBlockEntities = r.connectedBlockEntities;
                   out.add(m);
                }
             }
@@ -881,6 +998,10 @@ public class BaseFinder extends Module {
                if (m.reasons != null) {
                   r.reasons.addAll(m.reasons);
                }
+               r.confidence = parseConfidence(m.confidence);
+               r.naturalness = parseNaturalness(m.naturalness);
+               r.largestConnectedGroup = m.largestConnectedGroup;
+               r.connectedBlockEntities = m.connectedBlockEntities;
 
                r.lastScanTick = 0L;
                this.results.put(key(m.cx, m.cz), r);
@@ -891,6 +1012,25 @@ public class BaseFinder extends Module {
             Nightfall.LOGGER.error("Markierungsdatei defekt: {}", f, var6);
          }
       }
+   }
+
+   private static ChunkResult.Confidence parseConfidence(String value) {
+      try {
+         return value == null ? ChunkResult.Confidence.LOW : ChunkResult.Confidence.valueOf(value);
+      } catch (IllegalArgumentException ignored) {
+         return ChunkResult.Confidence.LOW;
+      }
+   }
+
+   private static ChunkResult.Naturalness parseNaturalness(String value) {
+      try {
+         return value == null ? ChunkResult.Naturalness.UNCLEAR : ChunkResult.Naturalness.valueOf(value);
+      } catch (IllegalArgumentException ignored) {
+         return ChunkResult.Naturalness.UNCLEAR;
+      }
+   }
+
+   private record BlockPosKey(int x, int y, int z) {
    }
 
    private static final class FakePattern {
@@ -910,5 +1050,9 @@ public class BaseFinder extends Module {
       String status;
       long found;
       List<String> reasons;
+      String confidence;
+      String naturalness;
+      int largestConnectedGroup;
+      int connectedBlockEntities;
    }
 }
