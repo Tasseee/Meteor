@@ -2,11 +2,15 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Draw;
 import dev.nightfall.util.Projection;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.class_2248;
 import net.minecraft.class_2338;
 import net.minecraft.class_2378;
@@ -17,11 +21,12 @@ import net.minecraft.class_7923;
 public final class OreESP extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 48.0, 8.0, 96.0, 4.0));
    private final NumberSetting maxBlocks = this.add(new NumberSetting("Max Markierungen", 500.0, 20.0, 1000.0, 20.0));
+   private final BoolSetting groupVeins = this.add(new BoolSetting("Adern zusammenfassen", true));
    private final List<class_238> found = new ArrayList<>();
    private int timer;
 
    public OreESP() {
-      super("OreESP", "Markiert Erze im geladenen Gebiet; Netherquarz und Nethergold werden ignoriert.", Category.VISUALS);
+      super("OreESP", "Markiert Erze im geladenen Gebiet; zusammenhängende Adern können eine gemeinsame Box erhalten.", Category.VISUALS);
    }
 
    private boolean isOre(class_2248 block) {
@@ -37,6 +42,7 @@ public final class OreESP extends Module {
       if (mc.field_1724 == null || mc.field_1687 == null || this.timer-- > 0) return;
       this.timer = 12;
       this.found.clear();
+      List<OrePos> ores = new ArrayList<>();
       class_2338 p = mc.field_1724.method_24515();
       int r = this.range.getInt();
       int cap = this.maxBlocks.getInt();
@@ -45,21 +51,67 @@ public final class OreESP extends Module {
       int minX = p.method_10263() - r, maxX = p.method_10263() + r;
       int minZ = p.method_10260() - r, maxZ = p.method_10260() + r;
 
-      for (int cx = minX >> 4; cx <= maxX >> 4 && this.found.size() < cap; cx++) {
-         for (int cz = minZ >> 4; cz <= maxZ >> 4 && this.found.size() < cap; cz++) {
+      for (int cx = minX >> 4; cx <= maxX >> 4 && ores.size() < cap; cx++) {
+         for (int cz = minZ >> 4; cz <= maxZ >> 4 && ores.size() < cap; cz++) {
             if (mc.field_1687.method_2935().method_21730(cx, cz) == null) continue;
             int sx = Math.max(minX, cx << 4), ex = Math.min(maxX, (cx << 4) + 15);
             int sz = Math.max(minZ, cz << 4), ez = Math.min(maxZ, (cz << 4) + 15);
-            for (int x = sx; x <= ex && this.found.size() < cap; x++) {
-               for (int z = sz; z <= ez && this.found.size() < cap; z++) {
-                  for (int y = minY; y <= maxY && this.found.size() < cap; y++) {
+            for (int x = sx; x <= ex && ores.size() < cap; x++) {
+               for (int z = sz; z <= ez && ores.size() < cap; z++) {
+                  for (int y = minY; y <= maxY && ores.size() < cap; y++) {
                      class_2338 bp = new class_2338(x, y, z);
-                     if (this.isOre(mc.field_1687.method_8320(bp).method_26204())) this.found.add(new class_238(bp));
+                     if (this.isOre(mc.field_1687.method_8320(bp).method_26204())) ores.add(new OrePos(x, y, z));
                   }
                }
             }
          }
       }
+
+      if (this.groupVeins.get()) {
+         this.groupConnectedOres(ores);
+      } else {
+         for (OrePos ore : ores) this.found.add(new class_238(
+            ore.x(), ore.y(), ore.z(), ore.x() + 1.0, ore.y() + 1.0, ore.z() + 1.0
+         ));
+      }
+   }
+
+   private void groupConnectedOres(List<OrePos> ores) {
+      Set<OrePos> remaining = new HashSet<>(ores);
+      ArrayDeque<OrePos> queue = new ArrayDeque<>();
+
+      while (!remaining.isEmpty()) {
+         OrePos start = remaining.iterator().next();
+         remaining.remove(start);
+         queue.add(start);
+
+         int minX = start.x(), minY = start.y(), minZ = start.z();
+         int maxX = minX, maxY = minY, maxZ = minZ;
+
+         while (!queue.isEmpty()) {
+            OrePos current = queue.removeFirst();
+            minX = Math.min(minX, current.x());
+            minY = Math.min(minY, current.y());
+            minZ = Math.min(minZ, current.z());
+            maxX = Math.max(maxX, current.x());
+            maxY = Math.max(maxY, current.y());
+            maxZ = Math.max(maxZ, current.z());
+
+            addNeighbor(remaining, queue, current.x() + 1, current.y(), current.z());
+            addNeighbor(remaining, queue, current.x() - 1, current.y(), current.z());
+            addNeighbor(remaining, queue, current.x(), current.y() + 1, current.z());
+            addNeighbor(remaining, queue, current.x(), current.y() - 1, current.z());
+            addNeighbor(remaining, queue, current.x(), current.y(), current.z() + 1);
+            addNeighbor(remaining, queue, current.x(), current.y(), current.z() - 1);
+         }
+
+         this.found.add(new class_238(minX, minY, minZ, maxX + 1.0, maxY + 1.0, maxZ + 1.0));
+      }
+   }
+
+   private static void addNeighbor(Set<OrePos> remaining, ArrayDeque<OrePos> queue, int x, int y, int z) {
+      OrePos neighbor = new OrePos(x, y, z);
+      if (remaining.remove(neighbor)) queue.addLast(neighbor);
    }
 
    @Override
@@ -72,4 +124,7 @@ public final class OreESP extends Module {
 
    @Override
    public void onWorldLeave() { this.found.clear(); this.timer = 0; }
+
+   private record OrePos(int x, int y, int z) {
+   }
 }
