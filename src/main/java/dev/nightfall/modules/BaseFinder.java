@@ -45,6 +45,10 @@ import net.minecraft.class_3719;
 import net.minecraft.class_638;
 import net.minecraft.class_8887;
 import net.minecraft.class_155;
+import net.minecraft.class_2378;
+import net.minecraft.class_3341;
+import net.minecraft.class_3449;
+import net.minecraft.class_7924;
 
 public class BaseFinder extends Module {
    // Keep this in sync with gradle.properties (minecraft_version).
@@ -486,16 +490,32 @@ public class BaseFinder extends Module {
          double tunnelScore = tunnelRuns > 0
             ? Math.min(6.0, tunnelRuns * this.wTunnel.get() + Math.max(0, tunnelBlocks - tunnelRuns * this.minTunnelLength.getInt()) * this.wTunnel.get() * 0.25)
             : 0.0;
-         int[] connectivity = connectedComponentStats(technicalPositions);
+         addNeighborTechnicalPositions(w, cx, cz, technicalPositions);
+         int[] connectivity = connectedComponentStats(technicalPositions, cx, cz);
          int largestConnectedGroup = connectivity[0];
          int connectedBlockEntities = connectivity[1];
          double connectedScore = largestConnectedGroup >= 3
             ? Math.min(3.0, (largestConnectedGroup - 2) * 0.35) : 0.0;
+         String generatedStructure = findGeneratedStructureContext(w, cx, cz);
+         double structureHintMultiplier = generatedStructure != null ? 0.35 : 1.0;
+         double isolatedEntityMultiplier = generatedStructure != null && connectedBlockEntities < 2 ? 0.65 : 1.0;
+         rotatedDeepslateScore *= structureHintMultiplier;
+         lightScore *= structureHintMultiplier;
+         farmScore *= structureHintMultiplier;
+         sculkScore *= structureHintMultiplier;
+         double adjustedTunnelScore = tunnelScore * structureHintMultiplier;
+         double storageScore = storage * this.wStorage.get() * isolatedEntityMultiplier;
+         double shulkerScore = shulker * this.wStorage.get() * 1.5 * isolatedEntityMultiplier;
+         double hopperScore = hopper * this.wHopper.get() * isolatedEntityMultiplier;
+         double furnaceScore = furnace * this.wFurnace.get() * isolatedEntityMultiplier;
+         double redstoneScore = redstone * this.wRedstone.get() * isolatedEntityMultiplier;
+         double spawnerScore = spawner * this.wSpawner.get() * isolatedEntityMultiplier;
          double naturalSignalScore = amethystScore + sculkScore;
          int coreSignalKinds = (storage + shulker > 0 ? 1 : 0)
             + (hopper > 0 ? 1 : 0) + (furnace > 0 ? 1 : 0)
             + (redstone > 0 ? 1 : 0) + (spawner > 0 ? 1 : 0);
-         double naturalEvidence = (geodeSignature ? 4.0 : 0.0)
+         double naturalEvidence = (generatedStructure != null ? 4.0 : 0.0)
+            + (geodeSignature ? 4.0 : 0.0)
             + (sculk >= 3 ? Math.min(2.0, sculk * 0.15) : 0.0)
             + (amethystClusters >= this.minClusters.getInt() ? 1.0 : 0.0);
          double builtEvidence = coreSignalKinds
@@ -509,15 +529,15 @@ public class BaseFinder extends Module {
                : naturalEvidence >= 0.75 && builtEvidence >= 1.0
                   ? ChunkResult.Naturalness.MIXED : ChunkResult.Naturalness.UNCLEAR;
          ChunkResult.Confidence confidence = ChunkResult.Confidence.LOW;
-         double score = storage * this.wStorage.get()
-            + shulker * this.wStorage.get() * 1.5
-            + hopper * this.wHopper.get()
-            + furnace * this.wFurnace.get()
-            + redstone * this.wRedstone.get()
-            + spawner * this.wSpawner.get()
+         double score = storageScore
+            + shulkerScore
+            + hopperScore
+            + furnaceScore
+            + redstoneScore
+            + spawnerScore
             + cluster
             + naturalSignalScore
-            + tunnelScore
+            + adjustedTunnelScore
             + rotatedDeepslateScore
             + lightScore
             + redstonePatternScore
@@ -556,27 +576,27 @@ public class BaseFinder extends Module {
          res.lastScanTick = this.tick;
          res.reasons.clear();
          if (storage > 0) {
-            res.reasons.add(storage + " Chest/Barrel (" + fmt(storage * this.wStorage.get()) + ")");
+            res.reasons.add(storage + " Chest/Barrel (" + fmt(storageScore) + ")");
          }
 
          if (shulker > 0) {
-            res.reasons.add(shulker + " Shulker (" + fmt(shulker * this.wStorage.get() * 1.5) + ")");
+            res.reasons.add(shulker + " Shulker (" + fmt(shulkerScore) + ")");
          }
 
          if (hopper > 0) {
-            res.reasons.add(hopper + " Hopper (" + fmt(hopper * this.wHopper.get()) + ")");
+            res.reasons.add(hopper + " Hopper (" + fmt(hopperScore) + ")");
          }
 
          if (furnace > 0) {
-            res.reasons.add(furnace + " Furnace (" + fmt(furnace * this.wFurnace.get()) + ")");
+            res.reasons.add(furnace + " Furnace (" + fmt(furnaceScore) + ")");
          }
 
          if (redstone > 0) {
-            res.reasons.add(redstone + " Dispenser/Comparator/Crafter (" + fmt(redstone * this.wRedstone.get()) + ")");
+            res.reasons.add(redstone + " Dispenser/Comparator/Crafter (" + fmt(redstoneScore) + ")");
          }
 
          if (spawner > 0) {
-            res.reasons.add(spawner + " Mob-Spawner (" + fmt(spawner * this.wSpawner.get()) + ")");
+            res.reasons.add(spawner + " Mob-Spawner (" + fmt(spawnerScore) + ")");
          }
 
          if (cluster > 0.0) {
@@ -607,8 +627,8 @@ public class BaseFinder extends Module {
             res.reasons.add("Sculk-Cluster (" + sculk + ", +" + fmt(sculkScore) + ")");
          }
 
-         if (tunnelScore > 0.0) {
-            res.reasons.add("Tunnelspuren (" + tunnelRuns + " Abschnitte, " + tunnelBlocks + " Bloecke, +" + fmt(tunnelScore) + ")");
+         if (adjustedTunnelScore > 0.0) {
+            res.reasons.add("Tunnelspuren (" + tunnelRuns + " Abschnitte, " + tunnelBlocks + " Bloecke, +" + fmt(adjustedTunnelScore) + ")");
          }
 
          if (rotatedDeepslateScore > 0.0) res.reasons.add("Rotated Deepslate (" + rotatedDeepslate + ", +" + fmt(rotatedDeepslateScore) + ")");
@@ -619,6 +639,10 @@ public class BaseFinder extends Module {
          if (connectedBlockEntities > 1) {
             res.reasons.add("Verbundene Technik (groesste Gruppe " + largestConnectedGroup
                + ", gesamt " + connectedBlockEntities + ", +" + fmt(connectedScore) + ")");
+         }
+         if (generatedStructure != null) {
+            res.reasons.add("Natuerliche Struktur " + generatedStructure
+               + " erkannt: schwache Umgebungssignale abgewertet; verbundene Technik bleibt voll gewichtet");
          }
          res.reasons.add("Einschaetzung: Vertrauen " + confidence.label() + ", " + naturalness.label());
 
@@ -678,7 +702,31 @@ public class BaseFinder extends Module {
       }
    }
 
-   private static int[] connectedComponentStats(Set<BlockPosKey> positions) {
+   private void addNeighborTechnicalPositions(class_638 world, int cx, int cz, Set<BlockPosKey> positions) {
+      // Never load chunks from the network: only inspect the eight neighbors if already loaded.
+      for (int dx = -1; dx <= 1; dx++) {
+         for (int dz = -1; dz <= 1; dz++) {
+            if (dx == 0 && dz == 0) continue;
+            class_2818 neighbor = world.method_2935().method_21730(cx + dx, cz + dz);
+            if (neighbor == null) continue;
+            for (class_2586 be : neighbor.method_12214().values()) {
+               if (isTechnicalBlockEntity(be)) {
+                  positions.add(new BlockPosKey(be.method_11016().method_10263(),
+                     be.method_11016().method_10264(), be.method_11016().method_10260()));
+               }
+            }
+         }
+      }
+   }
+
+   private boolean isTechnicalBlockEntity(class_2586 be) {
+      return be instanceof class_2595 || be instanceof class_3719 || be instanceof class_2627
+         || be instanceof class_2614 || be instanceof class_2609 || be instanceof class_2601
+         || be instanceof class_2599 || be instanceof class_8887
+         || (this.detectSpawners.get() && be instanceof class_2636);
+   }
+
+   private static int[] connectedComponentStats(Set<BlockPosKey> positions, int centerCx, int centerCz) {
       Set<BlockPosKey> remaining = new HashSet<>(positions);
       int largest = 0;
       int connected = 0;
@@ -688,9 +736,11 @@ public class BaseFinder extends Module {
          ArrayDeque<BlockPosKey> queue = new ArrayDeque<>();
          queue.add(seed);
          int size = 0;
+         boolean touchesCenter = false;
          while (!queue.isEmpty()) {
             BlockPosKey current = queue.poll();
             size++;
+            touchesCenter |= (current.x() >> 4) == centerCx && (current.z() >> 4) == centerCz;
             BlockPosKey[] neighbors = {
                new BlockPosKey(current.x() + 1, current.y(), current.z()),
                new BlockPosKey(current.x() - 1, current.y(), current.z()),
@@ -703,12 +753,61 @@ public class BaseFinder extends Module {
                if (remaining.remove(neighbor)) queue.add(neighbor);
             }
          }
-         if (size > 1) {
+         // Only score connected groups that include at least one block entity in this chunk.
+         if (size > 1 && touchesCenter) {
             connected += size;
             largest = Math.max(largest, size);
          }
       }
       return new int[]{largest, connected};
+   }
+
+   private String findGeneratedStructureContext(class_638 world, int cx, int cz) {
+      try {
+         class_2378 structureRegistry = world.method_30349().method_30530(class_7924.field_41246);
+         int minX = cx * 16;
+         int minZ = cz * 16;
+         int maxX = minX + 15;
+         int maxZ = minZ + 15;
+         // A structure start may be stored in a neighboring chunk while its bounding box overlaps this chunk.
+         for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+               class_2818 candidate = world.method_2935().method_21730(cx + dx, cz + dz);
+               if (candidate == null) continue;
+               Map<?, ?> starts = candidate.method_12016();
+               for (Map.Entry<?, ?> entry : starts.entrySet()) {
+                  Object rawId = structureRegistry.method_10221(entry.getKey());
+                  if (rawId == null) continue;
+                  String id = rawId.toString().toLowerCase(Locale.ROOT);
+                  if (!isNaturalStructureId(id) || !(entry.getValue() instanceof class_3449 start)) continue;
+                  class_3341 bounds = start.method_14969();
+                  if (bounds != null && bounds.method_35418() >= minX && bounds.method_35415() <= maxX
+                     && bounds.method_35420() >= minZ && bounds.method_35417() <= maxZ) {
+                     return id;
+                  }
+               }
+            }
+         }
+      } catch (RuntimeException | LinkageError error) {
+         // If a server does not provide structure registry metadata, fall back to block signals.
+      }
+      return null;
+   }
+
+   private static boolean isNaturalStructureId(String id) {
+      int separator = id.indexOf(':');
+      String path = separator >= 0 ? id.substring(separator + 1) : id;
+      return path.startsWith("village_") || path.equals("pillager_outpost")
+         || path.equals("woodland_mansion") || path.equals("ocean_monument") || path.equals("monument")
+         || path.equals("ocean_ruin_warm") || path.equals("ocean_ruin_cold")
+         || path.equals("shipwreck") || path.equals("shipwreck_beached")
+         || path.equals("desert_pyramid") || path.equals("jungle_pyramid")
+         || path.equals("swamp_hut") || path.equals("igloo") || path.equals("trail_ruins")
+         || path.equals("ancient_city") || path.equals("mineshaft") || path.equals("mineshaft_mesa")
+         || path.equals("stronghold") || path.equals("buried_treasure")
+         || path.startsWith("ruined_portal") || path.equals("nether_fortress")
+         || path.equals("bastion_remnant") || path.equals("end_city")
+         || path.equals("nether_fossil") || path.equals("trial_chambers");
    }
 
    private void rebuildMobClusterCounts(class_638 world) {
