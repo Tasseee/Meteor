@@ -30,7 +30,7 @@ public class Coordinates extends HudModule {
             if (key.equals("the_nether")) {
                line = line + "  (OW " + x * 8 + " " + z * 8 + ")";
             } else if (key.equals("overworld")) {
-               line = line + "  (N " + x / 8 + " " + z / 8 + ")";
+               line = line + "  (N " + Math.floorDiv(x, 8) + " " + Math.floorDiv(z, 8) + ")";
             }
          }
 
