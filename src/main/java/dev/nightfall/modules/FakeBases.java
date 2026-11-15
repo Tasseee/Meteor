@@ -24,6 +24,11 @@ public final class FakeBases extends Module {
    }
 
    @Override
+   public void onWorldLeave() {
+      WaypointManager.removeCategory(CATEGORY);
+   }
+
+   @Override
    public void renderHud(class_332 ctx) {
       if (mc.field_1724 != null && Projection.valid()) {
          for (Waypoint w : WaypointManager.all()) {
