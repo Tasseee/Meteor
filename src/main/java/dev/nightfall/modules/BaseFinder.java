@@ -49,6 +49,7 @@ public class BaseFinder extends Module {
    private final NumberSetting rescan = this.add(new NumberSetting("Rescan (s)", 8.0, 2.0, 120.0, 1.0));
    private final NumberSetting threshold = this.add(new NumberSetting("Min Score", 6.0, 3.0, 100.0, 1.0));
    private final NumberSetting minSignals = this.add(new NumberSetting("Min. Signaltypen", 2.0, 1.0, 10.0, 1.0));
+   private final NumberSetting fakeSimilarity = this.add(new NumberSetting("Fake-Base-Aehnlichkeit (%)", 35.0, 5.0, 75.0, 5.0));
    private final NumberSetting wStorage = this.add(new NumberSetting("Gewicht Storage", 1.0, 0.1, 5.0, 0.1));
    private final NumberSetting wHopper = this.add(new NumberSetting("Gewicht Hopper", 1.5, 0.1, 5.0, 0.1));
    private final NumberSetting wFurnace = this.add(new NumberSetting("Gewicht Furnace", 0.7, 0.1, 5.0, 0.1));
@@ -693,7 +694,7 @@ public class BaseFinder extends Module {
 
    private boolean isRepeatedFakePattern(int storage, int shulker, int hopper, int furnace, int redstone, int spawner, int cx, int cz) {
       for (BaseFinder.FakePattern p : this.fakePatterns) {
-         if (similarFingerprint(p, storage, shulker, hopper, furnace, redstone, spawner)) {
+         if (similarFingerprint(p, storage, shulker, hopper, furnace, redstone, spawner, this.fakeSimilarity.get() / 100.0)) {
             String location = cx + "," + cz;
             if (!p.seenChunks.contains(location)) {
                p.seenChunks.add(location);
@@ -739,7 +740,7 @@ public class BaseFinder extends Module {
    }
 
    private static boolean similarFingerprint(
-      BaseFinder.FakePattern pattern, int storage, int shulker, int hopper, int furnace, int redstone, int spawner
+      BaseFinder.FakePattern pattern, int storage, int shulker, int hopper, int furnace, int redstone, int spawner, double similarity
    ) {
       int[] previous = {pattern.storage, pattern.shulker, pattern.hopper, pattern.furnace, pattern.redstone, pattern.spawner};
       int[] current = {storage, shulker, hopper, furnace, redstone, spawner};
@@ -758,13 +759,13 @@ public class BaseFinder extends Module {
          // For present categories, allow modest count drift from small edits.
          int tolerance = a == 0 || b == 0
             ? 1
-            : Math.max(2, Math.round(Math.max(a, b) * 0.35F));
+            : Math.max(2, Math.round(Math.max(a, b) * similarity));
          if (Math.abs(a - b) > tolerance) return false;
       }
 
       // At least one feature type must remain in common, and the overall size
       // must stay close enough to avoid merging unrelated storage layouts.
-      int totalTolerance = Math.max(4, Math.round(Math.max(previousTotal, currentTotal) * 0.25F));
+      int totalTolerance = Math.max(4, Math.round(Math.max(previousTotal, currentTotal) * similarity * 0.7));
       return sharedTypes > 0 && Math.abs(previousTotal - currentTotal) <= totalTolerance;
    }
 
