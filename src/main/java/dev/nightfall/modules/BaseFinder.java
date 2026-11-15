@@ -111,7 +111,7 @@ public class BaseFinder extends Module {
    }
 
    public String versionStatus() {
-      return this.gameVersion + (this.versionCompatible ? " | Block-IDs OK" : " | Block-ID-WARNUNG");
+      return this.gameVersion + (this.versionCompatible ? " IDs_OK" : " IDs_WARN");
    }
 
    private void checkGameVersion() {
