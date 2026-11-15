@@ -84,7 +84,7 @@ public class Nightfall implements ClientModInitializer {
          WaypointManager.save();
          Config.save();
       });
-      LOGGER.info("{} {} geladen", "Nightfall", "0.5.15");
+      LOGGER.info("{} {} geladen", NAME, VERSION);
    }
 
    private void onTick(class_310 mc) {
