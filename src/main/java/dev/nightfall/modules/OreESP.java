@@ -23,15 +23,12 @@ public final class OreESP extends Module {
    private final NumberSetting maxBlocks = this.add(new NumberSetting("Max Markierungen", 500.0, 20.0, 1000.0, 20.0));
    private final BoolSetting groupVeins = this.add(new BoolSetting("Adern zusammenfassen", true));
    private final ColorSetting veinColor = this.add(new ColorSetting("Adern-Farbe", 0x00FF00));
-   private final BoolSetting showWaypoint = this.add(new BoolSetting("Nächstes Erz anzeigen", true));
    private final List<class_238> found = new ArrayList<>();
    private final Set<String> announcedVeins = new HashSet<>();
    private final Set<OrePos> previousOres = new HashSet<>();
    private int timer;
    private long sessionTicks;
    private int minedOreCount;
-   private OrePos nearestOre;
-   private double nearestOreDistanceSquared;
 
    public OreESP() {
       super("OreESP", "Markiert Erze im geladenen Gebiet, fasst Adern zusammen und zeigt Farm-Statistiken.", Category.VISUALS);
@@ -53,8 +50,6 @@ public final class OreESP extends Module {
       this.timer = 12;
       this.found.clear();
       List<OrePos> ores = new ArrayList<>();
-      this.nearestOre = null;
-      this.nearestOreDistanceSquared = Double.MAX_VALUE;
       Set<OrePos> currentOres = new HashSet<>();
       class_2338 p = mc.field_1724.method_24515();
       int r = this.range.getInt();
@@ -78,14 +73,6 @@ public final class OreESP extends Module {
                         OrePos ore = new OrePos(x, y, z);
                         ores.add(ore);
                         currentOres.add(ore);
-                        double dx = x - p.method_10263();
-                        double dy = y - p.method_10264();
-                        double dz = z - p.method_10260();
-                        double distanceSquared = dx * dx + dy * dy + dz * dz;
-                        if (distanceSquared < this.nearestOreDistanceSquared) {
-                           this.nearestOreDistanceSquared = distanceSquared;
-                           this.nearestOre = ore;
-                        }
                      }
                   }
                }
@@ -172,12 +159,6 @@ public final class OreESP extends Module {
             ? String.format(java.util.Locale.ROOT, "%.1f s/Erz", elapsedSeconds / this.minedOreCount)
             : "-- s/Erz";
          ctx.method_51433(mc.field_1772, "OreESP: " + this.minedOreCount + " abgebaut | Ø " + average, 8, 96, -1, true);
-         if (this.showWaypoint.get() && this.nearestOre != null) {
-            double distance = Math.sqrt(this.nearestOreDistanceSquared);
-            String target = "Nächstes Erz: " + this.nearestOre.x() + " " + this.nearestOre.y() + " " + this.nearestOre.z()
-               + " | " + String.format(java.util.Locale.ROOT, "%.1f", distance) + " Blöcke";
-            ctx.method_51433(mc.field_1772, target, 8, 108, this.veinColor.rgb() | 0xFF000000, true);
-         }
       }
    }
 
@@ -191,8 +172,6 @@ public final class OreESP extends Module {
    protected void onDisable() {
       this.found.clear();
       this.announcedVeins.clear();
-      this.nearestOre = null;
-      this.nearestOreDistanceSquared = Double.MAX_VALUE;
       this.resetSession();
       this.timer = 0;
    }
