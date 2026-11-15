@@ -3,6 +3,7 @@ package dev.nightfall.modules;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
+import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Draw;
 import dev.nightfall.util.Projection;
@@ -21,12 +22,16 @@ public final class OreESP extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 48.0, 8.0, 96.0, 4.0));
    private final NumberSetting maxBlocks = this.add(new NumberSetting("Max Markierungen", 500.0, 20.0, 1000.0, 20.0));
    private final BoolSetting groupVeins = this.add(new BoolSetting("Adern zusammenfassen", true));
+   private final ColorSetting veinColor = this.add(new ColorSetting("Adern-Farbe", 0x00FF00));
    private final List<class_238> found = new ArrayList<>();
    private final Set<String> announcedVeins = new HashSet<>();
+   private final Set<OrePos> previousOres = new HashSet<>();
    private int timer;
+   private long sessionTicks;
+   private int minedOreCount;
 
    public OreESP() {
-      super("OreESP", "Markiert Erze im geladenen Gebiet; zusammenhängende Adern können eine gemeinsame Box erhalten.", Category.VISUALS);
+      super("OreESP", "Markiert Erze im geladenen Gebiet, fasst Adern zusammen und zeigt Farm-Statistiken.", Category.VISUALS);
    }
 
    private boolean isOre(class_2248 block) {
@@ -39,10 +44,13 @@ public final class OreESP extends Module {
 
    @Override
    public void onTick() {
-      if (mc.field_1724 == null || mc.field_1687 == null || this.timer-- > 0) return;
+      if (mc.field_1724 == null || mc.field_1687 == null) return;
+      this.sessionTicks++;
+      if (this.timer-- > 0) return;
       this.timer = 12;
       this.found.clear();
       List<OrePos> ores = new ArrayList<>();
+      Set<OrePos> currentOres = new HashSet<>();
       class_2338 p = mc.field_1724.method_24515();
       int r = this.range.getInt();
       int cap = this.maxBlocks.getInt();
@@ -61,12 +69,28 @@ public final class OreESP extends Module {
                   for (int y = minY; y <= maxY && ores.size() < cap; y++) {
                      class_2338 bp = new class_2338(x, y, z);
                      class_2248 block = mc.field_1687.method_8320(bp).method_26204();
-                     if (this.isOre(block)) ores.add(new OrePos(x, y, z));
+                     if (this.isOre(block)) {
+                        OrePos ore = new OrePos(x, y, z);
+                        ores.add(ore);
+                        currentOres.add(ore);
+                     }
                   }
                }
             }
          }
       }
+
+      // Count ore positions that disappeared while they remained inside the scanned, loaded area.
+      // This is an estimate: another player or a world update can also remove an ore block.
+      for (OrePos old : this.previousOres) {
+         if (old.x() < minX || old.x() > maxX || old.y() < minY || old.y() > maxY
+            || old.z() < minZ || old.z() > maxZ || currentOres.contains(old)) continue;
+         if (mc.field_1687.method_2935().method_21730(old.x() >> 4, old.z() >> 4) == null) continue;
+         class_2338 oldPos = new class_2338(old.x(), old.y(), old.z());
+         if (!this.isOre(mc.field_1687.method_8320(oldPos).method_26204())) this.minedOreCount++;
+      }
+      this.previousOres.clear();
+      this.previousOres.addAll(currentOres);
 
       if (this.groupVeins.get()) {
          this.groupConnectedOres(ores);
@@ -125,14 +149,40 @@ public final class OreESP extends Module {
 
    @Override
    public void renderHud(class_332 ctx) {
-      if (Projection.valid()) for (class_238 box : this.found) Draw.box(ctx, box, -16711936, 2, true);
+      if (Projection.valid()) {
+         int color = this.veinColor.rgb() | 0xFF000000;
+         for (class_238 box : this.found) Draw.box(ctx, box, color, 2, true);
+      }
+      if (mc.field_1724 != null && this.sessionTicks > 0L) {
+         double elapsedSeconds = this.sessionTicks / 20.0;
+         String average = this.minedOreCount > 0
+            ? String.format(java.util.Locale.ROOT, "%.1f s/Erz", elapsedSeconds / this.minedOreCount)
+            : "-- s/Erz";
+         ctx.method_51433(mc.field_1772, "OreESP: " + this.minedOreCount + " abgebaut | Ø " + average, 8, 96, -1, true);
+      }
+   }
+
+   private void resetSession() {
+      this.sessionTicks = 0L;
+      this.minedOreCount = 0;
+      this.previousOres.clear();
    }
 
    @Override
-   protected void onDisable() { this.found.clear(); this.announcedVeins.clear(); }
+   protected void onDisable() {
+      this.found.clear();
+      this.announcedVeins.clear();
+      this.resetSession();
+      this.timer = 0;
+   }
 
    @Override
-   public void onWorldLeave() { this.found.clear(); this.announcedVeins.clear(); this.timer = 0; }
+   public void onWorldLeave() {
+      this.found.clear();
+      this.announcedVeins.clear();
+      this.resetSession();
+      this.timer = 0;
+   }
 
    private record OrePos(int x, int y, int z) {
    }
