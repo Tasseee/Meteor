@@ -6,7 +6,7 @@
 - **Quellcode-SHA StaffWatch:** `bb2087c9a87ad618d18a37ba442de61f5cffbc63`
 - **Tab-API-Änderung:** `getListedPlayerListEntries()` / `method_45732()`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
-- **Quellcode-SHA AntiVanishHints:** `dfd43801f0544d7e51ce2cab031a1c6a6538d997`
+- **Quellcode-SHA AntiVanishHints:** `84cab8250292336ad8bc967727d45db92501dad0`
 - **Mitgeprüfte Dateien:** `ListSetting.java`, `Commands.java`, `Config.java`, `Nightfall.java`, `ModuleManager.java`, `AntiVanishHints.java`
 
 ## Zweck und Verhalten
@@ -88,7 +88,7 @@ Vor der Korrektur veränderten `/nf staff add` und `/nf staff del` die `ListSett
 `AntiVanishHints` liest dieselbe `StaffWatch.staffNames`-Liste und baut dieselben beiden Präsenzmengen erneut auf. Es zeigt bis zu fünf Namen in einem zweiten HUD-Bereich ab `y = 90`. Sind beide Module aktiviert, können die Hinweise daher doppelt bzw. in leicht anderer Form erscheinen und die Tab-/Entity-Mengen werden doppelt pro HUD-Frame aufgebaut.
 
 - **Bewertung:** Aus dem Quellcode ersichtliche Überschneidung; möglicherweise bewusst als getrennte HUD-Ansicht angelegt.
-- **Status:** Behoben. `AntiVanishHints.renderHud()` kehrt jetzt sofort zurück, wenn `StaffWatch` aktiviert ist. So bleibt bei gleichzeitig aktivierten Modulen nur die StaffWatch-Ausgabe sichtbar und der zweite Renderpfad baut nicht zusätzlich seine Vergleichsmengen auf. Ist StaffWatch deaktiviert, kann AntiVanishHints weiterhin die gemeinsame manuelle Liste anzeigen.
+- **Status:** Behoben. `AntiVanishHints.renderHud()` kehrt jetzt sofort zurück, wenn `StaffWatch` aktiviert ist. So bleibt bei gleichzeitig aktivierten Modulen nur die StaffWatch-Ausgabe sichtbar und der zweite Renderpfad baut nicht zusätzlich seine Vergleichsmengen auf. Ist StaffWatch deaktiviert, kann AntiVanishHints weiterhin die gemeinsame manuelle Liste anzeigen. Zusätzlich werden Tab-Einträge, Profile, Welt-Spieler und Profilnamen vor dem Lesen auf `null` bzw. leere Werte geprüft.
 
 ### Grenzen der Interpretation
 
@@ -122,4 +122,4 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | Zweitprüfung: Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert, Präsenzdaten pro Tick aktualisiert, Tab-Abgleich auf `getListedPlayerListEntries()` korrigiert den alleinigen TAB-Status als `TAB/NETZ` gekennzeichnet und die Original-Schreibweise gefundener Profilnamen im HUD wiederhergestellt. |
+| 2026-11-16 | Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt und deren Nullprüfungen ergänzt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert, Präsenzdaten pro Tick aktualisiert, Tab-Abgleich auf `getListedPlayerListEntries()` korrigiert, alleinigen TAB-Status als `TAB/NETZ` gekennzeichnet und Original-Schreibweise gefundener Profilnamen im HUD wiederhergestellt. |
