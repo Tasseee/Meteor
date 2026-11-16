@@ -1,52 +1,48 @@
 # TargetMarker
 
-- **Registrierter Modulname:** `TargetMarker`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/TargetMarker.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; HUD-Test offen
+- **Java-Klasse / Anzeigename:** `TargetMarker`
+- **Kategorie:** `VISUALS`
+- **Quellcode-SHA:** `8c49ef8603bbda72e1957659f0fc6d5d1299e70b`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Zeigt eine zusätzliche HUD-Markierung für die Entity direkt unter dem normalen Fadenkreuz. Es wird kein Ziel gesucht oder automatisch ausgewählt. Spieler selbst, tote Entities, geöffnete Screens und verborgenes HUD werden ignoriert.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Optionen |
+|---|---|---|
+| Stil | Karte | Karte, Kompakt, Fadenkreuz |
+| Akzentfarbe | RGB 9133302 | RGB |
+| Distanz anzeigen | an | Boolesch |
+| Leben anzeigen | an | Boolesch |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Zielquelle:** `mc.targetedEntity`, nicht eine eigene Zielauswahl.
+- **Nullfälle:** Spieler, Welt, Target, Screen und HUD-Sichtbarkeit werden geprüft.
+- **Label:** Entity-Name; Leben nur bei LivingEntity; Distanz mit `Locale.ROOT`.
+- **Kamera:** Kamera-Position wird verwendet, mit Spielerposition als Fallback.
+- **Ressourcen/Lifecycle:** keine eigenen Listener, Threads oder Ressourcen.
+- **Build/In-Game:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Funktionsfehler bestätigt.
+- Die Einstellung `Leben anzeigen` wirkt nur bei LivingEntities; bei anderen Entity-Typen bleibt sie wirkungslos. Das ist erwartbar, könnte aber im GUI klarer dargestellt werden.
+- Das Modul ist eine Anzeige des Vanilla-Fadenkreuz-Ziels und keine Kampffunktion.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] Karte/Kompakt/Fadenkreuz
+- [ ] Distanz-/Leben-Anzeige
+- [ ] Nicht-LivingEntity
+- [ ] Screen offen / HUD verborgen
+- [ ] Kamera-Fallback
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | TargetMarker codebasiert geprüft; keine Java-Änderung. |
