@@ -149,6 +149,7 @@ public final class SpotifyLyricsHud extends HudModule {
                .encodeToString(MessageDigest.getInstance("SHA-256").digest(this.verifier.getBytes(StandardCharsets.US_ASCII)));
             this.callbackServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 8888), 0);
             this.callbackServer.createContext("/callback", exchange -> {
+               boolean responseClosed = false;
                try {
                   String query = exchange.getRequestURI().getRawQuery();
                   Map<String, String> params = parseQuery(query == null ? "" : query);
@@ -159,6 +160,7 @@ public final class SpotifyLyricsHud extends HudModule {
                      exchange.sendResponseHeaders(200, body.length);
                      exchange.getResponseBody().write(body);
                      exchange.close();
+                     responseClosed = true;
                      this.exchangeCode(code);
                      return;
                   }
@@ -166,11 +168,15 @@ public final class SpotifyLyricsHud extends HudModule {
                   byte[] body = "Spotify-Verbindung fehlgeschlagen. Du kannst dieses Fenster schliessen.".getBytes(StandardCharsets.UTF_8);
                   exchange.sendResponseHeaders(400, body.length);
                   exchange.getResponseBody().write(body);
+                  this.status = "Spotify-Anmeldung fehlgeschlagen (ungueltige Rueckgabe)";
+                  this.loginInProgress = false;
                } catch (Throwable var10) {
                   this.status = "Spotify-Anmeldung fehlgeschlagen";
                   this.loginInProgress = false;
-                  return;
                } finally {
+                  if (!responseClosed) {
+                     exchange.close();
+                  }
                   this.closeCallbackServer();
                }
             });
