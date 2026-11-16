@@ -1,7 +1,7 @@
 package dev.nightfall.mixin;
 
 import dev.nightfall.module.ModuleManager;
-import dev.nightfall.modules.ItemGlint;
+import dev.nightfall.modules.ItemGlow;
 import net.minecraft.class_1799;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -18,7 +18,7 @@ public abstract class ItemStackGlintMixin {
    private void nightfall$forceItemGlint(CallbackInfoReturnable<Boolean> cir) {
       try {
          class_1799 stack = (class_1799)(Object)this;
-         if (ModuleManager.get(ItemGlint.class).forceGlint(stack)) {
+         if (ModuleManager.get(ItemGlow.class).forceGlint(stack)) {
             cir.setReturnValue(true);
          }
       } catch (Throwable var3) {
