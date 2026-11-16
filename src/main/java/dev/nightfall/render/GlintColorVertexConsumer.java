@@ -1,19 +1,34 @@
 package dev.nightfall.render;
 
+import java.util.function.FloatSupplier;
 import java.util.function.IntSupplier;
 import net.minecraft.class_4588;
 
+/**
+ * Applies the configured Item Glow color and opacity to Minecraft's existing
+ * enchanted-item overlay without replacing its render layer or texture.
+ */
 public final class GlintColorVertexConsumer implements class_4588 {
    private final class_4588 delegate;
    private final IntSupplier rgbSupplier;
+   private final FloatSupplier opacitySupplier;
 
-   public GlintColorVertexConsumer(class_4588 delegate, IntSupplier rgbSupplier) {
+   public GlintColorVertexConsumer(class_4588 delegate, IntSupplier rgbSupplier, FloatSupplier opacitySupplier) {
       this.delegate = delegate;
       this.rgbSupplier = rgbSupplier;
+      this.opacitySupplier = opacitySupplier;
    }
 
    private int rgb() {
-      return this.rgbSupplier.getAsInt() & 16777215;
+      return this.rgbSupplier.getAsInt() & 0xFFFFFF;
+   }
+
+   private float opacity() {
+      return Math.max(0.0F, Math.min(2.0F, this.opacitySupplier.getAsFloat()));
+   }
+
+   private int scaleAlpha(int alpha) {
+      return Math.max(0, Math.min(255, Math.round(alpha * this.opacity())));
    }
 
    public class_4588 method_22912(float x, float y, float z) {
@@ -23,20 +38,21 @@ public final class GlintColorVertexConsumer implements class_4588 {
 
    public class_4588 method_39415(int color) {
       int rgb = this.rgb();
-      int alpha = color >>> 24 & 0xFF;
+      int alpha = this.scaleAlpha(color >>> 24 & 0xFF);
       this.delegate.method_39415(alpha << 24 | rgb);
       return this;
    }
 
    public class_4588 method_1336(int red, int green, int blue, int alpha) {
       int rgb = this.rgb();
-      this.delegate.method_1336(rgb >> 16 & 0xFF, rgb >> 8 & 0xFF, rgb & 0xFF, alpha);
+      this.delegate.method_1336(rgb >> 16 & 0xFF, rgb >> 8 & 0xFF, rgb & 0xFF, this.scaleAlpha(alpha));
       return this;
    }
 
    public class_4588 method_22915(float red, float green, float blue, float alpha) {
       int rgb = this.rgb();
-      this.delegate.method_1336(rgb >> 16 & 0xFF, rgb >> 8 & 0xFF, rgb & 0xFF, Math.max(0, Math.min(255, Math.round(alpha * 255.0F))));
+      float adjustedAlpha = Math.max(0.0F, Math.min(1.0F, alpha * this.opacity()));
+      this.delegate.method_1336(rgb >> 16 & 0xFF, rgb >> 8 & 0xFF, rgb & 0xFF, Math.round(adjustedAlpha * 255.0F));
       return this;
    }
 
