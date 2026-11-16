@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import dev.nightfall.Nightfall;
+import dev.nightfall.module.Module;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
@@ -23,6 +24,7 @@ public final class ModuleUsageStats {
    private static final Map<String, UsageRecord> RECORDS = new HashMap<>();
    private static final Map<String, Long> ACTIVE_SINCE = new HashMap<>();
    private static boolean dirty;
+   private static boolean tracking;
    private static long lastSaveAt;
 
    private ModuleUsageStats() {
@@ -32,6 +34,7 @@ public final class ModuleUsageStats {
       RECORDS.clear();
       ACTIVE_SINCE.clear();
       dirty = false;
+      tracking = false;
       lastSaveAt = System.currentTimeMillis();
       if (!Files.exists(FILE)) {
          return;
@@ -56,8 +59,17 @@ public final class ModuleUsageStats {
       }
    }
 
+   public static void startTracking(Iterable<Module> modules) {
+      tracking = true;
+      for (Module module : modules) {
+         if (module != null && module.isEnabled()) {
+            onEnabled(module.getName());
+         }
+      }
+   }
+
    public static void onEnabled(String moduleName) {
-      if (moduleName == null || moduleName.isBlank() || ACTIVE_SINCE.containsKey(moduleName)) {
+      if (!tracking || moduleName == null || moduleName.isBlank() || ACTIVE_SINCE.containsKey(moduleName)) {
          return;
       }
 
@@ -70,6 +82,9 @@ public final class ModuleUsageStats {
    }
 
    public static void onDisabled(String moduleName) {
+      if (!tracking) {
+         return;
+      }
       Long startedAt = ACTIVE_SINCE.remove(moduleName);
       if (startedAt == null) {
          return;
