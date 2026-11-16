@@ -23,7 +23,7 @@ public abstract class ItemRendererOutlineMixin {
       class_1921 layer, class_10444.class_10445 glint, CallbackInfo ci
    ) {
       try {
-         ItemGlowRenderer.render(matrices, vertexConsumers, quads);
+         ItemGlowRenderer.render(displayContext, matrices, vertexConsumers, quads);
       } catch (Throwable ignored) {
          // A cosmetic pass must never interrupt Minecraft's item rendering.
       }
