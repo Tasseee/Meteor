@@ -47,8 +47,10 @@ public class Nightfall implements ClientModInitializer {
    private boolean prevMap;
 
    public void onInitializeClient() {
+      ModuleUsageStats.load();
       ModuleManager.init();
       Config.load();
+      ModuleUsageStats.startTracking(ModuleManager.all());
       SkyVisualRenderer.register();
       HatsRenderer.register();
       FakeLagGhostRenderer.register();
@@ -70,6 +72,7 @@ public class Nightfall implements ClientModInitializer {
          ModuleManager.onWorldLeave();
          SeedResultListener.resetForNewWorld();
          Config.save();
+         ModuleUsageStats.save();
       });
       ClientReceiveMessageEvents.GAME.register((Game)(message, overlay) -> {
          if (!overlay) {
@@ -83,11 +86,13 @@ public class Nightfall implements ClientModInitializer {
          ModuleManager.get(BaseFinder.class).saveMarks();
          WaypointManager.save();
          Config.save();
+         ModuleUsageStats.save();
       });
       LOGGER.info("{} {} geladen", NAME, VERSION);
    }
 
    private void onTick(class_310 mc) {
+      ModuleUsageStats.tick();
       ModuleManager.get(AutoReconnect.class).tickDisconnected(mc);
       Nightfall.KeySound.tick(
          mc, mc.field_1724 != null && mc.field_1687 != null && (mc.field_1755 instanceof NightfallGuiScreen || mc.field_1755 instanceof HudEditorScreen)
