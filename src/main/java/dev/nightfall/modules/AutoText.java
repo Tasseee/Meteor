@@ -62,7 +62,7 @@ public final class AutoText extends Module {
    @Override
    public void onTick() {
       if (mc.field_1724 != null && mc.field_1724.field_3944 != null) {
-         List<String> list = this.messageList();
+         List<String> list = this.messages.get();
          if (!list.isEmpty()) {
             this.ticks++;
             if (this.ticks >= this.interval.getInt() * 20) {
