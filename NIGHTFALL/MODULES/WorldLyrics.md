@@ -3,7 +3,7 @@
 - **Status:** Code geprüft; Render-/In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `WorldLyrics`
 - **Kategorie:** `VISUALS`
-- **Quellcode-SHA:** `4f46ff9e6b3dcf529877e5208218806277941054`
+- **Aktueller Quellcode-SHA:** `e9714d1ce7f40ab1bd5dfc1a96ad2c7633fdf82f`
 - **Abhängigkeit:** `SpotifyLyricsHud`, `Projection`
 
 ## Zweck und Verhalten
@@ -39,7 +39,9 @@ Beim Aktivieren schaltet das Modul SpotifyLyricsHud automatisch ein, falls es au
 
 ### WL-01 – Matrix-Cleanup absichern
 
-Wenn das Text-Rendering innerhalb von `drawWord` eine Exception wirft, erreicht der Code möglicherweise `popMatrix()` nicht. Eine `try/finally`-Bereinigung wäre eine sinnvolle defensive Korrektur. Noch nicht umgesetzt.
+**Behoben im Code:** `512acb87a9cbd655b8329819dcbe6a3bab2b56e8`.
+
+Das Text-Rendering in `drawWord` liegt jetzt in einem `try/finally`, sodass `popMatrix()` auch bei einer Render-Exception ausgeführt wird. Build- und In-Game-Test stehen noch aus.
 
 ### WL-02 – mögliche Renderlast
 
@@ -66,4 +68,4 @@ Das Einschalten von WorldLyrics aktiviert SpotifyLyricsHud automatisch. Das ist 
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | WorldLyrics anhand der Modulklasse geprüft; keine Java-Änderung. |
+| 2026-11-16 | WorldLyrics geprüft; Matrix-Cleanup in `drawWord` abgesichert; Tests offen. |
