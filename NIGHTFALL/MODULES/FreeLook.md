@@ -1,52 +1,48 @@
 # FreeLook
 
-- **Registrierter Modulname:** `FreeLook`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/FreeLook.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Kamera-/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `FreeLook`
+- **Kategorie:** `VISUALS`
+- **Aktueller Quellcode-SHA:** `836f98635a8c2ebddeac7f716c52f61da2705c67`
+- **Mixin:** `CameraMixin` (`e269e58dc14a6fcd034b5c012efacf2040357d1f`)
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Erlaubt, die Kamera mit der Maus unabhängig von der tatsächlichen Spieler-Blickrichtung zu drehen. Position und Blickrichtung des Spielers werden während aktiver FreeLook-Ansicht auf die gespeicherten Werte zurückgesetzt. Beim Aktivieren wird Freecam deaktiviert.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+Keine modulspezifischen Einstellungen; Maus-Skalierung ist fest auf 0,15 eingestellt.
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Nullfälle:** Aktivierung wird verzögert, bis Spieler und Welt vorhanden sind.
+- **Kamera:** CameraMixin übernimmt nur die Kamera-Rotation, nicht die Kamera-Position.
+- **Spielerzustand:** gespeicherte Spieler-Yaw/Pitch werden pro Tick erneut gesetzt.
+- **Lifecycle:** bei Deaktivierung wird gespeicherte Yaw/Pitch wiederhergestellt; beim Weltwechsel wird der aktive Kamerastatus zurückgesetzt.
+- **Threading/Ressourcen:** keine eigenen Threads oder Listener.
+- **Allokationen:** pro Tick wurden zuvor zwei neue double-Arrays für die Cursorposition angelegt.
+  
+## Befunde und Verbesserungen
 
-## Nutzererfahrungen und Testberichte
+### FL-01 – Cursor-Arrays pro Tick neu angelegt
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+**Behoben:** `d9603126763f5a58d8d4edcf337dabaa7fcf0234`.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+Die beiden Ein-Element-Arrays sind jetzt Felder und werden über Ticks wiederverwendet. Das reduziert kurzlebige Allokationen, ohne die Mausberechnung zu verändern.
 
-## Fehler und Verbesserungsideen
+**Verifikation:** Quellcode gespeichert und erneut gelesen; Kamera-/In-Game-Test und Build offen.
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+## Offene Tests
+
+- [ ] Aktivieren bei vorhandener Welt
+- [ ] Aktivieren ohne Welt und späterer Beitritt
+- [ ] Yaw/Pitch-Rücksetzung nach Deaktivierung
+- [ ] Wechsel zwischen FreeLook und Freecam
+- [ ] Weltwechsel während aktivem FreeLook
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Cursor-Arrays wiederverwendet; Test offen. |
