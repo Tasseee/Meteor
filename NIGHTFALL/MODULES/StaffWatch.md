@@ -3,7 +3,7 @@
 - **Status:** Code verbessert; Build- und In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `StaffWatch`
 - **Kategorie:** `HUD` (über `HudModule`)
-- **Quellcode-SHA StaffWatch:** `b17447e60f35d4df145c072c7890fa73887ec607`
+- **Quellcode-SHA StaffWatch:** `bb2087c9a87ad618d18a37ba442de61f5cffbc63`
 - **Tab-API-Änderung:** `getListedPlayerListEntries()` / `method_45732()`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
 - **Quellcode-SHA AntiVanishHints:** `dfd43801f0544d7e51ce2cab031a1c6a6538d997`
@@ -101,6 +101,7 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 - Panel nutzt das aktuelle `Theme`-Farbschema, kompakte Zeilen und eine Legende.
 - Die Statusmengen werden pro Client-Tick aktualisiert und für das Rendern wiederverwendet.
 - HUD-Vorschau im Editor zeigt bei einer leeren Liste den Hinweis `Keine Namen eingetragen`.
+- Die HUD-Anzeige verwendet, sobald ein Name in TAB oder Welt gefunden wird, dessen originale Profil-Schreibweise. Der interne Vergleich bleibt kleingeschrieben und damit case-insensitive.
 - Es werden weiterhin ausschließlich manuell eingetragene Namen und lokal sichtbare TAB-/Entity-Daten verarbeitet.
 
 ## Offene Tests
@@ -108,6 +109,7 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 - [ ] Nur Tab-Eintrag (`TAB/NETZ`), nur Entity, beides und keine sichtbare Quelle
 - [ ] Auf HUGSMP und DonutSMP prüfen, ob TAB-Einträge lokal oder netzwerkweit sind; `TAB/NETZ` darf nicht als bestätigter Unterserverstatus verstanden werden
 - [ ] Groß-/Kleinschreibung sowie doppelte Einträge
+- [ ] Profil-Schreibweise für Treffer in TAB und geladener Welt
 - [ ] Mehr als acht eingetragene Namen (Sortierung und Anzeigegrenze)
 - [ ] Disconnect und Weltwechsel
 - [ ] Config-Speicherung direkt nach erfolgreichem `/nf staff add` und `/nf staff del` (inkl. Neustart)
@@ -120,4 +122,4 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | Zweitprüfung: Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert, Präsenzdaten pro Tick aktualisiert, Tab-Abgleich auf `getListedPlayerListEntries()` korrigiert und den alleinigen TAB-Status als `TAB/NETZ` gekennzeichnet. |
+| 2026-11-16 | Zweitprüfung: Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert, Präsenzdaten pro Tick aktualisiert, Tab-Abgleich auf `getListedPlayerListEntries()` korrigiert den alleinigen TAB-Status als `TAB/NETZ` gekennzeichnet und die Original-Schreibweise gefundener Profilnamen im HUD wiederhergestellt. |
