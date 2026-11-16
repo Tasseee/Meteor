@@ -110,7 +110,9 @@ public final class StaffWatch extends HudModule {
             Math.max(mc.field_1772.method_1727(legend), mc.field_1772.method_1727(disclaimer))
          ) + 18
       );
-      panelWidth = Math.min(panelWidth, Math.max(1, ctx.method_51421() - 16));
+      float displayScale = Math.max(0.5F, this.scale());
+      int maxPanelWidth = Math.max(1, (int)((ctx.method_51421() - 16) / displayScale));
+      panelWidth = Math.min(panelWidth, maxPanelWidth);
 
       this.w = panelWidth;
       this.h = 23 + shown * ROW_HEIGHT + 27;
@@ -155,11 +157,10 @@ public final class StaffWatch extends HudModule {
    }
 
    private void drawRow(class_332 ctx, String name, String status, int color, int x, int y, int nameWidth, int panelWidth) {
-      int indexColor = color;
       ctx.method_25294(x + 4, y, x + panelWidth - 4, y + ROW_HEIGHT, Theme.withAlpha(Theme.TEXT, 9));
-      ctx.method_25294(x + 5, y + 3, x + 7, y + ROW_HEIGHT - 3, indexColor);
+      ctx.method_25294(x + 5, y + 3, x + 7, y + ROW_HEIGHT - 3, color);
       ctx.method_51433(mc.field_1772, name, x + 11, y + 3, Theme.TEXT, true);
-      ctx.method_51433(mc.field_1772, status, x + 11 + nameWidth + 8, y + 3, indexColor, true);
+      ctx.method_51433(mc.field_1772, status, x + 11 + nameWidth + 8, y + 3, color, true);
    }
 
    private String status(String name, boolean tabAvailable) {
@@ -177,7 +178,7 @@ public final class StaffWatch extends HudModule {
       if (inWorld) {
          return "NUR WELT";
       }
-      return "NICHT SICHTBAR";
+      return "KEINE QUELLE";
    }
 
    private int statusColor(boolean inTab, boolean inWorld, boolean tabAvailable) {
