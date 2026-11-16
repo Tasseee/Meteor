@@ -4,8 +4,10 @@ import dev.nightfall.gui.HudEditorScreen;
 import dev.nightfall.module.HudModule;
 import dev.nightfall.module.setting.ListSetting;
 import dev.nightfall.util.Theme;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import net.minecraft.class_332;
 import net.minecraft.class_640;
@@ -21,6 +23,8 @@ public final class StaffWatch extends HudModule {
    public final ListSetting staffNames = this.add(new ListSetting("Beobachtete Namen"));
    private final Set<String> tabNames = new HashSet<>();
    private final Set<String> loadedNames = new HashSet<>();
+   private final Map<String, String> tabDisplayNames = new HashMap<>();
+   private final Map<String, String> worldDisplayNames = new HashMap<>();
    private boolean tabAvailable;
 
    public StaffWatch() {
@@ -58,13 +62,20 @@ public final class StaffWatch extends HudModule {
       this.tabAvailable = network != null;
       if (this.tabAvailable) {
          for (class_640 entry : network.method_45732()) {
-            if (entry == null || entry.method_2966() == null) {
+            if (entry == null) {
                continue;
             }
 
-            String name = entry.method_2966().name();
+            var profile = entry.method_2966();
+            if (profile == null) {
+               continue;
+            }
+
+            String name = profile.name();
             if (name != null && !name.isBlank()) {
-               this.tabNames.add(name.toLowerCase(Locale.ROOT));
+               String key = name.toLowerCase(Locale.ROOT);
+               this.tabNames.add(key);
+               this.tabDisplayNames.putIfAbsent(key, name);
             }
          }
       }
@@ -76,7 +87,9 @@ public final class StaffWatch extends HudModule {
 
          String name = player.method_7334().name();
          if (name != null && !name.isBlank()) {
-            this.loadedNames.add(name.toLowerCase(Locale.ROOT));
+            String key = name.toLowerCase(Locale.ROOT);
+            this.loadedNames.add(key);
+            this.worldDisplayNames.putIfAbsent(key, name);
          }
       }
    }
@@ -84,6 +97,8 @@ public final class StaffWatch extends HudModule {
    private void clearPresence() {
       this.tabNames.clear();
       this.loadedNames.clear();
+      this.tabDisplayNames.clear();
+      this.worldDisplayNames.clear();
       this.tabAvailable = false;
    }
 
@@ -124,7 +139,7 @@ public final class StaffWatch extends HudModule {
             }
 
             measured++;
-            nameWidth = Math.max(nameWidth, mc.field_1772.method_1727(name));
+            nameWidth = Math.max(nameWidth, mc.field_1772.method_1727(this.displayName(name)));
             String status = preview ? "VORSCHAU" : this.status(name, this.tabAvailable);
             statusWidth = Math.max(statusWidth, mc.field_1772.method_1727(status));
          }
@@ -175,7 +190,7 @@ public final class StaffWatch extends HudModule {
             boolean inWorld = this.loadedNames.contains(name);
             String status = preview ? "VORSCHAU" : this.status(name, this.tabAvailable);
             int color = preview ? COLOR_UNKNOWN : this.statusColor(inTab, inWorld, this.tabAvailable);
-            this.drawRow(ctx, name, status, color, x, rowY, nameWidth);
+            this.drawRow(ctx, this.displayName(name), status, color, x, rowY, nameWidth);
             rowY += ROW_HEIGHT;
             index++;
          }
@@ -210,6 +225,15 @@ public final class StaffWatch extends HudModule {
          return "NUR WELT";
       }
       return "KEINE QUELLE";
+   }
+
+   private String displayName(String normalizedName) {
+      String tabName = this.tabDisplayNames.get(normalizedName);
+      if (tabName != null) {
+         return tabName;
+      }
+
+      return this.worldDisplayNames.getOrDefault(normalizedName, normalizedName);
    }
 
    private int statusColor(boolean inTab, boolean inWorld, boolean hasTab) {
