@@ -1,52 +1,60 @@
 # StorageEsp
 
-- **Registrierter Modulname:** `StorageEsp`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/StorageEsp.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; In-Game-Test offen
+- **Java-Klasse:** `StorageEsp`
+- **Anzeigename:** `StorageESP`
+- **Kategorie:** `VISUALS`
+- **Modul-SHA:** `534201c15579c57a9a7a40f2a908600452563581`
+- **Gemeinsame Renderlogik:** `BlockEntityEsp`, `EspBase`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Markiert ausgewählte Block-Entities in geladenen Chunks: Truhen, Fässer, Shulker-Boxen, Endertruhen, Hopper und Öfen. Es werden Position und Typ markiert; Inhalte werden von dieser Klasse nicht ausgelesen.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard |
+|---|---:|
+| Chests | an |
+| Barrels | an |
+| Shulker | an |
+| Ender Chest | aus |
+| Hopper | aus |
+| Furnace | aus |
+| Reichweite (geerbt) | 96 |
+| Max Objekte (geerbt) | 512 |
+| Box / Linien / Transparenz | geerbte ESP-Einstellungen |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Scanintervall:** geerbte BlockEntityEsp-Suche läuft derzeit alle 11 geeigneten Ticks.
+- **Datenquelle:** Block-Entities aus geladenen Chunks; kein Chunk wird durch diese Klasse geladen.
+- **Sortierung:** Cache wird anhand der Kameraposition nach Distanz sortiert.
+- **Renderprüfung:** vor Zeichnen wird die Position erneut in der Welt aufgelöst und Filterzustand geprüft.
+- **Lifecycle:** Cache wird beim Deaktivieren und Weltwechsel geleert.
+- **Allokationen:** Scan baut temporäre Sortierlisten auf; Renderliste wird in Feldern gehalten.
+- **Build/In-Game:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+### SE-01 – Standardreichweite aus gemeinsamem Konstruktor war falsch
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+**Behoben im Code:** `c03f2c5205b1a6bec2c01d23ad48cdc4fe488a8d`.
 
-## Fehler und Verbesserungsideen
+Der gemeinsame Konstruktor `EspBase` nahm `defRange` entgegen, setzte den Standardwert aber fälschlich auf `maxRange`. Die Einstellung verwendet jetzt den übergebenen Default. StorageESP startet dadurch mit 96 statt 256; maximale Reichweite bleibt 256.
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+**Verifikation:** Code gespeichert und erneut gelesen; Build- und In-Game-Test offen.
+
+## Offene Tests
+
+- [ ] Alle sechs Block-Entity-Typen
+- [ ] Standardreichweite 96 und Maximum 256
+- [ ] Weltwechsel / Chunk laden-entladen
+- [ ] Sortierung nach Kameraentfernung
+- [ ] Max Objekte / Linien / Sichtbarkeit
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | StorageEsp und Shared-Scanpfad geprüft; geerbten Range-Default korrigiert. |
