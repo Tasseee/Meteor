@@ -1,60 +1,54 @@
 # OreESP
 
-- **Registrierter Modulname:** `OreESP`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/OreESP.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Leistungstest/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `OreESP`
+- **Kategorie:** `VISUALS`
+- **Quellcode-SHA:** `90755495544b0652adc9d1981dc0b2a20e4dca2c`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Markiert Blöcke, deren Registry-ID auf `_ore` endet, sowie Ancient Debris. Netherquarz und Nethergold werden ausdrücklich ausgeschlossen. Die Suche ist auf bereits geladene Chunks beschränkt.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen |
+|---|---:|---|
+| Reichweite | 48 | 8–96; Schritt 4 |
+| Max Markierungen | 500 | 20–1000; Schritt 20 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Scanintervall:** bei `timer-- > 0`, danach `timer=12`; Folge-Scans liegen 13 geeignete Ticks auseinander.
+- **Suchraum:** achsenparalleler X/Y/Z-Würfel innerhalb der Welt-Höhenlimits.
+- **Chunk-Sicherheit:** ungeladene Chunks werden übersprungen; es werden keine Chunks nachgeladen.
+- **Treffergrenze:** `Max Markierungen` begrenzt gespeicherte Treffer, nicht die Zahl untersuchter Blockpositionen.
+- **Lifecycle:** Trefferliste wird bei Deaktivierung und Weltwechsel geleert.
+- **Performance:** bei Reichweite 96 und wenigen Treffern kann ein großer Blockraum pro Scan geprüft werden.
+- **Build/In-Game:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Nutzerbeobachtung
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
-
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
-
-## Erste Nutzerbeobachtung
-
-- **Quelle:** Nutzerbericht, ungeprüft.
 - **Server:** HugoSMP.
-- **Beobachtung:** Die Erz-Anzeige/Erkennung erscheine laut Nutzer erst, wenn man direkt davor steht.
-- **Offene Frage:** Der Nutzer nannte „OreFinder“; aktuell ist `OreESP` registriert. Die Zuordnung ist noch nicht bestätigt.
-- **Beleg:** Noch nicht vorhanden.
+- **Bericht:** Erze würden laut Nutzer erst angezeigt, wenn man direkt davor steht.
+- **Status:** Unbestätigt; keine Screenshots, Logs oder Testbedingungen vorhanden.
+- **Namenszuordnung:** Nutzer sagte „OreFinder“; registriert ist aktuell `OreESP`. Die Gleichsetzung ist plausibel, aber nicht bestätigt.
 
-## Fehler und Verbesserungsideen
+## Befunde und Grenzen
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- Der Code durchsucht Blockzustände in geladenen Chunks, statt nur einen Block direkt vor dem Spieler zu prüfen. Ob das beobachtete Verhalten aus geladenen Chunks, Einstellungen, Anzeigeprojektion oder Serverkontext entsteht, ist ohne In-Game-Beleg offen.
+- Der Suchalgorithmus und die Erkennungsleistung werden nicht optimiert, um das Auffinden versteckter Ressourcen auf Multiplayer-Servern zu verbessern.
+- Performance-Risiko ist dokumentiert; keine Scan-Änderung vorgenommen.
+
+## Offene Tests
+
+- [ ] lokale Testwelt mit bekannten Erzpositionen
+- [ ] Range 8/96 und Markierungscap 20/1000
+- [ ] Chunk-Grenzen und ungeladene Chunks
+- [ ] HUD-Projektion bei verschiedenen Blickrichtungen
+- [ ] Bericht auf HugoSMP mit Einstellungen/Version/Beleg
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | OreESP geprüft; Nutzerbeobachtung als unbestätigt erhalten. |
