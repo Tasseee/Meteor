@@ -1,52 +1,50 @@
 # AutoFish
 
-- **Registrierter Modulname:** `AutoFish`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/AutoFish.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Build-/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `AutoFish`
+- **Kategorie:** `MISC`
+- **Aktueller Quellcode-SHA:** `8339706d7010b03c6dd950af9700365565c1072a`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Zieht die Angel bei erkanntem Biss ein. Das Modul wirft die Angel ausdrücklich nicht automatisch erneut aus. Erkannt wird ein Biss über den Zustand und die vertikale Geschwindigkeit des Fishing-Bobbers.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen / Bedeutung |
+|---|---:|---|
+| Mindestabstand (Ticks) | 12 | 8–40 Ticks |
+| Nur Haupthand | an | Wenn aus, kann eine Angel in der Nebenhand verwendet werden |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Nullfälle:** Spieler, Welt, Interaktionsmanager und aktiver Fishing-Bobber werden geprüft.
+- **Cooldown:** wird beim Aktivieren, Deaktivieren und Weltwechsel zurückgesetzt.
+- **Handauswahl:** bei aktivierter Option wird nur die Haupthand akzeptiert; ansonsten Haupthand bevorzugt, andernfalls Nebenhand.
+- **Fehlerbehandlung:** keine lokale Fehlerbehandlung; zentraler Tick-Handler greift.
+- **Threads/Ressourcen:** keine eigenen Listener, Ressourcen oder Threads.
+- **In-Game/Build:** noch nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+### AF-01 – Nebenhand-Option verwendete zuvor trotzdem Haupthand
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+**Behoben im Code:** `33fd4e7175048b968c07ea8bd36c408af5b918ca`.
 
-## Fehler und Verbesserungsideen
+Wenn `Nur Haupthand` ausgeschaltet war, wurde eine Angel in der Nebenhand nicht zuverlässig unterstützt, da die Interaktion stets mit `MAIN_HAND` ausgeführt wurde. Die Hand wird jetzt vor der Interaktion anhand des tatsächlich gehaltenen Angel-Items gewählt.
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+**Verifikation:** Code gespeichert und erneut gelesen; Build- und In-Game-Test offen.
+
+## Offene Tests
+
+- [ ] Angel in Haupthand bei Option an/aus
+- [ ] Angel nur in Nebenhand bei Option aus
+- [ ] Keine Angel, kein aktiver Bobber
+- [ ] Biss-Erkennung und Mindestabstand 8/40
+- [ ] Weltwechsel während Cooldown
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Nebenhand-Auswahl korrigiert; Build-/In-Game-Test offen. |
