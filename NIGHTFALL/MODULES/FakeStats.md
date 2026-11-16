@@ -1,52 +1,49 @@
 # FakeStats
 
-- **Registrierter Modulname:** `FakeStats`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/FakeStats.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; HUD-Test offen
+- **Java-Klasse / Anzeigename:** `FakeStats`
+- **Kategorie:** `HUD`
+- **Quellcode-SHA:** `67294f2ce28cf7c2241d37e809af4b61a1434042`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Zeigt eine rein lokale Statistik-Karte mit frei eingestelltem Anzeigenamen, Kills, Toden und Siegen. Der HUD-Titel sagt ausdrücklich `FAKE STATS · LOKAL`; die Beschreibung stellt klar, dass keine Serverdaten verändert werden.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen |
+|---|---:|---|
+| Anzeigename | Nightfall | maximal 32 Zeichen |
+| Fake Kills | 42 | 0–999.999 |
+| Fake Tode | 3 | 0–999.999 |
+| Fake Siege | 17 | 0–999.999 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Datenquelle:** ausschließlich lokale Settings.
+- **HUD:** Breite passt sich der längsten Zeile an; fünf Zeilen mit festem Abstand.
+- **Position:** Standard rechts mittig.
+- **Nullfälle:** verwendet den gemeinsamen HudModule-Renderpfad.
+- **Persistenz:** Settings werden über das Config-System gespeichert.
+- **Lifecycle/Threads:** keine eigenen Listener, Ressourcen oder Threads.
+- **In-Game/Build:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Fehler in der statischen Prüfung bestätigt.
+- Die Kennzeichnung `FAKE STATS · LOKAL` ist gut sichtbar und sollte bei jeder optischen Überarbeitung erhalten bleiben.
+- Bei sehr langem Anzeigenamen wächst die HUD-Breite; ein Test bei kleiner Auflösung ist sinnvoll.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] Werte 0 und 999.999
+- [ ] Anzeigename am 32-Zeichen-Limit
+- [ ] kleine Auflösung und GUI-Skalierung
+- [ ] Config speichern/laden
+- [ ] Modul aktivieren/deaktivieren
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | FakeStats codebasiert geprüft; keine Java-Änderung. |
