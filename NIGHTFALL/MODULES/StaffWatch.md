@@ -1,9 +1,11 @@
 # StaffWatch
 
-- **Status:** Zweitprüfung des Codes abgeschlossen; Build- und In-Game-Test offen
+- **Status:** Code verbessert; Build- und In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `StaffWatch`
 - **Kategorie:** `MISC`
-- **Quellcode-SHA:** `d872be110f93b70307decdd1bfc397ecaf1dc5d7`
+- **Quellcode-SHA StaffWatch:** `d872be110f93b70307decdd1bfc397ecaf1dc5d7` (unverändert)
+- **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
+- **Quellcode-SHA AntiVanishHints:** `b220bed5952f3e7705dd85a2f0a2a986be538010`
 - **Mitgeprüfte Dateien:** `ListSetting.java`, `Commands.java`, `Config.java`, `Nightfall.java`, `ModuleManager.java`, `AntiVanishHints.java`
 
 ## Zweck und Verhalten
@@ -53,14 +55,14 @@ Das HUD beginnt bei Pixelposition `(8, 44)`. Es zeichnet eine Überschrift und m
 `/nf staff add` und `/nf staff del` verändern die `ListSetting` direkt. Die beiden Command-Zweige rufen danach nicht `Config.save()` auf. Die Config wird zwar beim Disconnect, beim Client-Shutdown und beim Schließen des ClickGUI gespeichert; ein Client-Absturz vor einem dieser Speicherzeitpunkte kann aber die letzte Listenänderung verlieren.
 
 - **Bewertung:** Reproduzierbarer Befund aus dem Codepfad; kein In-Game-Absturztest durchgeführt.
-- **Status:** Dokumentiert, nicht im Java-Code geändert.
+- **Status:** Behoben. Bei erfolgreichem Hinzufügen oder Entfernen ruft der Command-Zweig jetzt direkt `Config.save()` auf. Bei einem Duplikat bzw. unbekannten Namen wird nicht unnötig gespeichert. Die Rückmeldung nennt das Speichern ausdrücklich.
 
 ### SW-02 – Überschneidung mit AntiVanishHints
 
 `AntiVanishHints` liest dieselbe `StaffWatch.staffNames`-Liste und baut dieselben beiden Präsenzmengen erneut auf. Es zeigt bis zu fünf Namen in einem zweiten HUD-Bereich ab `y = 90`. Sind beide Module aktiviert, können die Hinweise daher doppelt bzw. in leicht anderer Form erscheinen und die Tab-/Entity-Mengen werden doppelt pro HUD-Frame aufgebaut.
 
 - **Bewertung:** Aus dem Quellcode ersichtliche Überschneidung; möglicherweise bewusst als getrennte HUD-Ansicht angelegt.
-- **Status:** Dokumentiert, nicht geändert.
+- **Status:** Behoben. `AntiVanishHints.renderHud()` kehrt jetzt sofort zurück, wenn `StaffWatch` aktiviert ist. So bleibt bei gleichzeitig aktivierten Modulen nur die StaffWatch-Ausgabe sichtbar und der zweite Renderpfad baut nicht zusätzlich seine Vergleichsmengen auf. Ist StaffWatch deaktiviert, kann AntiVanishHints weiterhin die gemeinsame manuelle Liste anzeigen.
 
 ### Grenzen der Interpretation
 
@@ -72,12 +74,12 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 - [ ] Groß-/Kleinschreibung sowie doppelte Einträge
 - [ ] Mehr als acht eingetragene Namen (Sortierung und Anzeigegrenze)
 - [ ] Disconnect und Weltwechsel
-- [ ] Config-Speicherung nach normalem Disconnect / Client-Shutdown
-- [ ] Beide Module gleichzeitig aktiviert: Position und mögliche Doppelanzeige
+- [ ] Config-Speicherung direkt nach erfolgreichem `/nf staff add` und `/nf staff del` (inkl. Neustart)
+- [ ] Beide Module gleichzeitig aktiviert: nur StaffWatch-Ausgabe; AntiVanishHints allein bei deaktiviertem StaffWatch
 - [ ] Build und In-Game-Test
 
 ## Änderungsverlauf
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | Erneute Codeprüfung einschließlich Befehlen, ListSetting, Config-Lifecycle und AntiVanishHints; zwei Befunde dokumentiert; keine Java-Codeänderung. |
+| 2026-11-16 | Zweitprüfung: erfolgreiche Listenänderungen werden sofort gespeichert; doppelte AntiVanishHints-Ausgabe bei aktivem StaffWatch unterdrückt. |
