@@ -16,6 +16,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import dev.nightfall.render.SkyVisualRenderer;
 import dev.nightfall.scanner.WaypointManager;
 import dev.nightfall.seed.SeedResultListener;
+import dev.nightfall.util.ModuleUsageStats;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
