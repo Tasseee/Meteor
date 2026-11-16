@@ -131,8 +131,8 @@ public final class StaffWatch extends HudModule {
       }
 
       String countLabel = preview && emptyPreview ? "0/0" : shown + "/" + totalNames;
-      String legend = "TAB = Spielerliste · WELT = geladene Entity";
-      String disclaimer = "Nur Clientdaten · kein Vanish-Nachweis";
+      String legend = "TAB = Spielerliste (Netzwerk moeglich) · WELT = geladen";
+      String disclaimer = "TAB allein bestaetigt keinen Unterserver";
       int contentWidth = 32 + nameWidth + statusWidth;
       int panelWidth = Math.max(
          210,
@@ -204,7 +204,7 @@ public final class StaffWatch extends HudModule {
          return "TAB + WELT";
       }
       if (inTab) {
-         return "NUR TAB";
+         return "TAB/NETZ";
       }
       if (inWorld) {
          return "NUR WELT";
