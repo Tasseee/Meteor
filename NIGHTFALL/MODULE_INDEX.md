@@ -1,7 +1,7 @@
 # Modulindex
 
 **Inventur-Baseline:** `21dc9f822a6295cdb6238037f344da799bbcca26`  
-**Letzte Code-Prüfungen:** `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud` (Build-/In-Game-Tests offen)  
+**Letzte Code-Prüfungen:** `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations` und `WorldLyrics` (Build-/In-Game-Tests offen)  
 **Quelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`  
 **Registrierungen:** **101** – jede genau einmal im Audit-Ledger abgebildet.
 
@@ -52,14 +52,14 @@ Die einzelnen Prüfstände und offenen Punkte stehen in den jeweiligen Modulakte
 | [`EntityEsp`](MODULES/EntityEsp.md) | `src/main/java/dev/nightfall/modules/EntityEsp.java` | Code geprüft; Laufzeittest offen |
 | [`FakeBases`](MODULES/FakeBases.md) | `src/main/java/dev/nightfall/modules/FakeBases.java` | Vollständig geprüft |
 | [`FakeLag`](MODULES/FakeLag.md) | `src/main/java/dev/nightfall/modules/FakeLag.java` | Teilweise geprüft |
-| [`FakeStats`](MODULES/FakeStats.md) | `src/main/java/dev/nightfall/modules/FakeStats.java` | Offen |
+| [`FakeStats`](MODULES/FakeStats.md) | `src/main/java/dev/nightfall/modules/FakeStats.java` | Code geprüft; Laufzeittest offen |
 | [`FavoriteChunk`](MODULES/FavoriteChunk.md) | `src/main/java/dev/nightfall/modules/FavoriteChunk.java` | Code geprüft; Laufzeittest offen |
 | [`FirstPersonStyle`](MODULES/FirstPersonStyle.md) | `src/main/java/dev/nightfall/modules/FirstPersonStyle.java` | Code geprüft; Laufzeittest offen |
 | [`Fly`](MODULES/Fly.md) | `src/main/java/dev/nightfall/modules/Fly.java` | Offen |
 | [`Freecam`](MODULES/Freecam.md) | `src/main/java/dev/nightfall/modules/Freecam.java` | Offen |
 | [`FreeLook`](MODULES/FreeLook.md) | `src/main/java/dev/nightfall/modules/FreeLook.java` | Offen |
 | [`FriendManager`](MODULES/FriendManager.md) | `src/main/java/dev/nightfall/modules/FriendManager.java` | Code geprüft; Laufzeittest offen |
-| [`GlowESP`](MODULES/GlowESP.md) | `src/main/java/dev/nightfall/modules/GlowESP.java` | Offen |
+| [`GlowESP`](MODULES/GlowESP.md) | `src/main/java/dev/nightfall/modules/GlowESP.java` | Code geprüft; Laufzeittest offen |
 | [`GUITheme`](MODULES/GUITheme.md) | `src/main/java/dev/nightfall/modules/GUITheme.java` | Code geprüft; Laufzeittest offen |
 | [`Hats`](MODULES/Hats.md) | `src/main/java/dev/nightfall/modules/Hats.java` | Code geprüft; Laufzeittest offen |
 | [`HitParticles`](MODULES/HitParticles.md) | `src/main/java/dev/nightfall/modules/HitParticles.java` | Code geprüft; Laufzeittest offen |
@@ -83,7 +83,7 @@ Die einzelnen Prüfstände und offenen Punkte stehen in den jeweiligen Modulakte
 | [`OreESP`](MODULES/OreESP.md) | `src/main/java/dev/nightfall/modules/OreESP.java` | Offen |
 | [`ParticleTrail`](MODULES/ParticleTrail.md) | `src/main/java/dev/nightfall/modules/ParticleTrail.java` | Code geprüft; Laufzeittest offen |
 | [`PlayerEsp`](MODULES/PlayerEsp.md) | `src/main/java/dev/nightfall/modules/PlayerEsp.java` | Code geprüft; Laufzeittest offen |
-| [`SafeWalk`](MODULES/SafeWalk.md) | `src/main/java/dev/nightfall/modules/SafeWalk.java` | Offen |
+| [`SafeWalk`](MODULES/SafeWalk.md) | `src/main/java/dev/nightfall/modules/SafeWalk.java` | Code geprüft; Laufzeittest offen |
 | [`ScannerHud`](MODULES/ScannerHud.md) | `src/main/java/dev/nightfall/modules/ScannerHud.java` | Code geprüft; Laufzeittest offen |
 | [`SeedCracker`](MODULES/SeedCracker.md) | `src/main/java/dev/nightfall/modules/SeedCracker.java` | Offen |
 | [`ShieldBreaker`](MODULES/ShieldBreaker.md) | `src/main/java/dev/nightfall/modules/ShieldBreaker.java` | Offen |
@@ -95,7 +95,7 @@ Die einzelnen Prüfstände und offenen Punkte stehen in den jeweiligen Modulakte
 | [`SpotifyLyricsHud`](MODULES/SpotifyLyricsHud.md) | `src/main/java/dev/nightfall/modules/SpotifyLyricsHud.java` | Offen |
 | [`Sprint`](MODULES/Sprint.md) | `src/main/java/dev/nightfall/modules/Sprint.java` | Offen |
 | [`StaffWatch`](MODULES/StaffWatch.md) | `src/main/java/dev/nightfall/modules/StaffWatch.java` | Offen |
-| [`Step`](MODULES/Step.md) | `src/main/java/dev/nightfall/modules/Step.java` | Offen |
+| [`Step`](MODULES/Step.md) | `src/main/java/dev/nightfall/modules/Step.java` | Code geprüft; Laufzeittest offen |
 | [`StorageEsp`](MODULES/StorageEsp.md) | `src/main/java/dev/nightfall/modules/StorageEsp.java` | Code geprüft; Laufzeittest offen |
 | [`StructureESP`](MODULES/StructureESP.md) | `src/main/java/dev/nightfall/modules/StructureESP.java` | Offen |
 | [`TargetMarker`](MODULES/TargetMarker.md) | `src/main/java/dev/nightfall/modules/TargetMarker.java` | Offen |
@@ -112,8 +112,8 @@ Die einzelnen Prüfstände und offenen Punkte stehen in den jeweiligen Modulakte
 | [`WaterWalk`](MODULES/WaterWalk.md) | `src/main/java/dev/nightfall/modules/WaterWalk.java` | Offen |
 | [`WaypointHud`](MODULES/WaypointHud.md) | `src/main/java/dev/nightfall/modules/WaypointHud.java` | Vollständig geprüft |
 | [`Waypoints`](MODULES/Waypoints.md) | `src/main/java/dev/nightfall/modules/Waypoints.java` | Vollständig geprüft |
-| [`WeaponAnimations`](MODULES/WeaponAnimations.md) | `src/main/java/dev/nightfall/modules/WeaponAnimations.java` | Offen |
-| [`WorldLyrics`](MODULES/WorldLyrics.md) | `src/main/java/dev/nightfall/modules/WorldLyrics.java` | Offen |
+| [`WeaponAnimations`](MODULES/WeaponAnimations.md) | `src/main/java/dev/nightfall/modules/WeaponAnimations.java` | Code geprüft; Laufzeittest offen |
+| [`WorldLyrics`](MODULES/WorldLyrics.md) | `src/main/java/dev/nightfall/modules/WorldLyrics.java` | Code geprüft; Laufzeittest offen |
 
 ## Legende
 
