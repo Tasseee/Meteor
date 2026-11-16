@@ -12,13 +12,17 @@ import net.minecraft.class_640;
 
 public final class AntiVanishHints extends Module {
    public AntiVanishHints() {
-      super("AntiVanishHints", "Unverbindliche Client-Hinweise; Abwesenheit beweist keinen Vanish.", Category.MISC);
+      super("AntiVanishHints", "Zusätzliche Client-Hinweise nur bei deaktiviertem StaffWatch; Abwesenheit beweist keinen Vanish.", Category.MISC);
    }
 
    @Override
    public void renderHud(class_332 ctx) {
+      StaffWatch staff = ModuleManager.get(StaffWatch.class);
+      if (staff.isEnabled()) {
+         return;
+      }
+
       if (mc.field_1724 != null && mc.field_1687 != null && mc.method_1562() != null) {
-         StaffWatch staff = ModuleManager.get(StaffWatch.class);
          Set<String> names = staff.staffNames.get();
          if (!names.isEmpty()) {
             Set<String> tab = new HashSet<>();
