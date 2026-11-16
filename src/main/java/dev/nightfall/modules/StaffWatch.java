@@ -38,6 +38,11 @@ public final class StaffWatch extends HudModule {
    }
 
    @Override
+   protected void onDisable() {
+      this.clearPresence();
+   }
+
+   @Override
    public void onWorldLeave() {
       this.clearPresence();
    }
