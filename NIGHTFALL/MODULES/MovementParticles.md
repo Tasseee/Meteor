@@ -1,52 +1,53 @@
 # MovementParticles
 
-- **Registrierter Modulname:** `MovementParticles`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/MovementParticles.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `MovementParticles`
+- **Kategorie:** `VISUALS`
+- **Quellcode-SHA:** `2d93d78b8bb4d49c57c22f8e3a2351fda895e8db`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Erzeugt lokale Partikel beim Laufen und eine größere Ring-Partikelgruppe beim Erkennen einer Landung. Partikel werden nur clientseitig über den Partikelmanager erzeugt.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen / Optionen |
+|---|---:|---|
+| Effekt | Totem | Totem, Soul, Portal, Herzen, Wolke, Flamme, End Rod |
+| Menge | 3 | 1–10 |
+| Beim Laufen | an | Laufspur aktivieren |
+| Beim Springen/Landen | an | Ring beim erkannten Landen |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Voraussetzungen:** Spieler und Welt müssen vorhanden sein.
+- **Laufspur:** nur bei Bewegung am Boden; Burst alle drei qualifizierten Ticks.
+- **Sprungstatus:** `wasGrounded` wird genutzt, um Übergänge zu erkennen; der aktuelle Code erzeugt den Ring nur beim Übergang von Luft zu Boden (Landung), nicht beim Abheben.
+- **Lebenszyklus:** `wasGrounded` und Tickzähler werden beim Weltwechsel zurückgesetzt, aber nicht ausdrücklich bei Aktivieren/Deaktivieren.
+- **Performance:** höchstens zehn Laufpartikel oder vierzig Ringpartikel pro Auslösung.
+- **Threads/Ressourcen:** keine eigenen Threads oder Listener.
+- **In-Game/Build:** noch nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+### MP-01 – Einstellungsname verspricht mehr als der Code ausführt
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+Die Option heißt `Beim Springen/Landen`, der Ring wird aber nur bei der Landung ausgelöst. Das ist ein nachweisbarer Unterschied zwischen Einstellungsbezeichnung und Codeverhalten. Erst im Spiel klären, ob dies beabsichtigt ist; mögliche Lösung wäre eine explizite Option für Abheben und Landen.
 
-## Fehler und Verbesserungsideen
+### MP-02 – Zustandsreset beim Umschalten
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+Der Übergangszustand wird nicht beim Deaktivieren zurückgesetzt. Wird das Modul während der Luftphase deaktiviert und später am Boden wieder aktiviert, kann der erste Tick als Landung interpretiert werden. Ein gezielter In-Game-Test sollte dies bestätigen, bevor Verhalten geändert wird.
+
+## Offene Tests
+
+- [ ] Laufspur mit Bewegung und ohne Bewegung
+- [ ] Sprungbeginn und Landung getrennt
+- [ ] Ein-/Ausschalten während des Springens
+- [ ] Weltwechsel
+- [ ] Partikelmenge an Minimal-/Maximalwerten
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Erste Codeprüfung; Abweichung bei Sprung/Landung dokumentiert. |
