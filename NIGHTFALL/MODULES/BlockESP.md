@@ -1,52 +1,60 @@
 # BlockESP
 
-- **Registrierter Modulname:** `BlockESP`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/BlockESP.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Leistungstest offen
+- **Java-Klasse / Anzeigename:** `BlockESP`
+- **Kategorie:** `VISUALS`
+- **Quellcode-SHA:** `4c4c6a066fcbe4f4505464fe34f3634714798b26`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Durchsucht geladene Chunks im Umkreis um den Spieler nach auswählbaren Blocktypen und zeichnet Treffer als Boxen im HUD-Projektionspfad. Es sucht nicht nach allen Blöcken, sondern nur nach den aktivierten Kategorien.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen |
+|---|---:|---|
+| Reichweite | 64 | 8–64; Schritt 4 |
+| Max Markierungen | 600 | 20–600; Schritt 20 |
+| Diamanterz | an | Boolesch |
+| Antiker Schrott | an | Boolesch |
+| Kisten | an | Boolesch |
+| Spawner | an | Boolesch |
+| Obsidian | aus | Boolesch |
+| Golderz | aus | Boolesch |
+| Smaragderz | aus | Boolesch |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Scanintervall:** `timer-- <= 0`, danach `timer = 12`; damit liegen aktuell 13 geeignete Ticks zwischen Scans.
+- **Chunk-Sicherheit:** Es werden nur bereits geladene Chunks abgefragt.
+- **Suchraum:** X/Y/Z werden als achsenparalleler Würfel um die Spielerposition gebildet; ein zusätzlicher Kugel-Distanzfilter fehlt.
+- **Treffergrenze:** `Max Markierungen` begrenzt Treffer, nicht die Anzahl untersuchter Blockpositionen.
+- **Worst-Case-Arbeit:** Bei Reichweite 64 kann der Würfel bis zu 129×129×129 Blockpositionen umfassen, sofern die entsprechenden Chunks geladen sind und kaum Treffer die frühe Abbruchgrenze erreichen.
+- **Lifecycle:** Trefferliste wird beim Deaktivieren und Weltwechsel geleert.
+- **In-Game/Build:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+### BE-01 – potenziell hohe Scanlast
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+Die Treffergrenze reduziert die Zahl gespeicherter Markierungen, aber nicht den Aufwand, wenn nur wenige Treffer vorhanden sind. Die maximale Reichweite kann daher viele Blockabfragen in einem einzelnen Tick auslösen. Das ist ein belegter Performance-Risikopunkt; ohne Profiling wird keine konkrete FPS-Einbuße behauptet.
 
-## Fehler und Verbesserungsideen
+**Keine Scan-Optimierung vorgenommen:** Die Verbesserung der Block-/Ressourcen-Erkennung könnte die Nutzung auf Multiplayer-Servern unfair verstärken. Hier bleibt es bei Dokumentation und einem Performance-Risikohinweis.
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+### BE-02 – Reichweite ist würfelförmig
+
+Treffer in den Ecken des Würfels können weiter als die eingestellte Distanz vom Spieler entfernt sein. Ob das gewollt ist, muss anhand der UI-Erwartung geprüft werden.
+
+## Offene Tests
+
+- [ ] Reichweite 8/64
+- [ ] Max Markierungen 20/600
+- [ ] Geladene und ungeladene Chunk-Grenzen
+- [ ] CPU-/FPS-Profiling in einer lokalen Testwelt
+- [ ] Filteroptionen einzeln
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Erste Codeprüfung; keine Java-Änderung. |
