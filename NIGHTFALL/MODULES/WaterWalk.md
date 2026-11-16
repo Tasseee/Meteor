@@ -1,52 +1,40 @@
 # WaterWalk
 
-- **Registrierter Modulname:** `WaterWalk`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/WaterWalk.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
+- **Status:** Code geprüft; Movement-/In-Game-Test offen
+- **Quellcode-SHA:** `d299100cbda32d2f5ad03ab6850046a599b478fd`
+- **Kategorie:** `MOVEMENT`
 
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+## Verhalten
 
-## Zweck und Verhalten
-
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Setzt im Wasser bei Bewegungsinput die horizontale Geschwindigkeit auf einen konfigurierten Wert. Vertikale Geschwindigkeit bleibt unverändert. Creative und Fahrzeuge werden ausgeschlossen.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen |
+|---|---:|---|
+| Speed (b/s) | 4,3 | 1–12; Schritt 0,1 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- Spieler-Nullcheck vorhanden.
+- Führt nur bei Wasserzustand und Bewegungsrichtung eine Geschwindigkeitsänderung durch.
+- Keine eigenen Ressourcen, Listener oder Threads.
+- Keine lokale Fehlerbehandlung; zentraler Tick-Handler greift.
 
-## Nutzererfahrungen und Testberichte
+## Befunde
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Fehler in der kurzen Ticklogik festgestellt.
+- Verhalten in flachem/tiefem Wasser, Strömungen und am Wasserrand muss getestet werden.
+- Keine Anpassungen zum Umgehen von Server-Kicks oder Anti-Cheat vorgenommen.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Tests offen
 
-## Fehler und Verbesserungsideen
+- [ ] flaches/tiefes Wasser
+- [ ] Geschwindigkeit 1/12
+- [ ] ohne Bewegungsinput
+- [ ] Strömung/Wasserfall
+- [ ] Creative/Fahrzeug/Weltwechsel
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
-
-## Änderungsverlauf
-
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Codeprüfung; keine Verhaltensänderung. |
