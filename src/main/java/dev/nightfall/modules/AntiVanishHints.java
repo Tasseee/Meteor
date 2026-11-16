@@ -27,7 +27,7 @@ public final class AntiVanishHints extends Module {
          if (!names.isEmpty()) {
             Set<String> tab = new HashSet<>();
 
-            for (class_640 entry : mc.method_1562().method_2880()) {
+            for (class_640 entry : mc.method_1562().method_45732()) {
                if (entry.method_2966() != null && entry.method_2966().name() != null) {
                   tab.add(entry.method_2966().name().toLowerCase(Locale.ROOT));
                }
