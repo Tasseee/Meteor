@@ -89,7 +89,7 @@ Vor der Korrektur veränderten `/nf staff add` und `/nf staff del` die `ListSett
 
 ### SW-02 – Überschneidung mit AntiVanishHints
 
-`AntiVanishHints` liest dieselbe `StaffWatch.staffNames`-Liste und baut dieselben beiden Präsenzmengen erneut auf. Es zeigt bis zu fünf Namen in einem zweiten HUD-Bereich ab `y = 90`. Sind beide Module aktiviert, können die Hinweise daher doppelt bzw. in leicht anderer Form erscheinen und die Tab-/Entity-Mengen werden doppelt pro HUD-Frame aufgebaut.
+Vor dem HUD-Upgrade wurde dieselbe manuelle Namensliste in einem zweiten festen HUD-Bereich angezeigt und die Tab-/Entity-Mengen wurden beim Rendern erneut aufgebaut. Das führte zu doppelter Anzeige und wiederholter Arbeit.
 
 - **Bewertung:** Aus dem Quellcode ersichtliche Überschneidung; möglicherweise bewusst als getrennte HUD-Ansicht angelegt.
 - **Status:** Behoben. `AntiVanishHints.draw()` blendet sein Panel aus, wenn `StaffWatch` aktiv ist. Das Modul ist inzwischen selbst ein `HudModule`; es sammelt seine clientseitigen Präsenzdaten in `onTick()` und liest beim Rendern nur den Cache. So wird die Sammlung nicht bei jedem HUD-Frame erneut durchlaufen. Es nutzt dieselbe manuelle Namensliste und keine neuen Datenquellen.
@@ -128,5 +128,5 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt und deren Nullprüfungen ergänzt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert, Präsenzdaten pro Tick aktualisiert, Tab-Abgleich auf `getListedPlayerListEntries()` korrigiert, alleinigen TAB-Status als `TAB/NETZ` gekennzeichnet und Original-Schreibweise gefundener Profilnamen im HUD wiederhergestellt.
-| 2026-11-16 | StaffWatch: Zeilenlimit, Kompaktmodus, Treffer-Sortierung und Legenden-Schalter ergänzt; AntiVanishHints als verschiebbares `HudModule` mit Zeilenlimit/Kompaktmodus und Tick-Cache umgesetzt. Beide Panels bleiben auf manuell eingetragene Namen und clientseitig sichtbare TAB-/Entity-Daten beschränkt. | |
+| 2026-11-16 | Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt und deren Nullprüfungen ergänzt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert, Präsenzdaten pro Tick aktualisiert, Tab-Abgleich auf `getListedPlayerListEntries()` korrigiert, alleinigen TAB-Status als `TAB/NETZ` gekennzeichnet und Original-Schreibweise gefundener Profilnamen im HUD wiederhergestellt. |
+| 2026-11-16 | Zeilenlimit, Kompaktmodus, Treffer-Sortierung und Legenden-Schalter für StaffWatch ergänzt; AntiVanishHints als verschiebbares `HudModule` mit Zeilenlimit, Kompaktmodus und Tick-Cache umgesetzt. Beide Panels bleiben auf manuell eingetragene Namen und clientseitig sichtbare TAB-/Entity-Daten beschränkt. |
