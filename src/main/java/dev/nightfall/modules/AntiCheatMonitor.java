@@ -8,8 +8,8 @@ import java.util.regex.Pattern;
 import net.minecraft.class_332;
 
 public final class AntiCheatMonitor extends Module {
-   private static final Pattern ENABLED = Pattern.compile("(?i).*(?:anti.?cheat|anticheat).*(?:enabled|active|activated|started|on).*");
-   private static final Pattern DISABLED = Pattern.compile("(?i).*(?:anti.?cheat|anticheat).*(?:disabled|inactive|deactivated|stopped|off).*");
+   private static final Pattern ENABLED = Pattern.compile("(?i).*(?:anti.?cheat|anticheat).*\\b(?:enabled|active|activated|started|on)\\b.*");
+   private static final Pattern DISABLED = Pattern.compile("(?i).*(?:anti.?cheat|anticheat).*\\b(?:disabled|inactive|deactivated|stopped|off)\\b.*");
    private final BoolSetting showOverlay = this.add(new BoolSetting("Status anzeigen", true));
    private final BoolSetting showLastSignal = this.add(new BoolSetting("Letzte Meldung anzeigen", true));
    private AntiCheatMonitor.Status status = AntiCheatMonitor.Status.UNKNOWN;
