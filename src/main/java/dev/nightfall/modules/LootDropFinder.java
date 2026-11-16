@@ -117,7 +117,13 @@ public final class LootDropFinder extends Module {
          }
 
          this.tick++;
-         this.markedChunks.entrySet().removeIf(e -> this.tick - e.getValue() > this.markerSeconds.get() * 20.0);
+         this.markedChunks.entrySet().removeIf(e -> {
+            boolean expired = this.tick - e.getValue() > this.markerSeconds.get() * 20.0;
+            if (expired) {
+               this.markerHeights.remove(e.getKey());
+            }
+            return expired;
+         });
          List<LootDropFinder.Target> found = new ArrayList<>();
          if (this.chunkQueue.isEmpty() && this.tick - this.lastRefillTick >= 20L) {
             this.refillChunkQueue();
