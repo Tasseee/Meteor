@@ -1,52 +1,48 @@
 # WeaponAnimations
 
-- **Registrierter Modulname:** `WeaponAnimations`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/WeaponAnimations.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Render-/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `WeaponAnimations`
+- **Kategorie:** `VISUALS`
+- **Quellcode-SHA:** `1168925c6a7c2228e00d552ae5434a2cbc9e1720`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Verändert ausschließlich lokale First-Person-Matrizen für Swing-Animationen und eine optionale Waffeninspektion. Die Modulklasse enthält keine Zielauswahl, Angriffsentscheidung oder Interaktions-/Klickauslösung.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen / Optionen |
+|---|---:|---|
+| Swing-Stil | Vanilla+ | Vanilla+, Punch, Sweep, Spin, Snap |
+| Inspektion aktiv | aus | Boolesch |
+| Inspektionsgeschwindigkeit | 1,0 | 0,25–2,5; Schritt 0,05 |
+| Swing-Stärke | 1,0 | 0,25–2,0; Schritt 0,05 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Eingabe:** Swing-Fortschritt wird auf 0–1 begrenzt; bei <=0 keine Swing-Transformation.
+- **Inspektion:** nutzt Zeitbasis `System.currentTimeMillis()` und Inspektionsgeschwindigkeit.
+- **Mathematik:** Quaternionen werden lokal pro Transform-Aufruf erstellt.
+- **Threading/Ressourcen:** keine eigenen Threads, Listener oder gehaltenen Ressourcen.
+- **Performance:** Quaternion-Allokationen pro Animationsaufruf; Messung steht aus.
+- **In-Game/Build:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein klarer Funktionsfehler aus der Modulklasse ableitbar.
+- Bei sehr häufigen Swing-Renderaufrufen könnten die Quaternion-Allokationen profiliert werden; erst bei messbarem Aufwand optimieren.
+- Animationen dürfen nur die visuelle Darstellung betreffen. Angriffstiming, Treffer oder Combat-Automatisierung werden nicht verändert.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] Alle fünf Swing-Stile
+- [ ] Stärke 0,25 / 2,0
+- [ ] Inspektionsmodus an/aus
+- [ ] Linke und rechte Hand
+- [ ] Kombination mit FirstPersonStyle
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | WeaponAnimations codebasiert geprüft; keine Java-Änderung. |
