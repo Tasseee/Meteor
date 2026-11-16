@@ -1,52 +1,47 @@
 # ParticleTrail
 
-- **Registrierter Modulname:** `ParticleTrail`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/ParticleTrail.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `ParticleTrail`
+- **Kategorie:** `VISUALS`
+- **Quellcode-SHA:** `183265c6e0bfb287d146e88b051633bbb2b79636`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Erzeugt lokal eine Partikelspur um den Spieler. Der Partikelerzeugungsversuch erfolgt alle zwei Ticks; mit aktivierter Option `Nur beim Bewegen` wird bei sehr geringer Geschwindigkeit übersprungen.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen / Optionen |
+|---|---:|---|
+| Partikel | Enchant | Enchant, Soul, Portal, Herzen, Wolke, Flamme |
+| Dichte | 3 | 1–8 Partikel pro Ausgabe |
+| Nur beim Bewegen | an | Ausgabe an Bewegung koppeln |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Nullfälle:** Spieler und Welt werden geprüft.
+- **Intervall:** Tickzähler wird beim Weltwechsel auf 0 gesetzt; bei Aktivieren/Deaktivieren nicht.
+- **Performance:** maximal acht lokale Partikel alle zwei Ticks; keine Entity-Suche.
+- **Threads/Ressourcen:** keine eigenen Threads oder Listener.
+- **Fehlerbehandlung:** zentraler Tick-Handler.
+- **In-Game/Build:** noch nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Fehler festgestellt.
+- Tickzähler beim Aktivieren/Deaktivieren zurücksetzen wäre eine kleine Lifecycle-Vereinheitlichung, hat aber nur geringen sichtbaren Einfluss.
+- Im Spiel prüfen, ob der Bewegungsgrenzwert `0.0025` bei sehr langsamer Bewegung wie gewünscht reagiert.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] Alle sechs Partikelstile
+- [ ] Dichte 1 und 8
+- [ ] Stillstehen mit `Nur beim Bewegen` an/aus
+- [ ] Weltwechsel und Modul-Umschalten
+- [ ] FPS-Auswirkung bei maximaler Dichte
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Erste Codeprüfung anhand der Modulklasse. |
