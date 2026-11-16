@@ -1,52 +1,52 @@
 # ItemGlint
 
-- **Registrierter Modulname:** `ItemGlint`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/ItemGlint.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Render-/In-Game-Test offen
+- **Java-Klasse:** `ItemGlint`
+- **Anzeigename im Client:** `Item Glint`
+- **Kategorie:** `VISUALS`
+- **Modul-Quellcode-SHA:** `c54045d5d637779b262e918d7e1c499ef3a89da1`
+- **Mixins:** `ItemStackGlintMixin`, `ItemRendererGlintColorMixin`
+- **Mixin-SHAs:** `7d0b4967b9cdf9dddbaeb4226ff8ab8a3e2568cc`, `d62c8a7438d13e4dcc11a9457e89203b03e34a29`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Erzwingt bei aktiviertem Modul den Glanz-Effekt auf nicht-null ItemStacks und färbt Minecrafts reguläre Glint-Render-Layer ein. Die Layer/Texture werden laut Mixin-Kommentar beibehalten; die Vertex-Farbe wird über `GlintColorVertexConsumer` verändert.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen / Optionen |
+|---|---|---|
+| Modus | Static | Static, Rainbow, Pulse |
+| Farbe | RGB 0xFF2878 | Primärfarbe |
+| Zweite Farbe | RGB 0x3C78FF | Zweite Farbe für Pulse |
+| Geschwindigkeit | 1,0 | 0,1–4,0; Schritt 0,1 |
+| Intensität | 1,0 | 0,2–2,0; Schritt 0,1 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Nullfall:** `forceGlint` prüft auf nicht-null, nicht auf leeren Stack.
+- **Farbkanäle:** Intensität wird pro Kanal angewendet und anschließend auf 0–255 begrenzt.
+- **Render-Layer:** nur drei bekannte Glint-Layer werden umwickelt; andere Layer laufen unverändert.
+- **Fehlerbehandlung:** Mixin-Zugriffe fangen Exceptions und geben den Originalpfad zurück; Fehler werden still ignoriert.
+- **Allokationen:** ein `GlintColorVertexConsumer` wird bei passender Glint-Ausgabe erzeugt; Häufigkeit/Performance nicht gemessen.
+- **In-Game/Build:** noch nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Keine bestätigte Fehlfunktion aus der statischen Prüfung.
+- Prüfen, ob leere ItemStacks überhaupt an `forceGlint` übergeben werden. Falls ja, kann ein zusätzlicher `!stack.isEmpty()`-Check sinnvolle unnötige Renderarbeit verhindern.
+- Stille Fehler in den Mixin-Catch-Blöcken erschweren Diagnosen; ein gedrosselter Debug-Logeintrag wäre nützlich.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] Items ohne regulären Glint und bereits verzauberte Items
+- [ ] Static/Rainbow/Pulse
+- [ ] Intensität 0,2 und 2,0
+- [ ] Rüstungs-/Hand-/GUI-Renderpfade
+- [ ] Leere Stacks und Performance bei vielen Items
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Modul und beide Glint-Mixins codebasiert geprüft. |
