@@ -1,52 +1,47 @@
 # DebugHud
 
-- **Registrierter Modulname:** `DebugHud`
-- **Bisheriger Prüfstatus:** **Offen**
+- **Status:** Code geprüft; In-Game-/Build-Test offen
+- **Java-Klasse:** `DebugHud`
+- **Anzeigename im Client:** `Debug`
+- **Kategorie:** `HUD`
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/DebugHud.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Quellcode-SHA:** `481022c0c16316924f93a49fc2f521a19684d323`
+- **Registrierung:** `ModuleManager.init()`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Das HUD zeigt FPS, BaseFinder-Scanzeit und -Queue, Ergebnis-/Markierungszahlen, ESP-Objekte des Frames sowie den zentralen Modul-Fehlerzähler.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+Keine modulspezifischen Einstellungen.
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Abhängigkeiten:** ruft bei jedem Draw `ModuleManager.get(BaseFinder.class)` auf. BaseFinder ist in `ModuleManager.init()` registriert; bei fehlerhafter oder unvollständiger Initialisierung würde `get()` eine `IllegalStateException` werfen.
+- **Nullfälle:** kein eigener Nullcheck für BaseFinder, daher Abhängigkeit von vollständiger Modulregistrierung.
+- **HUD:** dynamische Breite anhand der längsten Zeile; Höhe anhand der Zeilenanzahl.
+- **Threading:** keine eigenen Threads; liest die Werte synchron aus BaseFinder und statischen Statusfeldern.
+- **Ressourcen/Lifecycle:** keine eigenen Listener oder Ressourcen.
+- **Fehlerbehandlung:** kein lokaler catch; zentraler Render-Handler deaktiviert ein Modul bei Render-Exception.
+- **Laufzeit/Version:** nicht im Spiel getestet; Build nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+### Befund DH-01 – Java-Klassenname und Anzeigename unterscheiden sich
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+Die Klasse heißt `DebugHud`, der Konstruktor registriert aber den sichtbaren Modulnamen `Debug`. Der Modulindex benennt die Java-Klasse. Das ist kein Laufzeitfehler, kann aber bei Suche, Konfiguration und Dokumentation verwirren. Eine Umbenennung könnte gespeicherte Einstellungen/Referenzen beeinträchtigen; daher nicht ohne Migrationsprüfung ändern.
 
-## Fehler und Verbesserungsideen
+### Verbesserungskandidat DH-02 – Abhängigkeit explizit dokumentieren
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+Die Anzeige hängt von BaseFinder ab. Die Abhängigkeit ist im Code vorhanden und BaseFinder wird derzeit registriert. Ein kurzer Hinweis in der Modulbeschreibung bzw. ein defensiver Fallback könnte die Diagnose bei künftigen Änderungen erleichtern.
+
+## Nutzer- und In-Game-Tests
+
+Offen: Debug aktivieren, BaseFinder ein-/ausschalten, Werte bei leerer Scan-Queue beobachten, Modul-Fehlerzähler beobachten, HUD-Editor und kleine GUI-Auflösungen.
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Erste Codeprüfung; keine Java-Änderung in diesem Audit-Eintrag. |
