@@ -1,52 +1,69 @@
 # WorldLyrics
 
-- **Registrierter Modulname:** `WorldLyrics`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/WorldLyrics.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Render-/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `WorldLyrics`
+- **Kategorie:** `VISUALS`
+- **Quellcode-SHA:** `4f46ff9e6b3dcf529877e5208218806277941054`
+- **Abhängigkeit:** `SpotifyLyricsHud`, `Projection`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Zeigt Wörter synchron zu den vom SpotifyLyricsHud bereitgestellten Liedtext-Zeilen in der Spielwelt oder auf dem Bildschirm an. Modi: Sky, Floating und Screen-Random. Es lädt selbst keine Liedtexte, sondern verwendet die Daten des SpotifyLyricsHud.
+
+Beim Aktivieren schaltet das Modul SpotifyLyricsHud automatisch ein, falls es ausgeschaltet ist.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen / Optionen |
+|---|---:|---|
+| Anzeigemodus | Floating | Sky, Floating, Screen-Random |
+| Textgröße | 1,25 | 0,75–2,5 |
+| Sichtdauer (Sek.) | 4,0 | 1–10 Sekunden |
+| Wort für Wort | an | Boolesch |
+| Schwebe-Animation | an | Boolesch |
+| Neon-Glas-Karten | an | Boolesch |
+| Mehrfacher Neon-Glow | an | Boolesch |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Lebenszyklus:** aktive Wörter werden bei Aktivierung, Deaktivierung und Weltwechsel geleert.
+- **Datenprüfung:** Spieler/Welt/Projection müssen verfügbar sein; Lyrics-Zeitarray muss zur Zeilenanzahl passen.
+- **Begrenzung:** aktive Wortobjekte sind auf 180 begrenzt; abgelaufene Wörter werden entfernt.
+- **Zeitbasis:** Animationen und Lebensdauer nutzen `System.currentTimeMillis()`.
+- **Occlusion:** Floating-Modus kann pro Wort einen Welt-Raycast ausführen.
+- **Matrix:** Wort-Rendering verwendet Push/Transform/Pop ohne `finally`.
+- **Codequalität:** lokale Variablen `span` und Parameter `progress` in `spawnLine` werden nicht verwendet.
+- **In-Game/Build:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+### WL-01 – Matrix-Cleanup absichern
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+Wenn das Text-Rendering innerhalb von `drawWord` eine Exception wirft, erreicht der Code möglicherweise `popMatrix()` nicht. Eine `try/finally`-Bereinigung wäre eine sinnvolle defensive Korrektur. Noch nicht umgesetzt.
 
-## Fehler und Verbesserungsideen
+### WL-02 – mögliche Renderlast
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+Im Floating-Modus kann für jedes aktive Wort pro Frame ein Occlusion-Ray-Cast ausgeführt werden. Bei 180 aktiven Wörtern wären das bis zu 180 Sichtlinienabfragen pro Renderframe. Das ist ein deutlicher Profiling-Kandidat; ohne Messung wird keine konkrete FPS-Einbuße behauptet.
+
+### WL-03 – Trackwechsel-Schlüssel
+
+Der aktuelle Schlüssel besteht aus Zeilenanzahl, erster und letzter Zeile. Unterschiedliche Songs mit identischen Randzeilen und gleicher Zeilenanzahl könnten denselben Schlüssel ergeben. Ein stabiler Track-Identifier aus SpotifyLyricsHud wäre zuverlässiger.
+
+### WL-04 – stille Auto-Aktivierung
+
+Das Einschalten von WorldLyrics aktiviert SpotifyLyricsHud automatisch. Das ist im Modulcode erkennbar, sollte aber in der GUI kurz erklärt werden, weil dadurch ein zusätzlicher OAuth-/Netzwerkprozess starten kann.
+
+## Offene Tests
+
+- [ ] alle drei Modi
+- [ ] Songwechsel und Zurückspringen in der Wiedergabe
+- [ ] Kamera-/Projection-Verfügbarkeit beim Zeilenwechsel
+- [ ] bis zu 180 aktive Wörter und Renderleistung
+- [ ] Matrixzustand nach Renderausnahme
+- [ ] SpotifyLyricsHud deaktiviert/aktiviert
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | WorldLyrics anhand der Modulklasse geprüft; keine Java-Änderung. |
