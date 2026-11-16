@@ -1,52 +1,58 @@
 # EntityEsp
 
-- **Registrierter Modulname:** `EntityEsp`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/EntityEsp.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; In-Game-Test offen
+- **Java-Klasse:** `EntityEsp`
+- **Anzeigename:** `EntityESP`
+- **Kategorie:** `VISUALS`
+- **Modul-SHA:** `602ca828e38119201b76d80f4e3b2ca8922cb614`
+- **Gemeinsame Renderlogik:** `EntityScanEsp` / `EspBase`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Markiert geladene lebende Nicht-Spieler-Entities. Feindliche und passive Kategorien können getrennt ein- und ausgeschaltet werden.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard |
+|---|---:|
+| Feindlich | an |
+| Passiv | aus |
+| Health (geerbt) | an |
+| Nur sichtbare (geerbt) | aus |
+| Reichweite (korrigierter Default) | 128 |
+| Max Objekte | 512 |
+| Box | 3D |
+| Name / Distanz | an |
+| Tracer | aus |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Klassifizierung:** prüft Entity-Typ und Klassifizierung hostile/passive; Spieler werden ausgeschlossen.
+- **Renderpfad:** geladene Entities werden jedes HUD-Frame durchlaufen; Positionen/Boxen werden mit TickDelta interpoliert.
+- **Sortierung:** Renderbuffer wird nach Distanz sortiert, wenn die Anzahl über Max Objekte liegt.
+- **Null-/Lifecycle:** Spieler, Welt und Projection müssen verfügbar sein; eigener Zustand/Thread nicht vorhanden.
+- **Performance:** pro passender Entity wird ein RenderTarget-Record pro Frame erzeugt; Messung steht aus.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+### EE-01 – Standardreichweite aus gemeinsamem Konstruktor war falsch
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+**Behoben im Code:** `c03f2c5205b1a6bec2c01d23ad48cdc4fe488a8d`.
 
-## Fehler und Verbesserungsideen
+`EspBase` ignorierte den übergebenen Parameter `defRange` und verwendete stets `maxRange`. EntityESP startet jetzt mit dem vorgesehenen Default 128 statt 512; Maximum bleibt 512.
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+**Verifikation:** Code gespeichert und erneut gelesen; Build-/In-Game-Test offen.
+
+## Offene Tests
+
+- [ ] Feindlich/passiv Filter
+- [ ] Health und Nur sichtbare
+- [ ] Reichweite 128 / Maximum 512
+- [ ] Viele Entities und Renderleistung
+- [ ] Welt-/Perspektivwechsel
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | EntityEsp und gemeinsame Entity-Renderlogik geprüft; Range-Default korrigiert. |
