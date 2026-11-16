@@ -93,8 +93,15 @@ public final class StaffWatch extends HudModule {
          return;
       }
 
-      boolean emptyPreview = names.isEmpty();
-      int shown = emptyPreview ? (preview ? 1 : 0) : Math.min(MAX_VISIBLE_NAMES, names.size());
+      int totalNames = 0;
+      for (String name : names) {
+         if (name != null && !name.isBlank()) {
+            totalNames++;
+         }
+      }
+
+      boolean emptyPreview = totalNames == 0;
+      int shown = emptyPreview ? (preview ? 1 : 0) : Math.min(MAX_VISIBLE_NAMES, totalNames);
       if (shown == 0) {
          this.w = 210;
          this.h = 50;
@@ -118,7 +125,7 @@ public final class StaffWatch extends HudModule {
          }
       }
 
-      String countLabel = preview && emptyPreview ? "0/0" : shown + "/" + names.size();
+      String countLabel = preview && emptyPreview ? "0/0" : shown + "/" + totalNames;
       String legend = "TAB = Spielerliste · WELT = geladene Entity";
       String disclaimer = "Nur Clientdaten · kein Vanish-Nachweis";
       int contentWidth = 32 + nameWidth + statusWidth;
