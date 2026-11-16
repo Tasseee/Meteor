@@ -237,39 +237,41 @@ public final class WorldLyrics extends Module {
          int width = mc.field_1772.method_1727(word.text);
          Matrix3x2fStack matrices = ctx.method_51448();
          matrices.pushMatrix();
-         matrices.translate(x, y);
-         matrices.rotate(word.angle);
-         matrices.scale(scale, scale);
-         int left = -width / 2;
-         if (this.background.get()) {
-            int padX = 8;
-            ctx.method_25294(left - padX - 2, -10, left + width + padX + 2, 11, halo);
-            ctx.method_25294(left - padX, -8, left + width + padX, 9, shadowColor);
-            ctx.method_25294(left - padX, -8, left - padX + 2, 9, color);
-            ctx.method_25294(left - padX + 5, 8, left + width + padX - 5, 9, glowColor);
-            ctx.method_25294(left - padX + 4, -6, left - padX + 5, -4, color);
-            ctx.method_25294(left + width + padX - 5, 4, left + width + padX - 4, 6, color);
-         }
+         try {
+            matrices.translate(x, y);
+            matrices.rotate(word.angle);
+            matrices.scale(scale, scale);
+            int left = -width / 2;
+            if (this.background.get()) {
+               int padX = 8;
+               ctx.method_25294(left - padX - 2, -10, left + width + padX + 2, 11, halo);
+               ctx.method_25294(left - padX, -8, left + width + padX, 9, shadowColor);
+               ctx.method_25294(left - padX, -8, left - padX + 2, 9, color);
+               ctx.method_25294(left - padX + 5, 8, left + width + padX - 5, 9, glowColor);
+               ctx.method_25294(left - padX + 4, -6, left - padX + 5, -4, color);
+               ctx.method_25294(left + width + padX - 5, 4, left + width + padX - 4, 6, color);
+            }
 
-         if (this.glow.get()) {
-            ctx.method_51433(mc.field_1772, word.text, left - 2, -5, halo, false);
-            ctx.method_51433(mc.field_1772, word.text, left + 2, -5, halo, false);
-            ctx.method_51433(mc.field_1772, word.text, left, -6, glowColor, false);
-            ctx.method_51433(mc.field_1772, word.text, left, -2, glowColor, false);
-         }
+            if (this.glow.get()) {
+               ctx.method_51433(mc.field_1772, word.text, left - 2, -5, halo, false);
+               ctx.method_51433(mc.field_1772, word.text, left + 2, -5, halo, false);
+               ctx.method_51433(mc.field_1772, word.text, left, -6, glowColor, false);
+               ctx.method_51433(mc.field_1772, word.text, left, -2, glowColor, false);
+            }
 
-         ctx.method_51433(mc.field_1772, word.text, left + 1, -3, -1426063361, false);
-         ctx.method_51433(mc.field_1772, word.text, left, -4, color, true);
-         if (this.glow.get()) {
-            double phase = now / 260.0 + word.spawnAt * 0.001;
-            int sparkle = (int)(alpha * (110.0 + 70.0 * Math.abs(Math.sin(phase)))) << 24 | 16777215;
-            int sx = left - 4 + (int)((Math.sin(phase) + 1.0) * 2.0);
-            int sy = -9 + (int)(Math.cos(phase * 0.8) * 2.0);
-            ctx.method_25294(sx, sy, sx + 2, sy + 2, sparkle);
-            ctx.method_25294(left + width + 2, 5 + (int)(Math.sin(phase * 1.2) * 2.0), left + width + 4, 7 + (int)(Math.sin(phase * 1.2) * 2.0), sparkle);
+            ctx.method_51433(mc.field_1772, word.text, left + 1, -3, -1426063361, false);
+            ctx.method_51433(mc.field_1772, word.text, left, -4, color, true);
+            if (this.glow.get()) {
+               double phase = now / 260.0 + word.spawnAt * 0.001;
+               int sparkle = (int)(alpha * (110.0 + 70.0 * Math.abs(Math.sin(phase)))) << 24 | 16777215;
+               int sx = left - 4 + (int)((Math.sin(phase) + 1.0) * 2.0);
+               int sy = -9 + (int)(Math.cos(phase * 0.8) * 2.0);
+               ctx.method_25294(sx, sy, sx + 2, sy + 2, sparkle);
+               ctx.method_25294(left + width + 2, 5 + (int)(Math.sin(phase * 1.2) * 2.0), left + width + 4, 7 + (int)(Math.sin(phase * 1.2) * 2.0), sparkle);
+            }
+         } finally {
+            matrices.popMatrix();
          }
-
-         matrices.popMatrix();
       }
    }
 
