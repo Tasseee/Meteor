@@ -1,52 +1,45 @@
 # SpawnerEsp
 
-- **Registrierter Modulname:** `SpawnerEsp`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/SpawnerEsp.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; In-Game-Test offen
+- **Java-Klasse:** `SpawnerEsp`
+- **Anzeigename:** `SpawnerESP`
+- **Kategorie:** `VISUALS`
+- **Modul-SHA:** `98c077c97bb4abaf94f619b76adc0bb407c5a407`
+- **Gemeinsame Renderlogik:** `BlockEntityEsp` / `EspBase`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Markiert Spawner-Block-Entities in geladenen Chunks. Die Klasse selbst hat keine zusätzlichen Filter; die Scan-, Distanz- und Renderlogik kommt aus `BlockEntityEsp` und `EspBase`.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+Geerbte ESP-Einstellungen: Reichweite (vorgesehener Default 128, Maximum 256), Max Objekte (512), Linienstärke, Transparenz, Antialiasing, Distanz-Fade, Box-Stil, Tracer, Name und Distanz.
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Scanquelle:** Block-Entities in geladenen Chunks; keine automatische Chunk-Ladung.
+- **Intervall:** geerbter Scanpfad alle 11 geeigneten Ticks.
+- **Sortierung:** nach Entfernung von der Kameraposition.
+- **Lifecycle:** Cache wird bei Deaktivierung/Weltwechsel geleert.
+- **Build/In-Game:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+### SE-01 – geerbter Range-Default
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+**Behoben im gemeinsamen Code:** `c03f2c5205b1a6bec2c01d23ad48cdc4fe488a8d`. SpawnerESP verwendet jetzt den im Konstruktor angegebenen Default 128 statt Maximalwert 256.
 
-## Fehler und Verbesserungsideen
+**Verifikation:** Quellcode gespeichert und erneut gelesen; Build-/In-Game-Test offen.
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+## Offene Tests
+
+- [ ] Spawner in geladenen Chunks
+- [ ] Reichweite 128 / Maximum 256
+- [ ] Weltwechsel / Chunk-Entladung
+- [ ] Max Objekte und Renderleistung
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | SpawnerEsp und geerbten Scanpfad geprüft; Range-Default korrigiert. |
