@@ -1,52 +1,53 @@
 # GUITheme
 
-- **Registrierter Modulname:** `GUITheme`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/GUITheme.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; GUI-Test offen
+- **Java-Klasse / Anzeigename:** `GUITheme`
+- **Kategorie:** `VISUALS`
+- **Quellcode-SHA:** `887a300e66aa7727c4ed6e7feafccfc2a3668ab1`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Verwaltet das ClickGUI-Farbschema. Das Modul startet standardmäßig aktiviert, wendet Presets und Design an und setzt beim Deaktivieren das Theme zurück. Beim Ändern einer einzelnen Farbe ruft die GUI `prepareColorEdit` auf, wodurch das Preset auf `Custom` gesetzt wird.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Optionen / Bedeutung |
+|---|---|---|
+| Preset | Nightfall | Nightfall, Violet, Crimson, Emerald, Ocean, Mono, Custom |
+| Design | Gradient | Gradient, Flat, Glass |
+| Akzentfarbe | RGB 3530960 | RGB-Farbe |
+| Sekundärfarbe | RGB 6898118 | RGB-Farbe |
+| Panel-Farbe | RGB 1315864 | RGB-Farbe |
+| Textfarbe | RGB 15263984 | RGB-Farbe |
+| Sekundärtext | RGB 10132142 | RGB-Farbe |
+| Overlay-Farbe | RGB 526349 | RGB-Farbe |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Lebenszyklus:** Aktivierung wendet Theme an; Deaktivierung ruft `Theme.reset()` auf.
+- **Tick:** `applyTheme()` wird bei jedem Clienttick erneut ausgeführt.
+- **Preset-Verhalten:** feste Presets überschreiben die sechs Farbwerte; `Custom` lässt sie unverändert.
+- **GUI-Integration:** beide GUI-Bildschirme markieren einzelne Farbänderungen als Custom.
+- **Null-/Thread-Fälle:** keine eigenen Threads, Listener oder Ressourcen.
+- **Performance:** sechs Settings und Theme-Felder werden pro Tick gesetzt; das ist klein, sollte aber bei sehr häufigen GUI-Neuberechnungen nicht unnötig erweitert werden.
+- **In-Game:** GUI-Test offen.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Funktionsfehler bei der statischen Prüfung bestätigt.
+- Prüfen, dass beim Laden gespeicherter Farben das Preset `Custom` nicht versehentlich zurück auf ein Standard-Preset springt.
+- Optional könnte `applyTheme()` nur bei geänderten Werten oder beim Setting-Event statt jeden Tick laufen; ohne Profiling ist keine messbare Belastung belegt.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] Alle sechs festen Presets
+- [ ] Custom: jede Farbe einzeln ändern
+- [ ] Gradient / Flat / Glass
+- [ ] Aktivieren/Deaktivieren und Theme-Reset
+- [ ] Config speichern, Client neu starten, Config laden
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | GUITheme und GUI-Farbänderungsintegration codebasiert geprüft. |
