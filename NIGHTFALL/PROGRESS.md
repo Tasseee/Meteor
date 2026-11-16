@@ -10,7 +10,7 @@
 
 ## Audit-Protokoll
 
-- **2026-11-16 – StaffWatch-Verbesserung:** `/nf staff add/del` speichert erfolgreiche Änderungen sofort; `AntiVanishHints` überspringt seine HUD-Ausgabe, solange `StaffWatch` aktiv ist. `StaffWatch` ist jetzt ein verschieb- und skalierbares `HudModule`, zeigt TAB-/WELT-Status verständlicher an und aktualisiert Präsenzdaten pro Tick. Details und offene Tests in `NIGHTFALL/MODULES/StaffWatch.md`.
+- **2026-11-16 – StaffWatch-Verbesserung:** `/nf staff add/del` speichert erfolgreiche Änderungen sofort; `AntiVanishHints` überspringt seine HUD-Ausgabe, solange `StaffWatch` aktiv ist. `StaffWatch` ist jetzt ein verschieb- und skalierbares `HudModule`, zeigt TAB-/WELT-Status verständlicher an, aktualisiert Präsenzdaten pro Tick und nutzt für TAB `getListedPlayerListEntries()` statt der allgemeineren `getPlayerList()`-Methode. Details und offene Tests in `NIGHTFALL/MODULES/StaffWatch.md`.
 
 Aggregierte Statistiken werden auf Wunsch des Nutzers nicht weiter gepflegt. Die Modulakten und der Modulindex sind die maßgeblichen Einzelstände.
 
