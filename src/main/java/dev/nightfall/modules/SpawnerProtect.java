@@ -33,6 +33,12 @@ public final class SpawnerProtect extends Module {
    }
 
    @Override
+   public void onWorldLeave() {
+      this.tracked.clear();
+      this.ticks = 0;
+   }
+
+   @Override
    public void onTick() {
       if (mc.field_1724 != null && mc.field_1687 != null) {
          if (++this.ticks % 10 == 0) {
