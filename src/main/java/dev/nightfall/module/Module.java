@@ -2,6 +2,7 @@ package dev.nightfall.module;
 
 import dev.nightfall.module.setting.Setting;
 import dev.nightfall.util.NotificationCenter;
+import dev.nightfall.util.ModuleUsageStats;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -45,6 +46,18 @@ public abstract class Module {
       return this.enabled;
    }
 
+   public long getUsageActivations() {
+      return ModuleUsageStats.activations(this.name);
+   }
+
+   public long getUsageMillis() {
+      return ModuleUsageStats.activeMillis(this.name);
+   }
+
+   public String getUsageSummary() {
+      return ModuleUsageStats.summary(this.name);
+   }
+
    public boolean isFavorite() {
       return this.favorite;
    }
@@ -74,8 +87,13 @@ public abstract class Module {
          this.enabled = e;
          if (e) {
             this.onEnable();
+            ModuleUsageStats.onEnabled(this.name);
          } else {
-            this.onDisable();
+            try {
+               this.onDisable();
+            } finally {
+               ModuleUsageStats.onDisabled(this.name);
+            }
          }
 
          if (mc.field_1724 != null) {
