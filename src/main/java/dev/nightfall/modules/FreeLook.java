@@ -14,6 +14,8 @@ public final class FreeLook extends Module {
    private double lastMouseX;
    private double lastMouseY;
    private boolean mouseInitialized;
+   private final double[] cursorX = new double[1];
+   private final double[] cursorY = new double[1];
 
    public FreeLook() {
       super("FreeLook", "Mit der Maus umsehen, ohne die Blickrichtung des Spielers zu aendern.", Category.VISUALS);
@@ -67,17 +69,15 @@ public final class FreeLook extends Module {
          this.activateIfReady();
       } else if (mc.field_1724 != null && mc.field_1687 != null && mc.method_22683() != null) {
          long window = mc.method_22683().method_4490();
-         double[] x = new double[1];
-         double[] y = new double[1];
-         GLFW.glfwGetCursorPos(window, x, y);
+         GLFW.glfwGetCursorPos(window, this.cursorX, this.cursorY);
          if (this.mouseInitialized) {
-            cameraYaw = cameraYaw + (float)((x[0] - this.lastMouseX) * 0.15);
-            cameraPitch = cameraPitch + (float)((y[0] - this.lastMouseY) * 0.15);
+            cameraYaw = cameraYaw + (float)((this.cursorX[0] - this.lastMouseX) * 0.15);
+            cameraPitch = cameraPitch + (float)((this.cursorY[0] - this.lastMouseY) * 0.15);
             cameraPitch = Math.max(-90.0F, Math.min(90.0F, cameraPitch));
          }
 
-         this.lastMouseX = x[0];
-         this.lastMouseY = y[0];
+         this.lastMouseX = this.cursorX[0];
+         this.lastMouseY = this.cursorY[0];
          this.mouseInitialized = true;
          mc.field_1724.method_36456(this.playerYaw);
          mc.field_1724.method_36457(this.playerPitch);
