@@ -3,10 +3,10 @@
 - **Status:** Code verbessert; Build- und In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `StaffWatch`
 - **Kategorie:** `HUD` (über `HudModule`)
-- **Quellcode-SHA StaffWatch:** `bb2087c9a87ad618d18a37ba442de61f5cffbc63`
+- **Quellcode-SHA StaffWatch:** `805bfff7ee0d27c833c044e570f600c9f05d161c`
 - **Tab-API-Änderung:** `getListedPlayerListEntries()` / `method_45732()`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
-- **Quellcode-SHA AntiVanishHints:** `84cab8250292336ad8bc967727d45db92501dad0`
+- **Quellcode-SHA AntiVanishHints:** `38300fa3e35819e33ab14d83e6da35412a9a07dc`
 - **Mitgeprüfte Dateien:** `ListSetting.java`, `Commands.java`, `Config.java`, `Nightfall.java`, `ModuleManager.java`, `AntiVanishHints.java`
 
 ## Zweck und Verhalten
@@ -23,11 +23,15 @@ Das Modul stellt weder fest, ob ein Name tatsächlich zu einem Teammitglied geh�
 | Einstellung / Befehl | Standard / Verhalten |
 |---|---|
 | `Beobachtete Namen` | Leere `ListSetting` |
+| `Max. HUD-Zeilen` | `8` (Min. `3`, Max. `12`) |
+| `Kompaktes HUD` | `AN`/`AUS`, Standard `AUS`; reduziert Zeilen- und Kopfhoehe |
+| `Sichtbare Treffer zuerst` | `AN`, Standard; sortiert nach TAB/WELT-Treffer, danach alphabetisch |
+| `Legende anzeigen` | `AN`, Standard; blendet die zwei Erklaerungszeilen ein/aus |
 | `/nf staff add <name>` | Fügt einen Namen hinzu |
 | `/nf staff del <name>` | Entfernt einen Namen |
 | `/nf staff list` | Listet die eingetragenen Namen |
 
-`ListSetting` verwendet ein `TreeSet`, normalisiert Namen mit `Locale.ROOT` auf Kleinschreibung und verhindert doppelte Einträge unabhängig von der ursprünglichen Groß-/Kleinschreibung. Dadurch funktioniert der spätere Vergleich gegen die ebenfalls kleingeschriebenen Tab- und Entity-Namen. Die Menge ist alphabetisch sortiert; die HUD-Anzeige zeigt die ersten acht Einträge. Die Command-Argumente verwenden `StringArgumentType.word()`, daher sind Leerzeichen in Namen nicht möglich. Eine zusätzliche Formatprüfung auf ein bestimmtes Minecraft-Namensmuster findet in `StaffWatch` nicht statt.
+`ListSetting` verwendet ein `TreeSet`, normalisiert Namen mit `Locale.ROOT` auf Kleinschreibung und verhindert doppelte Einträge unabhängig von der ursprünglichen Groß-/Kleinschreibung. Dadurch funktioniert der spätere Vergleich gegen die ebenfalls kleingeschriebenen Tab- und Entity-Namen. Die gespeicherte Menge ist alphabetisch sortiert. Die Anzeige kann zwischen drei und zwoelf Zeilen zeigen. Mit `Sichtbare Treffer zuerst` werden Namen mit TAB-/WELT-Treffer vor Namen ohne aktuelle sichtbare Quelle sortiert; innerhalb derselben Gruppe bleibt die Reihenfolge alphabetisch. Die Command-Argumente verwenden `StringArgumentType.word()`, daher sind Leerzeichen in Namen nicht möglich. Eine zusätzliche Formatprüfung auf ein bestimmtes Minecraft-Namensmuster findet in `StaffWatch` nicht statt.
 
 ## HUD-Statuslogik
 
@@ -40,7 +44,7 @@ Das Modul stellt weder fest, ob ein Name tatsächlich zu einem Teammitglied geh�
 
 Ist der Netzwerkhandler nicht verfügbar, zeigt das HUD stattdessen `TAB N/A` an und wertet nur die Entity-Quelle aus.
 
-Das HUD ist jetzt ein `HudModule` in der Kategorie `HUD`. Standardposition ist `(8, 42)`. Im HUD-Editor kann es verschoben und skaliert werden. Es zeigt maximal acht Namenszeilen und im Zähler beispielsweise `8/14`, wenn weitere Namen in der Liste stehen. Die Vorschau zeigt bei leerer Liste einen Hinweis statt eines leeren Elements.
+Das HUD ist jetzt ein `HudModule` in der Kategorie `HUD`. Standardposition ist `(8, 42)`. Im HUD-Editor kann es verschoben und skaliert werden. Die maximale Zeilenzahl ist ueber `Max. HUD-Zeilen` einstellbar (3–12); der Zaehler zeigt beispielsweise `8/14`, wenn weitere Namen in der Liste stehen. `Kompaktes HUD` reduziert die Zeilenhoehe, `Legende anzeigen` blendet die Erklaerung am unteren Rand ein oder aus. Die Vorschau zeigt bei leerer Liste einen Hinweis statt eines leeren Elements.
 
 Die Statuslabels unterscheiden `TAB + WELT`, `TAB/NETZ`, `NUR WELT` und `KEINE QUELLE`. Wenn kein Netzwerkhandler verfügbar ist, werden `TAB N/A`-Labels verwendet, damit ein fehlender Datenkanal nicht wie ein negativer Tab-Befund aussieht. Farben ergänzen die Textlabels, sind aber nicht die einzige Statusinformation.
 
@@ -88,7 +92,7 @@ Vor der Korrektur veränderten `/nf staff add` und `/nf staff del` die `ListSett
 `AntiVanishHints` liest dieselbe `StaffWatch.staffNames`-Liste und baut dieselben beiden Präsenzmengen erneut auf. Es zeigt bis zu fünf Namen in einem zweiten HUD-Bereich ab `y = 90`. Sind beide Module aktiviert, können die Hinweise daher doppelt bzw. in leicht anderer Form erscheinen und die Tab-/Entity-Mengen werden doppelt pro HUD-Frame aufgebaut.
 
 - **Bewertung:** Aus dem Quellcode ersichtliche Überschneidung; möglicherweise bewusst als getrennte HUD-Ansicht angelegt.
-- **Status:** Behoben. `AntiVanishHints.renderHud()` kehrt jetzt sofort zurück, wenn `StaffWatch` aktiviert ist. So bleibt bei gleichzeitig aktivierten Modulen nur die StaffWatch-Ausgabe sichtbar und der zweite Renderpfad baut nicht zusätzlich seine Vergleichsmengen auf. Ist StaffWatch deaktiviert, kann AntiVanishHints weiterhin die gemeinsame manuelle Liste anzeigen. Zusätzlich werden Tab-Einträge, Profile, Welt-Spieler und Profilnamen vor dem Lesen auf `null` bzw. leere Werte geprüft.
+- **Status:** Behoben. `AntiVanishHints.draw()` blendet sein Panel aus, wenn `StaffWatch` aktiv ist. Das Modul ist inzwischen selbst ein `HudModule`; es sammelt seine clientseitigen Präsenzdaten in `onTick()` und liest beim Rendern nur den Cache. So wird die Sammlung nicht bei jedem HUD-Frame erneut durchlaufen. Es nutzt dieselbe manuelle Namensliste und keine neuen Datenquellen.
 
 ### Grenzen der Interpretation
 
@@ -98,7 +102,8 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 
 - Wechsel auf `HudModule`; das Element erscheint dadurch im HUD-Editor.
 - Position und Skalierung werden über die vorhandene HUD-Konfiguration verwaltet.
-- Panel nutzt das aktuelle `Theme`-Farbschema, kompakte Zeilen und eine Legende.
+- Panel nutzt das aktuelle `Theme`-Farbschema, konfigurierbare Zeilenanzahl, optionalen Kompaktmodus und eine ein-/ausblendbare Legende.
+- `Sichtbare Treffer zuerst` sortiert ausschließlich anhand der bereits verwendeten TAB-/WELT-Sichtbarkeit; fehlende Daten werden nicht als Vanish-Befund interpretiert.
 - Die Statusmengen werden pro Client-Tick aktualisiert und für das Rendern wiederverwendet.
 - HUD-Vorschau im Editor zeigt bei einer leeren Liste den Hinweis `Keine Namen eingetragen`.
 - Die HUD-Anzeige verwendet, sobald ein Name in TAB oder Welt gefunden wird, dessen originale Profil-Schreibweise. Der interne Vergleich bleibt kleingeschrieben und damit case-insensitive.
@@ -110,10 +115,11 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 - [ ] Auf HUGSMP und DonutSMP prüfen, ob TAB-Einträge lokal oder netzwerkweit sind; `TAB/NETZ` darf nicht als bestätigter Unterserverstatus verstanden werden
 - [ ] Groß-/Kleinschreibung sowie doppelte Einträge
 - [ ] Profil-Schreibweise für Treffer in TAB und geladener Welt
-- [ ] Mehr als acht eingetragene Namen (Sortierung und Anzeigegrenze)
+- [ ] Konfigurierbare Anzeigegrenze (3–12), Treffer-Sortierung und Legende
 - [ ] Disconnect und Weltwechsel
 - [ ] Config-Speicherung direkt nach erfolgreichem `/nf staff add` und `/nf staff del` (inkl. Neustart)
 - [ ] Beide Module gleichzeitig aktiviert: nur StaffWatch-Ausgabe; AntiVanishHints allein bei deaktiviertem StaffWatch
+- [ ] AntiVanishHints im HUD-Editor verschieben, skalieren und nach Neustart wiederfinden
 - [ ] HUD-Editor: verschieben, skalieren, Raster-Snap, Neustart und Vorschau ohne eingetragene Namen
 - [ ] Ungültige/leere Konfigurationslisteneinträge: Zähler und Zeilenanzahl bleiben konsistent
 - [ ] Build und In-Game-Test
@@ -122,4 +128,5 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt und deren Nullprüfungen ergänzt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert, Präsenzdaten pro Tick aktualisiert, Tab-Abgleich auf `getListedPlayerListEntries()` korrigiert, alleinigen TAB-Status als `TAB/NETZ` gekennzeichnet und Original-Schreibweise gefundener Profilnamen im HUD wiederhergestellt. |
+| 2026-11-16 | Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt und deren Nullprüfungen ergänzt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert, Präsenzdaten pro Tick aktualisiert, Tab-Abgleich auf `getListedPlayerListEntries()` korrigiert, alleinigen TAB-Status als `TAB/NETZ` gekennzeichnet und Original-Schreibweise gefundener Profilnamen im HUD wiederhergestellt.
+| 2026-11-16 | StaffWatch: Zeilenlimit, Kompaktmodus, Treffer-Sortierung und Legenden-Schalter ergänzt; AntiVanishHints als verschiebbares `HudModule` mit Zeilenlimit/Kompaktmodus und Tick-Cache umgesetzt. Beide Panels bleiben auf manuell eingetragene Namen und clientseitig sichtbare TAB-/Entity-Daten beschränkt. | |
