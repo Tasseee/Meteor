@@ -87,7 +87,9 @@ public abstract class Module {
          this.enabled = e;
          if (e) {
             this.onEnable();
-            ModuleUsageStats.onEnabled(this.name);
+            if (this.enabled) {
+               ModuleUsageStats.onEnabled(this.name);
+            }
          } else {
             try {
                this.onDisable();
