@@ -3,7 +3,7 @@
 - **Status:** Code verbessert; Build- und In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `StaffWatch`
 - **Kategorie:** `HUD` (über `HudModule`)
-- **Quellcode-SHA StaffWatch:** `05fba29d1cbd427759039bc4fb016c5a0280ef80`
+- **Quellcode-SHA StaffWatch:** `8458a77b9c822f7cdfbab6ee9ebb84ff3c747376`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
 - **Quellcode-SHA AntiVanishHints:** `b220bed5952f3e7705dd85a2f0a2a986be538010`
 - **Mitgeprüfte Dateien:** `ListSetting.java`, `Commands.java`, `Config.java`, `Nightfall.java`, `ModuleManager.java`, `AntiVanishHints.java`
@@ -45,7 +45,7 @@ Die Statuslabels unterscheiden `TAB + WELT`, `NUR TAB`, `NUR WELT` und `KEINE QU
 
 ## Technische Prüfung
 
-- **Lifecycle:** `onEnable()` und `onWorldLeave()` leeren den zwischengespeicherten Präsenzzustand. `onTick()` aktualisiert ihn nur bei aktivem Modul. Keine eigenen Event-Listener, Executor oder Hintergrundthreads.
+- **Lifecycle:** `onEnable()`, `onDisable()` und `onWorldLeave()` leeren den zwischengespeicherten Präsenzzustand. `onTick()` aktualisiert ihn nur bei aktivem Modul. Keine eigenen Event-Listener, Executor oder Hintergrundthreads.
 - **Nullfälle:** Spieler und Welt werden vor dem Sammeln der Daten geprüft. Netzwerkhandler, Tab-Einträge, Profile und Profilnamen werden separat geprüft; leere Namen werden übersprungen.
 - **Fehlerbehandlung:** Das Modul hat keinen lokalen Catch-Block. `ModuleManager.renderHud` fängt Render-Ausnahmen zentral ab, protokolliert sie und deaktiviert das betroffene Modul.
 - **Threading:** Das Sammeln läuft in `onTick()` und die Anzeige liest den Cache im HUD-Renderpfad. Das Modul startet keine parallelen Tasks; beide Pfade laufen über den Client-Lifecycle.
