@@ -123,7 +123,7 @@ public final class LootDropFinder extends Module {
             this.refillChunkQueue();
          }
 
-         for (int i = 0; i < 2 && !this.chunkQueue.isEmpty(); i++) {
+         for (int i = 0; i < CHUNKS_PER_TICK && !this.chunkQueue.isEmpty(); i++) {
             long key = this.chunkQueue.pollFirst();
             this.queuedChunks.remove(key);
             this.scanChunk(key, found);
@@ -171,7 +171,7 @@ public final class LootDropFinder extends Module {
                double wz = cz * 16.0 + 8.0 - mc.field_1724.method_23321();
                if (!(wx * wx + wz * wz > rangeSq + 512.0) && mc.field_1687.method_2935().method_21730(cx, cz) != null) {
                   long key = chunkKey(cx, cz);
-                  if (!this.queuedChunks.contains(key) && this.tick - this.lastChunkScan.getOrDefault(key, -4611686018427387904L) >= 100L) {
+                  if (!this.queuedChunks.contains(key) && this.tick - this.lastChunkScan.getOrDefault(key, -4611686018427387904L) >= CHUNK_REFRESH_TICKS) {
                      candidates.add(key);
                   }
                }
