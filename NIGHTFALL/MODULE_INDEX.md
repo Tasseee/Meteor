@@ -1,7 +1,7 @@
 # Modulindex
 
 **Inventur-Baseline:** `21dc9f822a6295cdb6238037f344da799bbcca26`  
-**Letzte Code-Prüfungen:** `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign` (Build-/In-Game-Tests offen)  
+**Letzte Code-Prüfungen:** `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud` (Build-/In-Game-Tests offen)  
 **Quelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`  
 **Registrierungen:** **101** – jede genau einmal im Audit-Ledger abgebildet.
 
@@ -58,24 +58,24 @@ Die einzelnen Prüfstände und offenen Punkte stehen in den jeweiligen Modulakte
 | [`Fly`](MODULES/Fly.md) | `src/main/java/dev/nightfall/modules/Fly.java` | Offen |
 | [`Freecam`](MODULES/Freecam.md) | `src/main/java/dev/nightfall/modules/Freecam.java` | Offen |
 | [`FreeLook`](MODULES/FreeLook.md) | `src/main/java/dev/nightfall/modules/FreeLook.java` | Offen |
-| [`FriendManager`](MODULES/FriendManager.md) | `src/main/java/dev/nightfall/modules/FriendManager.java` | Offen |
+| [`FriendManager`](MODULES/FriendManager.md) | `src/main/java/dev/nightfall/modules/FriendManager.java` | Code geprüft; Laufzeittest offen |
 | [`GlowESP`](MODULES/GlowESP.md) | `src/main/java/dev/nightfall/modules/GlowESP.java` | Offen |
-| [`GUITheme`](MODULES/GUITheme.md) | `src/main/java/dev/nightfall/modules/GUITheme.java` | Offen |
+| [`GUITheme`](MODULES/GUITheme.md) | `src/main/java/dev/nightfall/modules/GUITheme.java` | Code geprüft; Laufzeittest offen |
 | [`Hats`](MODULES/Hats.md) | `src/main/java/dev/nightfall/modules/Hats.java` | Code geprüft; Laufzeittest offen |
-| [`HitParticles`](MODULES/HitParticles.md) | `src/main/java/dev/nightfall/modules/HitParticles.java` | Offen |
+| [`HitParticles`](MODULES/HitParticles.md) | `src/main/java/dev/nightfall/modules/HitParticles.java` | Code geprüft; Laufzeittest offen |
 | [`InvSee`](MODULES/InvSee.md) | `src/main/java/dev/nightfall/modules/InvSee.java` | Offen |
 | [`ItemEsp`](MODULES/ItemEsp.md) | `src/main/java/dev/nightfall/modules/ItemEsp.java` | Code geprüft; Laufzeittest offen |
 | [`ItemGlint`](MODULES/ItemGlint.md) | `src/main/java/dev/nightfall/modules/ItemGlint.java` | Code geprüft; Laufzeittest offen |
 | [`Jesus`](MODULES/Jesus.md) | `src/main/java/dev/nightfall/modules/Jesus.java` | Offen |
-| [`JumpCircles`](MODULES/JumpCircles.md) | `src/main/java/dev/nightfall/modules/JumpCircles.java` | Offen |
+| [`JumpCircles`](MODULES/JumpCircles.md) | `src/main/java/dev/nightfall/modules/JumpCircles.java` | Code geprüft; Laufzeittest offen |
 | [`KillAura`](MODULES/KillAura.md) | `src/main/java/dev/nightfall/modules/KillAura.java` | Offen |
 | [`LongJump`](MODULES/LongJump.md) | `src/main/java/dev/nightfall/modules/LongJump.java` | Offen |
 | [`LootDropFinder`](MODULES/LootDropFinder.md) | `src/main/java/dev/nightfall/modules/LootDropFinder.java` | Offen |
 | [`LowHealthWarning`](MODULES/LowHealthWarning.md) | `src/main/java/dev/nightfall/modules/LowHealthWarning.java` | Code geprüft; Laufzeittest offen |
 | [`MaceAssist`](MODULES/MaceAssist.md) | `src/main/java/dev/nightfall/modules/MaceAssist.java` | Teilweise geprüft |
 | [`MacroManager`](MODULES/MacroManager.md) | `src/main/java/dev/nightfall/modules/MacroManager.java` | Offen |
-| [`Minimap`](MODULES/Minimap.md) | `src/main/java/dev/nightfall/modules/Minimap.java` | Offen |
-| [`ModuleList`](MODULES/ModuleList.md) | `src/main/java/dev/nightfall/modules/ModuleList.java` | Offen |
+| [`Minimap`](MODULES/Minimap.md) | `src/main/java/dev/nightfall/modules/Minimap.java` | Code geprüft; Laufzeittest offen |
+| [`ModuleList`](MODULES/ModuleList.md) | `src/main/java/dev/nightfall/modules/ModuleList.java` | Code geprüft; Laufzeittest offen |
 | [`MovementParticles`](MODULES/MovementParticles.md) | `src/main/java/dev/nightfall/modules/MovementParticles.java` | Code geprüft; Laufzeittest offen |
 | [`NoFall`](MODULES/NoFall.md) | `src/main/java/dev/nightfall/modules/NoFall.java` | Offen |
 | [`NotificationsHud`](MODULES/NotificationsHud.md) | `src/main/java/dev/nightfall/modules/NotificationsHud.java` | Vollständig geprüft |
@@ -84,7 +84,7 @@ Die einzelnen Prüfstände und offenen Punkte stehen in den jeweiligen Modulakte
 | [`ParticleTrail`](MODULES/ParticleTrail.md) | `src/main/java/dev/nightfall/modules/ParticleTrail.java` | Code geprüft; Laufzeittest offen |
 | [`PlayerEsp`](MODULES/PlayerEsp.md) | `src/main/java/dev/nightfall/modules/PlayerEsp.java` | Code geprüft; Laufzeittest offen |
 | [`SafeWalk`](MODULES/SafeWalk.md) | `src/main/java/dev/nightfall/modules/SafeWalk.java` | Offen |
-| [`ScannerHud`](MODULES/ScannerHud.md) | `src/main/java/dev/nightfall/modules/ScannerHud.java` | Offen |
+| [`ScannerHud`](MODULES/ScannerHud.md) | `src/main/java/dev/nightfall/modules/ScannerHud.java` | Code geprüft; Laufzeittest offen |
 | [`SeedCracker`](MODULES/SeedCracker.md) | `src/main/java/dev/nightfall/modules/SeedCracker.java` | Offen |
 | [`ShieldBreaker`](MODULES/ShieldBreaker.md) | `src/main/java/dev/nightfall/modules/ShieldBreaker.java` | Offen |
 | [`SkyVisuals`](MODULES/SkyVisuals.md) | `src/main/java/dev/nightfall/modules/SkyVisuals.java` | Code geprüft; Laufzeittest offen |
