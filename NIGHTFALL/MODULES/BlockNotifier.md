@@ -1,52 +1,59 @@
 # BlockNotifier
 
-- **Registrierter Modulname:** `BlockNotifier`
-- **Bisheriger Prüfstatus:** **Offen**
+- **Status:** Code geprüft; Build-/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `BlockNotifier`
+- **Kategorie:** `VISUALS`
+- **Modul-Quellcode-SHA:** `30996eec344f1e6ea2f9b57fa0343ce160b88768`
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/BlockNotifier.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Prüft in regelmäßigen Abständen geladene Chunks im Umkreis und meldet neu erkannte, clientseitig sichtbare Block-Entities. Der Chattext sagt ausdrücklich, dass der Inhalt nicht untersucht wird.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen / Bedeutung |
+|---|---:|---|
+| Chests/Barrels | an | Truhen und Fässer melden |
+| Shulker | an | Shulker-Boxen melden |
+| Spawner | an | Spawner melden |
+| Hopper | aus | Hopper melden |
+| Range (Blocks) | 48 | 8–128 Blöcke; Schritt 8 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Scanbereich:** Chunk-Radius wird aus Reichweite plus Chunk-Rand abgeleitet; danach filtert quadrierte Distanz exakt auf die eingestellte Reichweite.
+- **Baseline:** beim Aktivieren wird initialisiert, ohne vorhandene Block-Entities als neu zu melden.
+- **Lebenszyklus:** Seen-Zustand und temporäre Sammlung werden beim Aktivieren, Deaktivieren und Weltwechsel geleert.
+- **Fehlerbehandlung:** keine lokale Exception-Behandlung; zentraler Tick-Handler protokolliert Fehler und deaktiviert das Modul.
+- **Performance:** pro Scan wird eine Sammlung der aktuellen Positionen erstellt bzw. wiederverwendet; die Abfrage läuft nur periodisch.
+- **In-Game/Build:** noch nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+### BN-01 – Scanintervall war einen Tick länger als eingestellt
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+**Behoben im Code:** `23b09c55eceb0463cf8e7adf9abda927a239a82c`.
 
-## Fehler und Verbesserungsideen
+Der Countdown prüfte zuvor `timer-- <= 0` und setzte anschließend auf 20. Damit lagen zwischen zwei Scans 21 geeignete Ticks. Der Grenzwert ist jetzt `timer-- <= 1`; der erste Scan erfolgt sofort und Folge-Scans liegen 20 geeignete Ticks auseinander.
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+### BN-02 – Set-Allokation wiederverwenden
+
+**Ebenfalls behoben im selben Commit.** Die aktuelle Positionsmenge wird als Feld wiederverwendet und vor jedem Scan geleert, statt pro Scan eine neue `HashSet`-Instanz anzulegen.
+
+**Verifikation:** Quellcode-Änderung auf GitHub gespeichert und erneut gelesen. Build und Laufzeitmessung stehen noch aus.
+
+## Offene Tests
+
+- [ ] Erster Scan direkt nach Aktivierung
+- [ ] Folge-Scans im Abstand von 20 Ticks
+- [ ] Reichweite 8 und 128
+- [ ] Jede Block-Entity-Filteroption einzeln
+- [ ] Weltwechsel und Chunk-Laden/Entladen
+- [ ] Nachricht nur bei neuen Positionen
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Scanintervall korrigiert und aktuelle Positionsmenge wiederverwendet; Tests offen. |
