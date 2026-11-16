@@ -63,8 +63,8 @@ public final class ItemGlow extends Module {
       return red << 16 | green << 8 | blue;
    }
 
-   public float currentGlowOpacity() {
-      return (float)this.opacity.get();
+   public double currentGlowOpacity() {
+      return this.opacity.get();
    }
 
    private static int blend(int first, int second, double amount) {
