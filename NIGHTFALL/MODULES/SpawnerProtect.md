@@ -1,52 +1,53 @@
 # SpawnerProtect
 
-- **Registrierter Modulname:** `SpawnerProtect`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/SpawnerProtect.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Lifecycle-/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `SpawnerProtect`
+- **Kategorie:** `MISC`
+- **Aktueller Quellcode-SHA:** `929e2fb399ecb209ccac971143d58cf73e1c58df`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Merkt sich Spawner-Positionen, die im lokalen Umkreis sichtbar waren. Wenn ein zuvor erfasster Spawner in einem weiterhin geladenen Bereich nicht mehr vorhanden ist, wird eine Notification und Chatwarnung ausgegeben. Optional kann der Client bei Verlust getrennt werden.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen |
+|---|---:|---|
+| Suchradius | 8 | 4–16; Schritt 1 |
+| Bei Verlust trennen | aus | Boolesch |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Scanintervall:** alle zehn Clientticks.
+- **Suchraum:** dreidimensionale Kugel mit eingestelltem Radius.
+- **Unloaded chunks:** Positionen werden nur geprüft, wenn Chunk/Position geladen sind.
+- **Deduplizierung:** Set speichert unveränderliche Blockpositionskopien.
+- **Cleanup:** beim Aktivieren, Deaktivieren und Weltwechsel werden Track-Set und Timer zurückgesetzt.
+- **Disconnect:** bei aktivierter Option wird die Verbindung mit einem Grund getrennt; kein Versuch, Serververhalten zu umgehen.
+- **Performance:** bis zu ca. 17.000 Positionstests pro Scan bei Radius 16; keine Messung vorhanden.
+- **In-Game/Build:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+### SP-01 – alter Track-Zustand über Weltwechsel
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+**Behoben:** `8f6a59a9e0074c345b20096df6bbbdaa9ad4f5b7`.
 
-## Fehler und Verbesserungsideen
+Die gespeicherten Spawner-Positionen wurden vorher nicht in `onWorldLeave()` geleert. Dadurch konnten Positionen aus einer alten Welt in der neuen Welt geprüft werden. Weltwechsel setzt jetzt Set und Timer zurück.
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+**Verifikation:** Änderung auf GitHub gespeichert und erneut gelesen; Build- und In-Game-Test offen.
+
+## Offene Tests
+
+- [ ] Spawner im Radius erfassen
+- [ ] Spawner verschwindet in geladener Umgebung
+- [ ] Chunk entladen / wieder laden
+- [ ] Weltwechsel mit gefülltem Track-Set
+- [ ] Bei Verlust trennen an/aus
+- [ ] Radius 4/16
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Weltwechsel-Cleanup ergänzt; Tests offen. |
