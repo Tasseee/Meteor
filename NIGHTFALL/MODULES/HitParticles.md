@@ -1,52 +1,48 @@
 # HitParticles
 
-- **Registrierter Modulname:** `HitParticles`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/HitParticles.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `HitParticles`
+- **Kategorie:** `VISUALS`
+- **Quellcode-SHA:** `e11d55a96bf056571773352c32fda60ef6715c80`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Erzeugt lokal einen Partikeleffekt, wenn eine nahe lebende Entity gegenüber dem zuvor gespeicherten Lebenswert Lebenspunkte verliert. Es verändert weder Treffer noch Angriffe.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen / Optionen |
+|---|---:|---|
+| Effekt | Crit | Crit, Herzen, Flamme, Witch, Soul, Enchant |
+| Partikelmenge | 8 | 2–20 |
+| Reichweite | 8 | 3–16 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Erkennung:** fragt LivingEntities in einer um die Spielerbox erweiterten Region ab; der eigene Spieler wird ausgeschlossen.
+- **Auslöser:** jeder beobachtete Rückgang der Lebenspunkte, unabhängig von der Schadensquelle.
+- **Baseline:** erste Beobachtung einer UUID löst keinen Partikelburst aus.
+- **Lifecycle:** Map wird bei Aktivierung, Deaktivierung und Weltwechsel geleert.
+- **Speichergrenze:** bei mehr als 512 gespeicherten UUIDs wird die gesamte Map geleert.
+- **Performance:** höchstens 20 lokale Partikel pro erkanntem Rückgang; Entity-Abfrage jede Clienttick.
+- **In-Game/Build:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Die Beschreibung „wenn nahe Entities Schaden bekommen“ entspricht dem Code. Es wird nicht zwischen Angriffsschaden, Fallschaden oder Umweltschaden unterschieden.
+- Das vollständige Leeren der Map ab 513 Einträgen begrenzt Speicher, verwirft aber auch gültige Vergleichswerte. Eine gezielte Bereinigung nicht mehr geladener Entity-UUIDs wäre eine mögliche, noch nicht getestete Verbesserung.
+- Kein bestätigter Fehler.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] Schaden durch Angriff und Umwelteinfluss
+- [ ] Reichweite 3/16
+- [ ] jede Partikelart
+- [ ] 20 Partikel und viele Entities
+- [ ] Weltwechsel und Re-Enable
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Erste Codeprüfung; keine Java-Änderung. |
