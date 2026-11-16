@@ -5,7 +5,9 @@ import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.StringSetting;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.class_1792;
 import net.minecraft.class_1799;
 import net.minecraft.class_1802;
@@ -25,41 +27,50 @@ public final class AutoCraftPlanner extends Module {
       List<AutoCraftPlanner.Requirement> out = new ArrayList<>();
       if (mc.field_1724 == null) {
          return out;
-      } else {
-         for (String part : this.ingredients.get().split(",")) {
-            String clean = part.trim();
-            int cut = clean.lastIndexOf(58);
-            if (cut > 0) {
-               String idText = clean.substring(0, cut);
+      }
 
-               int amount;
-               try {
-                  amount = Integer.parseInt(clean.substring(cut + 1));
-               } catch (NumberFormatException var15) {
-                  continue;
-               }
+      // Merge repeated identifiers first, so each item contributes to one total requirement.
+      Map<class_2960, Integer> totals = new LinkedHashMap<>();
+      for (String part : this.ingredients.get().split(",")) {
+         String clean = part.trim();
+         int cut = clean.lastIndexOf(58);
+         if (cut <= 0) {
+            continue;
+         }
 
-               class_2960 id = class_2960.method_12829(idText);
-               if (id != null && amount >= 1 && amount <= 64) {
-                  class_1792 item = (class_1792)class_7923.field_41178.method_63535(id);
-                  if (item != class_1802.field_8162) {
-                     int owned = 0;
+         String idText = clean.substring(0, cut);
+         int amount;
+         try {
+            amount = Integer.parseInt(clean.substring(cut + 1));
+         } catch (NumberFormatException ignored) {
+            continue;
+         }
 
-                     for (int slot = 0; slot < mc.field_1724.method_31548().method_5439(); slot++) {
-                        class_1799 stack = mc.field_1724.method_31548().method_5438(slot);
-                        if (stack.method_31574(item)) {
-                           owned += stack.method_7947();
-                        }
-                     }
+         class_2960 id = class_2960.method_12829(idText);
+         if (id == null || amount < 1 || amount > 64) {
+            continue;
+         }
 
-                     out.add(new AutoCraftPlanner.Requirement(idText, amount, owned));
-                  }
-               }
+         class_1792 item = (class_1792)class_7923.field_41178.method_63535(id);
+         if (item != class_1802.field_8162) {
+            totals.merge(id, amount, Integer::sum);
+         }
+      }
+
+      for (Map.Entry<class_2960, Integer> entry : totals.entrySet()) {
+         class_1792 item = (class_1792)class_7923.field_41178.method_63535(entry.getKey());
+         int owned = 0;
+         for (int slot = 0; slot < mc.field_1724.method_31548().method_5439(); slot++) {
+            class_1799 stack = mc.field_1724.method_31548().method_5438(slot);
+            if (stack.method_31574(item)) {
+               owned += stack.method_7947();
             }
          }
 
-         return out;
+         out.add(new AutoCraftPlanner.Requirement(entry.getKey().toString(), entry.getValue(), owned));
       }
+
+      return out;
    }
 
    @Override
