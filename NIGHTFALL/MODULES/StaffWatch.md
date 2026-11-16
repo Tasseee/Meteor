@@ -3,7 +3,8 @@
 - **Status:** Code verbessert; Build- und In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `StaffWatch`
 - **Kategorie:** `HUD` (über `HudModule`)
-- **Quellcode-SHA StaffWatch:** `8458a77b9c822f7cdfbab6ee9ebb84ff3c747376`
+- **Quellcode-SHA StaffWatch:** `8458a77b9c822f7cdfbab6ee9ebb84ff3c747376` (HUD)
+- **Tab-API-Änderung:** `getListedPlayerListEntries()` / `method_45732()`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
 - **Quellcode-SHA AntiVanishHints:** `b220bed5952f3e7705dd85a2f0a2a986be538010`
 - **Mitgeprüfte Dateien:** `ListSetting.java`, `Commands.java`, `Config.java`, `Nightfall.java`, `ModuleManager.java`, `AntiVanishHints.java`
@@ -43,13 +44,24 @@ Das HUD ist jetzt ein `HudModule` in der Kategorie `HUD`. Standardposition ist `
 
 Die Statuslabels unterscheiden `TAB + WELT`, `NUR TAB`, `NUR WELT` und `KEINE QUELLE`. Wenn kein Netzwerkhandler verfügbar ist, werden `TAB N/A`-Labels verwendet, damit ein fehlender Datenkanal nicht wie ein negativer Tab-Befund aussieht. Farben ergänzen die Textlabels, sind aber nicht die einzige Statusinformation.
 
+## Tab-API-Prüfung (Minecraft 1.21.11)
+
+Das Projekt baut gegen Minecraft `1.21.11` und das Intermediary-Mappings-Artefakt derselben Version.
+
+- `class_634.method_2880()` ist in den 1.21.11-Mappings `ClientPlayNetworkHandler.getPlayerList()`.
+- `class_634.method_45732()` ist `ClientPlayNetworkHandler.getListedPlayerListEntries()`.
+- `class_640.method_2966()` ist `PlayerListEntry.getProfile()`; daraus wird der Profilname gelesen.
+- `class_638.method_18456()` ist `ClientWorld.getPlayers()`, also die lokal geladenen Spieler-Entities.
+
+Für den Status `TAB` ist `getListedPlayerListEntries()` die passendere Quelle als die allgemeinere `getPlayerList()`-Sammlung. StaffWatch und AntiVanishHints nutzen jetzt `method_45732()`. Das ist anhand der Yarn-1.21.11-Mappings bestätigt; ein In-Game-Abgleich ist noch offen. Die API-Zuordnung beweist nicht, dass ein Name Teammitglied ist oder dass ein nicht gelisteter Name versteckt wird.
+
 ## Technische Prüfung
 
 - **Lifecycle:** `onEnable()`, `onDisable()` und `onWorldLeave()` leeren den zwischengespeicherten Präsenzzustand. `onTick()` aktualisiert ihn nur bei aktivem Modul. Keine eigenen Event-Listener, Executor oder Hintergrundthreads.
 - **Nullfälle:** Spieler und Welt werden vor dem Sammeln der Daten geprüft. Netzwerkhandler, Tab-Einträge, Profile und Profilnamen werden separat geprüft; leere Namen werden übersprungen.
 - **Fehlerbehandlung:** Das Modul hat keinen lokalen Catch-Block. `ModuleManager.renderHud` fängt Render-Ausnahmen zentral ab, protokolliert sie und deaktiviert das betroffene Modul.
 - **Threading:** Das Sammeln läuft in `onTick()` und die Anzeige liest den Cache im HUD-Renderpfad. Das Modul startet keine parallelen Tasks; beide Pfade laufen über den Client-Lifecycle.
-- **Performance:** Zwei `HashSet`-Instanzen werden als Felder wiederverwendet. Tab- und Entity-Namen werden im `onTick()` aktualisiert, nicht mehr bei jedem HUD-Render-Aufruf. Pro aktivem Tick werden weiterhin die sichtbaren Tab-Einträge und die aktuell geladenen Player-Entities durchlaufen. Ein Profiling-Nachweis liegt nicht vor.
+- **Performance:** Zwei `HashSet`-Instanzen werden als Felder wiederverwendet. Tab- und Entity-Namen werden im `onTick()` aktualisiert, nicht mehr bei jedem HUD-Render-Aufruf. Pro aktivem Tick werden die vom Client als gelistet geführten Tab-Einträge und die aktuell geladenen Player-Entities durchlaufen. Ein Profiling-Nachweis liegt nicht vor.
 - **Speicherung:** `staffNames` wird als normale Modul-Einstellung in `nightfall.json` gespeichert und beim Config-Laden wiederhergestellt.
 
 ## Befunde
@@ -97,4 +109,4 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | Zweitprüfung: Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert und Präsenzdaten auf Tick-Aktualisierung verlagert. |
+| 2026-11-16 | Zweitprüfung: Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert, Präsenzdaten pro Tick aktualisiert und Tab-Abgleich auf `getListedPlayerListEntries()` korrigiert. |
