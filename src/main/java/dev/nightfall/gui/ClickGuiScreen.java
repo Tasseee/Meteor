@@ -570,7 +570,7 @@ public class ClickGuiScreen extends class_437 {
       ctx.method_25294(this.panelX + 3, y, this.panelX + this.panelW - 3, y + 42 - 1, rowBg);
       if (enabled > 0.01F) {
          int alpha = Math.max(0, Math.min(155, (int)(enabled * 155.0F)));
-         ctx.method_25294(this.panelX + 3, y, this.panelX + 5, y + 29 - 1, Theme.withAlpha(Theme.ACCENT, alpha));
+         ctx.method_25294(this.panelX + 3, y, this.panelX + 5, y + 42 - 1, Theme.withAlpha(Theme.ACCENT, alpha));
       }
 
       int iconX = this.panelX + 11;
