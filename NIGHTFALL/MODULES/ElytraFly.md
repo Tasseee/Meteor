@@ -1,52 +1,44 @@
 # ElytraFly
 
-- **Registrierter Modulname:** `ElytraFly`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/ElytraFly.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
+- **Status:** Code geprüft; Movement-/In-Game-Test offen
+- **Quellcode-SHA:** `a161132988d479dd425f107ca2a1d287158b641b`
+- **Kategorie:** `MOVEMENT`
 
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+## Verhalten
 
-## Zweck und Verhalten
-
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Setzt während aktivem Elytra-Gleitflug die horizontale Geschwindigkeit anhand der Bewegungsrichtung und die vertikale Geschwindigkeit anhand von Space/Shift. Funktioniert nicht im Fahrzeug.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen |
+|---|---:|---|
+| Horizontal (b/s) | 26 | 5–60 |
+| Vertical (b/s) | 9 | 1–25 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
+- Nullprüfung auf Spieler.
+- Aktiver Gleitflug und nicht im Fahrzeug sind Voraussetzung.
+- Horizontalgeschwindigkeit wird aus b/s in Tickgeschwindigkeit umgerechnet.
+- Bei keiner horizontalen Bewegung bleibt die bisherige X/Z-Geschwindigkeit erhalten.
+- Vertikalgeschwindigkeit bleibt erhalten, wenn weder hoch noch runter gedrückt wird.
+- Keine eigenen Ressourcen, Threads oder Listener.
+- Keine lokale Fehlerbehandlung; zentraler Tick-Handler greift.
+
+## Befunde
+
+- Kein eindeutiger Fehler aus der kurzen Modulklasse bestätigt.
+- Es gibt keine eigene Cleanup-Routine, da kein Zustand außerhalb des Spieler-Velocitys gespeichert wird.
+- Keine Änderungen an Bewegungsleistung, Serververhalten oder Anti-Cheat-Umgehung vorgenommen.
+
+## Tests offen
+
+- [ ] im Elytra / ohne Elytra
+- [ ] Space/Shift und diagonale Bewegung
+- [ ] keine Eingabe
+- [ ] Fahrzeugstatus
 - [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
 
-## Nutzererfahrungen und Testberichte
-
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
-
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
-
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
-
-## Änderungsverlauf
-
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Codeprüfung; keine Verhaltensänderung. |
