@@ -1,168 +1,120 @@
 package dev.nightfall.render;
 
+import dev.nightfall.mixin.HandledScreenAccessor;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.ItemGlow;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import net.minecraft.class_12249;
-import net.minecraft.class_4587;
-import net.minecraft.class_4588;
-import net.minecraft.class_4597;
-import net.minecraft.class_777;
-import net.minecraft.class_811;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.minecraft.class_1306;
+import net.minecraft.class_1657;
+import net.minecraft.class_1661;
+import net.minecraft.class_1703;
+import net.minecraft.class_1735;
+import net.minecraft.class_1799;
+import net.minecraft.class_2960;
 import net.minecraft.class_310;
-import net.minecraft.class_4184;
-import org.joml.Matrix3f;
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
-import org.joml.Vector3fc;
-import org.joml.Quaternionf;
+import net.minecraft.class_332;
+import net.minecraft.class_465;
 
-/**
- * Builds a screen-facing neon band from the silhouette edges of the baked
- * item mesh. This is independent of Minecraft's enchantment glint.
- */
 public final class ItemGlowRenderer {
    private ItemGlowRenderer() {}
 
-   public static void render(class_811 displayContext, class_4587 matrices, class_4597 consumers, List<?> rawQuads) {
-      ItemGlow module;
+   public static void init() {
+      HudElementRegistry.attachElementAfter(
+         VanillaHudElements.HOTBAR,
+         class_2960.method_60655("nightfall", "item_glow"),
+         (context, tickCounter) -> renderHotbar(context)
+      );
+
+      ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
+         if (screen instanceof class_465 handled) {
+            ScreenEvents.afterRender(screen).register((current, context, mouseX, mouseY, tickDelta) ->
+               renderInventory(handled, context)
+            );
+         }
+      });
+   }
+
+   public static void renderHotbar(class_332 context) {
+      ItemGlow module = getModule();
+      if (module == null || !module.isEnabled() || !module.hotbar()) return;
+
+      class_310 mc = class_310.method_1551();
+      class_1657 player = mc.field_1724;
+      if (player == null || mc.field_1690.field_1842) return;
+
+      class_1661 inventory = player.method_31548();
+      int centerX = context.method_51421() / 2;
+      int y = context.method_51443() - 16 - 3;
+      int radius = module.radius();
+
+      for (int slot = 0; slot < 9; slot++) {
+         class_1799 stack = inventory.method_5438(slot);
+         if (!stack.method_7960()) {
+            glow(context, centerX - 90 + slot * 20 + 2, y, radius, module);
+         }
+      }
+
+      class_1799 offhand = player.method_6079();
+      if (!offhand.method_7960()) {
+         boolean rightHanded = player.method_6068() == class_1306.field_6183;
+         int offhandX = rightHanded ? centerX - 91 - 26 : centerX + 91 + 10;
+         glow(context, offhandX, y, radius, module);
+      }
+   }
+
+   private static void renderInventory(class_465 screen, class_332 context) {
+      ItemGlow module = getModule();
+      if (module == null || !module.isEnabled() || !module.inventory()) return;
+
+      HandledScreenAccessor accessor = (HandledScreenAccessor)screen;
+      int left = accessor.nightfall$getX();
+      int top = accessor.nightfall$getY();
+      int radius = Math.min(module.radius(), 4);
+      class_1703 handler = accessor.nightfall$getHandler();
+
+      for (class_1735 slot : handler.field_7761) {
+         if (!slot.method_7677().method_7960()) {
+            glow(context, left + slot.field_7873, top + slot.field_7872, radius, module);
+         }
+      }
+   }
+
+   private static void glow(class_332 context, int x, int y, int radius, ItemGlow module) {
+      radius = Math.max(1, radius);
+      int rgb = module.color();
+      double time = (System.nanoTime() % 1_000_000_000_000L) / 1.0E9;
+      float pulse = module.pulse() ? 0.8F + 0.2F * (float)Math.sin(time * 3.0) : 1.0F;
+      float power = module.intensity() * pulse;
+
+      context.method_25294(x, y, x + 16, y + 16, argb(power * 0.12F, rgb));
+
+      for (int i = 1; i <= radius; i++) {
+         float fade = 1.0F - (i - 1) / (float)radius;
+         int color = argb(power * fade * fade * 0.9F, rgb);
+         int x0 = x - i;
+         int y0 = y - i;
+         int x1 = x + 16 + i;
+         int y1 = y + 16 + i;
+
+         context.method_25294(x0, y0, x1, y0 + 1, color);
+         context.method_25294(x0, y1 - 1, x1, y1, color);
+         context.method_25294(x0, y0 + 1, x0 + 1, y1 - 1, color);
+         context.method_25294(x1 - 1, y0 + 1, x1, y1 - 1, color);
+      }
+   }
+
+   private static int argb(float alpha, int rgb) {
+      int a = Math.max(0, Math.min(255, Math.round(alpha * 255.0F)));
+      return a << 24 | (rgb & 0xFFFFFF);
+   }
+
+   private static ItemGlow getModule() {
       try {
-         module = ModuleManager.get(ItemGlow.class);
+         return ModuleManager.get(ItemGlow.class);
       } catch (Throwable ignored) {
-         return;
-      }
-      if (!module.isEnabled() || matrices == null || consumers == null || rawQuads == null || rawQuads.isEmpty()) return;
-
-      Map<EdgeKey, EdgeInfo> edges = new LinkedHashMap<>();
-      class_4587.class_4665 entry = matrices.method_23760();
-      Matrix3f normalMatrix = entry.method_23762();
-      Matrix4f positionMatrix = entry.method_23761();
-      Vector3f towardCamera = new Vector3f(0.0F, 0.0F, 1.0F);
-      if (displayContext != class_811.field_4317) {
-         try {
-            class_310 mc = class_310.method_1551();
-            class_4184 camera = mc.field_1773.method_19418();
-            Quaternionf cameraRotation = camera.method_23767();
-            towardCamera.rotate(cameraRotation).normalize();
-         } catch (Throwable ignored) {
-            towardCamera.set(0.0F, 0.0F, 1.0F);
-         }
-      }
-
-      for (Object raw : rawQuads) {
-         if (!(raw instanceof class_777 quad)) continue;
-         Vector3f[] points = {
-            new Vector3f(quad.comp_5238()),
-            new Vector3f(quad.comp_5239()),
-            new Vector3f(quad.comp_5240()),
-            new Vector3f(quad.comp_5241())
-         };
-         Vector3f localNormal = new Vector3f(points[1]).sub(points[0])
-            .cross(new Vector3f(points[2]).sub(points[0]));
-         if (localNormal.lengthSquared() < 1.0E-10F) continue;
-         localNormal.normalize();
-         Vector3f viewNormal = new Vector3f(localNormal);
-         normalMatrix.transform(viewNormal).normalize();
-         boolean cameraFacing = viewNormal.dot(towardCamera) > 0.015F;
-
-         for (int i = 0; i < 4; i++) {
-            Vector3f a = points[i];
-            Vector3f b = points[(i + 1) & 3];
-            EdgeInfo info = edges.computeIfAbsent(EdgeKey.of(a, b), ignored -> new EdgeInfo(a, b));
-            if (cameraFacing) {
-               info.frontFaces++;
-               // Keep the front-face winding: edge x normal points outside.
-               info.frontA.set(a);
-               info.frontB.set(b);
-               info.frontNormal.set(localNormal);
-            } else {
-               info.otherFaces++;
-            }
-         }
-      }
-
-      int rgb = module.currentGlowColor();
-      float red = (rgb >> 16 & 0xFF) / 255.0F;
-      float green = (rgb >> 8 & 0xFF) / 255.0F;
-      float blue = (rgb & 0xFF) / 255.0F;
-      float opacity = module.alpha() / 255.0F;
-      float offset = module.edgeOffset();
-      float width = module.thickness();
-      class_4588 fills = consumers.method_73477(class_12249.method_76023());
-
-      for (EdgeInfo edge : edges.values()) {
-         boolean silhouette = edge.frontFaces > 0 && (edge.otherFaces > 0 || edge.frontFaces == 1);
-         if (!silhouette) continue;
-
-         Vector3f direction = new Vector3f(edge.frontB).sub(edge.frontA);
-         Vector3f outward = direction.cross(new Vector3f(edge.frontNormal));
-         if (outward.lengthSquared() < 1.0E-10F) continue;
-         outward.normalize();
-
-         Vector3f a = new Vector3f(edge.frontA).fma(offset, edge.frontNormal);
-         Vector3f b = new Vector3f(edge.frontB).fma(offset, edge.frontNormal);
-
-         // A wider, transparent band creates the outer neon halo.
-         emitBand(fills, positionMatrix, a, b, outward, width * 2.5F,
-            red, green, blue, opacity * 0.16F);
-         // The saturated inner band creates the crisp visible contour.
-         emitBand(fills, positionMatrix, a, b, outward, width,
-            red, green, blue, opacity);
-      }
-   }
-
-   private static void emitBand(
-      class_4588 consumer, Matrix4f matrix, Vector3f a, Vector3f b, Vector3f outward,
-      float width, float red, float green, float blue, float alpha
-   ) {
-      Vector3f outerA = new Vector3f(a).fma(width, outward);
-      Vector3f outerB = new Vector3f(b).fma(width, outward);
-      // Winding faces the camera-facing side of the item surface.
-      vertex(consumer, matrix, a, red, green, blue, alpha);
-      vertex(consumer, matrix, outerA, red, green, blue, alpha);
-      vertex(consumer, matrix, outerB, red, green, blue, alpha);
-      vertex(consumer, matrix, b, red, green, blue, alpha);
-   }
-
-   private static void vertex(
-      class_4588 consumer, Matrix4f matrix, Vector3f point,
-      float red, float green, float blue, float alpha
-   ) {
-      consumer.method_22918(matrix, point.x, point.y, point.z).method_22915(red, green, blue, alpha);
-   }
-
-   private record PointKey(long x, long y, long z) {
-      private static PointKey of(Vector3fc point) {
-         return new PointKey(Math.round(point.x() * 100000.0), Math.round(point.y() * 100000.0), Math.round(point.z() * 100000.0));
-      }
-      private boolean before(PointKey other) {
-         if (this.x != other.x) return this.x < other.x;
-         if (this.y != other.y) return this.y < other.y;
-         return this.z <= other.z;
-      }
-   }
-
-   private record EdgeKey(PointKey first, PointKey second) {
-      private static EdgeKey of(Vector3fc a, Vector3fc b) {
-         PointKey first = PointKey.of(a);
-         PointKey second = PointKey.of(b);
-         return first.before(second) ? new EdgeKey(first, second) : new EdgeKey(second, first);
-      }
-   }
-
-   private static final class EdgeInfo {
-      private final Vector3f a;
-      private final Vector3f b;
-      private final Vector3f frontA = new Vector3f();
-      private final Vector3f frontB = new Vector3f();
-      private final Vector3f frontNormal = new Vector3f(0.0F, 0.0F, 1.0F);
-      private int frontFaces;
-      private int otherFaces;
-      private EdgeInfo(Vector3f a, Vector3f b) {
-         this.a = new Vector3f(a);
-         this.b = new Vector3f(b);
+         return null;
       }
    }
 }
