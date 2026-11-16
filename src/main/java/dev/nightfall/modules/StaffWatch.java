@@ -23,7 +23,7 @@ public final class StaffWatch extends HudModule {
    private final Set<String> loadedNames = new HashSet<>();
 
    public StaffWatch() {
-      super("StaffWatch", "Verschiebbares HUD für manuell eingetragene Namen; nur clientseitige Präsenzhinweise.", Category.HUD);
+      super("StaffWatch", "Verschiebbares HUD für manuell eingetragene Namen; nur clientseitige Präsenzhinweise.");
    }
 
    @Override
