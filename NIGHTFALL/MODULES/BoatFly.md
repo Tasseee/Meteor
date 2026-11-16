@@ -1,52 +1,41 @@
 # BoatFly
 
-- **Registrierter Modulname:** `BoatFly`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/BoatFly.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
+- **Status:** Code geprüft; Fahrzeug-/Weltwechseltest offen
+- **Quellcode-SHA:** `58f7a33c51a9ea8640186ff97d9b3f1f3f3fd0c7`
+- **Kategorie:** `MOVEMENT`
 
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+## Verhalten
 
-## Zweck und Verhalten
-
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Ändert die lokale Steuerung eines bestiegenen Boot-Entities. Speichert den vorherigen No-Gravity-Zustand des Boots und setzt diesen während des Moduls. Die Kameraausrichtung und Bewegungstasten bestimmen die Richtung.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen |
+|---|---:|---|
+| Geschwindigkeit | 1,3 | 0,1–4,0 |
+| Vertikal | 0,9 | 0,1–3,0 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- Fahrzeug wird nur erfasst, wenn der Spieler tatsächlich sitzt und die Entity-ID den Text `boat` enthält.
+- Beim Fahrzeugwechsel wird der vorherige Zustand wiederhergestellt.
+- Bei Aussteigen und Deaktivierung wird `restoreBoat()` aufgerufen.
+- Es gibt keinen `onWorldLeave()`-Override; die gespeicherte Entity-Referenz bleibt bis zum nächsten Tick oder Deaktivieren erhalten.
+- Keine eigenen Threads oder Listener.
 
-## Nutzererfahrungen und Testberichte
+## Befunde
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- **Lifecycle-Risiko:** Weltwechsel setzt das kontrollierte Boot nicht unmittelbar zurück. Die Referenz wird spätestens beim nächsten Tick ohne Spieler/Boot oder beim Deaktivieren freigegeben. Ein explizites WorldLeave-Cleanup wäre sauberer.
+- Keine Bewegungs- oder Anti-Cheat-Optimierung vorgenommen.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Tests offen
 
-## Fehler und Verbesserungsideen
+- [ ] Boot besteigen/aussteigen
+- [ ] Bootwechsel
+- [ ] Weltwechsel während aktiv
+- [ ] deaktivieren in/außerhalb des Boots
+- [ ] No-Gravity-Originalzustand bleibt erhalten
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
-
-## Änderungsverlauf
-
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Codeprüfung; keine Verhaltensänderung. |
