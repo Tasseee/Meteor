@@ -2,15 +2,15 @@
 
 - **Status:** Code verbessert; Build- und In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `StaffWatch`
-- **Kategorie:** `MISC`
-- **Quellcode-SHA StaffWatch:** `d872be110f93b70307decdd1bfc397ecaf1dc5d7` (unverändert)
+- **Kategorie:** `HUD` (über `HudModule`)
+- **Quellcode-SHA StaffWatch:** `4239f9660c69521da503025c0b77a229f3d27918`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
 - **Quellcode-SHA AntiVanishHints:** `b220bed5952f3e7705dd85a2f0a2a986be538010`
 - **Mitgeprüfte Dateien:** `ListSetting.java`, `Commands.java`, `Config.java`, `Nightfall.java`, `ModuleManager.java`, `AntiVanishHints.java`
 
 ## Zweck und Verhalten
 
-Das Modul zeigt clientseitige Präsenzhinweise für Namen, die der Nutzer selbst einträgt. Es vergleicht diese Liste mit zwei bereits clientseitig verfügbaren Quellen:
+Das Modul zeigt clientseitige Präsenzhinweise für Namen, die der Nutzer selbst einträgt. Es identifiziert keine Staff-Konten und erkennt keinen serverseitig versteckten Status. Es vergleicht nur die manuelle Liste mit zwei bereits clientseitig verfügbaren Quellen:
 
 1. Namen in der aktuellen Tab-Spielerliste (sofern ein Netzwerkhandler vorhanden ist).
 2. Namen von Player-Entities, die in der aktuellen Client-Welt geladen sind.
@@ -35,9 +35,11 @@ Das Modul stellt weder fest, ob ein Name tatsächlich zu einem Teammitglied geh�
 | ja | ja | Entity geladen + Tab-Eintrag |
 | nein | ja | Entity geladen · kein Tab-Eintrag |
 | ja | nein | Tab-Eintrag · Entity nicht geladen |
-| nein | nein | weder Entity noch Tab · unklar |
+| nein | nein | keine sichtbare Quelle (`KEINE QUELLE`) |
 
-Das HUD beginnt bei Pixelposition `(8, 44)`. Es zeichnet eine Überschrift und maximal acht Namenszeilen. Fehlt der Netzwerkhandler, bleibt die Tab-Menge leer; die Welt-Entities werden weiterhin separat ausgewertet.
+Das HUD ist jetzt ein `HudModule` in der Kategorie `HUD`. Standardposition ist `(8, 42)`. Im HUD-Editor kann es verschoben und skaliert werden. Es zeigt maximal acht Namenszeilen und im Zähler beispielsweise `8/14`, wenn weitere Namen in der Liste stehen. Die Vorschau zeigt bei leerer Liste einen Hinweis statt eines leeren Elements.
+
+Die Statuslabels unterscheiden `TAB + WELT`, `NUR TAB`, `NUR WELT` und `KEINE QUELLE`. Wenn kein Netzwerkhandler verfügbar ist, werden `TAB N/A`-Labels verwendet, damit ein fehlender Datenkanal nicht wie ein negativer Tab-Befund aussieht. Farben ergänzen die Textlabels, sind aber nicht die einzige Statusinformation.
 
 ## Technische Prüfung
 
@@ -45,14 +47,14 @@ Das HUD beginnt bei Pixelposition `(8, 44)`. Es zeichnet eine Überschrift und m
 - **Nullfälle:** Spieler und Welt werden vor dem Rendern geprüft. Der Netzwerkhandler wird separat auf `null` geprüft. Tab-Eintrag und Profilname werden vor der Übernahme in die Vergleichsmenge geprüft.
 - **Fehlerbehandlung:** Das Modul hat keinen lokalen Catch-Block. `ModuleManager.renderHud` fängt Render-Ausnahmen zentral ab, protokolliert sie und deaktiviert das betroffene Modul.
 - **Threading:** Der Zugriff erfolgt im HUD-Renderpfad auf den Client-/Weltzustand; das Modul startet keine parallelen Tasks.
-- **Performance:** Pro Render-Aufruf werden zwei neue `HashSet`-Instanzen aufgebaut: einmal aus der Tab-Liste, einmal aus allen aktuell geladenen Player-Entities. Danach sind die Namensabfragen durchschnittlich konstant. Die HUD-Ausgabe ist auf acht Namen begrenzt, der Aufbau der beiden Mengen aber nicht. Ohne Profiling ist daraus kein relevanter Performancefehler belegt.
+- **Performance:** Zwei `HashSet`-Instanzen werden als Felder wiederverwendet. Tab- und Entity-Namen werden im `onTick()` aktualisiert, nicht mehr bei jedem HUD-Render-Aufruf. Pro aktivem Tick werden weiterhin die sichtbaren Tab-Einträge und die aktuell geladenen Player-Entities durchlaufen. Ein Profiling-Nachweis liegt nicht vor.
 - **Speicherung:** `staffNames` wird als normale Modul-Einstellung in `nightfall.json` gespeichert und beim Config-Laden wiederhergestellt.
 
 ## Befunde
 
 ### SW-01 – Listenänderungen durch Chat-Befehle werden nicht sofort gespeichert
 
-`/nf staff add` und `/nf staff del` verändern die `ListSetting` direkt. Die beiden Command-Zweige rufen danach nicht `Config.save()` auf. Die Config wird zwar beim Disconnect, beim Client-Shutdown und beim Schließen des ClickGUI gespeichert; ein Client-Absturz vor einem dieser Speicherzeitpunkte kann aber die letzte Listenänderung verlieren.
+Vor der Korrektur veränderten `/nf staff add` und `/nf staff del` die `ListSetting`, ohne danach `Config.save()` aufzurufen. Dadurch konnte eine Änderung bei einem Absturz vor dem nächsten regulären Speicherzeitpunkt verloren gehen.
 
 - **Bewertung:** Reproduzierbarer Befund aus dem Codepfad; kein In-Game-Absturztest durchgeführt.
 - **Status:** Behoben. Bei erfolgreichem Hinzufügen oder Entfernen ruft der Command-Zweig jetzt direkt `Config.save()` auf. Bei einem Duplikat bzw. unbekannten Namen wird nicht unnötig gespeichert. Die Rückmeldung nennt das Speichern ausdrücklich.
@@ -68,18 +70,28 @@ Das HUD beginnt bei Pixelposition `(8, 44)`. Es zeichnet eine Überschrift und m
 
 Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish-Beweis und sagt allein nichts Zuverlässiges über Rolle, Absicht oder Moderationsstatus eines Spielers aus. Sichtbarkeit kann von Client-Weltzustand und Serververhalten abhängen. Die Anzeige bleibt daher ausdrücklich ein unverbindlicher Präsenzhinweis.
 
+## HUD und Statusdarstellung
+
+- Wechsel auf `HudModule`; das Element erscheint dadurch im HUD-Editor.
+- Position und Skalierung werden über die vorhandene HUD-Konfiguration verwaltet.
+- Panel nutzt das aktuelle `Theme`-Farbschema, kompakte Zeilen und eine Legende.
+- Die Statusmengen werden pro Client-Tick aktualisiert und für das Rendern wiederverwendet.
+- HUD-Vorschau im Editor zeigt bei einer leeren Liste den Hinweis `Keine Namen eingetragen`.
+- Es werden weiterhin ausschließlich manuell eingetragene Namen und lokal sichtbare TAB-/Entity-Daten verarbeitet.
+
 ## Offene Tests
 
-- [ ] Nur Tab-Eintrag, nur Entity, beides und keines
+- [ ] Nur Tab-Eintrag, nur Entity, beides und keine sichtbare Quelle
 - [ ] Groß-/Kleinschreibung sowie doppelte Einträge
 - [ ] Mehr als acht eingetragene Namen (Sortierung und Anzeigegrenze)
 - [ ] Disconnect und Weltwechsel
 - [ ] Config-Speicherung direkt nach erfolgreichem `/nf staff add` und `/nf staff del` (inkl. Neustart)
 - [ ] Beide Module gleichzeitig aktiviert: nur StaffWatch-Ausgabe; AntiVanishHints allein bei deaktiviertem StaffWatch
+- [ ] HUD-Editor: verschieben, skalieren, Raster-Snap, Neustart und Vorschau ohne eingetragene Namen
 - [ ] Build und In-Game-Test
 
 ## Änderungsverlauf
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | Zweitprüfung: erfolgreiche Listenänderungen werden sofort gespeichert; doppelte AntiVanishHints-Ausgabe bei aktivem StaffWatch unterdrückt. |
+| 2026-11-16 | Zweitprüfung: Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert und Präsenzdaten auf Tick-Aktualisierung verlagert. |
