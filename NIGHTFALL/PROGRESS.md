@@ -10,7 +10,7 @@
 
 ## Audit-Protokoll
 
-- **2026-11-16 – StaffWatch-Zweitprüfung:** Command-/Config-Speicherpfad und Überschneidung mit `AntiVanishHints` geprüft; Befunde in `NIGHTFALL/MODULES/StaffWatch.md` dokumentiert. Keine Java-Funktionsänderung.
+- **2026-11-16 – StaffWatch-Verbesserung:** `/nf staff add/del` speichert erfolgreiche Änderungen sofort; `AntiVanishHints` überspringt seine HUD-Ausgabe, solange `StaffWatch` aktiv ist. Details und offene Tests in `NIGHTFALL/MODULES/StaffWatch.md`.
 
 Aggregierte Statistiken werden auf Wunsch des Nutzers nicht weiter gepflegt. Die Modulakten und der Modulindex sind die maßgeblichen Einzelstände.
 
