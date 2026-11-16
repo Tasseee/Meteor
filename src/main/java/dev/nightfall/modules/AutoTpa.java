@@ -82,7 +82,7 @@ public final class AutoTpa extends Module {
          }
 
          String name = matcher.group(1);
-         if (!name.equalsIgnoreCase(mc.field_1724.method_5477().getString())) {
+         if (!name.equalsIgnoreCase(mc.field_1724.method_7334().name())) {
             String var11 = this.filter.get();
             switch (var11) {
                case "Whitelist":
