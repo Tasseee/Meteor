@@ -57,7 +57,7 @@ public final class StaffWatch extends HudModule {
       var network = mc.method_1562();
       this.tabAvailable = network != null;
       if (this.tabAvailable) {
-         for (class_640 entry : network.method_2880()) {
+         for (class_640 entry : network.method_45732()) {
             if (entry == null || entry.method_2966() == null) {
                continue;
             }
