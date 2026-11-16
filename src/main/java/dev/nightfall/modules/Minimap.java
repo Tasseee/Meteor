@@ -55,43 +55,46 @@ public class Minimap extends HudModule {
          ctx.method_44379(x, y, x + s, y + s);
          Matrix3x2fStack m = ctx.method_51448();
          m.pushMatrix();
-         m.translate(cx, cy);
-         if (this.rotate.get()) {
-            m.rotate((float)theta);
-         }
-
-         m.translate(-fx * cell, -fz * cell);
-         int ext = this.rotate.get() ? (int)Math.ceil(r * 1.5) : r;
-
-         for (int dz = -ext; dz <= ext; dz++) {
-            for (int dx = -ext; dx <= ext; dx++) {
-               ChunkResult res = bf.get(pcx + dx, pcz + dz);
-               int rgb;
-               if (res == null) {
-                  rgb = 1710626;
-               } else {
-                  switch (res.status) {
-                     case SUS:
-                        rgb = Theme.lerp(10181878, 16726876, (float)(res.score / (bf.thresholdValue() * 3.0)));
-                        break;
-                     case GONE:
-                        rgb = 3108827;
-                        break;
-                     default:
-                        rgb = 2894904;
-                  }
-               }
-
-               int x0 = Math.round(dx * cell);
-               int x1 = Math.round((dx + 1) * cell);
-               int z0 = Math.round(dz * cell);
-               int z1 = Math.round((dz + 1) * cell);
-               ctx.method_25294(x0, z0, x1 - 1, z1 - 1, Theme.withAlpha(rgb, Math.min(255, a + 30)));
+         try {
+            m.translate(cx, cy);
+            if (this.rotate.get()) {
+               m.rotate((float)theta);
             }
+
+            m.translate(-fx * cell, -fz * cell);
+            int ext = this.rotate.get() ? (int)Math.ceil(r * 1.5) : r;
+
+            for (int dz = -ext; dz <= ext; dz++) {
+               for (int dx = -ext; dx <= ext; dx++) {
+                  ChunkResult res = bf.get(pcx + dx, pcz + dz);
+                  int rgb;
+                  if (res == null) {
+                     rgb = 1710626;
+                  } else {
+                     switch (res.status) {
+                        case SUS:
+                           rgb = Theme.lerp(10181878, 16726876, (float)(res.score / (bf.thresholdValue() * 3.0)));
+                           break;
+                        case GONE:
+                           rgb = 3108827;
+                           break;
+                        default:
+                           rgb = 2894904;
+                     }
+                  }
+
+                  int x0 = Math.round(dx * cell);
+                  int x1 = Math.round((dx + 1) * cell);
+                  int z0 = Math.round(dz * cell);
+                  int z1 = Math.round((dz + 1) * cell);
+                  ctx.method_25294(x0, z0, x1 - 1, z1 - 1, Theme.withAlpha(rgb, Math.min(255, a + 30)));
+               }
+            }
+         } finally {
+            m.popMatrix();
+            ctx.method_44380();
          }
 
-         m.popMatrix();
-         ctx.method_44380();
          ctx.method_25294((int)cx - 1, (int)cy - 1, (int)cx + 2, (int)cy + 2, -1);
          int fxm;
          int fym;
