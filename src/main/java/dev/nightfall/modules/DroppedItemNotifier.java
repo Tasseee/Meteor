@@ -27,6 +27,7 @@ public final class DroppedItemNotifier extends Module {
    private final BoolSetting sound = this.add(new BoolSetting("Sound bei Fund", true));
    private final BoolSetting chat = this.add(new BoolSetting("Chat-Nachricht", true));
    private final Set<UUID> seenItems = new HashSet<>();
+   private final Set<UUID> currentlyPresent = new HashSet<>();
    private boolean baselineReady;
 
    public DroppedItemNotifier() {
@@ -36,31 +37,34 @@ public final class DroppedItemNotifier extends Module {
    @Override
    protected void onEnable() {
       this.seenItems.clear();
+      this.currentlyPresent.clear();
       this.baselineReady = false;
    }
 
    @Override
    protected void onDisable() {
       this.seenItems.clear();
+      this.currentlyPresent.clear();
       this.baselineReady = false;
    }
 
    @Override
    public void onWorldLeave() {
       this.seenItems.clear();
+      this.currentlyPresent.clear();
       this.baselineReady = false;
    }
 
    @Override
    public void onTick() {
       if (mc.field_1687 != null && mc.field_1724 != null) {
-         Set<UUID> currentlyPresent = new HashSet<>();
+         this.currentlyPresent.clear();
          double maxDistanceSq = this.range.get() * this.range.get();
 
          for (class_1297 entity : mc.field_1687.method_18112()) {
             if (entity instanceof class_1542 itemEntity && !(itemEntity.method_5858(mc.field_1724) > maxDistanceSq)) {
                UUID id = itemEntity.method_5667();
-               currentlyPresent.add(id);
+               this.currentlyPresent.add(id);
                if (this.baselineReady && !this.seenItems.contains(id)) {
                   class_1799 stack = itemEntity.method_6983();
                   String label = this.selectedItemName(stack);
@@ -77,8 +81,8 @@ public final class DroppedItemNotifier extends Module {
             }
          }
 
-         this.seenItems.retainAll(currentlyPresent);
-         this.seenItems.addAll(currentlyPresent);
+         this.seenItems.retainAll(this.currentlyPresent);
+         this.seenItems.addAll(this.currentlyPresent);
          this.baselineReady = true;
       }
    }
