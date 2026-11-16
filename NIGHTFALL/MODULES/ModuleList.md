@@ -1,52 +1,44 @@
 # ModuleList
 
-- **Registrierter Modulname:** `ModuleList`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/ModuleList.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; HUD-Test offen
+- **Java-Klasse / Anzeigename:** `ModuleList`
+- **Kategorie:** `HUD`
+- **Quellcode-SHA:** `35b09e71816fdd821350c40fa737e78a4cc2dbb3`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Zeigt eine nach Textbreite absteigend sortierte Liste aller aktivierten Module außerhalb der HUD-Kategorie. Der Header zeigt die Anzahl der aktuell aufgeführten Module.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+Keine modulspezifischen Einstellungen.
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Lebenszyklus:** wird im Konstruktor aktiviert.
+- **Datenquelle:** `ModuleManager.all()`; nur aktivierte Module mit Kategorie ungleich HUD.
+- **Sortierung:** längste Namen zuerst; bei gleicher Breite alphabetisch ohne Beachtung der Groß-/Kleinschreibung.
+- **Größe:** Breite passt sich längstem Namen an (min. 62 px); Höhe entspricht 15 px Header plus 12 px je Modul.
+- **HUD-Position:** standardmäßig oben rechts. Eine gespeicherte Altposition mit Y=112 wird auf Y=4 migriert.
+- **Allokationen:** Sortierliste wird als Feld wiederverwendet; Vergleich fragt Textbreiten mehrfach ab.
+- **In-Game/Build:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Logikfehler bestätigt.
+- Bei sehr vielen aktivierten Modulen kann die Liste über den unteren Bildschirmrand hinausreichen. Eine Maximalhöhe oder Scroll-/Kürzungslogik wäre eine mögliche UI-Verbesserung.
+- Der Sortiervergleich berechnet die Schriftbreite mehrfach. Eine Vorberechnung könnte die Arbeit reduzieren, ohne das Verhalten zu ändern; Messung steht aus.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] 0, wenige und viele aktive Module
+- [ ] lange Modulnamen
+- [ ] unterschiedliche GUI-Skalierungen
+- [ ] Position oben rechts und Migration alter Y-Position
+- [ ] HUD-Editor und Bildschirmhöhe
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Erste Codeprüfung; keine Java-Änderung. |
