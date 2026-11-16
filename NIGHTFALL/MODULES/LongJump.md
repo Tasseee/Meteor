@@ -1,52 +1,40 @@
 # LongJump
 
-- **Registrierter Modulname:** `LongJump`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/LongJump.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
+- **Status:** Code geprüft; Movement-/In-Game-Test offen
+- **Quellcode-SHA:** `fc5e0cc8c12a8b8f7c9f2b00f04f94f5c3c8222d`
+- **Kategorie:** `MOVEMENT`
 
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+## Verhalten
 
-## Zweck und Verhalten
-
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Prüft, ob der Spieler am Boden steht und die Sprungtaste hält. Bei vorhandener Bewegungsrichtung wird ein Vorwärtsschub sowie mindestens eine vertikale Sprunggeschwindigkeit gesetzt.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen |
+|---|---:|---|
+| Boost | 0,55 | 0,2–1,5; Schritt 0,05 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- Spieler-Nullcheck und Bodenkontaktprüfung vorhanden.
+- Wasser wird ausgeschlossen.
+- Kein eigener Lifecycle-Zustand oder Ressource.
+- Bewegung wird pro Tick angewendet, solange die Bedingung gilt.
+- Keine lokale Fehlerbehandlung; zentraler Tick-Handler greift.
 
-## Nutzererfahrungen und Testberichte
+## Befunde
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Das Anwenden pro Tick bis zum tatsächlichen Abheben ist aus dem Code ersichtlich; wie oft der Wert vor Abheben gesetzt wird, ist ein In-Game-Prüfpunkt.
+- Keine Änderungen an Sprungkraft oder Server-/Anti-Cheat-Verhalten vorgenommen.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Tests offen
 
-## Fehler und Verbesserungsideen
+- [ ] Sprungtaste kurz/lang halten
+- [ ] Boost 0,2/1,5
+- [ ] ohne Richtung
+- [ ] Wasser und unterschiedliche Böden
+- [ ] Deaktivieren vor/nach Abheben
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
-
-## Änderungsverlauf
-
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Codeprüfung; keine Verhaltensänderung. |
