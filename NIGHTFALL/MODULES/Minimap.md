@@ -1,52 +1,58 @@
 # Minimap
 
-- **Registrierter Modulname:** `Minimap`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/Minimap.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Render-/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `Minimap`
+- **Kategorie:** `HUD`
+- **Aktueller Quellcode-SHA:** `455652ff508054eaa89f4e25ac048b3d1a408758`
+- **Abhängigkeit:** `BaseFinder`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Zeigt ein Chunk-Radar mit SUS-/SUS-WEG-Markierungen aus den bereits vorhandenen BaseFinder-Ergebnissen. Die Karte kann sich mit der Blickrichtung drehen und optionale Chunk-Koordinaten anzeigen. Sie lädt keine Chunks selbst.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen |
+|---|---:|---|
+| Größe | 96 | 50–220; Schritt 2 |
+| Reichweite (Chunks) | 8 | 2–24 |
+| Transparenz | 0,75 | 0,2–1,0 |
+| Rotieren | an | Boolesch |
+| Koordinaten | an | Boolesch |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Abhängigkeit:** liest BaseFinder; bei Deaktivierung von BaseFinder wird dessen Scan-Zustand geleert.
+- **HUD-Platzierung:** standardmäßig unten rechts; Größe wird dynamisch aus der Einstellung übernommen.
+- **Clipping:** setzt einen Scissor-Bereich für die Karte und transformiert die Zellen über Matrix3x2fStack.
+- **Nullfälle:** Spieler und Welt müssen vorhanden sein.
+- **Performance:** bei Rotation wird ein erweitertes Raster von bis zu 73×73 Zellen bei Reichweite 24 gezeichnet; das ist ein möglicher Renderlastpunkt.
+- **Build/In-Game:** noch nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+### MM-01 – Matrix- und Clip-Bereinigung
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+**Behoben im Code:** `0764fc3e1c8395666a1bcaf04d68a06a7e283c78`.
 
-## Fehler und Verbesserungsideen
+Matrix-Pop und das Zurücksetzen des Scissor-Clips liefen zuvor nur nach erfolgreicher Rasterzeichnung. Bei einer Render-Exception konnten beide Renderzustände aktiv bleiben. Die Bereinigung liegt jetzt in `finally`.
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+**Verifikation:** Code auf GitHub gespeichert und erneut gelesen; Build- und In-Game-Test offen.
+
+### MM-02 – Renderlast bei maximaler Reichweite
+
+Die rotierte Karte zeichnet bei Reichweite 24 bis zu 5.329 Zellen pro Frame. Das sollte mit einem Profiling geprüft werden; eine Reduktion der Zellen ohne Designabgleich wurde nicht vorgenommen.
+
+## Offene Tests
+
+- [ ] Rotation an/aus und vier Blickrichtungen
+- [ ] Reichweite 2/24 und Größe 50/220
+- [ ] Scissor-/Matrixzustand bei Renderfehler
+- [ ] BaseFinder aus/an
+- [ ] FPS-Messung bei maximaler Reichweite
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Clip-/Matrix-Bereinigung abgesichert; Tests offen. |
