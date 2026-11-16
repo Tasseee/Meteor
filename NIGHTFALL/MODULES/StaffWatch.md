@@ -3,7 +3,7 @@
 - **Status:** Code verbessert; Build- und In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `StaffWatch`
 - **Kategorie:** `HUD` (über `HudModule`)
-- **Quellcode-SHA StaffWatch:** `351d3fc099e6b5889736c3c7756f7d1f18134f5d`
+- **Quellcode-SHA StaffWatch:** `b17447e60f35d4df145c072c7890fa73887ec607`
 - **Tab-API-Änderung:** `getListedPlayerListEntries()` / `method_45732()`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
 - **Quellcode-SHA AntiVanishHints:** `dfd43801f0544d7e51ce2cab031a1c6a6538d997`
@@ -34,7 +34,7 @@ Das Modul stellt weder fest, ob ein Name tatsächlich zu einem Teammitglied geh�
 | Tab-Eintrag | Entity geladen | Anzeige |
 |---|---|---|
 | ja | ja | `TAB + WELT` |
-| ja | nein | `NUR TAB` |
+| ja | nein | `TAB/NETZ` |
 | nein | ja | `NUR WELT` |
 | nein | nein | `KEINE QUELLE` |
 
@@ -42,7 +42,7 @@ Ist der Netzwerkhandler nicht verfügbar, zeigt das HUD stattdessen `TAB N/A` an
 
 Das HUD ist jetzt ein `HudModule` in der Kategorie `HUD`. Standardposition ist `(8, 42)`. Im HUD-Editor kann es verschoben und skaliert werden. Es zeigt maximal acht Namenszeilen und im Zähler beispielsweise `8/14`, wenn weitere Namen in der Liste stehen. Die Vorschau zeigt bei leerer Liste einen Hinweis statt eines leeren Elements.
 
-Die Statuslabels unterscheiden `TAB + WELT`, `NUR TAB`, `NUR WELT` und `KEINE QUELLE`. Wenn kein Netzwerkhandler verfügbar ist, werden `TAB N/A`-Labels verwendet, damit ein fehlender Datenkanal nicht wie ein negativer Tab-Befund aussieht. Farben ergänzen die Textlabels, sind aber nicht die einzige Statusinformation.
+Die Statuslabels unterscheiden `TAB + WELT`, `TAB/NETZ`, `NUR WELT` und `KEINE QUELLE`. Wenn kein Netzwerkhandler verfügbar ist, werden `TAB N/A`-Labels verwendet, damit ein fehlender Datenkanal nicht wie ein negativer Tab-Befund aussieht. Farben ergänzen die Textlabels, sind aber nicht die einzige Statusinformation.
 
 ## Tab-API-Prüfung (Minecraft 1.21.11)
 
@@ -53,7 +53,17 @@ Das Projekt baut gegen Minecraft `1.21.11` und das Intermediary-Mappings-Artefak
 - `class_640.method_2966()` ist `PlayerListEntry.getProfile()`; daraus wird der Profilname gelesen.
 - `class_638.method_18456()` ist `ClientWorld.getPlayers()`, also die lokal geladenen Spieler-Entities.
 
-Für den Status `TAB` ist `getListedPlayerListEntries()` die passendere Quelle als die allgemeinere `getPlayerList()`-Sammlung. StaffWatch und AntiVanishHints nutzen jetzt `method_45732()`. Das ist anhand der Yarn-1.21.11-Mappings bestätigt; ein In-Game-Abgleich ist noch offen. Die API-Zuordnung beweist nicht, dass ein Name Teammitglied ist oder dass ein nicht gelisteter Name versteckt wird.
+Für den Status `TAB` ist `getListedPlayerListEntries()` die passendere Quelle als die allgemeinere `getPlayerList()`-Sammlung. StaffWatch und AntiVanishHints nutzen jetzt `method_45732()`. Das ist anhand der Yarn-1.21.11-Mappings bestätigt; ein In-Game-Abgleich ist noch offen. Die API-Zuordnung beweist nicht, dass ein Name Teammitglied ist oder dass ein nicht gelisteter Name versteckt wird. Außerdem kann ein Netzwerk die Tab-Liste so konfigurieren, dass sie Spieler mehrerer Unterserver enthält. Das Modul kann allein anhand dieser Einträge nicht erkennen, welchem Backend ein Eintrag zugeordnet ist.
+
+
+## HUG-/Donut-SMP-Einordnung
+
+StaffWatch hat absichtlich keine fest verdrahtete Sondererkennung für HUGSMP oder DonutSMP. Beide Server werden mit denselben zwei klar getrennten Clientquellen ausgewertet:
+
+- `TAB/NETZ`: Der Name steht in den vom Server an den Client übermittelten, gelisteten Tab-Einträgen. Das kann eine lokale oder eine netzwerkweite Liste sein.
+- `WELT`: Eine passende Spieler-Entity ist in der aktuell geladenen Client-Welt vorhanden.
+
+Ein Eintrag mit `TAB/NETZ` allein sagt daher nicht, dass der Spieler auf genau dem Unterserver ist, auf dem du gerade spielst. `TAB + WELT` ist ein deutlich stärkerer Hinweis auf die aktuelle Welt. Auch `NUR WELT` und `KEINE QUELLE` sind nur Momentaufnahmen der geladenen Clientdaten. Die tatsächliche TAB-Konfiguration von HUGSMP bzw. DonutSMP kann ohne In-Game-Beobachtung auf dem jeweiligen Server nicht als lokal oder netzwerkweit bestätigt werden.
 
 ## Technische Prüfung
 
@@ -95,7 +105,8 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 
 ## Offene Tests
 
-- [ ] Nur Tab-Eintrag, nur Entity, beides und keine sichtbare Quelle
+- [ ] Nur Tab-Eintrag (`TAB/NETZ`), nur Entity, beides und keine sichtbare Quelle
+- [ ] Auf HUGSMP und DonutSMP prüfen, ob TAB-Einträge lokal oder netzwerkweit sind; `TAB/NETZ` darf nicht als bestätigter Unterserverstatus verstanden werden
 - [ ] Groß-/Kleinschreibung sowie doppelte Einträge
 - [ ] Mehr als acht eingetragene Namen (Sortierung und Anzeigegrenze)
 - [ ] Disconnect und Weltwechsel
@@ -109,4 +120,4 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | Zweitprüfung: Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert, Präsenzdaten pro Tick aktualisiert und Tab-Abgleich auf `getListedPlayerListEntries()` korrigiert. |
+| 2026-11-16 | Zweitprüfung: Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert, Präsenzdaten pro Tick aktualisiert, Tab-Abgleich auf `getListedPlayerListEntries()` korrigiert und den alleinigen TAB-Status als `TAB/NETZ` gekennzeichnet. |
