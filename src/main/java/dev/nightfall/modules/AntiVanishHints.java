@@ -28,13 +28,28 @@ public final class AntiVanishHints extends Module {
             Set<String> tab = new HashSet<>();
 
             for (class_640 entry : mc.method_1562().method_45732()) {
-               if (entry.method_2966() != null && entry.method_2966().name() != null) {
-                  tab.add(entry.method_2966().name().toLowerCase(Locale.ROOT));
+               if (entry == null) {
+                  continue;
+               }
+
+               var profile = entry.method_2966();
+               if (profile != null) {
+                  String name = profile.name();
+                  if (name != null && !name.isBlank()) {
+                     tab.add(name.toLowerCase(Locale.ROOT));
+                  }
                }
             }
 
             Set<String> loaded = new HashSet<>();
-            mc.field_1687.method_18456().forEach(p -> loaded.add(p.method_7334().name().toLowerCase(Locale.ROOT)));
+            mc.field_1687.method_18456().forEach(player -> {
+               if (player != null && player.method_7334() != null) {
+                  String name = player.method_7334().name();
+                  if (name != null && !name.isBlank()) {
+                     loaded.add(name.toLowerCase(Locale.ROOT));
+                  }
+               }
+            });
             int x = 8;
             int y = 90;
             ctx.method_51433(mc.field_1772, "AntiVanish · Beobachtbare Hinweise", x, y, Theme.ACCENT, true);
