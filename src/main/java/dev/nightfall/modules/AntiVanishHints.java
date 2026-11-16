@@ -18,18 +18,19 @@ public final class AntiVanishHints extends Module {
    @Override
    public void renderHud(class_332 ctx) {
       if (mc.field_1724 != null && mc.field_1687 != null && mc.method_1562() != null) {
-         Set<String> tab = new HashSet<>();
-
-         for (class_640 entry : mc.method_1562().method_2880()) {
-            if (entry.method_2966() != null && entry.method_2966().name() != null) {
-               tab.add(entry.method_2966().name().toLowerCase(Locale.ROOT));
-            }
-         }
-
-         Set<String> loaded = new HashSet<>();
-         mc.field_1687.method_18456().forEach(p -> loaded.add(p.method_7334().name().toLowerCase(Locale.ROOT)));
          StaffWatch staff = ModuleManager.get(StaffWatch.class);
-         if (!staff.staffNames.get().isEmpty()) {
+         Set<String> names = staff.staffNames.get();
+         if (!names.isEmpty()) {
+            Set<String> tab = new HashSet<>();
+
+            for (class_640 entry : mc.method_1562().method_2880()) {
+               if (entry.method_2966() != null && entry.method_2966().name() != null) {
+                  tab.add(entry.method_2966().name().toLowerCase(Locale.ROOT));
+               }
+            }
+
+            Set<String> loaded = new HashSet<>();
+            mc.field_1687.method_18456().forEach(p -> loaded.add(p.method_7334().name().toLowerCase(Locale.ROOT)));
             int x = 8;
             int y = 90;
             ctx.method_51433(mc.field_1772, "AntiVanish · Beobachtbare Hinweise", x, y, Theme.ACCENT, true);
@@ -38,7 +39,7 @@ public final class AntiVanishHints extends Module {
             y += 12;
             int shown = 0;
 
-            for (String name : staff.staffNames.get()) {
+            for (String name : names) {
                boolean inTab = tab.contains(name);
                boolean inWorld = loaded.contains(name);
                String signal;
