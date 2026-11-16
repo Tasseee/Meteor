@@ -15,7 +15,10 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 
-/** Builds a neon contour from camera-facing faces of the baked item mesh. */
+/**
+ * Builds a screen-facing neon band from the silhouette edges of the baked
+ * item mesh. This is independent of Minecraft's enchantment glint.
+ */
 public final class ItemGlowRenderer {
    private ItemGlowRenderer() {}
 
@@ -55,6 +58,9 @@ public final class ItemGlowRenderer {
             EdgeInfo info = edges.computeIfAbsent(EdgeKey.of(a, b), ignored -> new EdgeInfo(a, b));
             if (cameraFacing) {
                info.frontFaces++;
+               // Keep the front-face winding: edge x normal points outside.
+               info.frontA.set(a);
+               info.frontB.set(b);
                info.frontNormal.set(localNormal);
             } else {
                info.otherFaces++;
@@ -63,27 +69,52 @@ public final class ItemGlowRenderer {
       }
 
       int rgb = module.currentGlowColor();
-      int red = rgb >> 16 & 0xFF;
-      int green = rgb >> 8 & 0xFF;
-      int blue = rgb & 0xFF;
-      int alpha = module.alpha();
+      float red = (rgb >> 16 & 0xFF) / 255.0F;
+      float green = (rgb >> 8 & 0xFF) / 255.0F;
+      float blue = (rgb & 0xFF) / 255.0F;
+      float opacity = module.alpha() / 255.0F;
       float offset = module.edgeOffset();
-      class_4588 lines = consumers.method_73477(class_12249.method_76668());
+      float width = module.thickness();
+      class_4588 fills = consumers.method_73477(class_12249.method_76019());
 
       for (EdgeInfo edge : edges.values()) {
          boolean silhouette = edge.frontFaces > 0 && (edge.otherFaces > 0 || edge.frontFaces == 1);
          if (!silhouette) continue;
-         Vector3f a = new Vector3f(edge.a).fma(offset, edge.frontNormal);
-         Vector3f b = new Vector3f(edge.b).fma(offset, edge.frontNormal);
-         emit(lines, positionMatrix, a, b, red, green, blue, Math.max(1, alpha / 4));
-         emit(lines, positionMatrix, a, b, red, green, blue, alpha);
+
+         Vector3f direction = new Vector3f(edge.frontB).sub(edge.frontA);
+         Vector3f outward = direction.cross(new Vector3f(edge.frontNormal));
+         if (outward.lengthSquared() < 1.0E-10F) continue;
+         outward.normalize();
+
+         Vector3f a = new Vector3f(edge.frontA).fma(offset, edge.frontNormal);
+         Vector3f b = new Vector3f(edge.frontB).fma(offset, edge.frontNormal);
+
+         // A wider, transparent band creates the outer neon halo.
+         emitBand(fills, positionMatrix, a, b, outward, width * 2.5F,
+            red, green, blue, opacity * 0.16F);
+         // The saturated inner band creates the crisp visible contour.
+         emitBand(fills, positionMatrix, a, b, outward, width,
+            red, green, blue, opacity);
       }
    }
 
-   private static void emit(class_4588 consumer, Matrix4f matrix, Vector3f a, Vector3f b,
-                            int red, int green, int blue, int alpha) {
-      consumer.method_22918(matrix, a.x, a.y, a.z).method_1336(red, green, blue, alpha).method_22914(0.0F, 0.0F, 1.0F);
-      consumer.method_22918(matrix, b.x, b.y, b.z).method_1336(red, green, blue, alpha).method_22914(0.0F, 0.0F, 1.0F);
+   private static void emitBand(
+      class_4588 consumer, Matrix4f matrix, Vector3f a, Vector3f b, Vector3f outward,
+      float width, float red, float green, float blue, float alpha
+   ) {
+      Vector3f outerA = new Vector3f(a).fma(width, outward);
+      Vector3f outerB = new Vector3f(b).fma(width, outward);
+      vertex(consumer, matrix, a, red, green, blue, alpha);
+      vertex(consumer, matrix, b, red, green, blue, alpha);
+      vertex(consumer, matrix, outerB, red, green, blue, alpha);
+      vertex(consumer, matrix, outerA, red, green, blue, alpha);
+   }
+
+   private static void vertex(
+      class_4588 consumer, Matrix4f matrix, Vector3f point,
+      float red, float green, float blue, float alpha
+   ) {
+      consumer.method_22918(matrix, point.x, point.y, point.z).method_22915(red, green, blue, alpha);
    }
 
    private record PointKey(long x, long y, long z) {
@@ -108,6 +139,8 @@ public final class ItemGlowRenderer {
    private static final class EdgeInfo {
       private final Vector3f a;
       private final Vector3f b;
+      private final Vector3f frontA = new Vector3f();
+      private final Vector3f frontB = new Vector3f();
       private final Vector3f frontNormal = new Vector3f(0.0F, 0.0F, 1.0F);
       private int frontFaces;
       private int otherFaces;
