@@ -33,17 +33,20 @@ public final class Draw {
          if (!(len < 0.5F) && !(len > 20000.0F) && th >= 1) {
             Matrix3x2fStack m = ctx.method_51448();
             m.pushMatrix();
-            m.translate(x1, y1);
-            m.rotate((float)Math.atan2(dy, dx));
-            int half = th / 2;
-            if (smooth) {
-               int alpha = argb >>> 24 & 0xFF;
-               int fringe = argb & 16777215 | alpha * 58 / 255 << 24;
-               ctx.method_25294(-1, -half - 1, (int)Math.ceil(len) + 1, th - half + 1, fringe);
-            }
+            try {
+               m.translate(x1, y1);
+               m.rotate((float)Math.atan2(dy, dx));
+               int half = th / 2;
+               if (smooth) {
+                  int alpha = argb >>> 24 & 0xFF;
+                  int fringe = argb & 16777215 | alpha * 58 / 255 << 24;
+                  ctx.method_25294(-1, -half - 1, (int)Math.ceil(len) + 1, th - half + 1, fringe);
+               }
 
-            ctx.method_25294(0, -half, (int)Math.ceil(len), th - half, argb);
-            m.popMatrix();
+               ctx.method_25294(0, -half, (int)Math.ceil(len), th - half, argb);
+            } finally {
+               m.popMatrix();
+            }
          }
       }
    }
