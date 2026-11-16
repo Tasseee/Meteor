@@ -1,7 +1,8 @@
 # Modulindex
 
 **Inventur-Baseline:** `21dc9f822a6295cdb6238037f344da799bbcca26`  
-**Letzte Code-Prüfungen:** `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk` (Build-/In-Game-Tests offen)  
+**Nutzungsanzeige:** Aktivierungen und aktive Zeit stehen bei jedem Modul im ClickGUI; Details in [`MODULE_USAGE.md`](MODULE_USAGE.md).  
+**Letzte Code-Prüfungen:** `BaseFinder`, `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk` (Build-/In-Game-Tests offen)  
 **Quelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`  
 **Registrierungen:** **101** – jede genau einmal im Audit-Ledger abgebildet.
 
@@ -34,7 +35,7 @@ Die einzelnen Prüfstände und offenen Punkte stehen in den jeweiligen Modulakte
 | [`AutoText`](MODULES/AutoText.md) | `src/main/java/dev/nightfall/modules/AutoText.java` | Vollständig geprüft |
 | [`AutoTotem`](MODULES/AutoTotem.md) | `src/main/java/dev/nightfall/modules/AutoTotem.java` | Offen |
 | [`AutoTpa`](MODULES/AutoTpa.md) | `src/main/java/dev/nightfall/modules/AutoTpa.java` | Vollständig geprüft |
-| [`BaseFinder`](MODULES/BaseFinder.md) | `src/main/java/dev/nightfall/modules/BaseFinder.java` | Offen |
+| [`BaseFinder`](MODULES/BaseFinder.md) | `src/main/java/dev/nightfall/modules/BaseFinder.java` | Code geprüft; Laufzeittest offen |
 | [`BlockESP`](MODULES/BlockESP.md) | `src/main/java/dev/nightfall/modules/BlockESP.java` | Code geprüft; Laufzeittest offen |
 | [`BlockNotifier`](MODULES/BlockNotifier.md) | `src/main/java/dev/nightfall/modules/BlockNotifier.java` | Code geprüft; Laufzeittest offen |
 | [`BoatFly`](MODULES/BoatFly.md) | `src/main/java/dev/nightfall/modules/BoatFly.java` | Code geprüft; Laufzeittest offen |
