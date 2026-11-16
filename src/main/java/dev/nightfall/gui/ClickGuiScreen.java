@@ -378,7 +378,7 @@ public class ClickGuiScreen extends class_437 {
 
          for (Module mod : mods) {
             float mp = this.ease(MODULE_PROGRESS, mod, EXPANDED.contains(mod), delta);
-            bodyTarget += 29.0F + mod.getSettings().size() * 23 * mp;
+            bodyTarget += 42.0F + mod.getSettings().size() * 23 * mp;
          }
 
          categoryBodies[i] = bodyTarget * cp;
@@ -424,8 +424,8 @@ public class ClickGuiScreen extends class_437 {
             for (Module mod : mods) {
                int ry = Math.round(rowY);
                float mp = MODULE_PROGRESS.getOrDefault(mod, 0.0F);
-               boolean rowInViewport = ry + 29 >= this.viewportTop && ry <= this.viewportBottom && ry < bodyBottom;
-               boolean rowHovered = rowInViewport && my < bodyBottom && in(mx, my, this.panelX + 1, ry, this.panelW - 2, 29);
+               boolean rowInViewport = ry + 42 >= this.viewportTop && ry <= this.viewportBottom && ry < bodyBottom;
+               boolean rowHovered = rowInViewport && my < bodyBottom && in(mx, my, this.panelX + 1, ry, this.panelW - 2, 42);
                this.drawModuleRow(ctx, mod, ry, mx, my, rowHovered, delta);
                if (rowHovered && !modalOpen) {
                   int toggleX = this.panelX + this.panelW - 47;
@@ -462,7 +462,7 @@ public class ClickGuiScreen extends class_437 {
                   hovered = mod;
                }
 
-               rowY += 29.0F;
+               rowY += 42.0F;
                float settingsH = mod.getSettings().size() * 23 * mp;
                if (settingsH > 0.5F) {
                   int settingsBottom = Math.round(rowY + settingsH);
@@ -567,7 +567,7 @@ public class ClickGuiScreen extends class_437 {
       class_310 mc = class_310.method_1551();
       float enabled = this.ease(ENABLE_PROGRESS, mod, mod.isEnabled(), delta);
       int rowBg = hover ? Theme.ROW_HOVER : 402653184;
-      ctx.method_25294(this.panelX + 3, y, this.panelX + this.panelW - 3, y + 29 - 1, rowBg);
+      ctx.method_25294(this.panelX + 3, y, this.panelX + this.panelW - 3, y + 42 - 1, rowBg);
       if (enabled > 0.01F) {
          int alpha = Math.max(0, Math.min(155, (int)(enabled * 155.0F)));
          ctx.method_25294(this.panelX + 3, y, this.panelX + 5, y + 29 - 1, Theme.withAlpha(Theme.ACCENT, alpha));
@@ -578,6 +578,7 @@ public class ClickGuiScreen extends class_437 {
       String icon = mod.getName().substring(0, 1).toUpperCase(Locale.ROOT);
       ctx.method_51433(mc.field_1772, icon, iconX + 5, y + 11, mod.isEnabled() ? Theme.ACCENT : Theme.TEXT_DIM, true);
       ctx.method_51433(mc.field_1772, mod.getName(), this.panelX + 38, y + 11, 0xFF000000 | Theme.lerp(Theme.TEXT_DIM, Theme.TEXT, enabled), false);
+      ctx.method_51433(mc.field_1772, mod.getUsageSummary(), this.panelX + 38, y + 22, Theme.TEXT_DIM, false);
       String key = this.listening == mod ? "..." : (mod.getKey() >= 0 ? Keys.name(mod.getKey()) : "KEY");
       int keyW = mc.field_1772.method_1727(key);
       int keyBoxX = this.panelX + this.panelW - 138;
