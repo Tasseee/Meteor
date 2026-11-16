@@ -1,52 +1,42 @@
 # Fly
 
-- **Registrierter Modulname:** `Fly`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/Fly.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
+- **Status:** Code geprüft; Movement-/In-Game-Test offen
+- **Quellcode-SHA:** `1ccfc86b206bb1fb3d863ab3dec26c51e1e5dc0a`
+- **Kategorie:** `MOVEMENT`
 
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+## Verhalten
 
-## Zweck und Verhalten
-
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Setzt beim normalen Spieler (nicht im Fahrzeug und nicht im Elytra-Gleitflug) die horizontale Geschwindigkeit anhand der Blick-/Bewegungsrichtung. Space und Shift bestimmen die vertikale Komponente.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen |
+|---|---:|---|
+| Speed (b/s) | 11,5 | 1–40; Schritt 0,5 |
+| Vertical (b/s) | 9 | 1–30; Schritt 0,5 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- Spieler-Nullcheck vorhanden.
+- Kein Zustand wird zwischen Ticks gespeichert.
+- Bei keiner vertikalen Eingabe wird Y-Geschwindigkeit auf 0 gesetzt.
+- Kein eigener Listener, Thread oder Ressourcen-Cleanup.
+- Tick-Ausnahme wird zentral behandelt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Codefehler in der einfachen Ticklogik bestätigt.
+- Es gibt keine explizite Deaktivierungsroutine; da die Geschwindigkeit bei Deaktivierung nicht zurückgesetzt wird, kann die zuletzt gesetzte Bewegung bis zur nächsten Vanilla-Physikaktualisierung bestehen bleiben. In-Game-Test offen.
+- Keine Anpassung zur Vermeidung von Server-Kicks oder Anti-Cheat-Erkennung vorgenommen.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Tests offen
 
-## Fehler und Verbesserungsideen
+- [ ] horizontal/vertikal
+- [ ] keine Eingabe
+- [ ] Fahrzeug/Elytra
+- [ ] deaktivieren während Bewegung
+- [ ] Weltwechsel
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
-
-## Änderungsverlauf
-
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Codeprüfung; keine Verhaltensänderung. |
