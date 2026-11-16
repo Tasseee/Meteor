@@ -73,6 +73,16 @@ public abstract class HeldItemRendererMixin {
       } catch (Throwable var18) {
       }
 
+      if (styleEnabled) {
+         try {
+            if (ModuleManager.get(FirstPersonStyle.class).shouldHideEmptyHand(item)) {
+               ci.cancel();
+               return;
+            }
+         } catch (Throwable var20) {
+         }
+      }
+
       if (styleEnabled || weaponEnabled) {
          matrices.method_22903();
          this.nightfall$matrixDepth++;
