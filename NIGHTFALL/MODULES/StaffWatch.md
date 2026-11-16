@@ -3,7 +3,7 @@
 - **Status:** Code verbessert; Build- und In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `StaffWatch`
 - **Kategorie:** `HUD` (über `HudModule`)
-- **Quellcode-SHA StaffWatch:** `4239f9660c69521da503025c0b77a229f3d27918`
+- **Quellcode-SHA StaffWatch:** `05fba29d1cbd427759039bc4fb016c5a0280ef80`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
 - **Quellcode-SHA AntiVanishHints:** `b220bed5952f3e7705dd85a2f0a2a986be538010`
 - **Mitgeprüfte Dateien:** `ListSetting.java`, `Commands.java`, `Config.java`, `Nightfall.java`, `ModuleManager.java`, `AntiVanishHints.java`
@@ -32,10 +32,12 @@ Das Modul stellt weder fest, ob ein Name tatsächlich zu einem Teammitglied geh�
 
 | Tab-Eintrag | Entity geladen | Anzeige |
 |---|---|---|
-| ja | ja | Entity geladen + Tab-Eintrag |
-| nein | ja | Entity geladen · kein Tab-Eintrag |
-| ja | nein | Tab-Eintrag · Entity nicht geladen |
-| nein | nein | keine sichtbare Quelle (`KEINE QUELLE`) |
+| ja | ja | `TAB + WELT` |
+| ja | nein | `NUR TAB` |
+| nein | ja | `NUR WELT` |
+| nein | nein | `KEINE QUELLE` |
+
+Ist der Netzwerkhandler nicht verfügbar, zeigt das HUD stattdessen `TAB N/A` an und wertet nur die Entity-Quelle aus.
 
 Das HUD ist jetzt ein `HudModule` in der Kategorie `HUD`. Standardposition ist `(8, 42)`. Im HUD-Editor kann es verschoben und skaliert werden. Es zeigt maximal acht Namenszeilen und im Zähler beispielsweise `8/14`, wenn weitere Namen in der Liste stehen. Die Vorschau zeigt bei leerer Liste einen Hinweis statt eines leeren Elements.
 
@@ -43,10 +45,10 @@ Die Statuslabels unterscheiden `TAB + WELT`, `NUR TAB`, `NUR WELT` und `KEINE QU
 
 ## Technische Prüfung
 
-- **Lifecycle:** Kein eigener `onEnable`-/`onDisable`-Code, keine eigenen Listener und keine Hintergrundthreads.
-- **Nullfälle:** Spieler und Welt werden vor dem Rendern geprüft. Der Netzwerkhandler wird separat auf `null` geprüft. Tab-Eintrag und Profilname werden vor der Übernahme in die Vergleichsmenge geprüft.
+- **Lifecycle:** `onEnable()` und `onWorldLeave()` leeren den zwischengespeicherten Präsenzzustand. `onTick()` aktualisiert ihn nur bei aktivem Modul. Keine eigenen Event-Listener, Executor oder Hintergrundthreads.
+- **Nullfälle:** Spieler und Welt werden vor dem Sammeln der Daten geprüft. Netzwerkhandler, Tab-Einträge, Profile und Profilnamen werden separat geprüft; leere Namen werden übersprungen.
 - **Fehlerbehandlung:** Das Modul hat keinen lokalen Catch-Block. `ModuleManager.renderHud` fängt Render-Ausnahmen zentral ab, protokolliert sie und deaktiviert das betroffene Modul.
-- **Threading:** Der Zugriff erfolgt im HUD-Renderpfad auf den Client-/Weltzustand; das Modul startet keine parallelen Tasks.
+- **Threading:** Das Sammeln läuft in `onTick()` und die Anzeige liest den Cache im HUD-Renderpfad. Das Modul startet keine parallelen Tasks; beide Pfade laufen über den Client-Lifecycle.
 - **Performance:** Zwei `HashSet`-Instanzen werden als Felder wiederverwendet. Tab- und Entity-Namen werden im `onTick()` aktualisiert, nicht mehr bei jedem HUD-Render-Aufruf. Pro aktivem Tick werden weiterhin die sichtbaren Tab-Einträge und die aktuell geladenen Player-Entities durchlaufen. Ein Profiling-Nachweis liegt nicht vor.
 - **Speicherung:** `staffNames` wird als normale Modul-Einstellung in `nightfall.json` gespeichert und beim Config-Laden wiederhergestellt.
 
@@ -88,6 +90,7 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 - [ ] Config-Speicherung direkt nach erfolgreichem `/nf staff add` und `/nf staff del` (inkl. Neustart)
 - [ ] Beide Module gleichzeitig aktiviert: nur StaffWatch-Ausgabe; AntiVanishHints allein bei deaktiviertem StaffWatch
 - [ ] HUD-Editor: verschieben, skalieren, Raster-Snap, Neustart und Vorschau ohne eingetragene Namen
+- [ ] Ungültige/leere Konfigurationslisteneinträge: Zähler und Zeilenanzahl bleiben konsistent
 - [ ] Build und In-Game-Test
 
 ## Änderungsverlauf
