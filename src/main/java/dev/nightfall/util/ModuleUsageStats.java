@@ -77,7 +77,7 @@ public final class ModuleUsageStats {
       if (record.activations < Long.MAX_VALUE) {
          record.activations++;
       }
-      ACTIVE_SINCE.put(moduleName, System.currentTimeMillis());
+      ACTIVE_SINCE.put(moduleName, System.nanoTime());
       dirty = true;
    }
 
@@ -91,7 +91,7 @@ public final class ModuleUsageStats {
       }
 
       UsageRecord record = RECORDS.computeIfAbsent(moduleName, ignored -> new UsageRecord());
-      long elapsed = Math.max(0L, System.currentTimeMillis() - startedAt);
+      long elapsed = elapsedMillis(startedAt);
       record.activeMillis = saturatingAdd(record.activeMillis, elapsed);
       dirty = true;
    }
@@ -105,7 +105,7 @@ public final class ModuleUsageStats {
       UsageRecord record = RECORDS.get(moduleName);
       long total = record == null ? 0L : record.activeMillis;
       Long startedAt = ACTIVE_SINCE.get(moduleName);
-      return startedAt == null ? total : saturatingAdd(total, Math.max(0L, System.currentTimeMillis() - startedAt));
+      return startedAt == null ? total : saturatingAdd(total, elapsedMillis(startedAt));
    }
 
    public static String summary(String moduleName) {
@@ -150,7 +150,7 @@ public final class ModuleUsageStats {
          copy.activeMillis = entry.getValue().activeMillis;
          Long startedAt = ACTIVE_SINCE.get(entry.getKey());
          if (startedAt != null) {
-            copy.activeMillis = saturatingAdd(copy.activeMillis, Math.max(0L, System.currentTimeMillis() - startedAt));
+            copy.activeMillis = saturatingAdd(copy.activeMillis, elapsedMillis(startedAt));
          }
          snapshot.put(entry.getKey(), copy);
       }
@@ -169,6 +169,10 @@ public final class ModuleUsageStats {
       } catch (IOException exception) {
          Nightfall.LOGGER.error("Modul-Nutzungsdaten konnten nicht gespeichert werden: {}", FILE, exception);
       }
+   }
+
+   private static long elapsedMillis(long startedAtNanos) {
+      return Math.max(0L, System.nanoTime() - startedAtNanos) / 1000000L;
    }
 
    private static long saturatingAdd(long left, long right) {
