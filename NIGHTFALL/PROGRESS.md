@@ -10,6 +10,8 @@
 
 ## Audit-Protokoll
 
+- **2026-11-16 – StaffWatch-Zweitprüfung:** Command-/Config-Speicherpfad und Überschneidung mit `AntiVanishHints` geprüft; Befunde in `NIGHTFALL/MODULES/StaffWatch.md` dokumentiert. Keine Java-Funktionsänderung.
+
 Aggregierte Statistiken werden auf Wunsch des Nutzers nicht weiter gepflegt. Die Modulakten und der Modulindex sind die maßgeblichen Einzelstände.
 
 **Wichtig:** Die 22 vollständigen und 6 teilweisen Prüfstände sind übernommene frühere Auditstände. Im aktuellen Nightfall-Arbeitslauf wurden die oben aufgeführten Module anhand des Quellcodes geprüft. `BaseFinder` wurde zusätzlich mit Fokus auf Datenhaltung und Lifecycle geprüft. Für sie stehen Build- und In-Game-Tests noch aus. `AutoCraftPlanner` fasst doppelte Zutaten zusammen; `DroppedItemNotifier` verwendet seine temporäre UUID-Sammlung wieder; `BlockNotifier` hat ein korrigiertes Scanintervall und verwendet seine Positionssammlung wieder; `EspBase` verwendet jetzt die übergebenen Standardreichweiten; `AutoFish` unterstützt die Nebenhand, wenn dies freigegeben ist; `Minimap` stellt Matrix und Scissor-Clip nach Renderfehlern wieder her; `WorldLyrics` stellt nach Renderfehlern seine Transformationsmatrix wieder her; `SpotifyLyricsHud` schließt seinen OAuth-Executor und verarbeitet mehrere LRC-Zeitmarken; `AutoFarm` stellt den Hotbar-Slot auch bei Interaktionsfehlern wieder her; `LootDropFinder` bereinigt abgelaufene Marker-Höhendaten; `FreeLook` verwendet Cursor-Arrays wieder; `SpawnerProtect` löscht alte Spawnerpositionen beim Weltwechsel. Die 101 registrierten Einträge wurden mit `ModuleManager.init()` abgeglichen. Die fünf Einträge `TextHuds.*` sind eigenständige registrierte Unterklassen und teilen sich `TextHuds.java`.
