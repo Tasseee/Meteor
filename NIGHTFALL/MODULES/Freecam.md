@@ -3,12 +3,12 @@
 - **Status:** Code geprüft; Kamera-/In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `Freecam`
 - **Kategorie:** `MOVEMENT`
-- **Quellcode-SHA:** `96eefb8d870581414aba30061eb984d853f1ca4a`
+- **Quellcode-SHA:** `78aed1a379acfd77a293212bbe4d08cf494eabc0`
 - **Mixin:** `CameraMixin` (`e269e58dc14a6fcd034b5c012efacf2040357d1f`)
 
 ## Zweck und Verhalten
 
-Bewegt die lokale Kamera unabhängig von der Spielerposition. Der Spieler bleibt an der gespeicherten Position; die Spielerbewegungsgeschwindigkeit wird während aktiver Freecam auf null gesetzt. Die Kamera wird über WASD sowie Space/Shift bewegt. Beim Aktivieren wird FreeLook deaktiviert.
+Bewegt die lokale Kamera unabhängig von der Spielerposition. Der Spieler bleibt an der gespeicherten Position; die Spielerbewegungsgeschwindigkeit wird während aktiver Freecam auf null gesetzt. Die Kamera wird über WASD sowie Space/Shift bewegt. Die horizontale Maussteuerung bleibt unverändert. Die vertikale Maussteuerung ist standardmäßig invertiert: Maus nach unten bewegt den Blick nach oben. Die Einstellung `Vertikale Maus invertieren` kann dies umschalten. Beim Aktivieren wird FreeLook deaktiviert.
 
 ## Einstellungen
 
@@ -16,12 +16,13 @@ Bewegt die lokale Kamera unabhängig von der Spielerposition. Der Spieler bleibt
 |---|---:|---|
 | Geschwindigkeit | 0,45 | 0,1–2,0; Schritt 0,05 |
 | Kamera-Sensitivität | 0,15 | 0,03–0,5; Schritt 0,01 |
+| Vertikale Maus invertieren | An | Ein/Aus |
 
 ## Technische Prüfung
 
 - **Aktivierung:** wartet auf Spieler und Welt; Startposition liegt 2,5 Blöcke vor dem Spieler.
 - **Zeitdelta:** Bewegungszeit wird auf 0–0,05 Sekunden begrenzt, damit lange Frames keinen großen Kamerasprung verursachen.
-- **Mausdelta:** Cursor-Arrays werden als Felder wiederverwendet; Delta ist auf ±250 Pixel/Tick begrenzt.
+- **Mausdelta:** Cursor-Arrays werden als Felder wiederverwendet; Delta ist auf ±250 Pixel/Tick begrenzt. Die horizontale Yaw-Richtung wurde nicht geändert; nur das vertikale Pitch-Delta wird bei aktivierter Option negiert.
 - **Interpolation:** Position, Yaw und Pitch werden zwischen vorherigem und aktuellem Kamerazustand interpoliert.
 - **Lifecycle:** bei Deaktivierung werden Spielerposition, Velocity und Blickrichtung wiederhergestellt; Weltwechsel setzt die Kameraposition zurück.
 - **Mixin:** rendert den lokalen Spieler auch in der Third-Person-Ansicht; CameraMixin setzt Kameraposition und -rotation.
@@ -36,6 +37,9 @@ Bewegt die lokale Kamera unabhängig von der Spielerposition. Der Spieler bleibt
 ## Offene Tests
 
 - [ ] WASD, Space, Shift
+- [ ] Vertikale Invertierung standardmäßig aktiv: Maus nach unten schaut nach oben
+- [ ] Option deaktivieren: vertikale Maussteuerung wieder normal
+- [ ] Links/rechts bleibt bei beiden Einstellungen unverändert
 - [ ] Pitch-Grenzen −90°/90°
 - [ ] Deaktivieren stellt Spielerzustand wieder her
 - [ ] Welt verlassen und neue Welt betreten
@@ -46,4 +50,4 @@ Bewegt die lokale Kamera unabhängig von der Spielerposition. Der Spieler bleibt
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | Freecam und CameraMixin codebasiert geprüft; keine Java-Änderung. |
+| 2026-11-16 | Freecam und CameraMixin codebasiert geprüft; Option `Vertikale Maus invertieren` ergänzt (standardmäßig an), horizontale Maussteuerung unverändert. |
