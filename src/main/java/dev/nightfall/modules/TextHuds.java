@@ -9,6 +9,8 @@ import net.minecraft.class_4184;
 import net.minecraft.class_640;
 
 public final class TextHuds {
+   private static final String[] DIRECTIONS = {"S (+Z)", "SW", "W (-X)", "NW", "N (-Z)", "NE", "E (+X)", "SE"};
+
    private TextHuds() {
    }
 
@@ -50,9 +52,8 @@ public final class TextHuds {
          } else {
             class_4184 camera = mc.field_1773.method_19418();
             float yaw = camera != null && camera.method_19332() ? camera.method_19330() : mc.field_1724.method_36454();
-            String[] n = new String[]{"S (+Z)", "SW", "W (-X)", "NW", "N (-Z)", "NE", "E (+X)", "SE"};
-            int i = Math.floorMod(Math.round(yaw / 45.0F), 8);
-            return n[i] + String.format("  %.0f", (yaw % 360.0F + 360.0F) % 360.0F);
+            int i = Math.floorMod(Math.round(yaw / 45.0F), DIRECTIONS.length);
+            return DIRECTIONS[i] + String.format("  %.0f", (yaw % 360.0F + 360.0F) % 360.0F);
          }
       }
    }
