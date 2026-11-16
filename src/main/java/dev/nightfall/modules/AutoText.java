@@ -67,7 +67,8 @@ public final class AutoText extends Module {
             this.ticks++;
             if (this.ticks >= this.interval.getInt() * 20) {
                this.ticks = 0;
-               String message = list.get(Math.floorMod(this.nextIndex, list.size()));
+               int sentIndex = Math.floorMod(this.nextIndex, list.size());
+               String message = list.get(sentIndex);
                mc.field_1724.field_3944.method_45729(message);
                if (this.rotate.get()) {
                   this.nextIndex++;
@@ -76,7 +77,7 @@ public final class AutoText extends Module {
                if (this.showInfo.get()) {
                   mc.field_1724
                      .method_7353(
-                        class_2561.method_43470("[Nightfall] AutoText gesendet (" + (this.nextIndex % Math.max(1, list.size()) + 1) + "/" + list.size() + ")"),
+                        class_2561.method_43470("[Nightfall] AutoText gesendet (" + (sentIndex + 1) + "/" + list.size() + ")"),
                         true
                      );
                }
