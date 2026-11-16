@@ -1,52 +1,46 @@
 # Step
 
-- **Registrierter Modulname:** `Step`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/Step.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Movement-/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `Step`
+- **Kategorie:** `MOVEMENT`
+- **Quellcode-SHA:** `0b0f49b664cd1c18909cf6294d407e5bba82f244`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Setzt das Spielerattribut `step_height` auf einen konfigurierten Wert. Der vorherige Attributwert wird beim Deaktivieren oder Weltwechsel wiederhergestellt.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen |
+|---|---:|---|
+| Höhe | 1,0 | 0,6–2,5; Schritt 0,1 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Attributzugriff:** prüft, ob ein Spieler und das Attribut verfügbar sind.
+- **Baseline:** ursprünglicher Wert wird beim ersten Tick mit verfügbarem Attribut einmalig gespeichert.
+- **Änderung:** bei jeder Tick-Abweichung wird der konfigurierte Wert erneut gesetzt.
+- **Cleanup:** `onDisable` und `onWorldLeave` rufen `restore()` auf; bei verfügbarem Attribut wird der vorherige Wert wiederhergestellt.
+- **Grenzfall:** wenn beim Cleanup kein Spieler/Attribut verfügbar ist, kann kein Restore mehr erfolgen; der alte Spieler ist dann normalerweise nicht mehr aktiv.
+- **Threads/Ressourcen:** keine eigenen Listener oder Threads.
+- **In-Game/Build:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Fehler bei regulärem Lifecycle bestätigt.
+- Das ständige Setzen bei jeder Abweichung überschreibt Änderungen anderer Mods, solange Step aktiv ist. Das ist ein möglicher Kompatibilitätskonflikt; kein automatischer Konflikt-Resolver vorhanden.
+- Keine Bewegungsgeschwindigkeit oder Anti-Cheat-Umgehung angepasst.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] Höhe 0,6 / 2,5
+- [ ] Aktivieren, Höhe während Aktivierung ändern, deaktivieren
+- [ ] Weltwechsel bei aktivem Modul
+- [ ] Zusammenspiel mit einem zweiten Mod, der step_height anpasst
+- [ ] Respawn und Spielerwechsel
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Step codebasiert geprüft; keine Java-Änderung. |
