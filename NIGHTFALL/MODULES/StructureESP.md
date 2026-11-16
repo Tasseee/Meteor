@@ -1,52 +1,57 @@
 # StructureESP
 
-- **Registrierter Modulname:** `StructureESP`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/StructureESP.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Leistungstest offen
+- **Java-Klasse / Anzeigename:** `StructureESP`
+- **Kategorie:** `VISUALS`
+- **Quellcode-SHA:** `2d9dd0757d0353139c06333b9436738b1e2995cc`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Markiert ausgewählte Blocktypen in bereits geladenen Chunks: Spawner, Portalrahmen, Trial-Spawner, Kisten, verdächtige Blöcke, Fässer/Endertruhen/Trapped Chests, Dekotöpfe, Bienenstöcke, End-Gateways, Shulkerboxen und Vaults. Es werden keine Chunks nachgeladen.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen |
+|---|---:|---|
+| Reichweite | 48 | 8–96; Schritt 8 |
+| Spawner | an | Boolesch |
+| Portalrahmen | an | Boolesch |
+| Trial-Spawner | an | Boolesch |
+| Kisten | an | Boolesch |
+| Verdächtige Blöcke | an | Boolesch |
+| Weitere Truhen und Fässer | an | Boolesch |
+| Dekotöpfe | an | Boolesch |
+| Bienenstöcke | an | Boolesch |
+| End-Gateways | an | Boolesch |
+| Shulkerboxen | an | Boolesch |
+| Tresore | an | Boolesch |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Scanintervall:** `timer-- <= 0`, danach `timer=30`; Folge-Scans liegen damit 31 geeignete Ticks auseinander.
+- **Trefferlimit:** maximal 160 Boxen, nicht maximal 160 untersuchte Blockpositionen.
+- **Suchraum:** achsenparalleler Würfel auf X/Z/Y, begrenzt auf Welt-Höhenbereich.
+- **Chunk-Sicherheit:** nur bereits geladene Chunks werden untersucht.
+- **Lifecycle:** Positionen werden bei Deaktivierung und Weltwechsel geleert; Timer wird bei Weltwechsel zurückgesetzt.
+- **Performance:** bei geringer Trefferzahl kann der Scan trotz Trefferlimit viele Blockzustände prüfen; Reichweite 96 entspricht bis zu 193³ Koordinaten vor geladenen Chunk- und Cap-Abbruchbedingungen.
+- **Build/In-Game:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein klarer Fehler im Trefferfilter bestätigt.
+- Das Verhältnis zwischen Trefferlimit und tatsächlich untersuchten Positionen ist eine Performance-Risikoquelle.
+- Keine Verbesserung der Struktur-/Spawner-Erkennung oder Server-Schutzumgehung vorgenommen.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] alle Filter einzeln
+- [ ] Reichweite 8/96
+- [ ] 160-Treffer-Cap
+- [ ] ungeladene Chunk-Grenzen
+- [ ] Clienttick-/FPS-Profiling in lokaler Testwelt
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | StructureESP codebasiert geprüft; keine Java-Änderung. |
