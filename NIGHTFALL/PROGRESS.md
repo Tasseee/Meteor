@@ -10,7 +10,8 @@
 
 ## Audit-Protokoll
 
-- **2026-11-16 – StaffWatch-Verbesserung:** `/nf staff add/del` speichert erfolgreiche Änderungen sofort; `AntiVanishHints` überspringt seine HUD-Ausgabe, solange `StaffWatch` aktiv ist. `StaffWatch` ist jetzt ein verschieb- und skalierbares `HudModule`, zeigt TAB-/WELT-Status verständlicher an, aktualisiert Präsenzdaten pro Tick und nutzt für TAB `getListedPlayerListEntries()` statt der allgemeineren `getPlayerList()`-Methode. Der alleinige Tab-Status wird jetzt als `TAB/NETZ` bezeichnet und ausdrücklich nicht als Unterservernachweis gewertet. Die TAB-Einträge werden ausdrücklich nicht als Unterservernachweis gewertet; gefundene Namen erscheinen im HUD mit ihrer originalen Profil-Schreibweise. Serverunterschiede für HUGSMP und DonutSMP bleiben bis zum In-Game-Abgleich offen. Details und offene Tests in `NIGHTFALL/MODULES/StaffWatch.md`.
+- **2026-11-16 – StaffWatch-Verbesserung:** `/nf staff add/del` speichert erfolgreiche Änderungen sofort; `AntiVanishHints` überspringt seine HUD-Ausgabe, solange `StaffWatch` aktiv ist. `StaffWatch` ist jetzt ein verschieb- und skalierbares `HudModule`, zeigt TAB-/WELT-Status verständlicher an, aktualisiert Präsenzdaten pro Tick und nutzt für TAB `getListedPlayerListEntries()` statt der allgemeineren `getPlayerList()`-Methode. Der alleinige Tab-Status heißt `TAB/NETZ` und wird nicht als Unterservernachweis gewertet; gefundene Namen erscheinen im HUD mit ihrer originalen Profil-Schreibweise. Serverunterschiede für HUGSMP und DonutSMP bleiben bis zum In-Game-Abgleich offen. Details und offene Tests in `NIGHTFALL/MODULES/StaffWatch.md`.
+- **2026-11-16 – Freecam-Maussteuerung:** Option `Vertikale Maus invertieren` ergänzt, Standard `AN`; horizontale Maussteuerung bleibt unverändert. Details und offene Tests in `NIGHTFALL/MODULES/Freecam.md`.
 
 Aggregierte Statistiken werden auf Wunsch des Nutzers nicht weiter gepflegt. Die Modulakten und der Modulindex sind die maßgeblichen Einzelstände.
 
@@ -39,7 +40,7 @@ Aggregierte Statistiken werden auf Wunsch des Nutzers nicht weiter gepflegt. Die
 - [x] Track-Zustand in `SpawnerProtect` beim Weltwechsel zurückgesetzt.
 - [x] `BaseFinder`: Markierungs- und Fake-Pattern-Dateien atomar speichern; ungültige Markierungseinträge beim Laden einzeln überspringen.
 - [x] `ModuleUsageStats`: lokale Aktivierungszahl und aktive Dauer für alle Module; in jeder ClickGUI-Zeile sichtbar.
-- [ ] Build- und In-Game-Tests für die oben genannten Module – offen; Bewegungsmodul-Logik bewusst nicht angepasst.
+- [ ] Build- und In-Game-Tests für die oben genannten Module – offen. Die Freecam-Änderung betrifft nur die lokale vertikale Kamerasteuerung; horizontale Eingabe und serverseitige Bewegungslogik bleiben unverändert.
 - [ ] Weitere Modulakten neu inhaltlich prüfen – fortlaufende Aufgabe.
 
 ## Nächste Schritte
