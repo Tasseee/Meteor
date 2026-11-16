@@ -1,52 +1,49 @@
 # Freecam
 
-- **Registrierter Modulname:** `Freecam`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/Freecam.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Kamera-/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `Freecam`
+- **Kategorie:** `MOVEMENT`
+- **Quellcode-SHA:** `96eefb8d870581414aba30061eb984d853f1ca4a`
+- **Mixin:** `CameraMixin` (`e269e58dc14a6fcd034b5c012efacf2040357d1f`)
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Bewegt die lokale Kamera unabhängig von der Spielerposition. Der Spieler bleibt an der gespeicherten Position; die Spielerbewegungsgeschwindigkeit wird während aktiver Freecam auf null gesetzt. Die Kamera wird über WASD sowie Space/Shift bewegt. Beim Aktivieren wird FreeLook deaktiviert.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen |
+|---|---:|---|
+| Geschwindigkeit | 0,45 | 0,1–2,0; Schritt 0,05 |
+| Kamera-Sensitivität | 0,15 | 0,03–0,5; Schritt 0,01 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Aktivierung:** wartet auf Spieler und Welt; Startposition liegt 2,5 Blöcke vor dem Spieler.
+- **Zeitdelta:** Bewegungszeit wird auf 0–0,05 Sekunden begrenzt, damit lange Frames keinen großen Kamerasprung verursachen.
+- **Mausdelta:** Cursor-Arrays werden als Felder wiederverwendet; Delta ist auf ±250 Pixel/Tick begrenzt.
+- **Interpolation:** Position, Yaw und Pitch werden zwischen vorherigem und aktuellem Kamerazustand interpoliert.
+- **Lifecycle:** bei Deaktivierung werden Spielerposition, Velocity und Blickrichtung wiederhergestellt; Weltwechsel setzt die Kameraposition zurück.
+- **Mixin:** rendert den lokalen Spieler auch in der Third-Person-Ansicht; CameraMixin setzt Kameraposition und -rotation.
+- **Build/In-Game:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Fehler im statischen Kontrollfluss gefunden.
+- `onWorldLeave()` setzt `active=false`, lässt das Modul aber aktiviert; beim Eintritt in eine neue Welt kann Freecam automatisch neu initialisieren. Ob das gewünscht ist, sollte getestet werden.
+- Die Funktion wird als lokale Kameradarstellung dokumentiert; keine Änderung an serverseitiger Bewegung oder Anti-Cheat-Verhalten.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] WASD, Space, Shift
+- [ ] Pitch-Grenzen −90°/90°
+- [ ] Deaktivieren stellt Spielerzustand wieder her
+- [ ] Welt verlassen und neue Welt betreten
+- [ ] FreeLook-Kombination und Modulumschaltung
+- [ ] niedrige FPS / Zeitdelta-Begrenzung
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Freecam und CameraMixin codebasiert geprüft; keine Java-Änderung. |
