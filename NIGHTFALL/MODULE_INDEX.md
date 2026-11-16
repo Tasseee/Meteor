@@ -1,6 +1,7 @@
 # Modulindex
 
-**Snapshot:** `21dc9f822a6295cdb6238037f344da799bbcca26`  
+**Inventur-Baseline:** `21dc9f822a6295cdb6238037f344da799bbcca26`  
+**Letzter Modul-Audit:** `AdvancedWorldOverlay` (Code geprüft; Laufzeittest offen)  
 **Quelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`  
 **Registrierungen:** **101** – jede genau einmal im Audit-Ledger abgebildet.
 
@@ -9,15 +10,16 @@
 | Status | Anzahl | Anteil |
 |---|---:|---:|
 | Vollständig geprüft (übernommener Auditstand) | 22 | 21.8 % |
-| Teilweise geprüft | 6 | 5.9 % |
-| Offen | 73 | 72.3 % |
+| Teilweise geprüft (übernommener Auditstand) | 6 | 5.9 % |
+| Code geprüft; Laufzeittest offen | 1 | 1.0 % |
+| Offen | 72 | 71.3 % |
 | **Gesamt** | **101** | **100 %** |
 
 ## Alle registrierten Module
 
 | Modul | Quellcode | Prüfstatus |
 |---|---|---|
-| [`AdvancedWorldOverlay`](MODULES/AdvancedWorldOverlay.md) | `src/main/java/dev/nightfall/modules/AdvancedWorldOverlay.java` | Offen |
+| [`AdvancedWorldOverlay`](MODULES/AdvancedWorldOverlay.md) | `src/main/java/dev/nightfall/modules/AdvancedWorldOverlay.java` | Code geprüft; Laufzeittest offen |
 | [`AntiCheatMonitor`](MODULES/AntiCheatMonitor.md) | `src/main/java/dev/nightfall/modules/AntiCheatMonitor.java` | Vollständig geprüft |
 | [`AntiVanishHints`](MODULES/AntiVanishHints.md) | `src/main/java/dev/nightfall/modules/AntiVanishHints.java` | Vollständig geprüft |
 | [`ArmorHud`](MODULES/ArmorHud.md) | `src/main/java/dev/nightfall/modules/ArmorHud.java` | Vollständig geprüft |
@@ -123,6 +125,7 @@
 
 - **Vollständig geprüft:** Status aus dem vorhandenen Audit-Ledger übernommen, hier nicht neu auditiert.
 - **Teilweise geprüft:** begrenzte frühere Prüfung; nicht als abgeschlossen behandeln.
-- **Offen:** vollständige Prüfung steht aus.
+- **Code geprüft; Laufzeittest offen:** Quellcode wurde geprüft; In-Game-/Build-Nachweise fehlen noch.
+- **Offen:** inhaltliche Prüfung steht aus.
 
 Die fünf Einträge `TextHuds.Fps`, `TextHuds.Ping`, `TextHuds.Clock`, `TextHuds.Direction` und `TextHuds.BiomeHud` sind eigenständige Registrierungen in einer gemeinsamen Quelldatei `TextHuds.java`.
