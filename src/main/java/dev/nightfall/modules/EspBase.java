@@ -33,7 +33,7 @@ public abstract class EspBase extends Module {
 
    protected EspBase(String name, String desc, int defRange, int maxRange, int rgb) {
       super(name, desc, Category.VISUALS);
-      this.range = this.add(new NumberSetting("Reichweite", maxRange, 8.0, maxRange, 8.0));
+      this.range = this.add(new NumberSetting("Reichweite", defRange, 8.0, maxRange, 8.0));
       this.color = this.add(new ColorSetting("Farbe", rgb));
    }
 
