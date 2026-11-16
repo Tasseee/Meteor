@@ -30,6 +30,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -40,6 +41,7 @@ import net.minecraft.class_332;
 
 public final class SpotifyLyricsHud extends HudModule {
    private static final String REDIRECT_URI = "http://127.0.0.1:8888/callback";
+   private static final Pattern LRC_TIMESTAMP = Pattern.compile("\\[(\\d{1,2}):(\\d{2})(?:[.:](\\d{1,3}))?\\]");
    private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5L)).followRedirects(Redirect.NEVER).build();
    private final StringSetting clientId = this.add(new StringSetting("Spotify Client ID", "", 120));
    private final BoolSetting showLyrics = this.add(new BoolSetting("Synchronisierte Lyrics", true));
@@ -61,6 +63,7 @@ public final class SpotifyLyricsHud extends HudModule {
    private volatile String oauthState;
    private volatile String verifier;
    private HttpServer callbackServer;
+   private ExecutorService callbackExecutor;
    private ScheduledExecutorService worker;
 
    public SpotifyLyricsHud() {
@@ -171,11 +174,12 @@ public final class SpotifyLyricsHud extends HudModule {
                   this.closeCallbackServer();
                }
             });
-            this.callbackServer.setExecutor(Executors.newSingleThreadExecutor(r -> {
+            this.callbackExecutor = Executors.newSingleThreadExecutor(r -> {
                Thread t = new Thread(r, "Nightfall-Spotify-OAuth");
                t.setDaemon(true);
                return t;
-            }));
+            });
+            this.callbackServer.setExecutor(this.callbackExecutor);
             this.callbackServer.start();
             String url = "https://accounts.spotify.com/authorize?response_type=code&client_id="
                + enc(this.clientId.get())
@@ -363,18 +367,27 @@ public final class SpotifyLyricsHud extends HudModule {
       List<SpotifyLyricsHud.LyricLine> out = new ArrayList<>();
 
       for (String line : text.split("\\R")) {
-         Matcher m = Pattern.compile("\\[(\\d{1,2}):(\\d{2})(?:[.:](\\d{1,3}))?\\](.*)").matcher(line);
+         Matcher matcher = LRC_TIMESTAMP.matcher(line);
+         List<Long> timestamps = new ArrayList<>();
+         int lyricStart = -1;
 
-         while (m.find()) {
-            long minutes = Long.parseLong(m.group(1));
-            long seconds = Long.parseLong(m.group(2));
-            String fraction = m.group(3) == null ? "0" : m.group(3);
+         while (matcher.find()) {
+            long minutes = Long.parseLong(matcher.group(1));
+            long seconds = Long.parseLong(matcher.group(2));
+            String fraction = matcher.group(3) == null ? "0" : matcher.group(3);
             long millis = fraction.length() == 1
                ? Long.parseLong(fraction) * 100L
                : (fraction.length() == 2 ? Long.parseLong(fraction) * 10L : Long.parseLong(fraction));
-            String lyric = m.group(4).trim();
+            timestamps.add((minutes * 60L + seconds) * 1000L + millis);
+            lyricStart = matcher.end();
+         }
+
+         if (lyricStart >= 0) {
+            String lyric = line.substring(lyricStart).trim();
             if (!lyric.isEmpty()) {
-               out.add(new SpotifyLyricsHud.LyricLine((minutes * 60L + seconds) * 1000L + millis, lyric));
+               for (long timestamp : timestamps) {
+                  out.add(new SpotifyLyricsHud.LyricLine(timestamp, lyric));
+               }
             }
          }
       }
@@ -549,6 +562,12 @@ public final class SpotifyLyricsHud extends HudModule {
       this.callbackServer = null;
       if (server != null) {
          server.stop(0);
+      }
+
+      ExecutorService executor = this.callbackExecutor;
+      this.callbackExecutor = null;
+      if (executor != null) {
+         executor.shutdownNow();
       }
    }
 
