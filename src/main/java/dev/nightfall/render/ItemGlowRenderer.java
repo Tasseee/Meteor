@@ -90,7 +90,7 @@ public final class ItemGlowRenderer {
       float opacity = module.alpha() / 255.0F;
       float offset = module.edgeOffset();
       float width = module.thickness();
-      class_4588 fills = consumers.method_73477(class_12249.method_76019());
+      class_4588 fills = consumers.method_73477(class_12249.method_76023());
 
       for (EdgeInfo edge : edges.values()) {
          boolean silhouette = edge.frontFaces > 0 && (edge.otherFaces > 0 || edge.frontFaces == 1);
@@ -119,10 +119,11 @@ public final class ItemGlowRenderer {
    ) {
       Vector3f outerA = new Vector3f(a).fma(width, outward);
       Vector3f outerB = new Vector3f(b).fma(width, outward);
+      // Winding faces the camera-facing side of the item surface.
       vertex(consumer, matrix, a, red, green, blue, alpha);
-      vertex(consumer, matrix, b, red, green, blue, alpha);
-      vertex(consumer, matrix, outerB, red, green, blue, alpha);
       vertex(consumer, matrix, outerA, red, green, blue, alpha);
+      vertex(consumer, matrix, outerB, red, green, blue, alpha);
+      vertex(consumer, matrix, b, red, green, blue, alpha);
    }
 
    private static void vertex(
