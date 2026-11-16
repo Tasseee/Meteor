@@ -11,7 +11,7 @@
 
 Das Modul versucht in einem geöffneten Ofen-Menü passende Items in den Eingabe-Slot und Brennstoff in den Brennstoff-Slot zu verschieben. Es verwendet schnelle Slot-Übertragungen und führt pro Intervall höchstens eine Übertragung aus.
 
-Es prüft den ScreenHandler-Typ `class_1720`, die Existenz von Spieler und Interaktionsmanager sowie die jeweiligen Slot-Inhalte. Aus dem Code allein ist keine Bestätigung möglich, dass sich das Verhalten für alle Ofenvarianten und Server-Menüs korrekt anfühlt.
+Es prüft den ScreenHandler-Typ `class_1720`, die Existenz von Spieler und Interaktionsmanager sowie die jeweiligen Slot-Inhalte. Ob die Filter alle relevanten Rezepte und Ofenvarianten abdecken, muss im Spiel geprüft werden.
 
 ## Einstellungen
 
@@ -21,8 +21,7 @@ Es prüft den ScreenHandler-Typ `class_1720`, die Existenz von Spieler und Inter
 
 ## Technische Prüfung
 
-- **Lebenszyklus:** Tickzähler wird beim Aktivieren und Deaktivieren zurückgesetzt.
-- **Weltwechsel:** `onWorldLeave()` wird nicht überschrieben; der Tickzähler wird bei einem Weltwechsel daher nicht explizit zurückgesetzt.
+- **Lebenszyklus:** Tickzähler wird beim Aktivieren, Deaktivieren **und beim Weltwechsel** zurückgesetzt.
 - **Null-/Menüprüfung:** Spieler, Interaktionsmanager und ScreenHandler-Typ werden geprüft.
 - **Slotlogik:** Slot 0 wird als Eingabe und Slot 1 als Brennstoff behandelt; Inventarsuche beginnt bei Slot 3.
 - **Filter:** Schmelzbares wird anhand von Item-ID-Namensmustern erkannt; Brennstoff anhand einer festen Liste von Kohle, Blaze Rods, Planken, Logs und Wood.
@@ -32,22 +31,16 @@ Es prüft den ScreenHandler-Typ `class_1720`, die Existenz von Spieler und Inter
 
 ## Befunde und Verbesserungen
 
-### Verbesserungskandidat AS-01 – Tickzähler beim Weltwechsel zurücksetzen
-
-Anders als beispielsweise AutoBreed setzt AutoSmelter seinen internen Zähler bei `onWorldLeave()` nicht zurück. Ein Restwert kann dadurch in die nächste Welt bzw. Menü-Sitzung übernommen werden. Das ist kein belegter Absturzfehler, kann aber dazu führen, dass die erste Übertragung nach dem Öffnen eines Ofens früher als erwartet erfolgt.
-
-**Empfehlung:** `onWorldLeave()` ergänzen und `ticks` auf 0 setzen. Vor Umsetzung sollte das erwartete Intervallverhalten im Spiel geprüft werden.
-
-### Verbesserungskandidat AS-02 – Rezeptabdeckung
-
-Die Schmelzbarkeit wird über Namensmuster statt über die tatsächlichen Rezepte des geöffneten Ofens erkannt. Dadurch können Items fehlen oder bei modifizierten Rezeptlisten falsch eingeordnet werden. Das ist eine bekannte Einschränkung der Filterstrategie, aber ohne konkrete In-Game-Beispiele noch kein bestätigter Fehler.
+- **Kein bestätigter Fehler** bei der statischen Codeprüfung.
+- Die Schmelzbarkeit wird über Item-ID-Namensmuster statt über die tatsächlichen Rezepte erkannt. Bei modifizierten Rezepten kann die Erkennung unvollständig sein. Das ist ein dokumentierter Einschränkungspunkt, noch kein reproduzierter Fehler.
+- Das Intervall zählt nur Ticks, in denen ein passendes Ofen-Menü geöffnet ist und die Voraussetzungen erfüllt sind.
 
 ## Nutzer- und In-Game-Tests
 
-Offen: normaler Ofen, Hochofen/Räucherofen (soweit vom ScreenHandler unterstützt), leere/volle Slots, Inventar ohne passende Items, Weltwechsel während aktivem Modul.
+Offen: normaler Ofen, Hochofen/Räucherofen (soweit unterstützt), leere/volle Slots, Inventar ohne passende Items, Weltwechsel während aktivem Modul und Intervall-Minimum/Maximum.
 
 ## Änderungsverlauf
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | Erste Codeprüfung; keine Java-Änderung in diesem Audit-Eintrag. |
+| 2026-11-16 | Erste Codeprüfung; keine Java-Codeänderung. |
