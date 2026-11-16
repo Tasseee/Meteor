@@ -23,6 +23,7 @@ public final class BlockNotifier extends Module {
    private final BoolSetting hoppers = this.add(new BoolSetting("Hopper", false));
    private final NumberSetting range = this.add(new NumberSetting("Range (Blocks)", 48.0, 8.0, 128.0, 8.0));
    private final Set<Long> seen = new HashSet<>();
+   private final Set<Long> current = new HashSet<>();
    private boolean initialized;
    private int timer;
 
@@ -33,6 +34,7 @@ public final class BlockNotifier extends Module {
    @Override
    protected void onEnable() {
       this.seen.clear();
+      this.current.clear();
       this.initialized = false;
       this.timer = 0;
    }
@@ -40,25 +42,28 @@ public final class BlockNotifier extends Module {
    @Override
    protected void onDisable() {
       this.seen.clear();
+      this.current.clear();
       this.initialized = false;
    }
 
    @Override
    public void onWorldLeave() {
       this.seen.clear();
+      this.current.clear();
       this.initialized = false;
       this.timer = 0;
    }
 
    @Override
    public void onTick() {
-      if (mc.field_1687 != null && mc.field_1724 != null && this.timer-- <= 0) {
+      // Scan immediately on enable, then every 20 eligible ticks.
+      if (mc.field_1687 != null && mc.field_1724 != null && this.timer-- <= 1) {
          this.timer = 20;
          int cx = mc.field_1724.method_31477() >> 4;
          int cz = mc.field_1724.method_31479() >> 4;
          int chunkRange = this.range.getInt() + 15 >> 4;
          double maxDistanceSq = (double)this.range.getInt() * this.range.getInt();
-         Set<Long> current = new HashSet<>();
+         this.current.clear();
 
          for (int dz = -chunkRange; dz <= chunkRange; dz++) {
             for (int dx = -chunkRange; dx <= chunkRange; dx++) {
@@ -69,7 +74,7 @@ public final class BlockNotifier extends Module {
                         class_2338 pos = be.method_11016();
                         if (!(pos.method_40081(mc.field_1724.method_23317(), mc.field_1724.method_23318(), mc.field_1724.method_23321()) > maxDistanceSq)) {
                            long key = pos.method_10063();
-                           current.add(key);
+                           this.current.add(key);
                            if (this.initialized && !this.seen.contains(key)) {
                               String type = this.label(be);
                               mc.field_1724
@@ -96,7 +101,7 @@ public final class BlockNotifier extends Module {
          }
 
          this.seen.clear();
-         this.seen.addAll(current);
+         this.seen.addAll(this.current);
          this.initialized = true;
       }
    }
