@@ -3,10 +3,10 @@
 - **Status:** Code verbessert; Build- und In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `StaffWatch`
 - **Kategorie:** `HUD` (über `HudModule`)
-- **Quellcode-SHA StaffWatch:** `8458a77b9c822f7cdfbab6ee9ebb84ff3c747376` (HUD)
+- **Quellcode-SHA StaffWatch:** `351d3fc099e6b5889736c3c7756f7d1f18134f5d`
 - **Tab-API-Änderung:** `getListedPlayerListEntries()` / `method_45732()`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
-- **Quellcode-SHA AntiVanishHints:** `b220bed5952f3e7705dd85a2f0a2a986be538010`
+- **Quellcode-SHA AntiVanishHints:** `dfd43801f0544d7e51ce2cab031a1c6a6538d997`
 - **Mitgeprüfte Dateien:** `ListSetting.java`, `Commands.java`, `Config.java`, `Nightfall.java`, `ModuleManager.java`, `AntiVanishHints.java`
 
 ## Zweck und Verhalten
