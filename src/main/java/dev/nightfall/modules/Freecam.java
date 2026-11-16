@@ -3,6 +3,7 @@ package dev.nightfall.modules;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.ModuleManager;
+import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import net.minecraft.class_243;
 import org.lwjgl.glfw.GLFW;
@@ -26,6 +27,7 @@ public final class Freecam extends Module {
    private final double[] cursorY = new double[1];
    private final NumberSetting speed = this.add(new NumberSetting("Geschwindigkeit", 0.45, 0.1, 2.0, 0.05));
    private final NumberSetting sensitivity = this.add(new NumberSetting("Kamera-Sensitivitaet", 0.15, 0.03, 0.5, 0.01));
+   private final BoolSetting invertVertical = this.add(new BoolSetting("Vertikale Maus invertieren", true));
 
    public Freecam() {
       super("Freecam", "Bewegt und dreht die Kamera unabhaengig vom Spieler durch die Welt.", Category.MOVEMENT);
@@ -118,9 +120,10 @@ public final class Freecam extends Module {
          if (this.mouseInitialized) {
             double dx = Math.max(-250.0, Math.min(250.0, this.cursorX[0] - this.lastMouseX));
             double dy = Math.max(-250.0, Math.min(250.0, this.cursorY[0] - this.lastMouseY));
-            // Invert both mouse axes for Freecam: right increases yaw, down decreases pitch.
+            // Keep horizontal yaw unchanged; invert only vertical pitch when enabled.
             cameraYaw = cameraYaw + (float)(dx * this.sensitivity.get());
-            cameraPitch = cameraPitch - (float)(dy * this.sensitivity.get());
+            float pitchDelta = (float)(dy * this.sensitivity.get());
+            cameraPitch += this.invertVertical.get() ? -pitchDelta : pitchDelta;
             cameraPitch = Math.max(-90.0F, Math.min(90.0F, cameraPitch));
          }
 
