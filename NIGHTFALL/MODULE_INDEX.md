@@ -95,7 +95,7 @@ Die einzelnen Prüfstände und offenen Punkte stehen in den jeweiligen Modulakte
 | [`Speed`](MODULES/Speed.md) | `src/main/java/dev/nightfall/modules/Speed.java` | Code geprüft; Laufzeittest offen |
 | [`SpotifyLyricsHud`](MODULES/SpotifyLyricsHud.md) | `src/main/java/dev/nightfall/modules/SpotifyLyricsHud.java` | Code geprüft; Laufzeittest offen |
 | [`Sprint`](MODULES/Sprint.md) | `src/main/java/dev/nightfall/modules/Sprint.java` | Code geprüft; Laufzeittest offen |
-| [`StaffWatch`](MODULES/StaffWatch.md) | `src/main/java/dev/nightfall/modules/StaffWatch.java` | Code geprüft; Laufzeittest offen |
+| [`StaffWatch`](MODULES/StaffWatch.md) | `src/main/java/dev/nightfall/modules/StaffWatch.java` | HUD überarbeitet; Build-/Laufzeittest offen |
 | [`Step`](MODULES/Step.md) | `src/main/java/dev/nightfall/modules/Step.java` | Code geprüft; Laufzeittest offen |
 | [`StorageEsp`](MODULES/StorageEsp.md) | `src/main/java/dev/nightfall/modules/StorageEsp.java` | Code geprüft; Laufzeittest offen |
 | [`StructureESP`](MODULES/StructureESP.md) | `src/main/java/dev/nightfall/modules/StructureESP.java` | Code geprüft; Laufzeittest offen |
