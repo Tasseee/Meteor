@@ -1,52 +1,52 @@
 # GlowESP
 
-- **Registrierter Modulname:** `GlowESP`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/GlowESP.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Render-/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `GlowESP`
+- **Kategorie:** `VISUALS`
+- **Quellcode-SHA:** `312ed85bbc55c6f70fab075ea7d8bef21b96db73`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Lässt ausgewählte lebende Entities über den Minecraft-Outline-Shader lokal hervorheben. Die Entscheidung erfolgt über eine statische Abfrage, die der Render-Mixin nutzen kann.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen / Bedeutung |
+|---|---:|---|
+| Spieler | an | Spieler hervorheben |
+| Feindliche Mobs | an | hostile Entity-Gruppe |
+| Passive Mobs | aus | übrige Nicht-Spieler-Gruppen |
+| Durch Wände | an | Sichtlinienprüfung überspringen |
+| Reichweite | 96 | 8–256; Schritt 8 |
+| Glow-Farbe | RGB 5631709 | Outline-Farbe |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Nullfälle:** Modul prüft Aktivierung, Spieler, Welt, Entity und Entity-Typ; Kamera-Fallback nutzt Spielerposition.
+- **Reichweite:** quadrierter Distanzvergleich zur Kamera-/Spielerposition.
+- **Fake-Chunk-Abhängigkeit:** Entities in von BaseFinder als Fake eingestuften Chunks werden ausgeschlossen.
+- **Sichtlinie:** wenn `Durch Wände` aus ist, wird `Projection.canSeeFromCamera` verwendet.
+- **Fehlerbehandlung:** statische Wrapper fangen `Throwable` und geben false/Fallback-Farbe zurück; Fehler werden nicht protokolliert.
+- **Threads/Ressourcen:** keine eigenen Threads oder Listener in der Modulklasse.
+- **In-Game/Build:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Fehler im Modulcode bestätigt.
+- Die Catch-Blöcke der statischen Wrapper verschlucken Render-/Integrationsfehler still. Ein gedrosselter Debug-Logeintrag könnte Diagnose erleichtern.
+- Die Gruppe „passive“ umfasst im aktuellen Code jeden Nicht-Spieler, der nicht zur hostile-Gruppe gehört. Ob neutrale Entities damit bewusst eingeschlossen sind, sollte getestet werden.
+- Keine Änderung an Entity-Erkennung, Reichweite oder Durch-Wände-Verhalten vorgenommen.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] Spieler/hostile/passive getrennt
+- [ ] Durch Wände an/aus
+- [ ] Reichweite 8/256
+- [ ] Fake-Chunk-Filter
+- [ ] Shader- und Mixin-Fehlerpfad
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | GlowESP codebasiert geprüft; keine Java-Änderung. |
