@@ -1,7 +1,7 @@
 # Nightfall module audit progress
 
-Inventory snapshot: `b899a36f2dee3afe61d9582d9ae7f1f0eb7fdf62` (main, 2026-11-16).
-Registered module instances: **101**. Fully reviewed: **16**. UI-/label-only partial reviews: **6**. Pending: **79**.
+Inventory snapshot: `5864c364616775d9ec609b15d96eb7fc84b52a46` (main, 2026-11-16).
+Registered module instances: **101**. Fully reviewed: **22**. UI-/label-only partial reviews: **6**. Pending: **73**.
 
 This file is the shared progress ledger for the scheduled repository audits. Update it only after a module has been checked against registration, settings/defaults, UI/HUD, lifecycle, listeners/resource cleanup, null/boundary handling, logging, threading, performance, compatibility, tests, and documentation. A label-only review is not a full review.
 
@@ -17,6 +17,12 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - [x] `AntiVanishHints`
 - [x] `AntiCheatMonitor`
 - [x] `ArmorHud`
+- [x] `AutoReconnect`
+- [x] `AutoRespawn`
+- [x] `AutoRtp`
+- [x] `AutoSign`
+- [x] `AutoTpa`
+- [x] `AutoText`
 - [x] `TextHuds.Fps`
 - [x] `TextHuds.Ping`
 - [x] `TextHuds.Clock`
@@ -95,14 +101,8 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - [ ] `AutoSmelter`
 - [ ] `AutoCraftPlanner`
 - [ ] `BaseFinder`
-- [ ] `AutoRtp`
-- [ ] `AutoReconnect`
-- [ ] `AutoSign`
-- [ ] `AutoTpa`
-- [ ] `AutoText`
 - [ ] `SpawnerProtect`
 - [ ] `StaffWatch`
-- [ ] `AutoRespawn`
 - [ ] `AutoFish`
 - [ ] `MacroManager`
 - [ ] `ModuleList`
@@ -122,6 +122,10 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - `StaffWatch.java` — inspected only as the `AntiVanishHints` data dependency; full module review remains pending.
 - `AntiCheatMonitor.java` — word-boundary matching prevents `inactive`/`deactivated` from being mistaken for active (commit `ae228be`).
 - `AntiVanishHints.java` — skips player-list scans and temporary sets when the watch list is empty (commit `b899a36`).
+- `AutoReconnect.java`, `AutoRtp.java`, `AutoRespawn.java` — bounded timers/attempts, disconnect/world-leave handling, and BaseFinder dependency checked; no resource listeners owned by these modules.
+- `AutoSign.java`, `AbstractSignEditScreenMixin.java` — four bounded text settings, one-time sign-screen prefill, overwrite behavior, and manual save flow checked.
+- `AutoTpa.java` — incoming game-message hook, regex/filter/list handling and pending-request lifecycle checked; self-name comparison now uses the account profile name (commit `78a7394`).
+- `AutoText.java`, `MessageListSetting.java` — message limits, persistence, rotation and GUI/command editing checked; status now reports the sent index and tick reads avoid a per-tick list copy (commits `0baae3c`, `5864c36`).
 
 ## Constraints and open verification
 - Do not modify or optimize automated attack/targeting/aim/click/tap/Crystal/Trap/combo behavior.
