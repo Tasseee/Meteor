@@ -1,7 +1,7 @@
 # Nightfall module audit progress
 
 Inventory snapshot: `a66b3e28430a8c0ae8084c5a25bf2b35bc68afa5` (main, 2026-11-16).
-Registered module instances: **101**. Fully reviewed: **7**. UI-/label-only partial reviews: **6**. Pending: **88**.
+Registered module instances: **101**. Fully reviewed: **12**. UI-/label-only partial reviews: **6**. Pending: **83**.
 
 This file is the shared progress ledger for the scheduled repository audits. Update it only after a module has been checked against registration, settings/defaults, UI/HUD, lifecycle, listeners/resource cleanup, null/boundary handling, logging, threading, performance, compatibility, tests, and documentation. A label-only review is not a full review.
 
@@ -106,17 +106,18 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - [ ] `LowHealthWarning`
 - [ ] `FakeStats`
 - [ ] `DebugHud`
-- [ ] `TextHuds.Fps`
-- [ ] `TextHuds.Ping`
-- [ ] `TextHuds.Clock`
-- [ ] `TextHuds.Direction`
-- [ ] `TextHuds.BiomeHud`
+- [x] `TextHuds.Fps`
+- [x] `TextHuds.Ping`
+- [x] `TextHuds.Clock`
+- [x] `TextHuds.Direction`
+- [x] `TextHuds.BiomeHud`
 
 ## Shared/support code inspected
 - `WaypointManager.java` — invalid JSON entries are now skipped safely (see commit `a66b3e2`).
 - `MapScreen.java`, `Commands.java`, `Storage.java` — Waypoint consumers and data source checked.
 - `Module.java`, `ModuleManager.java` — registration and common lifecycle checked.
 - `NotificationCenter.java` — synchronized queue and snapshot behavior checked.
+- `HudModule.java`, `Projection.java`, `Draw.java` — HUD transform and projection support checked; `Draw.line()` now restores its matrix in `finally`.
 
 ## Constraints and open verification
 - Do not modify or optimize automated attack/targeting/aim/click/tap/Crystal/Trap/combo behavior.
