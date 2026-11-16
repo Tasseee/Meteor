@@ -107,11 +107,14 @@ public final class AutoFarm extends Module {
             for (int slot = 0; slot < 9; slot++) {
                if (mc.field_1724.method_31548().method_5438(slot).method_31574(this.pendingSeed)) {
                   mc.field_1724.method_31548().method_61496(slot);
-                  class_3965 placeHit = new class_3965(
-                     class_243.method_24953(this.pendingSoil).method_1031(0.0, 0.5, 0.0), class_2350.field_11036, this.pendingSoil, false
-                  );
-                  mc.field_1761.method_2896(mc.field_1724, class_1268.field_5808, placeHit);
-                  mc.field_1724.method_31548().method_61496(oldSlot);
+                  try {
+                     class_3965 placeHit = new class_3965(
+                        class_243.method_24953(this.pendingSoil).method_1031(0.0, 0.5, 0.0), class_2350.field_11036, this.pendingSoil, false
+                     );
+                     mc.field_1761.method_2896(mc.field_1724, class_1268.field_5808, placeHit);
+                  } finally {
+                     mc.field_1724.method_31548().method_61496(oldSlot);
+                  }
                   return;
                }
             }
