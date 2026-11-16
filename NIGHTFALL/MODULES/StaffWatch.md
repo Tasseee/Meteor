@@ -1,52 +1,57 @@
 # StaffWatch
 
-- **Registrierter Modulname:** `StaffWatch`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/StaffWatch.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `StaffWatch`
+- **Kategorie:** `MISC`
+- **Quellcode-SHA:** `d872be110f93b70307decdd1bfc397ecaf1dc5d7`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Zeigt clientseitige Präsenzhinweise für Namen, die der Nutzer selbst in eine Liste einträgt. Das Modul vergleicht den Tab-Eintrag mit geladenen Player-Entities. Es behauptet ausdrücklich keine sichere Vanish-Erkennung.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Verhalten |
+|---|---|---|
+| Beobachtete Namen | leere Liste | manuelle Namensliste |
+
+Es werden maximal acht Einträge pro HUD-Zeichnung angezeigt.
+
+## Statuslogik
+
+| Tab-Eintrag | Entity geladen | Anzeige |
+|---|---|---|
+| ja | ja | Entity geladen + Tab-Eintrag |
+| nein | ja | Entity geladen · kein Tab-Eintrag |
+| ja | nein | Tab-Eintrag · Entity nicht geladen |
+| nein | nein | weder Entity noch Tab · unklar |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Normalisierung:** Namen werden mit `Locale.ROOT` kleingeschrieben.
+- **Datenquellen:** Tab-Liste und aktuell geladene Player-Entities.
+- **Nullfälle:** Spieler/Welt und Netzwerkhandler werden geprüft.
+- **Performance:** zwei HashSets werden pro HUD-Render-Aufruf erstellt; Liste selbst ist auf acht Namen begrenzt.
+- **Threads/Ressourcen:** keine eigenen Threads oder Listener.
+- **In-Game/Build:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Fehler in der Präsenzlogik bestätigt.
+- Die Einordnung ist ausdrücklich nur ein clientseitiger Hinweis. Fehlender Tab-/Entity-Eintrag kann mehrere Ursachen haben und ist keine Vanish-Bestätigung.
+- Die beiden HashSets könnten bei dauerhaftem HUD-Betrieb als Felder wiederverwendet werden; ohne Profiling ist dies eine kleine Allokations-Optimierung.
+- Keine automatische Staff-Erkennung oder Server-Umgehung ergänzt.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] nur Tab, nur Entity, beides, keines
+- [ ] Groß-/Kleinschreibung
+- [ ] mehr als acht Namen
+- [ ] Disconnect / Weltwechsel
+- [ ] Listen-Config speichern/laden
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | StaffWatch codebasiert geprüft; keine Java-Änderung. |
