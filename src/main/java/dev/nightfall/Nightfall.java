@@ -9,8 +9,11 @@ import dev.nightfall.modules.AntiCheatMonitor;
 import dev.nightfall.modules.AutoReconnect;
 import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
+import dev.nightfall.modules.Atmosphere;
 import dev.nightfall.modules.SeedCracker;
 import dev.nightfall.render.HatsRenderer;
+import dev.nightfall.render.GhostSkinFeatureRenderer;
+import dev.nightfall.render.ItemGlowRenderer;
 import dev.nightfall.render.FakeLagGhostRenderer;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import dev.nightfall.render.SkyVisualRenderer;
@@ -52,6 +55,11 @@ public class Nightfall implements ClientModInitializer {
       ModuleManager.init();
       Config.load();
       ModuleUsageStats.startTracking(ModuleManager.all());
+      ItemGlowRenderer.init();
+      GhostSkinFeatureRenderer.register();
+      HudElementRegistry.attachElementBefore(VanillaHudElements.HOTBAR, class_2960.method_60655("nightfall", "atmosphere"), (ctx, tickCounter) -> {
+         ModuleManager.get(Atmosphere.class).renderAtmosphere(ctx);
+      });
       SkyVisualRenderer.register();
       HatsRenderer.register();
       FakeLagGhostRenderer.register();
