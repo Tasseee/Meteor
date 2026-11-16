@@ -1,7 +1,7 @@
 # Nightfall – Fortschritt
 
 **Inventur-Baseline:** `21dc9f822a6295cdb6238037f344da799bbcca26` (Branch `main`, 2026-11-16)  
-**Letzte Nightfall-Prüfungen:** `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch` und `SpawnerProtect` (2026-11-16)  
+**Letzte Nightfall-Prüfungen:** `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk` (2026-11-16)  
 **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`  
 **SHA der Registrierungsquelle:** `03f98bfae608c6d16bfd88be797fc41bd4dfb24c`  
 **Bisheriges Audit-Ledger:** `MODULE_AUDIT_PROGRESS.md`  
@@ -34,7 +34,7 @@ Aggregierte Statistiken werden auf Wunsch des Nutzers nicht weiter gepflegt. Die
 - [x] Marker-Höhendaten in `LootDropFinder` beim Ablauf bereinigt.
 - [x] Cursor-Arrays in `FreeLook` wiederverwendet.
 - [x] Track-Zustand in `SpawnerProtect` beim Weltwechsel zurückgesetzt.
-- [ ] Build- und In-Game-Tests für die oben genannten Module – offen.
+- [ ] Build- und In-Game-Tests für die oben genannten Module – offen; Bewegungsmodul-Logik bewusst nicht angepasst.
 - [ ] Weitere Modulakten neu inhaltlich prüfen – fortlaufende Aufgabe.
 
 ## Nächste Schritte
