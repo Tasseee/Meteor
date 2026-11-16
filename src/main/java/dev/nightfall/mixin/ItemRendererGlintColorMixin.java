@@ -1,7 +1,7 @@
 package dev.nightfall.mixin;
 
 import dev.nightfall.module.ModuleManager;
-import dev.nightfall.modules.ItemGlint;
+import dev.nightfall.modules.ItemGlow;
 import dev.nightfall.render.GlintColorVertexConsumer;
 import net.minecraft.class_12249;
 import net.minecraft.class_1921;
@@ -27,9 +27,9 @@ public abstract class ItemRendererGlintColorMixin {
    }
 
    private static class_4588 nightfall$wrapGlint(class_4597 provider, class_1921 layer) {
-      ItemGlint module;
+      ItemGlow module;
       try {
-         module = ModuleManager.get(ItemGlint.class);
+         module = ModuleManager.get(ItemGlow.class);
       } catch (Throwable ignored) {
          return provider.method_73477(layer);
       }
@@ -43,7 +43,7 @@ public abstract class ItemRendererGlintColorMixin {
 
       try {
          // Keep Minecraft's known-good glint layer/texture and only tint its vertex color.
-         return new GlintColorVertexConsumer(provider.method_73477(layer), module::currentGlintColor);
+         return new GlintColorVertexConsumer(provider.method_73477(layer), module::currentGlowColor, module::currentGlowOpacity);
       } catch (Throwable ignored) {
          return provider.method_73477(layer);
       }
