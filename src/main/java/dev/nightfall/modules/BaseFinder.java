@@ -11,8 +11,10 @@ import dev.nightfall.scanner.ChunkResult;
 import dev.nightfall.util.Storage;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -792,7 +794,7 @@ public class BaseFinder extends Module {
    private void saveFakePatterns() {
       if (this.ctxKey != null) {
          try {
-            Files.writeString(this.fakePatternsFile(), GSON.toJson(this.fakePatterns));
+            writeAtomically(this.fakePatternsFile(), GSON.toJson(this.fakePatterns));
          } catch (IOException var2) {
             Nightfall.LOGGER.error("Fake-Base-Fingerprints konnten nicht gespeichert werden", var2);
          }
@@ -872,7 +874,7 @@ public class BaseFinder extends Module {
                return;
             }
 
-            Files.writeString(f, GSON.toJson(out));
+            writeAtomically(f, GSON.toJson(out));
             this.marksDirty = false;
          } catch (IOException var5) {
             Nightfall.LOGGER.error("Markierungen konnten nicht gespeichert werden", var5);
@@ -889,23 +891,59 @@ public class BaseFinder extends Module {
                return;
             }
 
+            int skipped = 0;
             for (BaseFinder.Mark m : in) {
+               if (m == null || m.status == null || !Double.isFinite(m.score)) {
+                  skipped++;
+                  continue;
+               }
+
+               ChunkResult.Status status;
+               try {
+                  status = ChunkResult.Status.valueOf(m.status);
+               } catch (IllegalArgumentException invalidStatus) {
+                  skipped++;
+                  continue;
+               }
+
+               if (status == ChunkResult.Status.CLEAN) {
+                  skipped++;
+                  continue;
+               }
+
                ChunkResult r = new ChunkResult(m.cx, m.cz);
                r.score = m.score;
-               r.status = ChunkResult.Status.valueOf(m.status);
-               r.foundAtMillis = m.found;
+               r.status = status;
+               r.foundAtMillis = Math.max(0L, m.found);
                if (m.reasons != null) {
-                  r.reasons.addAll(m.reasons);
+                  for (String reason : m.reasons) {
+                     if (reason != null && !reason.isBlank()) {
+                        r.reasons.add(reason);
+                     }
+                  }
                }
 
                r.lastScanTick = 0L;
                this.results.put(key(m.cx, m.cz), r);
             }
 
+            if (skipped > 0) {
+               Nightfall.LOGGER.warn("{} ungueltige Eintraege in Markierungsdatei uebersprungen: {}", skipped, f);
+            }
             this.dirty = true;
          } catch (Exception var6) {
             Nightfall.LOGGER.error("Markierungsdatei defekt: {}", f, var6);
          }
+      }
+   }
+
+   private static void writeAtomically(Path target, String content) throws IOException {
+      Path temporary = target.resolveSibling(target.getFileName() + ".tmp");
+      Files.writeString(temporary, content);
+      try {
+         Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+      } catch (AtomicMoveNotSupportedException unsupported) {
+         Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
       }
    }
 
