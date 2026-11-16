@@ -58,6 +58,7 @@ import dev.nightfall.modules.HitParticles;
 import dev.nightfall.modules.InvSee;
 import dev.nightfall.modules.ItemEsp;
 import dev.nightfall.modules.ItemGlow;
+import dev.nightfall.modules.GhostSkin;
 import dev.nightfall.modules.Jesus;
 import dev.nightfall.modules.JumpCircles;
 import dev.nightfall.modules.KillAura;
@@ -174,6 +175,7 @@ public final class ModuleManager {
       MODULES.add(new InvSee());
       MODULES.add(new GlowESP());
       MODULES.add(new ItemGlow());
+      MODULES.add(new GhostSkin());
       MODULES.add(new GUITheme());
       MODULES.add(new CustomCrosshair());
       MODULES.add(new SpawnerEsp());
