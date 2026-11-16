@@ -2,10 +2,15 @@ package dev.nightfall.modules;
 
 import dev.nightfall.gui.HudEditorScreen;
 import dev.nightfall.module.HudModule;
+import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.ListSetting;
+import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Theme;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -14,13 +19,15 @@ import net.minecraft.class_640;
 import net.minecraft.class_742;
 
 public final class StaffWatch extends HudModule {
-   private static final int MAX_VISIBLE_NAMES = 8;
-   private static final int ROW_HEIGHT = 15;
    private static final int COLOR_VISIBLE = 0xFF72D69A;
    private static final int COLOR_PARTIAL = 0xFFFFC46B;
    private static final int COLOR_UNKNOWN = 0xFF9BA3AE;
 
    public final ListSetting staffNames = this.add(new ListSetting("Beobachtete Namen"));
+   private final NumberSetting maxRows = this.add(new NumberSetting("Max. HUD-Zeilen", 8.0, 3.0, 12.0, 1.0));
+   private final BoolSetting compactMode = this.add(new BoolSetting("Kompaktes HUD", false));
+   private final BoolSetting sortVisibleFirst = this.add(new BoolSetting("Sichtbare Treffer zuerst", true));
+   private final BoolSetting showLegend = this.add(new BoolSetting("Legende anzeigen", true));
    private final Set<String> tabNames = new HashSet<>();
    private final Set<String> loadedNames = new HashSet<>();
    private final Map<String, String> tabDisplayNames = new HashMap<>();
@@ -106,107 +113,107 @@ public final class StaffWatch extends HudModule {
    protected void draw(class_332 ctx) {
       boolean preview = mc.field_1755 instanceof HudEditorScreen;
       Set<String> names = this.staffNames.get();
+      List<String> orderedNames = this.orderedNames(names);
       boolean hasWorld = mc.field_1724 != null && mc.field_1687 != null;
-      if (!preview && (!hasWorld || names.isEmpty())) {
+      if (!preview && (!hasWorld || orderedNames.isEmpty())) {
          this.w = 210;
          this.h = 50;
          return;
       }
 
-      int totalNames = 0;
-      for (String name : names) {
-         if (name != null && !name.isBlank()) {
-            totalNames++;
-         }
-      }
-
-      boolean emptyPreview = totalNames == 0;
-      int shown = emptyPreview ? (preview ? 1 : 0) : Math.min(MAX_VISIBLE_NAMES, totalNames);
-      if (shown == 0) {
-         this.w = 210;
-         this.h = 50;
-         return;
-      }
-
+      boolean emptyPreview = orderedNames.isEmpty();
+      int rowHeight = this.compactMode.get() ? 12 : 15;
+      int headerHeight = this.compactMode.get() ? 20 : 23;
+      int footerHeight = this.showLegend.get() ? 27 : 0;
+      int shown = emptyPreview ? 1 : Math.min(this.maxRows.getInt(), orderedNames.size());
       String emptyLabel = "Keine Namen eingetragen";
       int nameWidth = emptyPreview ? mc.field_1772.method_1727(emptyLabel) : 0;
       int statusWidth = mc.field_1772.method_1727(emptyPreview ? "HINWEIS" : preview ? "VORSCHAU" : "TAB + WELT");
-      int measured = 0;
-      if (!emptyPreview) {
-         for (String name : names) {
-            if (name == null || name.isBlank() || measured >= MAX_VISIBLE_NAMES) {
-               continue;
-            }
 
-            measured++;
-            nameWidth = Math.max(nameWidth, mc.field_1772.method_1727(this.displayName(name)));
-            String status = preview ? "VORSCHAU" : this.status(name, this.tabAvailable);
-            statusWidth = Math.max(statusWidth, mc.field_1772.method_1727(status));
-         }
+      for (int i = 0; i < shown && !emptyPreview; i++) {
+         String name = orderedNames.get(i);
+         nameWidth = Math.max(nameWidth, mc.field_1772.method_1727(this.displayName(name)));
+         String status = preview ? "VORSCHAU" : this.status(name, this.tabAvailable);
+         statusWidth = Math.max(statusWidth, mc.field_1772.method_1727(status));
       }
 
-      String countLabel = preview && emptyPreview ? "0/0" : shown + "/" + totalNames;
+      String countLabel = preview && emptyPreview ? "0/0" : shown + "/" + orderedNames.size();
       String legend = "TAB = Spielerliste (Netzwerk moeglich) · WELT = geladen";
       String disclaimer = "TAB allein bestaetigt keinen Unterserver";
       int contentWidth = 32 + nameWidth + statusWidth;
-      int panelWidth = Math.max(
-         210,
-         Math.max(
-            contentWidth,
-            Math.max(mc.field_1772.method_1727(legend), mc.field_1772.method_1727(disclaimer))
-         ) + 18
-      );
+      int footerWidth = this.showLegend.get()
+         ? Math.max(mc.field_1772.method_1727(legend), mc.field_1772.method_1727(disclaimer))
+         : 0;
+      int panelWidth = Math.max(210, Math.max(contentWidth, footerWidth) + 18);
       float displayScale = Math.max(0.5F, this.scale());
       int maxPanelWidth = Math.max(1, (int)((ctx.method_51421() - 16) / displayScale));
       panelWidth = Math.min(panelWidth, maxPanelWidth);
 
       this.w = panelWidth;
-      this.h = 23 + shown * ROW_HEIGHT + 27;
+      this.h = headerHeight + shown * rowHeight + footerHeight;
       int x = 0;
       int y = 0;
       ctx.method_25294(x, y, x + this.w, y + this.h, Theme.HUD_PANEL);
       ctx.method_25294(x, y, x + this.w, y + 2, Theme.HUD_EDGE);
       ctx.method_25294(x, y, x + 3, y + this.h, Theme.HUD_EDGE);
-      ctx.method_25294(x + 3, y + 2, x + this.w - 1, y + 23, Theme.withAlpha(Theme.ACCENT, 30));
+      ctx.method_25294(x + 3, y + 2, x + this.w - 1, y + headerHeight, Theme.withAlpha(Theme.ACCENT, 34));
 
-      ctx.method_51433(mc.field_1772, "STAFFWATCH", x + 10, y + 7, Theme.ACCENT, true);
+      ctx.method_51433(mc.field_1772, "STAFFWATCH", x + 10, y + (this.compactMode.get() ? 5 : 7), Theme.ACCENT, true);
       int countX = x + this.w - 9 - mc.field_1772.method_1727(countLabel);
-      ctx.method_51433(mc.field_1772, countLabel, countX, y + 7, Theme.TEXT_DIM, true);
+      ctx.method_51433(mc.field_1772, countLabel, countX, y + (this.compactMode.get() ? 5 : 7), Theme.TEXT_DIM, true);
 
-      int rowY = y + 23;
-      int index = 0;
+      int rowY = y + headerHeight;
       if (emptyPreview) {
-         this.drawRow(ctx, emptyLabel, "HINWEIS", COLOR_UNKNOWN, x, rowY, nameWidth);
+         this.drawRow(ctx, emptyLabel, "HINWEIS", COLOR_UNKNOWN, x, rowY, nameWidth, rowHeight);
       } else {
-         for (String name : names) {
-            if (name == null || name.isBlank()) {
-               continue;
-            }
-            if (index >= MAX_VISIBLE_NAMES) {
-               break;
-            }
-
+         for (int i = 0; i < shown; i++) {
+            String name = orderedNames.get(i);
             boolean inTab = this.tabNames.contains(name);
             boolean inWorld = this.loadedNames.contains(name);
             String status = preview ? "VORSCHAU" : this.status(name, this.tabAvailable);
             int color = preview ? COLOR_UNKNOWN : this.statusColor(inTab, inWorld, this.tabAvailable);
-            this.drawRow(ctx, this.displayName(name), status, color, x, rowY, nameWidth);
-            rowY += ROW_HEIGHT;
-            index++;
+            this.drawRow(ctx, this.displayName(name), status, color, x, rowY, nameWidth, rowHeight);
+            rowY += rowHeight;
          }
       }
 
-      int footerY = y + 23 + shown * ROW_HEIGHT;
-      ctx.method_25294(x + 8, footerY, x + this.w - 8, footerY + 1, Theme.withAlpha(Theme.TEXT_DIM, 75));
-      ctx.method_51433(mc.field_1772, legend, x + 9, footerY + 4, Theme.TEXT_DIM, false);
-      ctx.method_51433(mc.field_1772, disclaimer, x + 9, footerY + 15, Theme.TEXT_DIM, false);
+      if (this.showLegend.get()) {
+         int footerY = y + headerHeight + shown * rowHeight;
+         ctx.method_25294(x + 8, footerY, x + this.w - 8, footerY + 1, Theme.withAlpha(Theme.TEXT_DIM, 75));
+         ctx.method_51433(mc.field_1772, legend, x + 9, footerY + 4, Theme.TEXT_DIM, false);
+         ctx.method_51433(mc.field_1772, disclaimer, x + 9, footerY + 15, Theme.TEXT_DIM, false);
+      }
    }
 
-   private void drawRow(class_332 ctx, String name, String status, int color, int x, int y, int nameWidth) {
-      ctx.method_25294(x + 4, y, x + this.w - 4, y + ROW_HEIGHT, Theme.withAlpha(Theme.TEXT, 9));
-      ctx.method_25294(x + 5, y + 3, x + 7, y + ROW_HEIGHT - 3, color);
-      ctx.method_51433(mc.field_1772, name, x + 11, y + 3, Theme.TEXT, true);
-      ctx.method_51433(mc.field_1772, status, x + 11 + nameWidth + 8, y + 3, color, true);
+   private List<String> orderedNames(Set<String> names) {
+      List<String> result = new ArrayList<>();
+      for (String name : names) {
+         if (name != null && !name.isBlank()) {
+            result.add(name);
+         }
+      }
+
+      if (this.sortVisibleFirst.get()) {
+         result.sort(Comparator.comparingInt(this::presenceRank).thenComparing(String.CASE_INSENSITIVE_ORDER));
+      }
+      return result;
+   }
+
+   private int presenceRank(String name) {
+      boolean inTab = this.tabNames.contains(name);
+      boolean inWorld = this.loadedNames.contains(name);
+      if (inTab && inWorld) {
+         return 0;
+      }
+      return inTab || inWorld ? 1 : 2;
+   }
+
+   private void drawRow(class_332 ctx, String name, String status, int color, int x, int y, int nameWidth, int rowHeight) {
+      ctx.method_25294(x + 4, y, x + this.w - 4, y + rowHeight, Theme.withAlpha(Theme.TEXT, 9));
+      ctx.method_25294(x + 5, y + 3, x + 7, y + rowHeight - 3, color);
+      int textY = y + (rowHeight == 12 ? 2 : 3);
+      ctx.method_51433(mc.field_1772, name, x + 11, textY, Theme.TEXT, true);
+      ctx.method_51433(mc.field_1772, status, x + 11 + nameWidth + 8, textY, color, true);
    }
 
    private String status(String name, boolean hasTab) {
@@ -232,7 +239,6 @@ public final class StaffWatch extends HudModule {
       if (tabName != null) {
          return tabName;
       }
-
       return this.worldDisplayNames.getOrDefault(normalizedName, normalizedName);
    }
 
