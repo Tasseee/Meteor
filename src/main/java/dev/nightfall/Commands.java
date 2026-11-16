@@ -234,14 +234,28 @@ public final class Commands {
                      ClientCommandManager.literal("add")
                         .then(
                            ClientCommandManager.argument("name", StringArgumentType.word())
-                              .executes(c -> say(c, staff.staffNames.add(str(c, "name")) ? "StaffWatch-Name hinzugefügt" : "Name bereits eingetragen"))
+                              .executes(c -> {
+                                 String name = str(c, "name");
+                                 boolean added = staff.staffNames.add(name);
+                                 if (added) {
+                                    Config.save();
+                                 }
+                                 return say(c, added ? "StaffWatch-Name hinzugefügt und gespeichert" : "Name bereits eingetragen");
+                              })
                         )
                   ))
                .then(
                   ClientCommandManager.literal("del")
                      .then(
                         ClientCommandManager.argument("name", StringArgumentType.word())
-                           .executes(c -> say(c, staff.staffNames.remove(str(c, "name")) ? "StaffWatch-Name entfernt" : "Name nicht gefunden"))
+                           .executes(c -> {
+                              String name = str(c, "name");
+                              boolean removed = staff.staffNames.remove(name);
+                              if (removed) {
+                                 Config.save();
+                              }
+                              return say(c, removed ? "StaffWatch-Name entfernt und gespeichert" : "Name nicht gefunden");
+                           })
                      )
                ))
             .then(ClientCommandManager.literal("list").executes(c -> say(c, "Beobachtete Namen: " + String.join(", ", staff.staffNames.get()))))
