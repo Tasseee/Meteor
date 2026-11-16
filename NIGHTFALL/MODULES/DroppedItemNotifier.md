@@ -1,10 +1,10 @@
 # DroppedItemNotifier
 
-- **Status:** Code geprüft; In-Game-/Build-Test offen
+- **Status:** Code geprüft; Build-/In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `DroppedItemNotifier`
 - **Kategorie:** `VISUALS`
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/DroppedItemNotifier.java`
-- **Quellcode-SHA:** `4bec8bd15dadf52243d61bb522ab1852e639bf29`
+- **Aktueller Quellcode-SHA:** `ea47824401e2108dc062f9d3ba51a959e3d9720e`
 - **Registrierung:** `ModuleManager.init()`
 
 ## Zweck und Verhalten
@@ -31,31 +31,34 @@ Erkannt werden Elytra, Mace, Totem, Heavy Core, Netherite-Barren, Diamanten, Eme
 
 ## Technische Prüfung
 
-- **Lebenszyklus:** UUID-Menge und Baseline-Status werden beim Aktivieren, Deaktivieren und Weltwechsel zurückgesetzt.
-- **Nullfälle:** Tick-Verarbeitung wird nur bei vorhandenem Spieler und Welt ausgeführt.
-- **Deduplizierung:** UUIDs verhindern mehrfache Meldungen derselben Item-Entity; nicht mehr vorhandene UUIDs werden entfernt.
-- **Reichweite:** Vergleich anhand quadrierter Distanz; kein unnötiges Wurzelziehen im Distanzvergleich.
-- **Performance:** pro Tick werden eine neue HashSet-Instanz und eine aktuelle UUID-Menge erzeugt; in Szenen mit vielen Item-Entities entstehen dadurch vermeidbare kurzlebige Allokationen.
-- **Thread-Sicherheit:** keine eigenen Threads; Verarbeitung findet im Tick-Kontext statt.
-- **Fehlerbehandlung:** kein modulspezifisches try/catch; zentraler Tick-Handler protokolliert Exceptions.
-- **Laufzeit/Version:** nicht im Spiel getestet; Build nicht ausgeführt.
+- **Lebenszyklus:** beide UUID-Sets und Baseline-Status werden beim Aktivieren, Deaktivieren und Weltwechsel zurückgesetzt.
+- **Nullfälle:** Tick-Verarbeitung läuft nur mit Spieler und Welt.
+- **Deduplizierung:** UUIDs verhindern wiederholte Meldungen derselben Item-Entity; nicht mehr vorhandene UUIDs werden entfernt.
+- **Reichweite:** quadrierte Distanz.
+- **Threading:** keine eigenen Threads; Verarbeitung im Tick-Kontext.
+- **Fehlerbehandlung:** zentraler Tick-Handler behandelt Ausnahmen.
+- **Laufzeit/Version:** Build und In-Game-Test stehen noch aus.
 
 ## Befunde und Verbesserungen
 
-### Verbesserungskandidat DIN-01 – temporäre Set-Allokation reduzieren
+### DIN-01 – temporäre Set-Allokation reduzieren
 
-`currentlyPresent` wird bei jedem Tick neu angelegt, obwohl es nur als temporäre UUID-Sammlung dient. Eine wiederverwendete Instanz mit `clear()` würde kurzlebige Allokationen reduzieren. Das ist eine Performance-Verbesserung, kein bestätigter Fehler.
+**Umgesetzt im Code:** `9f713623ae1ae41f8baea1610ff6386dd03a4400`.
 
-### Einschränkung DIN-02 – zusammengeführte Item-Entities
+Die UUID-Sammlung für aktuell sichtbare Item-Entities wird jetzt als Feld wiederverwendet und pro Tick geleert, statt bei jedem Tick ein neues `HashSet` anzulegen. Sie wird auch beim Aktivieren, Deaktivieren und Weltwechsel zurückgesetzt. Die Deduplizierungslogik bleibt unverändert.
 
-Wenn der Client die Menge einer bereits bekannten Item-Entity erhöht, bleibt ihre UUID gleich. Der Code meldet deshalb nicht erneut, dass sich die Menge geändert hat. Ob dies gewünschtes Verhalten ist, sollte durch einen Test mit zusammenlaufenden Item-Stacks geklärt werden.
+**Verifikation:** Änderung und Quellcode wurden auf GitHub gespeichert und anschließend gelesen. Build- und In-Game-Test sind noch offen.
+
+### DIN-02 – zusammengeführte Item-Entities
+
+Wenn sich die Menge einer bereits bekannten Item-Entity erhöht, bleibt ihre UUID gleich. Deshalb erfolgt keine zweite Meldung zur Mengenänderung. Ob eine erneute Meldung erwünscht ist, bleibt eine Produktentscheidung und benötigt einen In-Game-Test.
 
 ## Nutzer- und In-Game-Tests
 
-Offen: Baseline beim Aktivieren, neu gedroppte Items, Items außerhalb/innerhalb der Reichweite, Weltwechsel, zusammengeführte Stacks, jede Filteroption einzeln sowie Chat-/Sound-Ausgabe getrennt.
+Offen: Baseline beim Aktivieren, neu gedroppte Items, Reichweitengrenzen, Weltwechsel, zusammengeführte Stacks, jede Filteroption sowie Chat-/Sound-Ausgabe getrennt.
 
 ## Änderungsverlauf
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | Erste Codeprüfung; keine Java-Änderung in diesem Audit-Eintrag. |
+| 2026-11-16 | Codeprüfung; Wiederverwendung der UUID-Sammlung zur Reduktion kurzlebiger Allokationen. |
