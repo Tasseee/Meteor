@@ -1,52 +1,46 @@
 # AutoBreed
 
-- **Registrierter Modulname:** `AutoBreed`
-- **Bisheriger Prüfstatus:** **Offen**
+- **Status:** Code geprüft; In-Game-/Build-Test offen
+- **Java-Klasse / Anzeigename:** `AutoBreed`
+- **Kategorie:** `WORLD`
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/AutoBreed.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Quellcode-SHA:** `229bf8a6a4f56e4486971e18dc8492efce320bcb`
+- **Registrierung:** `ModuleManager.init()`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Das Modul sucht in der Nähe nach lebenden Tieren, die noch nicht im Liebesmodus sind und das gehaltene Item als Futter akzeptieren. Es wählt das nächstgelegene passende Tier und interagiert damit. Es führt keine Kampfaktion aus.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen / Bedeutung |
+|---|---:|---|
+| Reichweite | 4 | 2–6 Blöcke; Schritt 1 |
+| Intervall (Ticks) | 20 | 10–80 Ticks; Schritt 5 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Voraussetzungen:** Spieler, Welt und Interaktionsmanager müssen vorhanden sein; die Haupthand darf nicht leer sein.
+- **Filter:** lebendes Tier, nicht bereits im Liebesmodus und akzeptiert das gehaltene Futter.
+- **Auswahl:** nächstes geeignetes Tier nach quadrierter Distanz.
+- **Cooldown:** wird bei Aktivierung, Deaktivierung und Weltwechsel auf 0 gesetzt.
+- **Nullfälle:** Voraussetzungen werden geprüft; leere Hand wird übersprungen.
+- **Performance:** Suche erfolgt nur, wenn der Cooldown abgelaufen ist; die Entity-Abfrage ist auf eine erweiterte Spielerbox begrenzt.
+- **Fehlerbehandlung/Logging:** kein lokaler catch; zentraler Tick-Handler greift.
+- **Laufzeit/Version:** nicht im Spiel getestet; Build nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Codefehler bei der ersten Prüfung bestätigt.
+- Die Tick-Interaktion setzt den Cooldown unabhängig davon, ob die Interaktion serverseitig erfolgreich war. Das ist normales Clientverhalten, sollte aber bei fehlgeschlagener Interaktion im Spiel beobachtet werden.
+- Der Intervallwert bezeichnet die Zahl der Cooldown-Ticks; der nächste Versuch erfolgt beim darauffolgenden Tick, wenn der Zähler wieder 0 ist. Das genaue Timing sollte im Spiel gegen die UI-Beschriftung geprüft werden.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Nutzer- und In-Game-Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+Offen: Tier außerhalb/innerhalb der Reichweite, verschiedene Futterarten, bereits verliebte Tiere, leere Hand, mehrere Tiere mit unterschiedlicher Distanz, Weltwechsel sowie Intervall-Minimum/Maximum.
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Erste Codeprüfung; keine Java-Änderung in diesem Audit-Eintrag. |
