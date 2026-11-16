@@ -1,52 +1,51 @@
 # FavoriteChunk
 
-- **Registrierter Modulname:** `FavoriteChunk`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/FavoriteChunk.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; Speicher-/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `FavoriteChunk`
+- **Kategorie:** `WORLD`
+- **Modul-Quellcode-SHA:** `01af4259da07fb94f7a967c95653b04ec3abef6b`
+- **Hilfsklasse:** `src/main/java/dev/nightfall/scanner/ChunkFavorites.java`
+- **Hilfsklassen-SHA:** `ef50cc905a240a7285c28d12987c707c0ea5fb78`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Einmalige Hotkey-Aktion: markiert den aktuellen Chunk als Favorit oder entfernt ihn wieder aus den Favoriten. Nach der Aktion deaktiviert sich das Modul selbst. Die Favoriten werden getrennt nach Server und Dimension gespeichert.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+Keine modulspezifischen Einstellungen.
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Pending-Zustand:** wird beim Aktivieren gesetzt und beim Deaktivieren zurückgesetzt.
+- **Nullfälle:** wartet, bis Spieler und Welt vorhanden sind; erst dann wird die Aktion ausgeführt.
+- **Persistenz:** `ChunkFavorites` nutzt synchronisierte öffentliche Zugriffsmethoden und speichert X/Z-Paare in einer Textdatei.
+- **Kontexttrennung:** Dateiname basiert auf Server- und Dimensionskontext; Sonderzeichen werden ersetzt.
+- **Fehlerbehandlung:** Lese- und Schreib-`IOException` werden in der Hilfsklasse still ignoriert.
+- **Weltwechsel:** das Modul setzt `pending` nicht selbst in `onWorldLeave()` zurück. Eine noch ausstehende Hotkey-Aktion kann deshalb bis zur nächsten Welt bestehen bleiben.
+- **In-Game/Dateitest:** noch nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+### FC-01 – stille Persistenzfehler
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+Wenn das Laden oder Schreiben der Favoriten-Datei fehlschlägt, wird die Exception verworfen. Der Nutzer erhält keine Rückmeldung und kann eine nicht gespeicherte Änderung übersehen. Sinnvolle Verbesserung: Fehler über den Projekt-Logger melden und gegebenenfalls eine verständliche Notification ausgeben.
 
-## Fehler und Verbesserungsideen
+### FC-02 – ausstehende Aktion bei Weltwechsel
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+Ein Weltwechsel setzt den Pending-Schalter im Modul nicht zurück. Es sollte geprüft werden, ob das gewünschte Verhalten eine ausstehende Aktion über einen Weltwechsel hinweg tatsächlich ausführen soll. Aktuell ist das nicht ausdrücklich dokumentiert.
+
+## Offene Tests
+
+- [ ] Favorit hinzufügen und entfernen
+- [ ] Neustart und erneutes Laden
+- [ ] Unterschiedliche Server und Dimensionen
+- [ ] Schreibschutz/Dateifehler
+- [ ] Weltwechsel zwischen Hotkey und Tick
+- [ ] Leere bzw. beschädigte Datei
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Erste Codeprüfung von Modul und Persistenz-Hilfsklasse. |
