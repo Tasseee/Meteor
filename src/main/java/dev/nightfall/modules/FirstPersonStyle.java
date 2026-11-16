@@ -11,6 +11,7 @@ import org.joml.Quaternionf;
 
 public final class FirstPersonStyle extends Module {
    private final BoolSetting swapHands = this.add(new BoolSetting("Items linke/rechte Hand tauschen", false));
+   private final BoolSetting hideEmptyHand = this.add(new BoolSetting("Leere Hand ausblenden", false));
    private final ModeSetting pose = this.add(new ModeSetting("Handhaltung", "Anubis", "Vanilla", "Katana", "Heavy", "Floating", "Compact", "Anubis"));
    private final NumberSetting x = this.add(new NumberSetting("X-Position", 0.0, -0.8, 0.8, 0.01));
    private final NumberSetting y = this.add(new NumberSetting("Y-Position", -0.08, -0.8, 0.8, 0.01));
@@ -22,6 +23,10 @@ public final class FirstPersonStyle extends Module {
 
    public FirstPersonStyle() {
       super("ViewModel", "Arme und gehaltenes Item frei auf dem Bildschirm positionieren, drehen und skalieren.", Category.VISUALS);
+   }
+
+   public boolean shouldHideEmptyHand(class_1799 stack) {
+      return this.hideEmptyHand.get() && (stack == null || stack.method_7960());
    }
 
    public class_1799 swapRenderedStack(class_1799 original) {
