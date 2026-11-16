@@ -15,6 +15,7 @@ public final class ItemGlow extends Module {
    private final NumberSetting speed = this.add(new NumberSetting("Geschwindigkeit", 1.0, 0.1, 4.0, 0.1));
    private final NumberSetting intensity = this.add(new NumberSetting("Leuchtstärke", 1.0, 0.2, 2.0, 0.05));
    private final NumberSetting opacity = this.add(new NumberSetting("Deckkraft", 1.0, 0.1, 1.0, 0.05));
+   private final NumberSetting thickness = this.add(new NumberSetting("Konturstärke", 0.012, 0.002, 0.04, 0.001));
    private final NumberSetting edgeOffset = this.add(new NumberSetting("Randabstand", 0.0015, 0.0, 0.01, 0.0005));
 
    public ItemGlow() {
@@ -49,6 +50,10 @@ public final class ItemGlow extends Module {
 
    public float edgeOffset() {
       return this.edgeOffset.get().floatValue();
+   }
+
+   public float thickness() {
+      return this.thickness.get().floatValue();
    }
 
    private static int blend(int first, int second, double amount) {
