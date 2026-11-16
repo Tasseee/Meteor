@@ -10,10 +10,14 @@ import net.minecraft.class_4587;
 import net.minecraft.class_4588;
 import net.minecraft.class_4597;
 import net.minecraft.class_777;
+import net.minecraft.class_811;
+import net.minecraft.class_310;
+import net.minecraft.class_4184;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
+import org.joml.Quaternionf;
 
 /**
  * Builds a screen-facing neon band from the silhouette edges of the baked
@@ -22,7 +26,7 @@ import org.joml.Vector3fc;
 public final class ItemGlowRenderer {
    private ItemGlowRenderer() {}
 
-   public static void render(class_4587 matrices, class_4597 consumers, List<?> rawQuads) {
+   public static void render(class_811 displayContext, class_4587 matrices, class_4597 consumers, List<?> rawQuads) {
       ItemGlow module;
       try {
          module = ModuleManager.get(ItemGlow.class);
@@ -35,6 +39,17 @@ public final class ItemGlowRenderer {
       class_4587.class_4665 entry = matrices.method_23760();
       Matrix3f normalMatrix = entry.method_23762();
       Matrix4f positionMatrix = entry.method_23761();
+      Vector3f towardCamera = new Vector3f(0.0F, 0.0F, 1.0F);
+      if (displayContext != class_811.field_4317) {
+         try {
+            class_310 mc = class_310.method_1551();
+            class_4184 camera = mc.field_1773.method_19418();
+            Quaternionf cameraRotation = camera.method_23767();
+            towardCamera.rotate(cameraRotation).normalize();
+         } catch (Throwable ignored) {
+            towardCamera.set(0.0F, 0.0F, 1.0F);
+         }
+      }
 
       for (Object raw : rawQuads) {
          if (!(raw instanceof class_777 quad)) continue;
@@ -50,7 +65,7 @@ public final class ItemGlowRenderer {
          localNormal.normalize();
          Vector3f viewNormal = new Vector3f(localNormal);
          normalMatrix.transform(viewNormal).normalize();
-         boolean cameraFacing = viewNormal.z > 0.015F;
+         boolean cameraFacing = viewNormal.dot(towardCamera) > 0.015F;
 
          for (int i = 0; i < 4; i++) {
             Vector3f a = points[i];
