@@ -43,7 +43,26 @@ public final class WaypointManager {
          try {
             List<Waypoint> in = (List<Waypoint>)GSON.fromJson(Files.readString(f), LIST);
             if (in != null) {
-               LIST_.addAll(in);
+               int skipped = 0;
+               for (Waypoint waypoint : in) {
+                  if (waypoint == null
+                     || waypoint.name == null
+                     || waypoint.name.isBlank()
+                     || waypoint.dim == null
+                     || waypoint.dim.isBlank()) {
+                     skipped++;
+                     continue;
+                  }
+
+                  if (waypoint.category == null || waypoint.category.isBlank()) {
+                     waypoint.category = "Default";
+                  }
+                  LIST_.add(waypoint);
+               }
+
+               if (skipped > 0) {
+                  Nightfall.LOGGER.warn("Waypoints uebersprungen: {} ungueltige Eintraege in {}", skipped, f);
+               }
             }
          } catch (Exception var2) {
             Nightfall.LOGGER.error("Waypoints defekt: {}", f, var2);
