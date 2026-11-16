@@ -21,6 +21,7 @@ public final class StaffWatch extends HudModule {
    public final ListSetting staffNames = this.add(new ListSetting("Beobachtete Namen"));
    private final Set<String> tabNames = new HashSet<>();
    private final Set<String> loadedNames = new HashSet<>();
+   private boolean tabAvailable;
 
    public StaffWatch() {
       super("StaffWatch", "Verschiebbares HUD für manuell eingetragene Namen; nur clientseitige Präsenzhinweise.");
@@ -32,6 +33,56 @@ public final class StaffWatch extends HudModule {
    }
 
    @Override
+   protected void onEnable() {
+      this.clearPresence();
+   }
+
+   @Override
+   public void onWorldLeave() {
+      this.clearPresence();
+   }
+
+   @Override
+   public void onTick() {
+      this.clearPresence();
+      if (mc.field_1724 == null || mc.field_1687 == null || this.staffNames.get().isEmpty()) {
+         return;
+      }
+
+      var network = mc.method_1562();
+      this.tabAvailable = network != null;
+      if (this.tabAvailable) {
+         for (class_640 entry : network.method_2880()) {
+            if (entry == null || entry.method_2966() == null) {
+               continue;
+            }
+
+            String name = entry.method_2966().name();
+            if (name != null && !name.isBlank()) {
+               this.tabNames.add(name.toLowerCase(Locale.ROOT));
+            }
+         }
+      }
+
+      for (class_742 player : mc.field_1687.method_18456()) {
+         if (player == null || player.method_7334() == null) {
+            continue;
+         }
+
+         String name = player.method_7334().name();
+         if (name != null && !name.isBlank()) {
+            this.loadedNames.add(name.toLowerCase(Locale.ROOT));
+         }
+      }
+   }
+
+   private void clearPresence() {
+      this.tabNames.clear();
+      this.loadedNames.clear();
+      this.tabAvailable = false;
+   }
+
+   @Override
    protected void draw(class_332 ctx) {
       boolean preview = mc.field_1755 instanceof HudEditorScreen;
       Set<String> names = this.staffNames.get();
@@ -40,38 +91,6 @@ public final class StaffWatch extends HudModule {
          this.w = 210;
          this.h = 50;
          return;
-      }
-
-      this.tabNames.clear();
-      this.loadedNames.clear();
-      boolean tabAvailable = false;
-
-      if (hasWorld) {
-         var network = mc.method_1562();
-         tabAvailable = network != null;
-         if (tabAvailable) {
-            for (class_640 entry : network.method_2880()) {
-               if (entry == null || entry.method_2966() == null) {
-                  continue;
-               }
-
-               String name = entry.method_2966().name();
-               if (name != null && !name.isBlank()) {
-                  this.tabNames.add(name.toLowerCase(Locale.ROOT));
-               }
-            }
-         }
-
-         for (class_742 player : mc.field_1687.method_18456()) {
-            if (player == null || player.method_7334() == null) {
-               continue;
-            }
-
-            String name = player.method_7334().name();
-            if (name != null && !name.isBlank()) {
-               this.loadedNames.add(name.toLowerCase(Locale.ROOT));
-            }
-         }
       }
 
       boolean emptyPreview = names.isEmpty();
@@ -94,7 +113,7 @@ public final class StaffWatch extends HudModule {
 
             measured++;
             nameWidth = Math.max(nameWidth, mc.field_1772.method_1727(name));
-            String status = preview ? "VORSCHAU" : this.status(name, tabAvailable);
+            String status = preview ? "VORSCHAU" : this.status(name, this.tabAvailable);
             statusWidth = Math.max(statusWidth, mc.field_1772.method_1727(status));
          }
       }
@@ -130,7 +149,7 @@ public final class StaffWatch extends HudModule {
       int rowY = y + 23;
       int index = 0;
       if (emptyPreview) {
-         this.drawRow(ctx, emptyLabel, "HINWEIS", COLOR_UNKNOWN, x, rowY, nameWidth, panelWidth);
+         this.drawRow(ctx, emptyLabel, "HINWEIS", COLOR_UNKNOWN, x, rowY, nameWidth);
       } else {
          for (String name : names) {
             if (name == null || name.isBlank()) {
@@ -142,9 +161,9 @@ public final class StaffWatch extends HudModule {
 
             boolean inTab = this.tabNames.contains(name);
             boolean inWorld = this.loadedNames.contains(name);
-            String status = preview ? "VORSCHAU" : this.status(name, tabAvailable);
-            int color = preview ? COLOR_UNKNOWN : this.statusColor(inTab, inWorld, tabAvailable);
-            this.drawRow(ctx, name, status, color, x, rowY, nameWidth, panelWidth);
+            String status = preview ? "VORSCHAU" : this.status(name, this.tabAvailable);
+            int color = preview ? COLOR_UNKNOWN : this.statusColor(inTab, inWorld, this.tabAvailable);
+            this.drawRow(ctx, name, status, color, x, rowY, nameWidth);
             rowY += ROW_HEIGHT;
             index++;
          }
@@ -156,17 +175,17 @@ public final class StaffWatch extends HudModule {
       ctx.method_51433(mc.field_1772, disclaimer, x + 9, footerY + 15, Theme.TEXT_DIM, false);
    }
 
-   private void drawRow(class_332 ctx, String name, String status, int color, int x, int y, int nameWidth, int panelWidth) {
-      ctx.method_25294(x + 4, y, x + panelWidth - 4, y + ROW_HEIGHT, Theme.withAlpha(Theme.TEXT, 9));
+   private void drawRow(class_332 ctx, String name, String status, int color, int x, int y, int nameWidth) {
+      ctx.method_25294(x + 4, y, x + this.w - 4, y + ROW_HEIGHT, Theme.withAlpha(Theme.TEXT, 9));
       ctx.method_25294(x + 5, y + 3, x + 7, y + ROW_HEIGHT - 3, color);
       ctx.method_51433(mc.field_1772, name, x + 11, y + 3, Theme.TEXT, true);
       ctx.method_51433(mc.field_1772, status, x + 11 + nameWidth + 8, y + 3, color, true);
    }
 
-   private String status(String name, boolean tabAvailable) {
+   private String status(String name, boolean hasTab) {
       boolean inTab = this.tabNames.contains(name);
       boolean inWorld = this.loadedNames.contains(name);
-      if (!tabAvailable) {
+      if (!hasTab) {
          return inWorld ? "WELT · TAB N/A" : "TAB N/A · KEINE ENTITY";
       }
       if (inTab && inWorld) {
@@ -181,8 +200,8 @@ public final class StaffWatch extends HudModule {
       return "KEINE QUELLE";
    }
 
-   private int statusColor(boolean inTab, boolean inWorld, boolean tabAvailable) {
-      if (!tabAvailable) {
+   private int statusColor(boolean inTab, boolean inWorld, boolean hasTab) {
+      if (!hasTab) {
          return inWorld ? COLOR_PARTIAL : COLOR_UNKNOWN;
       }
       if (inTab && inWorld) {
