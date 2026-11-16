@@ -1,19 +1,13 @@
 # Modulindex
 
 **Inventur-Baseline:** `21dc9f822a6295cdb6238037f344da799bbcca26`  
-**Letzter Modul-Audit:** `AdvancedWorldOverlay` (Code geprüft; Laufzeittest offen)  
+**Letzte Code-Prüfungen:** `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud` und `AutoBreed` (jeweils Laufzeittest offen)  
 **Quelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`  
 **Registrierungen:** **101** – jede genau einmal im Audit-Ledger abgebildet.
 
 ## Prüfstatus
 
-| Status | Anzahl | Anteil |
-|---|---:|---:|
-| Vollständig geprüft (übernommener Auditstand) | 22 | 21.8 % |
-| Teilweise geprüft (übernommener Auditstand) | 6 | 5.9 % |
-| Code geprüft; Laufzeittest offen | 1 | 1.0 % |
-| Offen | 72 | 71.3 % |
-| **Gesamt** | **101** | **100 %** |
+Die einzelnen Prüfstände und offenen Punkte stehen in den jeweiligen Modulakten. Auf eine aggregierte Statistik wird verzichtet.
 
 ## Alle registrierten Module
 
@@ -25,8 +19,8 @@
 | [`ArmorHud`](MODULES/ArmorHud.md) | `src/main/java/dev/nightfall/modules/ArmorHud.java` | Vollständig geprüft |
 | [`Atmosphere`](MODULES/Atmosphere.md) | `src/main/java/dev/nightfall/modules/Atmosphere.java` | Vollständig geprüft |
 | [`AutoAnchor`](MODULES/AutoAnchor.md) | `src/main/java/dev/nightfall/modules/AutoAnchor.java` | Offen |
-| [`AutoBreed`](MODULES/AutoBreed.md) | `src/main/java/dev/nightfall/modules/AutoBreed.java` | Offen |
-| [`AutoCraftPlanner`](MODULES/AutoCraftPlanner.md) | `src/main/java/dev/nightfall/modules/AutoCraftPlanner.java` | Offen |
+| [`AutoBreed`](MODULES/AutoBreed.md) | `src/main/java/dev/nightfall/modules/AutoBreed.java` | Code geprüft; Laufzeittest offen |
+| [`AutoCraftPlanner`](MODULES/AutoCraftPlanner.md) | `src/main/java/dev/nightfall/modules/AutoCraftPlanner.java` | Code geprüft; Laufzeittest offen |
 | [`AutoFarm`](MODULES/AutoFarm.md) | `src/main/java/dev/nightfall/modules/AutoFarm.java` | Offen |
 | [`AutoFish`](MODULES/AutoFish.md) | `src/main/java/dev/nightfall/modules/AutoFish.java` | Offen |
 | [`AutoGap`](MODULES/AutoGap.md) | `src/main/java/dev/nightfall/modules/AutoGap.java` | Offen |
@@ -36,7 +30,7 @@
 | [`AutoRtp`](MODULES/AutoRtp.md) | `src/main/java/dev/nightfall/modules/AutoRtp.java` | Vollständig geprüft |
 | [`AutoShield`](MODULES/AutoShield.md) | `src/main/java/dev/nightfall/modules/AutoShield.java` | Offen |
 | [`AutoSign`](MODULES/AutoSign.md) | `src/main/java/dev/nightfall/modules/AutoSign.java` | Vollständig geprüft |
-| [`AutoSmelter`](MODULES/AutoSmelter.md) | `src/main/java/dev/nightfall/modules/AutoSmelter.java` | Offen |
+| [`AutoSmelter`](MODULES/AutoSmelter.md) | `src/main/java/dev/nightfall/modules/AutoSmelter.java` | Code geprüft; Laufzeittest offen |
 | [`AutoText`](MODULES/AutoText.md) | `src/main/java/dev/nightfall/modules/AutoText.java` | Vollständig geprüft |
 | [`AutoTotem`](MODULES/AutoTotem.md) | `src/main/java/dev/nightfall/modules/AutoTotem.java` | Offen |
 | [`AutoTpa`](MODULES/AutoTpa.md) | `src/main/java/dev/nightfall/modules/AutoTpa.java` | Vollständig geprüft |
@@ -50,9 +44,9 @@
 | [`Coordinates`](MODULES/Coordinates.md) | `src/main/java/dev/nightfall/modules/Coordinates.java` | Vollständig geprüft |
 | [`CrystalAura`](MODULES/CrystalAura.md) | `src/main/java/dev/nightfall/modules/CrystalAura.java` | Offen |
 | [`CrystalTest`](MODULES/CrystalTest.md) | `src/main/java/dev/nightfall/modules/CrystalTest.java` | Offen |
-| [`CustomCrosshair`](MODULES/CustomCrosshair.md) | `src/main/java/dev/nightfall/modules/CustomCrosshair.java` | Offen |
-| [`DebugHud`](MODULES/DebugHud.md) | `src/main/java/dev/nightfall/modules/DebugHud.java` | Offen |
-| [`DroppedItemNotifier`](MODULES/DroppedItemNotifier.md) | `src/main/java/dev/nightfall/modules/DroppedItemNotifier.java` | Offen |
+| [`CustomCrosshair`](MODULES/CustomCrosshair.md) | `src/main/java/dev/nightfall/modules/CustomCrosshair.java` | Code geprüft; Laufzeittest offen |
+| [`DebugHud`](MODULES/DebugHud.md) | `src/main/java/dev/nightfall/modules/DebugHud.java` | Code geprüft; Laufzeittest offen |
+| [`DroppedItemNotifier`](MODULES/DroppedItemNotifier.md) | `src/main/java/dev/nightfall/modules/DroppedItemNotifier.java` | Code geprüft; Laufzeittest offen |
 | [`DTap`](MODULES/DTap.md) | `src/main/java/dev/nightfall/modules/DTap.java` | Teilweise geprüft |
 | [`ElytraFly`](MODULES/ElytraFly.md) | `src/main/java/dev/nightfall/modules/ElytraFly.java` | Offen |
 | [`EntityEsp`](MODULES/EntityEsp.md) | `src/main/java/dev/nightfall/modules/EntityEsp.java` | Offen |
@@ -77,7 +71,7 @@
 | [`KillAura`](MODULES/KillAura.md) | `src/main/java/dev/nightfall/modules/KillAura.java` | Offen |
 | [`LongJump`](MODULES/LongJump.md) | `src/main/java/dev/nightfall/modules/LongJump.java` | Offen |
 | [`LootDropFinder`](MODULES/LootDropFinder.md) | `src/main/java/dev/nightfall/modules/LootDropFinder.java` | Offen |
-| [`LowHealthWarning`](MODULES/LowHealthWarning.md) | `src/main/java/dev/nightfall/modules/LowHealthWarning.java` | Offen |
+| [`LowHealthWarning`](MODULES/LowHealthWarning.md) | `src/main/java/dev/nightfall/modules/LowHealthWarning.java` | Code geprüft; Laufzeittest offen |
 | [`MaceAssist`](MODULES/MaceAssist.md) | `src/main/java/dev/nightfall/modules/MaceAssist.java` | Teilweise geprüft |
 | [`MacroManager`](MODULES/MacroManager.md) | `src/main/java/dev/nightfall/modules/MacroManager.java` | Offen |
 | [`Minimap`](MODULES/Minimap.md) | `src/main/java/dev/nightfall/modules/Minimap.java` | Offen |
