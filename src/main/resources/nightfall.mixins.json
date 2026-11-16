@@ -14,8 +14,7 @@
     "AutoShieldNetworkMixin",
     "FakeLagNetworkMixin",
     "FakeLagAttackMixin",
-    "ItemStackGlintMixin",
-    "ItemRendererGlintColorMixin"
+    "ItemRendererOutlineMixin"
   ],
   "injectors": {
     "defaultRequire": 1
