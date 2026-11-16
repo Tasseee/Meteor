@@ -1,52 +1,46 @@
 # JumpCircles
 
-- **Registrierter Modulname:** `JumpCircles`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/JumpCircles.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `JumpCircles`
+- **Kategorie:** `VISUALS`
+- **Quellcode-SHA:** `21ea0dbb59e158989fdf0fbc903607db6477b86a`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Erzeugt bei der Landung nach einem Sprung einen lokalen Kreis aus 18 Partikeln rund um die Spielerposition. Es ist ein rein visueller Effekt.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard | Grenzen / Optionen |
+|---|---:|---|
+| Effekt | Cloud | Cloud, Enchant, Soul, Flamme, Herzen |
+| Radius | 0,8 | 0,3–1,8; Schritt 0,1 |
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Erkennung:** setzt `airborne`, sobald der Spieler nicht mehr am Boden ist; beim nächsten Bodenkontakt wird der Effekt ausgelöst.
+- **Lifecycle:** Zustand wird bei Aktivierung und Weltwechsel zurückgesetzt.
+- **Nullfälle:** tickt nur mit Spieler und Welt.
+- **Performance:** exakt 18 Partikel pro Landung.
+- **Threads/Ressourcen:** keine eigenen Threads oder Listener.
+- **In-Game/Build:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Fehler im Kontrollfluss gefunden.
+- Kein `onDisable()`-Reset vorhanden; beim erneuten Aktivieren setzt `onEnable()` den Zustand zurück, daher ist kein persistierender Airborne-Zustand zu erwarten.
+- Der Effekt wird nur beim Landen, nicht beim Abheben, ausgelöst – das entspricht der Modulbeschreibung.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] Alle Partikelarten
+- [ ] Radius 0,3 / 1,8
+- [ ] Sprung ohne Bewegung / laufender Sprung
+- [ ] Modul während des Sprungs deaktivieren und erneut aktivieren
+- [ ] Weltwechsel
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Erste Codeprüfung; keine Java-Änderung. |
