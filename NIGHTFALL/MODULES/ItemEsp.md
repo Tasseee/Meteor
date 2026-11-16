@@ -1,52 +1,60 @@
 # ItemEsp
 
-- **Registrierter Modulname:** `ItemEsp`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/ItemEsp.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; In-Game-Test offen
+- **Java-Klasse:** `ItemEsp`
+- **Anzeigename:** `ItemESP`
+- **Kategorie:** `VISUALS`
+- **Modul-SHA:** `bdc4c46d4eed423c51639db69a32dadb459daaa2`
+- **Gemeinsame Renderlogik:** `EntityScanEsp` / `EspBase`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Markiert geladene Item-Entities und zeigt den Item-Anzeigenamen sowie die Stack-Anzahl. Das Modul übernimmt die gemeinsame Entity-ESP-Renderlogik.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+Keine modulspezifischen Einstellungen. Geerbte Einstellungen:
+
+| Einstellung | Standard |
+|---|---|
+| Reichweite | 512 |
+| Max Objekte | 512 |
+| Linien-Antialiasing | an |
+| Box | 3D |
+| Name | an |
+| Distanz | an |
+| Health | an |
+| Nur sichtbare | aus |
+| Tracer | aus |
+| Transparenz | 1,0 |
+
+Die gemeinsame Range-Korrektur in `EspBase` ändert den Default hier nicht, da ItemEsp mit `defRange=512` und `maxRange=512` konstruiert wird.
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Erkennung:** akzeptiert alle geladenen Item-Entities.
+- **Label:** Stack-Anzeigename plus Anzahl.
+- **Renderpfad:** scannt geladene Entities bei jedem HUD-Render-Aufruf; speichert pro Treffer eine interpolierte Box und Distanz.
+- **Allokationen:** pro Frame entstehen RenderTarget-Datensätze für passende Entities; Buffer-Liste selbst wird wiederverwendet.
+- **Geerbte Health-Einstellung:** Item-Entities sind keine LivingEntity; die Health-Zeile hat bei diesem Modul keine sichtbare Wirkung.
+- **Build/In-Game:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+### IE-01 – geerbte Health-Option ohne Wirkung
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+Die gemeinsame Option `Health` wird von EntityScanEsp nur für LivingEntity angezeigt. ItemESP akzeptiert Item-Entities, daher bleibt die Einstellung wirkungslos und kann in der GUI verwirren. Verbesserung wäre, die Option für ItemESP auszublenden oder die gemeinsame Setting-Struktur um konfigurierbare Features zu ergänzen.
 
-## Fehler und Verbesserungsideen
+## Offene Tests
 
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] Ein Item, mehrere gestapelte Items und weit entfernte Items
+- [ ] Range-/Max-Objekte-Grenzen
+- [ ] sichtbare-only und Box-Stile
+- [ ] Itemnamen mit Sonderzeichen / langen Anzeigenamen
+- [ ] Health-Option in GUI
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | Modul und geerbte Renderlogik geprüft. |
