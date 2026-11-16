@@ -2,7 +2,7 @@
 
 **Inventur-Baseline:** `21dc9f822a6295cdb6238037f344da799bbcca26`  
 **Nutzungsanzeige:** Aktivierungen und aktive Zeit stehen bei jedem Modul im ClickGUI; Details in [`MODULE_USAGE.md`](MODULE_USAGE.md).  
-**Letzte Code-Prüfungen:** `BaseFinder`, `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk` (Build-/In-Game-Tests offen)  
+**Letzte Code-Prüfungen:** `BaseFinder`, `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch`, `AntiVanishHints` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk` (Build-/In-Game-Tests offen)  
 **Quelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`  
 **Registrierungen:** **101** – jede genau einmal im Audit-Ledger abgebildet.
 
@@ -16,7 +16,7 @@ Die einzelnen Prüfstände und offenen Punkte stehen in den jeweiligen Modulakte
 |---|---|---|
 | [`AdvancedWorldOverlay`](MODULES/AdvancedWorldOverlay.md) | `src/main/java/dev/nightfall/modules/AdvancedWorldOverlay.java` | Code geprüft; Laufzeittest offen |
 | [`AntiCheatMonitor`](MODULES/AntiCheatMonitor.md) | `src/main/java/dev/nightfall/modules/AntiCheatMonitor.java` | Vollständig geprüft |
-| [`AntiVanishHints`](MODULES/AntiVanishHints.md) | `src/main/java/dev/nightfall/modules/AntiVanishHints.java` | Vollständig geprüft |
+| [`AntiVanishHints`](MODULES/AntiVanishHints.md) | `src/main/java/dev/nightfall/modules/AntiVanishHints.java` | HUD überarbeitet; Build-/Laufzeittest offen |
 | [`ArmorHud`](MODULES/ArmorHud.md) | `src/main/java/dev/nightfall/modules/ArmorHud.java` | Vollständig geprüft |
 | [`Atmosphere`](MODULES/Atmosphere.md) | `src/main/java/dev/nightfall/modules/Atmosphere.java` | Vollständig geprüft |
 | [`AutoAnchor`](MODULES/AutoAnchor.md) | `src/main/java/dev/nightfall/modules/AutoAnchor.java` | Offen |
