@@ -1,52 +1,46 @@
 # ScannerHud
 
-- **Registrierter Modulname:** `ScannerHud`
-- **Bisheriger Prüfstatus:** **Offen**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/ScannerHud.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
-
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+- **Status:** Code geprüft; In-Game-Test offen
+- **Java-Klasse:** `ScannerHud`
+- **Anzeigename:** `ScannerStatus`
+- **Kategorie:** `HUD`
+- **Quellcode-SHA:** `3dda1ef19798ebb22b17d3ffe5e014304d472ba5`
+- **Abhängigkeit:** `BaseFinder`
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Zeigt den Zustand des BaseFinder an: Pause, letzte Scanzeit, Queuegröße, Fortschrittsbalken, gescannte/zuletzt nachgefüllte Chunks, bis zu fünf Top-SUS-Ergebnisse und die Anzahl der als SUS-WEG markierten Chunks.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+Keine modulspezifischen Einstellungen.
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- **Lebenszyklus:** wird beim Erstellen aktiviert.
+- **BaseFinder aus:** setzt HUD-Breite und -Höhe auf 0.
+- **Datenzugriff:** liest Status, Suspects und Marks aus BaseFinder.
+- **Position:** Standard (4, 22).
+- **Anzeige:** fixe Breite 190 px; Höhe wächst mit bis zu fünf Zeilen plus optional SUS-WEG-Zeile.
+- **Nullfälle:** Modulmanager-Registrierung von BaseFinder wird vorausgesetzt.
+- **In-Game/Build:** nicht ausgeführt.
 
-## Nutzererfahrungen und Testberichte
+## Befunde und Verbesserungen
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- Kein eindeutiger Fehler im statischen Rendering gefunden.
+- Anzeigename `ScannerStatus` unterscheidet sich vom Klassennamen `ScannerHud`; dies ist eine bewusste/kompatibilitätsrelevante Namensdifferenz, die beim Config-Key zu beachten ist.
+- `String.format` verwendet die Standard-Locale; Dezimaltrennzeichen können daher je nach System variieren. Wenn ein festes Format gewünscht ist, `Locale.ROOT` verwenden.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
+## Offene Tests
 
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+- [ ] BaseFinder aktiv/pausiert/deaktiviert
+- [ ] Queue leer/voll
+- [ ] SUS- und SUS-WEG-Zeilen
+- [ ] lange Koordinaten/Score-Werte
+- [ ] GUI-Skalierung und HUD-Position
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-16 | ScannerHud und BaseFinder-Integration codebasiert geprüft. |
