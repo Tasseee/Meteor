@@ -36,13 +36,32 @@ public final class AutoFish extends Module {
       if (mc.field_1724 != null && mc.field_1687 != null && mc.field_1761 != null) {
          if (this.cooldown > 0) {
             this.cooldown--;
-         } else if (mc.field_1724.field_7513 != null && mc.field_1724.field_7513.method_5805()) {
-            if (!this.mainHandOnly.get() || mc.field_1724.method_6047().method_31574(class_1802.field_8378)) {
-               if (mc.field_1724.field_7513.method_18798().field_1351 < -0.08) {
-                  mc.field_1761.method_2919(mc.field_1724, class_1268.field_5808);
-                  this.cooldown = this.minimumInterval.getInt();
-               }
+            return;
+         }
+
+         if (mc.field_1724.field_7513 == null || !mc.field_1724.field_7513.method_5805()) {
+            return;
+         }
+
+         boolean mainHandRod = mc.field_1724.method_6047().method_31574(class_1802.field_8378);
+         boolean offHandRod = mc.field_1724.method_6079().method_31574(class_1802.field_8378);
+         class_1268 hand;
+         if (this.mainHandOnly.get()) {
+            if (!mainHandRod) {
+               return;
             }
+            hand = class_1268.field_5808;
+         } else if (mainHandRod) {
+            hand = class_1268.field_5808;
+         } else if (offHandRod) {
+            hand = class_1268.field_5810;
+         } else {
+            return;
+         }
+
+         if (mc.field_1724.field_7513.method_18798().field_1351 < -0.08) {
+            mc.field_1761.method_2919(mc.field_1724, hand);
+            this.cooldown = this.minimumInterval.getInt();
          }
       }
    }
