@@ -1,6 +1,6 @@
 package dev.nightfall.render;
 
-import java.util.function.FloatSupplier;
+import java.util.function.DoubleSupplier;
 import java.util.function.IntSupplier;
 import net.minecraft.class_4588;
 
@@ -11,9 +11,9 @@ import net.minecraft.class_4588;
 public final class GlintColorVertexConsumer implements class_4588 {
    private final class_4588 delegate;
    private final IntSupplier rgbSupplier;
-   private final FloatSupplier opacitySupplier;
+   private final DoubleSupplier opacitySupplier;
 
-   public GlintColorVertexConsumer(class_4588 delegate, IntSupplier rgbSupplier, FloatSupplier opacitySupplier) {
+   public GlintColorVertexConsumer(class_4588 delegate, IntSupplier rgbSupplier, DoubleSupplier opacitySupplier) {
       this.delegate = delegate;
       this.rgbSupplier = rgbSupplier;
       this.opacitySupplier = opacitySupplier;
@@ -24,7 +24,7 @@ public final class GlintColorVertexConsumer implements class_4588 {
    }
 
    private float opacity() {
-      return Math.max(0.0F, Math.min(2.0F, this.opacitySupplier.getAsFloat()));
+      return Math.max(0.0F, Math.min(2.0F, (float)this.opacitySupplier.getAsDouble()));
    }
 
    private int scaleAlpha(int alpha) {
