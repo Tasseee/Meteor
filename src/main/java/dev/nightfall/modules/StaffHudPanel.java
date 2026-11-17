@@ -6,7 +6,7 @@ import net.minecraft.class_332;
 
 /**
  * Gemeinsames Panel-Design für StaffWatch und AntiVanishHints.
- * Nutzt ausschließlich die bereits vorhandene Theme- und HUD-Render-Infrastruktur.
+ * Nutzt ausschließlich die vorhandene Theme- und HUD-Render-Infrastruktur.
  */
 public final class StaffHudPanel {
    public record Row(String name, String status, int color) {}
@@ -22,19 +22,25 @@ public final class StaffHudPanel {
       boolean tab = StaffPresence.inTab(name);
       boolean world = StaffPresence.loadedInWorld(name);
       String status;
-      if (!StaffPresence.tabAvailable()) {
-         status = world ? "WELT · TAB N/A" : "TAB N/A";
-      } else if (tab && world) {
-         status = "TAB + WELT";
-      } else if (tab) {
-         status = "TAB/NETZ";
+      int color;
+
+      if (!StaffPresence.isHugoSmpServer()) {
+         status = "HUGOSMP N/A";
+         color = GRAY;
       } else if (world) {
-         status = "NUR WELT";
+         status = "SERVER";
+         color = GREEN;
+      } else if (tab) {
+         status = "ONLINE";
+         color = YELLOW;
+      } else if (!StaffPresence.tabAvailable()) {
+         status = "TAB N/A";
+         color = GRAY;
       } else {
-         status = "KEINE QUELLE";
+         status = "OFFLINE";
+         color = GRAY;
       }
 
-      int color = tab && world ? GREEN : tab || world ? YELLOW : GRAY;
       return new Row(StaffPresence.displayName(name), status, color);
    }
 
@@ -80,13 +86,11 @@ public final class StaffHudPanel {
       width = Math.min(width, maxWidth);
       int height = headerHeight + subtitleHeight + bodyRows * rowHeight + footerHeight + (bodyRows > 0 ? 3 : 0) + 2;
 
-      // Dunkler Schatten und Theme-Hintergrund.
       rounded(ctx, -1, -1, width + 1, height + 1, Theme.withAlpha(0x000000, 72));
       rounded(ctx, 0, 0, width, height, Theme.HUD_PANEL);
       ctx.method_25294(0, 0, width, 2, Theme.HUD_EDGE);
       ctx.method_25294(0, 2, 3, height, Theme.HUD_EDGE);
 
-      // Kopfbereich mit dezenter Akzentfläche.
       ctx.method_25294(3, 2, width - 1, headerHeight, Theme.withAlpha(Theme.ACCENT, 28));
       ctx.method_25294(3, headerHeight, width - 2, headerHeight + 1, Theme.ACCENT);
       String shownTitle = fit(title, Math.max(28, width - 34 - (badge == null ? 0 : font.method_1727(badge) + 20)));
@@ -124,8 +128,8 @@ public final class StaffHudPanel {
             int nameMax = Math.max(8, statusX - nameX - 11);
             String shownName = fit(row.name(), nameMax);
 
-            // Dezentes Leuchten und pulsierender Punkt bei lokal geladener Entity.
-            float pulse = "TAB + WELT".equals(row.status())
+            // Dezentes Leuchten und Pulsieren für eine Entity in der aktuellen Welt.
+            float pulse = "SERVER".equals(row.status())
                ? 0.76F + 0.24F * (float)Math.sin(time / 390.0)
                : 1.0F;
             int dotY = rowY + rowHeight / 2;
