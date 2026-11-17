@@ -6,7 +6,7 @@ import net.minecraft.class_332;
 
 public class Watermark extends HudModule {
    public Watermark() {
-      super("Watermark", "Zeigt Name und Version.");
+      super("Watermark", "Zeigt den eigenen Minecraft-Profilnamen.");
       this.setEnabled(true);
    }
 
