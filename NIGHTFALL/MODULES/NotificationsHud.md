@@ -21,16 +21,17 @@ Zeigt die neuesten Status- und Warnmeldungen als HUD-Karten. Im HUD-Editor ersch
 
 ## Technische Prüfung
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+- [x] **Registrierung/Kategorie:** einmalige Registrierung in `ModuleManager.init()`; Kategorie HUD; sichtbarer Name `Notifications`.
+- [x] **Einstellungen:** `Max. Meldungen`, Standard 4, Bereich 1–6, Schritt 1.
+- [x] **UI/HUD:** neueste Meldungen zuerst, feste Breite 176 px, Höhe abhängig von der Anzahl; Editor-Vorschau bei leerer Queue.
+- [x] **Lifecycle:** keine eigenen Enable-/Disable-/World-Leave-Hooks, Listener oder Ressourcen.
+- [x] **Datenquelle:** `NotificationCenter` synchronisiert Push-/Snapshot-Zugriffe, begrenzt die Queue auf 12 und entfernt abgelaufene Einträge.
+- [x] **Null-/Grenzfälle:** `trim()` behandelt null Texte; Toast-Fortschritt wird auf 0–1 begrenzt; Mindestdauer 750 ms.
+- [x] **Fehlerbehandlung/Logging:** keine lokale Fehlerbehandlung; der zentrale HUD-Render-Handler protokolliert und deaktiviert bei Renderfehlern.
+- [x] **Threading:** keine eigenen Threads; Queue-Methoden sind synchronisiert, Toast-Felder final.
+- [x] **Performance:** höchstens 12 Toasts je Frame; Snapshot-Kopie ist durch Queue-Limit beschränkt.
+- [x] **Kompatibilität:** Projektziel Minecraft 1.21.11 / Java 21; der CI-Build auf dem geprüften Java-Stand war erfolgreich.
+- [x] **Tests/Dokumentation:** keine eigene `src/test`-Suite vorhanden; Dokumentation aktualisiert. In-Game-Verhalten bleibt offen.
 
 ## Nutzererfahrungen und Testberichte
 
