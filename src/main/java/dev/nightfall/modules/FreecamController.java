@@ -115,9 +115,9 @@ public final class FreecamController extends Module {
       camWorld = mc.field_1687;
       cam = new class_1531(class_1299.field_60980, camWorld);
 
-      camX = mc.field_1724.getX();
+      camX = mc.field_1724.method_23317();
       camY = mc.field_1724.method_33571().field_1351;
-      camZ = mc.field_1724.getZ();
+      camZ = mc.field_1724.method_23321();
       velX = velY = velZ = 0.0;
 
       float yaw = savedYaw;
@@ -186,7 +186,9 @@ public final class FreecamController extends Module {
          mc.field_1692 = cam;
       }
 
-      syncPreviousPosition();
+      previousCamX = camX;
+      previousCamY = camY;
+      previousCamZ = camZ;
 
       if (isBodyMode()) {
          velX = velY = velZ = 0.0;
@@ -203,13 +205,12 @@ public final class FreecamController extends Module {
          double dy = Math.max(-250.0, Math.min(250.0, cursorY[0] - lastMouseY));
 
          // Same mouse direction as the supplied FreecamController.
-         float yaw = cam.getYaw() + (float)dx * (float)sensitivity.get();
+         float yaw = cam.method_36454() + (float)dx * (float)sensitivity.get();
          float pitch = Math.max(-90.0F, Math.min(90.0F,
-            cam.getPitch() + (float)dy * (float)sensitivity.get()));
-         cam.setYaw(yaw);
-         cam.setPitch(pitch);
-         cam.prevYaw = yaw;
-         cam.prevPitch = pitch;
+            cam.method_36455() + (float)dy * (float)sensitivity.get()));
+         cam.method_36456(yaw);
+         cam.method_36457(pitch);
+         
       }
 
       lastMouseX = cursorX[0];
@@ -234,8 +235,8 @@ public final class FreecamController extends Module {
 
       class_243 move = class_243.field_1353;
       if (mc.field_1755 == null) {
-         double yawR = Math.toRadians(cam.getYaw());
-         double pitchR = Math.toRadians(cam.getPitch());
+         double yawR = Math.toRadians(cam.method_36454());
+         double pitchR = Math.toRadians(cam.method_36455());
 
          class_243 forwardVec = new class_243(
             -Math.sin(yawR) * Math.cos(pitchR),
@@ -267,7 +268,7 @@ public final class FreecamController extends Module {
       camY += velY * dt;
       camZ += velZ * dt;
 
-      cam.setPosition(camX, camY - eyeOffset, camZ);
+      cam.method_5814(camX, camY - eyeOffset, camZ);
 
       if (mc.field_1724.method_73189().method_1025(playerStart) > 1.0E-8) {
          mc.field_1724.method_33574(playerStart);
@@ -309,11 +310,4 @@ public final class FreecamController extends Module {
       context.method_51433(mc.field_1772, info, center - mc.field_1772.method_1727(info) / 2, 21, 0xFFFFFFFF, true);
    }
 
-   private void syncPreviousPosition() {
-      if (cam != null) {
-         cam.lastRenderX = cam.getX();
-         cam.lastRenderY = cam.method_23318();
-         cam.lastRenderZ = cam.method_23321();
-      }
-   }
 }
