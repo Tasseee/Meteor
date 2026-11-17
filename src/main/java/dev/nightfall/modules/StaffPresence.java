@@ -1,5 +1,6 @@
 package dev.nightfall.modules;
 
+import dev.nightfall.module.ModuleManager;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
