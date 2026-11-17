@@ -3,10 +3,11 @@
 - **Status:** Code verbessert; Build- und In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `StaffWatch`
 - **Kategorie:** `HUD` (über `HudModule`)
-- **Quellcode-SHA StaffWatch:** `805bfff7ee0d27c833c044e570f600c9f05d161c`
+- **Quellcode-SHA StaffWatch:** `67b2af05b53ddc97d9ee27967eccc493f562c8d0`
 - **Tab-API-Änderung:** `getListedPlayerListEntries()` / `method_45732()`
+- **Quellcode-SHA StaffPresence:** `485c9210e19114c7b857470b65ae90652d7c57e9`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
-- **Quellcode-SHA AntiVanishHints:** `38300fa3e35819e33ab14d83e6da35412a9a07dc`
+- **Quellcode-SHA AntiVanishHints:** `9ed794839c571599ec5a7f596617551d219dde23`
 - **Mitgeprüfte Dateien:** `ListSetting.java`, `Commands.java`, `Config.java`, `Nightfall.java`, `ModuleManager.java`, `AntiVanishHints.java`
 
 ## Zweck und Verhalten
@@ -71,11 +72,11 @@ Ein Eintrag mit `TAB/NETZ` allein sagt daher nicht, dass der Spieler auf genau d
 
 ## Technische Prüfung
 
-- **Lifecycle:** `onEnable()`, `onDisable()` und `onWorldLeave()` leeren den zwischengespeicherten Präsenzzustand. `onTick()` aktualisiert ihn nur bei aktivem Modul. Keine eigenen Event-Listener, Executor oder Hintergrundthreads.
+- **Lifecycle:** `ModuleManager.tick()` aktualisiert `StaffPresence` einmal zentral pro Client-Tick, wenn mindestens eines der beiden HUD-Module aktiv ist. `onWorldLeave()` setzt den gemeinsamen Snapshot zurück. Die einzelnen Module sammeln keine eigenen Tab-/Entity-Daten mehr.
 - **Nullfälle:** Spieler und Welt werden vor dem Sammeln der Daten geprüft. Netzwerkhandler, Tab-Einträge, Profile und Profilnamen werden separat geprüft; leere Namen werden übersprungen.
 - **Fehlerbehandlung:** Das Modul hat keinen lokalen Catch-Block. `ModuleManager.renderHud` fängt Render-Ausnahmen zentral ab, protokolliert sie und deaktiviert das betroffene Modul.
 - **Threading:** Das Sammeln läuft in `onTick()` und die Anzeige liest den Cache im HUD-Renderpfad. Das Modul startet keine parallelen Tasks; beide Pfade laufen über den Client-Lifecycle.
-- **Performance:** Zwei `HashSet`-Instanzen werden als Felder wiederverwendet. Tab- und Entity-Namen werden im `onTick()` aktualisiert, nicht mehr bei jedem HUD-Render-Aufruf. Pro aktivem Tick werden die vom Client als gelistet geführten Tab-Einträge und die aktuell geladenen Player-Entities durchlaufen. Ein Profiling-Nachweis liegt nicht vor.
+- **Performance:** `StaffPresence` hält gemeinsame `HashSet`-/`HashMap`-Caches. Tab- und Entity-Namen werden einmal zentral pro Client-Tick aktualisiert, nicht doppelt in beiden Modulen und nicht bei jedem HUD-Render-Aufruf. Ein Profiling-Nachweis liegt nicht vor.
 - **Speicherung:** `staffNames` wird als normale Modul-Einstellung in `nightfall.json` gespeichert und beim Config-Laden wiederhergestellt.
 
 ## Befunde
@@ -92,7 +93,7 @@ Vor der Korrektur veränderten `/nf staff add` und `/nf staff del` die `ListSett
 Vor dem HUD-Upgrade wurde dieselbe manuelle Namensliste in einem zweiten festen HUD-Bereich angezeigt und die Tab-/Entity-Mengen wurden beim Rendern erneut aufgebaut. Das führte zu doppelter Anzeige und wiederholter Arbeit.
 
 - **Bewertung:** Aus dem Quellcode ersichtliche Überschneidung; möglicherweise bewusst als getrennte HUD-Ansicht angelegt.
-- **Status:** Behoben. `AntiVanishHints.draw()` blendet sein Panel aus, wenn `StaffWatch` aktiv ist. Das Modul ist inzwischen selbst ein `HudModule`; es sammelt seine clientseitigen Präsenzdaten in `onTick()` und liest beim Rendern nur den Cache. So wird die Sammlung nicht bei jedem HUD-Frame erneut durchlaufen. Es nutzt dieselbe manuelle Namensliste und keine neuen Datenquellen.
+- **Status:** Behoben. `AntiVanishHints.draw()` blendet sein Panel aus, wenn `StaffWatch` aktiv ist. Das Modul ist inzwischen selbst ein `HudModule`; beide Module lesen denselben zentralen `StaffPresence`-Snapshot. `ModuleManager.tick()` sammelt Tab-/Welt-Daten genau einmal pro Client-Tick. AntiVanishHints blendet Namen ohne sichtbaren Tab- oder Welt-Treffer aus und zeigt bei null Treffern ausdrücklich `Nichts sichtbar – kein Beweis`.
 
 ### Grenzen der Interpretation
 
@@ -130,3 +131,12 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 |---|---|
 | 2026-11-16 | Listenänderungen sofort gespeichert; doppelte AntiVanishHints-Ausgabe unterdrückt und deren Nullprüfungen ergänzt. HUD auf `HudModule` umgestellt, Statusdarstellung verbessert, Präsenzdaten pro Tick aktualisiert, Tab-Abgleich auf `getListedPlayerListEntries()` korrigiert, alleinigen TAB-Status als `TAB/NETZ` gekennzeichnet und Original-Schreibweise gefundener Profilnamen im HUD wiederhergestellt. |
 | 2026-11-16 | Zeilenlimit, Kompaktmodus, Treffer-Sortierung und Legenden-Schalter für StaffWatch ergänzt; AntiVanishHints als verschiebbares `HudModule` mit Zeilenlimit, Kompaktmodus und Tick-Cache umgesetzt. Beide Panels bleiben auf manuell eingetragene Namen und clientseitig sichtbare TAB-/Entity-Daten beschränkt. |
+
+
+## Gemeinsamer Präsenz-Cache (2026-11-17)
+
+- `StaffPresence` ist eine gemeinsame Hilfsklasse für beide Module.
+- `ModuleManager.tick()` aktualisiert den Snapshot einmal pro Client-Tick; beide HUDs lesen denselben Stand.
+- Der Cache wird zurückgesetzt, wenn die Welt verlassen wird. Bei deaktivierten beiden Modulen werden keine Spielerlisten durchlaufen.
+- AntiVanishHints zeigt nur Einträge mit einem sichtbaren TAB- oder geladenen Welt-Treffer. Keine Treffer ergeben den neutralen Hinweis `Nichts sichtbar – kein Beweis`.
+- Keine zusätzliche Backend-Erkennung: `TAB/NETZ` bleibt eine Netzwerk-Spielerliste, `WELT` eine aktuell geladene Entity. Ein Unterserverstatus wird nicht geraten.
