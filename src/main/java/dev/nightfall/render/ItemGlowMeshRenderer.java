@@ -108,9 +108,9 @@ public final class ItemGlowMeshRenderer {
          Vector3f haloA = new Vector3f(a).fma(0.0025F, outward);
          Vector3f haloB = new Vector3f(b).fma(0.0025F, outward);
 
-         emit(halo, positionMatrix, haloA, haloB, edge.frontNormal, red, green, blue, haloAlpha);
-         emit(halo, positionMatrix, a, b, edge.frontNormal, red, green, blue, haloAlpha);
-         emit(core, positionMatrix, a, b, edge.frontNormal, red, green, blue, coreAlpha);
+         emit(halo, positionMatrix, haloA, haloB, edge.frontNormal, red, green, blue, haloAlpha, 5.0F);
+         emit(halo, positionMatrix, a, b, edge.frontNormal, red, green, blue, haloAlpha, 3.0F);
+         emit(core, positionMatrix, a, b, edge.frontNormal, red, green, blue, coreAlpha, 1.5F);
       }
    }
 
@@ -123,14 +123,17 @@ public final class ItemGlowMeshRenderer {
       int red,
       int green,
       int blue,
-      int alpha
+      int alpha,
+      float lineWidth
    ) {
       consumer.method_22918(matrix, a.x, a.y, a.z)
          .method_1336(red, green, blue, alpha)
-         .method_22914(normal.x, normal.y, normal.z);
+         .method_22914(normal.x, normal.y, normal.z)
+         .method_75298(lineWidth);
       consumer.method_22918(matrix, b.x, b.y, b.z)
          .method_1336(red, green, blue, alpha)
-         .method_22914(normal.x, normal.y, normal.z);
+         .method_22914(normal.x, normal.y, normal.z)
+         .method_75298(lineWidth);
    }
 
    private static int clamp(int value) {
