@@ -104,16 +104,6 @@ public class AutoPvp extends Module {
       this.disableOwnedAssistModules();
    }
 
-   @Override
-   public void onWorldLeave() {
-      this.resetCritCycle();
-      this.driveByTimer = 0;
-      this.resetCrystalCombo();
-      this.cancelWindchargeMace(true);
-      this.releaseShieldAxe();
-      this.release();
-   }
-
    private void syncAssistModules() {
       this.ownsAutoGap = this.syncModule(AutoGap.class, this.useAutoGap.get(), this.ownsAutoGap);
       this.ownsAutoTotem = this.syncModule(AutoTotem.class, this.useAutoTotem.get(), this.ownsAutoTotem);
@@ -758,6 +748,8 @@ public class AutoPvp extends Module {
    @Override
    public void onWorldLeave() {
       this.pearlUseDelay = 0;
+      this.resetCritCycle();
+      this.driveByTimer = 0;
       this.resetCrystalCombo();
       this.lastCrystalObsidianBase = null;
       this.cancelWindchargeMace(true);
