@@ -194,11 +194,6 @@ public final class ItemGlowRenderer {
          | Math.max(0, Math.min(255, blue));
    }
 
-   private static int argb(float alpha, int rgb) {
-      int a = Math.max(0, Math.min(255, Math.round(alpha * 255.0F)));
-      return a << 24 | (rgb & 0xFFFFFF);
-   }
-
    private static ItemGlow getModule() {
       try {
          return ModuleManager.get(ItemGlow.class);
