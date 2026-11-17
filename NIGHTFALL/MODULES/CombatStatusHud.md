@@ -1,52 +1,24 @@
 # CombatStatusHud
 
 - **Registrierter Modulname:** `CombatStatusHud`
-- **Bisheriger Prüfstatus:** **Teilweise geprüft**
+- **Auditstatus:** Teilweise geprüft – reine Anzeige
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/CombatStatusHud.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
+- **Quell-Blob-SHA:** `b1ea23febdae758a5867e2766ce5185beb304a39`
 
-> Teilprüfung aus dem vorhandenen Audit-Ledger übernommen. Noch offene Bereiche und Prüfgrenzen sind beim nächsten Review konkret festzuhalten.
+## Aktuell angezeigte Informationen
 
-## Zweck und Verhalten
+Die HUD-Zeile bezieht das Ziel aus `TrapCrit` oder `KillAura`. Sie zeigt je nach Zustand Zielname bzw. Leerlauftext, Distanz, `TRAP`/`frei` oder `AURA`, den Crit-Hinweis und eine Cooldown-Leiste. Zusätzlich kann eine Mace-Schadensschätzung erscheinen.
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+## Sichtbare Lücke
 
-## Einstellungen
+Im aktuellen HUD-Code werden weder CrystalAura/Crystal-Kontext noch DTap oder ObiTrapBot als Statusquelle angezeigt. Daher gibt es dort aktuell auch keine Unterscheidung zwischen Boden-/Standflächen-Kontext und Obsidian-Kontext. Das ist nur eine Bestandsaufnahme; es wurde keine neue Statuslogik hinzugefügt.
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+## Prüfgrenze
 
-## Technische Prüfung
+Nur die Anzeige wurde betrachtet. Ziel-/Angriffslogik der referenzierten Module wurde nicht geprüft oder verändert.
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+## Offen
 
-## Nutzererfahrungen und Testberichte
-
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
-
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
-
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
-
-## Änderungsverlauf
-
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+- [ ] Im laufenden Client Textbreite, Überlappungen und Layout prüfen.
+- [ ] Anforderungen an nicht-angreifende Statusanzeigen separat festlegen.
+- [ ] Kein In-Game-Test in diesem Lauf.

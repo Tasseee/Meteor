@@ -1,52 +1,22 @@
 # ObiTrapBot
 
 - **Registrierter Modulname:** `ObiTrapBot`
-- **Bisheriger Prüfstatus:** **Teilweise geprüft**
+- **Auditstatus:** Teilweise geprüft – Registrierung und sichtbare Beschreibung
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/ObiTrapBot.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
+- **Quell-Blob-SHA:** `e633f869192c727f1cd1901eb507e145aca1058d`
 
-> Teilprüfung aus dem vorhandenen Audit-Ledger übernommen. Noch offene Bereiche und Prüfgrenzen sind beim nächsten Review konkret festzuhalten.
+## Identität
 
-## Zweck und Verhalten
+`ObiTrapBot` ist eine eigenständige Registrierung in `ModuleManager.init()`. Der Klassenname/Anzeigename bleibt getrennt von `AutoPvp` und `DTap`. Der Nutzer verwendet teilweise die Kurzbezeichnung „OpiTrap“; der aktuelle registrierte Name lautet `ObiTrapBot`.
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Die sichtbare Beschreibung nennt eine Obsidian-Box und Cobwebs. Die Ausführungslogik wurde nicht untersucht.
 
-## Einstellungen
+## Prüfgrenze
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+Nur Registrierung und Beschreibung geprüft. Zielauswahl, Blockplatzierung, Timing und automatisierte Kampf-/Trap-Ausführung wurden nicht gelesen, geändert oder optimiert.
 
-## Technische Prüfung
+## Offen
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
-
-## Nutzererfahrungen und Testberichte
-
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
-
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
-
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
-
-## Änderungsverlauf
-
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+- [ ] Sichtbare Bezeichnung im Client prüfen.
+- [ ] Nicht-angreifende Status-/Fehleranzeige separat prüfen.
+- [ ] Build-/In-Game-Nachweis fehlt.

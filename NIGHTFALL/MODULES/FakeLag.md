@@ -1,52 +1,30 @@
 # FakeLag
 
 - **Registrierter Modulname:** `FakeLag`
-- **Bisheriger Prüfstatus:** **Teilweise geprüft**
-- **Quellpfad:** `src/main/java/dev/nightfall/modules/FakeLag.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
+- **Auditstatus:** Teilweise geprüft – ausschließlich Ghost-Renderer/Anzeige
+- **Modul-Quellpfad:** `src/main/java/dev/nightfall/modules/FakeLag.java`
+- **Renderer:** `src/main/java/dev/nightfall/render/FakeLagGhostRenderer.java`
+- **Renderer-Blob-SHA:** `cfe9be494599c1e20c007df05a360d440bb37029`
 
-> Teilprüfung aus dem vorhandenen Audit-Ledger übernommen. Noch offene Bereiche und Prüfgrenzen sind beim nächsten Review konkret festzuhalten.
+## Ghost-Skin: Codebefund
 
-## Zweck und Verhalten
+Der separate Renderer wird über `WorldRenderEvents.AFTER_ENTITIES` registriert. Vor dem Rendern prüft er, ob lokaler Spieler und Welt vorhanden sind, eine ausstehende Serverposition existiert und Matrix, Command-Queue sowie World-State verfügbar sind.
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Danach wird der normale Player-Renderer des lokalen Spielers verwendet. Der Renderzustand wird auf die zuletzt bekannte Serverposition und Blickrichtung gesetzt; zusätzliche Namensplaketten werden entfernt. Die Matrix wird mit Push/Pop umschlossen und im `finally`-Block wiederhergestellt.
 
-## Einstellungen
+Renderfehler werden im Hilfsrenderer abgefangen, damit der normale World-Renderpfad nicht unterbrochen wird. Der Catch ist still; ein Diagnoseeintrag ist hier nicht vorhanden. Das ist ein Wartbarkeitshinweis, kein bestätigter Renderfehler.
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+## Prüfgrenze
 
-## Technische Prüfung
+Diese Prüfung betrifft nur den visuellen Ghost-Renderer. Die Netzwerk-/Paketlogik von FakeLag wurde in diesem Lauf weder funktional auditiert noch geändert. Es wurden keine Maßnahmen zur Umgehung von Server-Schutz, Anti-Cheat oder Kicks vorgenommen.
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+## Offene Verifikation
 
-## Nutzererfahrungen und Testberichte
+<badge color="warning">In-Game-Test offen</badge>
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+- [ ] Ghost-Kopie erscheint an der erwarteten Position im Third-Person-/World-Render.
+- [ ] Skin-Textur und Modellteile stimmen im laufenden Spiel.
+- [ ] Bei fehlender Welt/Spielerreferenz bleibt der normale Renderpfad unbeeinträchtigt.
+- [ ] Kein doppeltes Namensschild.
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
-
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
-
-## Änderungsverlauf
-
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+Es wurde kein In-Game-Test ausgeführt. Die Ghost-Skin-Darstellung ist daher ausdrücklich nicht als bestätigt markiert.

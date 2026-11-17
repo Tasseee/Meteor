@@ -1,52 +1,28 @@
 # AutoPvp
 
 - **Registrierter Modulname:** `AutoPvp`
-- **Bisheriger Prüfstatus:** **Teilweise geprüft**
+- **Auditstatus:** Teilweise geprüft – nur Namen, Beschreibungen und sichtbare Einstellungslabels
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/AutoPvp.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
+- **Quell-Blob-SHA:** `fff2714e8303093276f561fb66251f46958ae2a7`
 
-> Teilprüfung aus dem vorhandenen Audit-Ledger übernommen. Noch offene Bereiche und Prüfgrenzen sind beim nächsten Review konkret festzuhalten.
+## Getrennte Bezeichnungen
 
-## Zweck und Verhalten
+- **AutoPvP:** eigenes registriertes Modul.
+- **Windcharge -> Mace:** eigenständige sichtbare Option in AutoPvP. Sie wird nicht als `Stun-Slam` bezeichnet.
+- **Stun-Slam:** Die vom Nutzer beschriebene separate Funktion ist in der aktuellen Registrierung nicht als eigene Modulklasse bestätigt. Keine Kampfsequenz dafür ergänzen.
+- **Pearl zum Gegner:** sichtbares Label der AutoPvP-Option; die frühere Codeprüfung ordnete sie als Wurf in Richtung des gegnerischen Landepunkts ein, nicht als Pearl-Fangfunktion.
+- **Crystal-Combo:** sichtbares Label in den Einstellungen. Die Angriffs-/Ausführungslogik wurde nicht geprüft.
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+## Getrennte Module
 
-## Einstellungen
+`DTap` und `ObiTrapBot` sind separat in `ModuleManager.init()` registriert. Sie werden nicht in AutoPvP umbenannt oder zusammengeführt.
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+## Statusanzeigen
 
-## Technische Prüfung
+Der aktuelle `CombatStatusHud` zeigt keinen Crystal-/DTap-/ObiTrap-Status und keinen Boden-/Obsidian-Kontext. Das ist eine dokumentierte UI-Lücke, keine Änderung an Kampfverhalten. Eine Anzeigeänderung wurde in diesem Lauf nicht vorgenommen.
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+## Prüfgrenze und offene Punkte
 
-## Nutzererfahrungen und Testberichte
-
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
-
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
-
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
-
-## Änderungsverlauf
-
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+- Sichtbare Namen/Labels wurden geprüft.
+- Kampfabläufe, Zielauswahl, Aim, Timing, Crystal-/Trap-Ausführung und Combos wurden ausdrücklich nicht untersucht oder verändert.
+- Ob die angezeigten Optionen im Spiel korrekt und verständlich wirken, ist nicht ingame verifiziert.

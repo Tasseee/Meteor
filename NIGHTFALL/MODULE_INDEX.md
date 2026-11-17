@@ -1,14 +1,22 @@
 # Modulindex
 
-**Inventur-Baseline:** `21dc9f822a6295cdb6238037f344da799bbcca26`  
+**Aktueller Inventur-Abgleich:** `819ea2d17cf76c547e2bbbf55e3d404f4d63f797`  
 **Nutzungsanzeige:** Aktivierungen und aktive Zeit stehen bei jedem Modul im ClickGUI; Details in [`MODULE_USAGE.md`](MODULE_USAGE.md).  
-**Letzte Code-Prüfungen:** `BaseFinder`, `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch`, `AntiVanishHints` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk` (Build-/In-Game-Tests offen)  
+**Letzte Code-Prüfungen:** `BaseFinder`, `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch`, `AntiVanishHints` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk`, `GhostSkin` (nur Renderpfad; In-Game-Test offen) (Build-/In-Game-Tests offen)  
 **Quelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`  
-**Registrierungen:** **101** – jede genau einmal im Audit-Ledger abgebildet.
+**SHA der Quelle:** `7329859ce075c9708f749f30b00e904fdf523d6b`  
+**Registrierungen:** **102** – jede genau einmal im aktualisierten Audit-Ledger abgebildet.
 
 ## Prüfstatus
 
-Die einzelnen Prüfstände und offenen Punkte stehen in den jeweiligen Modulakten. Auf eine aggregierte Statistik wird verzichtet.
+| Auditstatus | Anzahl | Anteil |
+|---|---:|---:|
+| Vollständig geprüft | 22 | 21,6 % |
+| Teilweise geprüft | 6 | 5,9 % |
+| Offen | 74 | 72,5 % |
+| **Gesamt** | **102** | **100 %** |
+
+Maßgeblich ist `MODULE_AUDIT_PROGRESS.md`. Ein Code-Review mit offenem Laufzeittest zählt nicht automatisch als vollständiger Audit.
 
 ## Alle registrierten Module
 
@@ -60,13 +68,14 @@ Die einzelnen Prüfstände und offenen Punkte stehen in den jeweiligen Modulakte
 | [`Freecam`](MODULES/Freecam.md) | `src/main/java/dev/nightfall/modules/Freecam.java` | Code geprüft; Laufzeittest offen |
 | [`FreeLook`](MODULES/FreeLook.md) | `src/main/java/dev/nightfall/modules/FreeLook.java` | Code geprüft; Laufzeittest offen |
 | [`FriendManager`](MODULES/FriendManager.md) | `src/main/java/dev/nightfall/modules/FriendManager.java` | Code geprüft; Laufzeittest offen |
+| [`GhostSkin`](MODULES/GhostSkin.md) | `src/main/java/dev/nightfall/modules/GhostSkin.java` | Renderpfad codegeprüft; In-Game-Test offen |
 | [`GlowESP`](MODULES/GlowESP.md) | `src/main/java/dev/nightfall/modules/GlowESP.java` | Code geprüft; Laufzeittest offen |
 | [`GUITheme`](MODULES/GUITheme.md) | `src/main/java/dev/nightfall/modules/GUITheme.java` | Code geprüft; Laufzeittest offen |
 | [`Hats`](MODULES/Hats.md) | `src/main/java/dev/nightfall/modules/Hats.java` | Code geprüft; Laufzeittest offen |
 | [`HitParticles`](MODULES/HitParticles.md) | `src/main/java/dev/nightfall/modules/HitParticles.java` | Code geprüft; Laufzeittest offen |
 | [`InvSee`](MODULES/InvSee.md) | `src/main/java/dev/nightfall/modules/InvSee.java` | Offen |
 | [`ItemEsp`](MODULES/ItemEsp.md) | `src/main/java/dev/nightfall/modules/ItemEsp.java` | Code geprüft; Laufzeittest offen |
-| [`ItemGlint`](MODULES/ItemGlint.md) | `src/main/java/dev/nightfall/modules/ItemGlint.java` | Code geprüft; Laufzeittest offen |
+| [`ItemGlow`](MODULES/ItemGlow.md) | `src/main/java/dev/nightfall/modules/ItemGlow.java` | Neu im Inventurabgleich; Prüfung offen |
 | [`Jesus`](MODULES/Jesus.md) | `src/main/java/dev/nightfall/modules/Jesus.java` | Code geprüft; Laufzeittest offen |
 | [`JumpCircles`](MODULES/JumpCircles.md) | `src/main/java/dev/nightfall/modules/JumpCircles.java` | Code geprüft; Laufzeittest offen |
 | [`KillAura`](MODULES/KillAura.md) | `src/main/java/dev/nightfall/modules/KillAura.java` | Offen |

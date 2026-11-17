@@ -1,7 +1,7 @@
 # Nightfall module audit progress
 
-Inventory snapshot: `5864c364616775d9ec609b15d96eb7fc84b52a46` (main, 2026-11-16).
-Registered module instances: **101**. Fully reviewed: **22**. UI-/label-only partial reviews: **6**. Pending: **73**.
+Inventory snapshot: `819ea2d17cf76c547e2bbbf55e3d404f4d63f797` (main, 2026-11-17).
+Registered module instances: **102**. Fully reviewed: **22**. UI-/label-only partial reviews: **6**. Pending: **74**.
 
 This file is the shared progress ledger for the scheduled repository audits. Update it only after a module has been checked against registration, settings/defaults, UI/HUD, lifecycle, listeners/resource cleanup, null/boundary handling, logging, threading, performance, compatibility, tests, and documentation. A label-only review is not a full review.
 
@@ -30,11 +30,11 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - [x] `TextHuds.BiomeHud`
 
 ## Partial review only (not complete)
-- [~] `AutoPvp` — only visible settings/labels checked; combat automation deliberately not reviewed or modified
-- [~] `DTap` — only visible settings/description checked; combat automation deliberately not reviewed or modified
-- [~] `ObiTrapBot` — module identity/description only; combat automation deliberately not reviewed or modified
+- [~] `AutoPvp` — visible settings/labels checked; combat automation deliberately not reviewed or modified
+- [~] `DTap` — visible name/description checked; remains separate from AutoPvP; combat automation deliberately not reviewed or modified
+- [~] `ObiTrapBot` — separately registered module identity/description checked; combat automation deliberately not reviewed or modified
 - [~] `MaceAssist` — visible setting names only; combat automation deliberately not reviewed or modified
-- [~] `FakeLag` — ghost renderer code inspected only; in-game skin rendering remains unverified
+- [~] `FakeLag` — `FakeLagGhostRenderer` render path inspected only; in-game ghost-skin rendering remains explicitly open
 - [~] `CombatStatusHud` — display code inspected; no combat execution logic reviewed
 
 ## Pending full review
@@ -85,7 +85,7 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - [ ] `SlowSwing`
 - [ ] `InvSee`
 - [ ] `GlowESP`
-- [ ] `ItemGlint`
+- [ ] `ItemGlow`
 - [ ] `GUITheme`
 - [ ] `CustomCrosshair`
 - [ ] `SpawnerEsp`
@@ -111,11 +111,14 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - [ ] `LowHealthWarning`
 - [ ] `FakeStats`
 - [ ] `DebugHud`
+- [ ] `GhostSkin`
 
 ## Shared/support code inspected
 - `WaypointManager.java` — invalid JSON entries are now skipped safely (see commit `a66b3e2`).
 - `MapScreen.java`, `Commands.java`, `Storage.java` — Waypoint consumers and data source checked.
-- `Module.java`, `ModuleManager.java` — registration and common lifecycle checked.
+- `Module.java`, `ModuleManager.java` — registration and common lifecycle checked; current `main` registers 102 unique module instances.
+- `GhostSkinFeatureRenderer.java` — own-player/skin-texture guards, alpha clamp, and matrix push/pop restoration inspected; In-Game-Test remains open.
+- `ItemGlow.java` — registration and setting accessors inventoried only; rendering hooks remain open.
 - `NotificationCenter.java` — synchronized queue and snapshot behavior checked.
 - `HudModule.java`, `Projection.java`, `Draw.java` — HUD transform and projection support checked; `Draw.line()` now restores its matrix in `finally`.
 - `Config.java`, `ListSetting.java`, `Nightfall.java` — setting persistence, lowercase list normalization, and client message/lifecycle event wiring checked.
@@ -129,9 +132,10 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 
 ## Constraints and open verification
 - Do not modify or optimize automated attack/targeting/aim/click/tap/Crystal/Trap/combo behavior.
-- `AutoPvp` currently labels the separate setting `Windcharge -> Mace`; no `Stun-Slam` label was found. The user's separate Stun-Slam definition (axe shield-break, then airborne Mace hit) is not verified as a distinct feature; do not add its combat sequence.
-- `DTap` remains a separate module and is not labeled Single-Tap. `ObiTrapBot` is separately registered. `CombatStatusHud` does not currently show Crystal/DTap/ObiTrap status, so no floor/obsidian context is represented there.
-- `AutoPvp` labels its Pearl option `Pearl zum Gegner`; the inspected method throws toward the opponent's landing point, not catches a Pearl.
+- `AutoPvp` visibly labels the option `Windcharge -> Mace`; no `Stun-Slam` label or separately registered Stun-Slam module was found in the inventory. The user's separate Stun-Slam definition remains unverified; do not add its combat sequence.
+- `DTap` remains separately registered and is not labeled `Single-Tap`. `ObiTrapBot` is separately registered. `CombatStatusHud` displays TrapCrit/KillAura target details and a Mace estimate, but no Crystal/DTap/ObiTrap status or floor/obsidian context.
+- `AutoPvp` labels its Pearl option `Pearl zum Gegner`; the prior code review confirmed it throws toward the opponent's landing point, not catches a Pearl. This remains a label/identity note only.
 - Watermark uses the player's game-profile name (`method_7334().name()`), not the display component.
 - In-game verification is required for visual behavior such as FakeLag ghost skin rendering.
 - No `src/test` directory or test suite was found. CI runs `gradle build --no-daemon` on Java 21; record CI status against the exact commit SHA.
+- `ItemGlint` is not a current registered module/class; the active registration is `ItemGlow`. The old `NIGHTFALL/MODULES/ItemGlint.md` is retained as a historical note only.

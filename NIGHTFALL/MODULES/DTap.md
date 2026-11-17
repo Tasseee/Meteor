@@ -1,52 +1,20 @@
 # DTap
 
 - **Registrierter Modulname:** `DTap`
-- **Bisheriger Prüfstatus:** **Teilweise geprüft**
+- **Auditstatus:** Teilweise geprüft – Name und Beschreibung
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/DTap.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
+- **Quell-Blob-SHA:** `0acae4d047cf1326f906943f261ab6ef8132e8c0`
 
-> Teilprüfung aus dem vorhandenen Audit-Ledger übernommen. Noch offene Bereiche und Prüfgrenzen sind beim nächsten Review konkret festzuhalten.
+## Identität und sichtbare Beschreibung
 
-## Zweck und Verhalten
+Das Modul ist separat registriert und heißt weiterhin `DTap`. Die Klassenbeschreibung lautet sinngemäß, dass ein Obsidian-Block platziert und zwei End-Crystals nacheinander gezündet werden. Die Bezeichnung `Single-Tap` wurde nicht gefunden und wird nicht verwendet.
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+## Prüfgrenze
 
-## Einstellungen
+Nur Modulname und sichtbare Beschreibung wurden betrachtet. Die Zustandsmaschine, Angriffsausführung, Platzier-/Zünd-Timing, Zielauswahl und sonstige Kampfautomatisierung wurden nicht untersucht oder verändert.
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+## Offen
 
-## Technische Prüfung
-
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
-
-## Nutzererfahrungen und Testberichte
-
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
-
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
-
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
-
-## Änderungsverlauf
-
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+- [ ] Sichtbare Beschriftungen im laufenden Client prüfen.
+- [ ] Nicht-angreifende Status-/Fehleranzeige prüfen, ohne Ausführungslogik anzufassen.
+- [ ] Build-/In-Game-Nachweis fehlt.

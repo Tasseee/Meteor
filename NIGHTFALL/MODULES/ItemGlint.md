@@ -1,4 +1,7 @@
-# ItemGlint
+# ItemGlint – historischer Eintrag
+
+> **Nicht mehr registriert auf aktuellem `main`.** `ModuleManager.init()` registriert `ItemGlow`; eine aktuelle Java-Klasse `ItemGlint` ist nicht vorhanden. Für den aktiven Modulstand siehe [ItemGlow.md](ItemGlow.md). Die folgenden Notizen dokumentieren einen früheren Modulstand und dürfen nicht als aktuelle Implementierung gelesen werden.
+
 
 - **Status:** Code geprüft; Render-/In-Game-Test offen
 - **Java-Klasse:** `ItemGlint`

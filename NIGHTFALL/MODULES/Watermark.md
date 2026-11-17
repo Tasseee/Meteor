@@ -1,52 +1,33 @@
 # Watermark
 
 - **Registrierter Modulname:** `Watermark`
-- **Bisheriger Prüfstatus:** **Vollständig geprüft**
+- **Auditstatus:** Vollständig geprüft (bestehender Auditstand; aktueller Quelltext erneut abgeglichen)
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/Watermark.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
+- **Aktueller Modul-Blob-SHA:** `b8e9cf2233c39490b79bc99f576ee6d00572cee2`
 - **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
+- **Registrierungsquellen-SHA:** `7329859ce075c9708f749f30b00e904fdf523d6b`
 
-> Status aus dem vorhandenen Audit-Ledger übernommen. Diese Nightfall-Seite wurde gerade als Dokumentationsgerüst erstellt; es fand hier kein erneuter Auditlauf statt.
+## Zweck und belegtes Verhalten
 
-## Zweck und Verhalten
+Das HUD zeigt `Nightfall | <Profilname>`. Der Profilname wird über `mc.field_1724.method_7334().name()` gelesen. Das ist der Game-Profile-Name des eigenen lokalen Spielers, nicht der Komponenten-/Anzeigename eines anderen Spielers.
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Wenn `mc.field_1724` null ist, wird `Nicht verbunden` angezeigt. Die Breite wird anhand des gerenderten Textes berechnet; die Standardposition ist `(4, 4)`, die Höhe 12 Pixel. Das Modul wird im Konstruktor aktiviert.
 
-## Einstellungen
+## Befund und Korrektur
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+Die bisherige Modulbeschreibung lautete „Zeigt Name und Version“, obwohl der gezeichnete Text keine Versionsnummer enthielt. Das war ein klar belegter Beschreibungsmismatch. Die Beschreibung wurde auf „Zeigt den eigenen Minecraft-Profilnamen.“ korrigiert.
 
-## Technische Prüfung
+- **Commit:** [`819ea2d`](https://github.com/Tasseee/Meteor/commit/819ea2d17cf76c547e2bbbf55e3d404f4d63f797)
+- **Geänderte Java-Zeile:** ausschließlich der Beschreibungstext im Konstruktor.
+- **Keine Änderung:** Namensquelle, Darstellung, HUD-Position oder sonstige Laufzeitlogik.
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
+## Weitere Prüfpunkte
 
-## Nutzererfahrungen und Testberichte
+- **Nullfall:** Spielerreferenz wird vor dem Lesen des Profils geprüft.
+- **Eigene Listener/Ressourcen:** in dieser Klasse keine registriert; keine eigene Ressourcenbereinigung erforderlich.
+- **Performance:** kurze Textmessung und HUD-Zeichnung; keine auffällige zusätzliche Sammlung/Allokationsschleife im Modulcode.
+- **In-Game:** nicht ausgeführt; tatsächliche Darstellung bleibt als visueller Laufzeittest offen.
 
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
+## Status
 
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
-
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
-
-## Änderungsverlauf
-
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+Die Account-/Profilnamenquelle ist im Code bestätigt. Ein Screenshot aus dem laufenden Client liegt nicht vor.
