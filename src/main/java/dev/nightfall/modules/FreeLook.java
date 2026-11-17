@@ -35,10 +35,10 @@ public final class FreeLook extends Module {
 
    private boolean activateIfReady() {
       if (mc.field_1724 != null && mc.field_1687 != null) {
-         Freecam freecam = null;
+         FreecamController freecam = null;
 
          try {
-            freecam = ModuleManager.get(Freecam.class);
+            freecam = ModuleManager.get(FreecamController.class);
          } catch (IllegalStateException var3) {
          }
 
