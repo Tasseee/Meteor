@@ -8,15 +8,9 @@ import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Theme;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import net.minecraft.class_332;
-import net.minecraft.class_640;
-import net.minecraft.class_742;
 
 public final class StaffWatch extends HudModule {
    private static final int COLOR_VISIBLE = 0xFF72D69A;
@@ -28,11 +22,6 @@ public final class StaffWatch extends HudModule {
    private final BoolSetting compactMode = this.add(new BoolSetting("Kompaktes HUD", false));
    private final BoolSetting sortVisibleFirst = this.add(new BoolSetting("Sichtbare Treffer zuerst", true));
    private final BoolSetting showLegend = this.add(new BoolSetting("Legende anzeigen", true));
-   private final Set<String> tabNames = new HashSet<>();
-   private final Set<String> loadedNames = new HashSet<>();
-   private final Map<String, String> tabDisplayNames = new HashMap<>();
-   private final Map<String, String> worldDisplayNames = new HashMap<>();
-   private boolean tabAvailable;
 
    public StaffWatch() {
       super("StaffWatch", "Verschiebbares HUD für manuell eingetragene Namen; nur clientseitige Präsenzhinweise.");
@@ -45,68 +34,20 @@ public final class StaffWatch extends HudModule {
 
    @Override
    protected void onEnable() {
-      this.clearPresence();
    }
 
    @Override
    protected void onDisable() {
-      this.clearPresence();
    }
 
    @Override
    public void onWorldLeave() {
-      this.clearPresence();
+      StaffPresence.reset();
    }
 
    @Override
    public void onTick() {
-      this.clearPresence();
-      if (mc.field_1724 == null || mc.field_1687 == null || this.staffNames.get().isEmpty()) {
-         return;
-      }
-
-      var network = mc.method_1562();
-      this.tabAvailable = network != null;
-      if (this.tabAvailable) {
-         for (class_640 entry : network.method_45732()) {
-            if (entry == null) {
-               continue;
-            }
-
-            var profile = entry.method_2966();
-            if (profile == null) {
-               continue;
-            }
-
-            String name = profile.name();
-            if (name != null && !name.isBlank()) {
-               String key = name.toLowerCase(Locale.ROOT);
-               this.tabNames.add(key);
-               this.tabDisplayNames.putIfAbsent(key, name);
-            }
-         }
-      }
-
-      for (class_742 player : mc.field_1687.method_18456()) {
-         if (player == null || player.method_7334() == null) {
-            continue;
-         }
-
-         String name = player.method_7334().name();
-         if (name != null && !name.isBlank()) {
-            String key = name.toLowerCase(Locale.ROOT);
-            this.loadedNames.add(key);
-            this.worldDisplayNames.putIfAbsent(key, name);
-         }
-      }
-   }
-
-   private void clearPresence() {
-      this.tabNames.clear();
-      this.loadedNames.clear();
-      this.tabDisplayNames.clear();
-      this.worldDisplayNames.clear();
-      this.tabAvailable = false;
+      // Presence is refreshed once centrally by ModuleManager.
    }
 
    @Override
@@ -132,8 +73,8 @@ public final class StaffWatch extends HudModule {
 
       for (int i = 0; i < shown && !emptyPreview; i++) {
          String name = orderedNames.get(i);
-         nameWidth = Math.max(nameWidth, mc.field_1772.method_1727(this.displayName(name)));
-         String status = preview ? "VORSCHAU" : this.status(name, this.tabAvailable);
+         nameWidth = Math.max(nameWidth, mc.field_1772.method_1727(StaffPresence.displayName(name)));
+         String status = preview ? "VORSCHAU" : this.status(name, StaffPresence.tabAvailable());
          statusWidth = Math.max(statusWidth, mc.field_1772.method_1727(status));
       }
 
@@ -168,8 +109,8 @@ public final class StaffWatch extends HudModule {
       } else {
          for (int i = 0; i < shown; i++) {
             String name = orderedNames.get(i);
-            boolean inTab = this.tabNames.contains(name);
-            boolean inWorld = this.loadedNames.contains(name);
+            boolean inTab = StaffPresence.inTab(name);
+            boolean inWorld = StaffPresence.loadedInWorld(name);
             String status = preview ? "VORSCHAU" : this.status(name, this.tabAvailable);
             int color = preview ? COLOR_UNKNOWN : this.statusColor(inTab, inWorld, this.tabAvailable);
             this.drawRow(ctx, this.displayName(name), status, color, x, rowY, nameWidth, rowHeight);
@@ -199,15 +140,6 @@ public final class StaffWatch extends HudModule {
       return result;
    }
 
-   private int presenceRank(String name) {
-      boolean inTab = this.tabNames.contains(name);
-      boolean inWorld = this.loadedNames.contains(name);
-      if (inTab && inWorld) {
-         return 0;
-      }
-      return inTab || inWorld ? 1 : 2;
-   }
-
    private void drawRow(class_332 ctx, String name, String status, int color, int x, int y, int nameWidth, int rowHeight) {
       ctx.method_25294(x + 4, y, x + this.w - 4, y + rowHeight, Theme.withAlpha(Theme.TEXT, 9));
       ctx.method_25294(x + 5, y + 3, x + 7, y + rowHeight - 3, color);
@@ -232,14 +164,6 @@ public final class StaffWatch extends HudModule {
          return "NUR WELT";
       }
       return "KEINE QUELLE";
-   }
-
-   private String displayName(String normalizedName) {
-      String tabName = this.tabDisplayNames.get(normalizedName);
-      if (tabName != null) {
-         return tabName;
-      }
-      return this.worldDisplayNames.getOrDefault(normalizedName, normalizedName);
    }
 
    private int statusColor(boolean inTab, boolean inWorld, boolean hasTab) {
