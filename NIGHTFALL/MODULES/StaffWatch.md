@@ -5,7 +5,7 @@
 - **Kategorie:** `HUD` (über `HudModule`)
 - **Quellcode-SHA StaffWatch:** `6540dd03044809e53142736768919c8daa09c06d`
 - **Tab-API-Änderung:** `getListedPlayerListEntries()` / `method_45732()`
-- **Quellcode-SHA StaffPresence:** `485c9210e19114c7b857470b65ae90652d7c57e9`
+- **Quellcode-SHA StaffPresence:** `5f40e634aabdc29aac3617864b4925b8ade0adcc`
 - **Quellcode-SHA StaffHudPanel:** `eaeaf1f7e8b4a0dac7fbbf9adfeda2eecadeed88`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
 - **Quellcode-SHA AntiVanishHints:** `dfec4af070522db1385a52b524f2b22b7096d10c`
@@ -170,3 +170,5 @@ Daher bleiben die Status bewusst begrenzt:
 - [ ] In-Game: Name-/Statusüberlappung, lange Namen, kleine Auflösung und Skalierung
 - [ ] HUD-Editor: Vorschau, verschieben, skalieren, speichern und Neustart
 - [ ] HUGSMP: sichtbare Tab-Kennzeichnung / offizielle öffentliche Backend-Information suchen; keine Information erraten
+
+- **Build-Korrektur 2026-11-17:** Fehlender Import von `ModuleManager` in `StaffPresence.java` ergänzt; der erste CI-Lauf des Panel-Einzelcommits hatte diesen Compilerfehler gemeldet. Neuer Build für den korrigierten Gesamtstand läuft.
