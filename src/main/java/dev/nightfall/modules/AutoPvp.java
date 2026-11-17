@@ -31,7 +31,7 @@ public class AutoPvp extends Module {
    private final BoolSetting swordCrits = this.add(new BoolSetting("Schwert-Crits ohne CrystalAura", true));
    private final BoolSetting strafe = this.add(new BoolSetting("Strafen", false));
    private final BoolSetting driveBy = this.add(new BoolSetting("An Gegner vorbeilaufen", true));
-   private final NumberSetting driveBySwitchTicks = this.add(new NumberSetting("Drive-by Seitenwechsel", 7.0, 4.0, 14.0, 1.0));
+   private final NumberSetting driveBySwitchTicks = this.add(new NumberSetting("Drive-by Seitenwechsel", 2.0, 1.0, 4.0, 1.0));
    private final NumberSetting critJumpDelay = this.add(new NumberSetting("Crit-Sprungdelay", 2.0, 0.0, 6.0, 1.0));
    private final BoolSetting jump = this.add(new BoolSetting("Springen bei Hindernis", true));
    private final BoolSetting useWindchargeMace = this.add(new BoolSetting("Windcharge -> Mace", false));
@@ -813,9 +813,9 @@ public class AutoPvp extends Module {
                int obsidianSide = obsidianInPath ? this.obsidianDetourSide(p, target) : 0;
                boolean detouring = obsidianSide != 0;
                boolean driveByActive = this.driveBy.get() && !detouring
-                  && distance <= this.reach.get() + 0.8 && distance > 1.0;
+                  && distance <= this.reach.get() + 0.8 && distance > 0.35;
                boolean approach = (distance > this.stop.get() && (detouring || this.safeForward(p, target)))
-                  || (driveByActive && distance > 1.75 && this.safeForward(p, target));
+                  || (driveByActive && this.safeForward(p, target));
                mc.field_1690.field_1894.method_23481(approach);
                // Keep sprint during approach/CrystalAura combos; crit mode below
                // releases it as soon as a sword critical hit is being prepared.
@@ -827,10 +827,10 @@ public class AutoPvp extends Module {
                   mc.field_1690.field_1913.method_23481(obsidianSide < 0);
                   mc.field_1690.field_1849.method_23481(obsidianSide > 0);
                } else if (driveByActive) {
-                  // Kurze, wechselnde Seitenschritte machen den Laufweg im Nahbereich weniger vorhersehbar.
+                  // Alle 1-4 Ticks die Seite wechseln und gleichzeitig weiter auf das Ziel zulaufen.
                   if (this.driveByTimer-- <= 0) {
                      this.driveByDir = -this.driveByDir;
-                     this.driveByTimer = Math.max(1, this.driveBySwitchTicks.getInt() - 1);
+                     this.driveByTimer = Math.max(0, this.driveBySwitchTicks.getInt() - 1);
                   }
                   mc.field_1690.field_1913.method_23481(this.driveByDir > 0);
                   mc.field_1690.field_1849.method_23481(this.driveByDir < 0);
