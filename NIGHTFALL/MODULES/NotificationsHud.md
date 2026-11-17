@@ -1,22 +1,23 @@
 # NotificationsHud
 
-- **Registrierter Modulname:** `NotificationsHud`
-- **Bisheriger Prüfstatus:** **Vollständig geprüft**
+- **Java-Klasse:** `NotificationsHud`
+- **Sichtbarer Modulname:** `Notifications`
+- **Auditstatus:** Vollständiger statischer Code-Audit; In-Game-Test offen
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/NotificationsHud.java`
 - **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
 - **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
 
-> Status aus dem vorhandenen Audit-Ledger übernommen. Diese Nightfall-Seite wurde gerade als Dokumentationsgerüst erstellt; es fand hier kein erneuter Auditlauf statt.
+> Der aktuelle Quellcode wurde am 2026-11-17 erneut geprüft. Die Modulklasse heißt `NotificationsHud`; der in GUI und Konfiguration verwendete Name ist `Notifications`.
 
 ## Zweck und Verhalten
 
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+Zeigt die neuesten Status- und Warnmeldungen als HUD-Karten. Im HUD-Editor erscheint eine Beispielkarte, wenn keine Meldung aktiv ist. Das Modul aktiviert sich bereits im Konstruktor.
 
 ## Einstellungen
 
 | Einstellung | Standardwert | Bedeutung | geprüft |
 |---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Max. Meldungen | 4 | 1–6; Schritt 1 | Ja |
 
 ## Technische Prüfung
 
