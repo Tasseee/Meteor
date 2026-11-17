@@ -87,6 +87,7 @@ import dev.nightfall.modules.Speed;
 import dev.nightfall.modules.SpotifyLyricsHud;
 import dev.nightfall.modules.Sprint;
 import dev.nightfall.modules.StaffWatch;
+import dev.nightfall.modules.StaffPresence;
 import dev.nightfall.modules.Step;
 import dev.nightfall.modules.StorageEsp;
 import dev.nightfall.modules.StructureESP;
@@ -300,6 +301,7 @@ public final class ModuleManager {
    }
 
    public static void onWorldLeave() {
+      StaffPresence.reset();
       for (Module m : MODULES) {
          try {
             m.onWorldLeave();
@@ -311,6 +313,7 @@ public final class ModuleManager {
 
    public static void tick() {
       class_310 mc = class_310.method_1551();
+      StaffPresence.update(mc);
       if (mc.field_1724 != null && mc.field_1687 != null) {
          for (Module m : MODULES) {
             if (m.isEnabled()) {
