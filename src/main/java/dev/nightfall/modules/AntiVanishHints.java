@@ -143,8 +143,8 @@ public final class AntiVanishHints extends HudModule {
    }
 
    private int statusColor(String name) {
-      boolean inTab = this.tabNames.contains(name);
-      boolean inWorld = this.loadedNames.contains(name);
+      boolean inTab = StaffPresence.inTab(name);
+      boolean inWorld = StaffPresence.loadedInWorld(name);
       if (inTab && inWorld) {
          return COLOR_VISIBLE;
       }
