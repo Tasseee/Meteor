@@ -1,9 +1,9 @@
 # AutoPvp
 
 - **Registrierter Modulname:** `AutoPvp`
-- **Auditstatus:** Teilweise geprüft – nur Namen, Beschreibungen und sichtbare Einstellungslabels
+- **Auditstatus:** Teilweise geprüft – ausgewählte Timing- und Bewegungslogik wurde angepasst; In-Game-Test offen
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/AutoPvp.java`
-- **Quell-Blob-SHA:** `fff2714e8303093276f561fb66251f46958ae2a7`
+- **Quell-Blob-SHA:** `b77abc47a02e0d81d186d14672f071df96e4ac91`
 
 ## Getrennte Bezeichnungen
 
@@ -24,5 +24,17 @@ Der aktuelle `CombatStatusHud` zeigt keinen Crystal-/DTap-/ObiTrap-Status und ke
 ## Prüfgrenze und offene Punkte
 
 - Sichtbare Namen/Labels wurden geprüft.
-- Kampfabläufe, Zielauswahl, Aim, Timing, Crystal-/Trap-Ausführung und Combos wurden ausdrücklich nicht untersucht oder verändert.
-- Ob die angezeigten Optionen im Spiel korrekt und verständlich wirken, ist nicht ingame verifiziert.
+## Crit-Timing und Bewegung (2026-11-17)
+
+- `Schwert-Crits ohne CrystalAura` bleibt als vorhandener Config-Schlüssel erhalten. Die Logik bereitet Schwert-Crits nun auch dann vor, wenn die CrystalAura-Integration eingeschaltet ist; eine bereits laufende Crystal-Combo übernimmt weiterhin zuerst.
+- Im Crit-Fenster wird Sprint freigegeben. AutoPvP wartet am Boden auf mindestens 98 % Angriffscooldown, zählt anschließend den konfigurierbaren `Crit-Sprungdelay` herunter (Standard 2 Ticks, Bereich 0–6), startet den Sprung und hält die Angriffsauslösung zurück, bis der Spieler tatsächlich fällt (`fallDistance > 0.08`, vertikale Geschwindigkeit < 0) und der Angriffscooldown mindestens 90 % beträgt.
+- Kritische Sprünge werden bei blockierter Decke bzw. Obsidian im Laufweg nicht vorbereitet. Außerhalb des Crit-Fensters bleibt die bisherige Hindernis-Sprunglogik bestehen.
+- `An Gegner vorbeilaufen` ist standardmäßig aktiviert. Im Nahbereich (mehr als 1 Block, bis `Angriffsreichweite + 0.8`) wechselt die seitliche Bewegung alle 7 Ticks; `Drive-by Seitenwechsel` ist zwischen 4 und 14 Ticks einstellbar. Vorwärtsbewegung bleibt an sichere freie Strecke gebunden.
+- Die Drive-by-Bewegung läuft seitlich am Ziel vorbei und wechselt die Seite. Sie deaktiviert keine Spieler-Kollision und ist kein echtes NoClip/Durchlaufen durch den Spielerkörper.
+- Die Werte wurden statisch im Code geprüft. Hit-Timing, serverseitige Bewegung und Spielgefühl müssen noch auf einem Testserver/In-Game überprüft werden.
+
+## Prüfgrenze und offene Punkte
+
+- Zielauswahl und bestehende Crystal-/Trap-Combos wurden nicht neu gestaltet.
+- Build und In-Game-Test für die neue Crit-/Drive-by-Logik sind offen.
+- Die vorhandene Einstellung `Schwert-Crits ohne CrystalAura` behält ihren gespeicherten Namen zur Config-Kompatibilität; das Verhalten umfasst nun auch den integrierten CrystalAura-Betrieb.
