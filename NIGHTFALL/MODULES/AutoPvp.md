@@ -9,7 +9,7 @@
 
 - **AutoPvP:** eigenes registriertes Modul.
 - **Windcharge -> Mace:** eigenständige sichtbare Option in AutoPvP. Sie wird nicht als `Stun-Slam` bezeichnet.
-- **Stun-Slam:** Die vom Nutzer beschriebene separate Funktion ist in der aktuellen Registrierung nicht als eigene Modulklasse bestätigt. Keine Kampfsequenz dafür ergänzen.
+- **Stun-Slam:** Separate, vom Nutzer definierte Funktion: Axt-Schildbruch, danach ein Mace-Treffer in der Luft. Eine eigene Implementierung/Registrierung ist im aktuellen Modulbestand nicht bestätigt. Diese Definition wird nur für Namen und Dokumentation festgehalten; keine Ausführungssequenz ergänzen.
 - **Pearl zum Gegner:** sichtbares Label der AutoPvP-Option; die frühere Codeprüfung ordnete sie als Wurf in Richtung des gegnerischen Landepunkts ein, nicht als Pearl-Fangfunktion.
 - **Crystal-Combo:** sichtbares Label in den Einstellungen. Die Angriffs-/Ausführungslogik wurde nicht geprüft.
 
