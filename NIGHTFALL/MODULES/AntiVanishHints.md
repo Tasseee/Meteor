@@ -8,6 +8,8 @@
 - **Renderer-SHA:** `eaeaf1f7e8b4a0dac7fbbf9adfeda2eecadeed88`
 - **Registrierung:** `src/main/java/dev/nightfall/module/ModuleManager.java`
 - **Gemeinsame Datenquelle:** `src/main/java/dev/nightfall/modules/StaffPresence.java`
+- **StaffPresence-SHA:** `0685ea75c3f989b54d22baabf1b5c2f84ffa45ca`
+- **Gemeinsamer Renderer-SHA:** `466201d2bafaa3eb94d584a0e99df2a9baaecd10`
 - **StaffPresence-SHA:** `5f40e634aabdc29aac3617864b4925b8ade0adcc`
 - **Status:** Code aktualisiert und dokumentiert; Build- und In-Game-Test offen
 
@@ -86,3 +88,9 @@ Ist der Netzwerkhandler nicht verfügbar, kennzeichnet das HUD die fehlende Tab-
 - Das Modul bleibt im normalen Spiel ausgeblendet, solange StaffWatch aktiv ist; im HUD-Editor bleibt es für getrennte Positionierung sichtbar.
 - Es werden keine zusätzlichen Netzwerkdaten gesammelt. `TAB/NETZ` enthält keine Information über den Unterserver eines Spielers.
 - **Build-Korrektur 2026-11-17:** Fehlender `ModuleManager`-Import in der gemeinsamen Präsenzklasse ergänzt; korrigierter CI-Lauf für den Gesamtstand läuft.
+
+## HugoSMP-Statusmodell (2026-11-17)
+
+Die gemeinsame Anzeige verwendet im HugoSMP-Netz jetzt `ONLINE` für ein gelistetes Tab-Profil und `SERVER` für eine Entity in der aktuell geladenen Client-Welt. Auf anderen Serveradressen wird `HUGOSMP N/A` angezeigt. Die Zuordnung basiert ausschließlich auf der aktuellen Serveradresse und clientseitig sichtbaren TAB-/WELT-Daten; ein interner Unterservername wird nicht ausgelesen oder geraten.
+
+AntiVanishHints selbst löst keinen Nähe-Alarm aus. Die optionale Renderdistanz-Meldung ist eine StaffWatch-Einstellung und erfordert, dass StaffWatch aktiv ist.
