@@ -30,6 +30,9 @@ public class AutoPvp extends Module {
    private final BoolSetting attack = this.add(new BoolSetting("Angreifen", true));
    private final BoolSetting swordCrits = this.add(new BoolSetting("Schwert-Crits ohne CrystalAura", true));
    private final BoolSetting strafe = this.add(new BoolSetting("Strafen", false));
+   private final BoolSetting driveBy = this.add(new BoolSetting("An Gegner vorbeilaufen", true));
+   private final NumberSetting driveBySwitchTicks = this.add(new NumberSetting("Drive-by Seitenwechsel", 7.0, 4.0, 14.0, 1.0));
+   private final NumberSetting critJumpDelay = this.add(new NumberSetting("Crit-Sprungdelay", 2.0, 0.0, 6.0, 1.0));
    private final BoolSetting jump = this.add(new BoolSetting("Springen bei Hindernis", true));
    private final BoolSetting useWindchargeMace = this.add(new BoolSetting("Windcharge -> Mace", false));
    private final BoolSetting useShieldBreak = this.add(new BoolSetting("Schild mit Axt kontern", true));
@@ -60,6 +63,12 @@ public class AutoPvp extends Module {
    private boolean ownsMaceAssist;
    private int strafeDir = 1;
    private int strafeTimer;
+   private int driveByDir = 1;
+   private int driveByTimer;
+   private int critJumpDelayTicks;
+   private int critTargetId = -1;
+   private boolean critCycleReady;
+   private boolean critWasAirborne;
    private int shieldPreviousSlot = -1;
    private int shieldAxeSlot = -1;
    private int shieldTargetId = -1;
@@ -86,6 +95,8 @@ public class AutoPvp extends Module {
    @Override
    protected void onDisable() {
       this.pearlUseDelay = 0;
+      this.resetCritCycle();
+      this.driveByTimer = 0;
       this.resetCrystalCombo();
       this.cancelWindchargeMace(true);
       this.releaseShieldAxe();
@@ -135,6 +146,13 @@ public class AutoPvp extends Module {
             module.setEnabled(false);
          }
       }
+   }
+
+   private void resetCritCycle() {
+      this.critJumpDelayTicks = 0;
+      this.critTargetId = -1;
+      this.critCycleReady = false;
+      this.critWasAirborne = false;
    }
 
    private void resetCrystalCombo() {
@@ -748,6 +766,8 @@ public class AutoPvp extends Module {
       if (p != null && mc.field_1755 == null && mc.field_1761 != null && mc.field_1687 != null) {
          class_1657 target = CombatUtil.nearestPlayer(this.follow.get());
          if (target == null) {
+            this.resetCritCycle();
+            this.driveByTimer = 0;
             this.resetCrystalCombo();
             this.cancelWindchargeMace(true);
             this.releaseShieldAxe();
@@ -782,7 +802,10 @@ public class AutoPvp extends Module {
                boolean obsidianInPath = this.obsidianAhead(p, target);
                int obsidianSide = obsidianInPath ? this.obsidianDetourSide(p, target) : 0;
                boolean detouring = obsidianSide != 0;
-               boolean approach = distance > this.stop.get() && (detouring || this.safeForward(p, target));
+               boolean driveByActive = this.driveBy.get() && !detouring
+                  && distance <= this.reach.get() + 0.8 && distance > 1.0;
+               boolean approach = (distance > this.stop.get() && (detouring || this.safeForward(p, target)))
+                  || (driveByActive && distance > 1.75 && this.safeForward(p, target));
                mc.field_1690.field_1894.method_23481(approach);
                // CrystalAura mode keeps sprint enabled for sprint-hit combos;
                // sword-only mode manages sprint separately for critical hits.
@@ -795,6 +818,14 @@ public class AutoPvp extends Module {
                   // Obsidian nicht ueberspringen: seitlich daran vorbeilaufen.
                   mc.field_1690.field_1913.method_23481(obsidianSide < 0);
                   mc.field_1690.field_1849.method_23481(obsidianSide > 0);
+               } else if (driveByActive) {
+                  // Kurze, wechselnde Seitenschritte machen den Laufweg im Nahbereich weniger vorhersehbar.
+                  if (this.driveByTimer-- <= 0) {
+                     this.driveByDir = -this.driveByDir;
+                     this.driveByTimer = this.driveBySwitchTicks.getInt();
+                  }
+                  mc.field_1690.field_1913.method_23481(this.driveByDir > 0);
+                  mc.field_1690.field_1849.method_23481(this.driveByDir < 0);
                } else if (this.strafe.get() && distance <= this.reach.get() + 1.5
                   && !(distance <= this.reach.get() + 0.4 && !this.isAimAligned(p, target))) {
                   if (this.strafeTimer-- <= 0) {
@@ -810,15 +841,42 @@ public class AutoPvp extends Module {
                }
 
                boolean obstacle = p.field_5976 && !obsidianInPath;
-               boolean critMode = this.swordCrits.get() && !this.useCrystalAura.get()
+               // Sword crits also work while CrystalAura is integrated; an active
+               // crystal-combo phase returned above and owns its own movement.
+               boolean critMode = this.swordCrits.get()
                   && distance <= this.reach.get() + 0.8 && this.clearAbove(p, 2) && !obsidianInPath;
                if (critMode) {
-                  // Sword-only mode: stop sprinting and time the hit while falling.
                   mc.field_1690.field_1867.method_23481(false);
-                  mc.field_1690.field_1903.method_23481(p.method_24828());
+                  if (this.critTargetId != target.method_5628()) {
+                     this.resetCritCycle();
+                     this.critTargetId = target.method_5628();
+                  }
+
+                  if (p.method_24828()) {
+                     if (this.critWasAirborne || !this.critCycleReady) {
+                        this.critJumpDelayTicks = this.critJumpDelay.getInt();
+                        this.critCycleReady = true;
+                     }
+                     this.critWasAirborne = false;
+
+                     // Wait until the attack cooldown is nearly full, then add a small
+                     // configurable grounded delay before beginning the critical jump.
+                     if (p.method_7261(0.5F) < 0.98F) {
+                        this.critJumpDelayTicks = this.critJumpDelay.getInt();
+                        mc.field_1690.field_1903.method_23481(false);
+                     } else if (this.critJumpDelayTicks > 0) {
+                        this.critJumpDelayTicks--;
+                        mc.field_1690.field_1903.method_23481(false);
+                     } else {
+                        mc.field_1690.field_1903.method_23481(true);
+                     }
+                  } else {
+                     this.critWasAirborne = true;
+                     mc.field_1690.field_1903.method_23481(false);
+                  }
                } else {
-                  // CrystalAura mode does not prepare sword crits: keep sprinting.
-                  // Still avoid jumping over obsidian or triggering obstacle jumps in CrystalAura mode.
+                  this.resetCritCycle();
+                  // Outside sword-crit range, only jump for a clear obstacle.
                   mc.field_1690.field_1903.method_23481(!this.useCrystalAura.get() && !obsidianInPath
                      && this.jump.get() && obstacle && p.method_24828() && this.clearAbove(p, 2));
                }
@@ -827,21 +885,22 @@ public class AutoPvp extends Module {
                // Do not swing while the camera is still rotating past the target.
                // This prevents orbiting/turning around a player without landing a hit.
                boolean fallingForCrit = !p.method_24828() && p.field_6017 > 0.08F
-                  && p.method_18798().field_1351 <= 0.0;
+                  && p.method_18798().field_1351 < 0.0;
                // Keep attacking whenever the target is in reach and visible.
                // Smooth rotation is still applied above, but a strict angle check
                // here could permanently suppress the next hit after knockback.
                if (this.attack.get() && distance <= this.reach.get()
                   && p.method_6057(target)
-                  && p.method_7261(0.5F) >= 0.90F) {
+                  && p.method_7261(0.5F) >= 0.90F
+                  && (!critMode || fallingForCrit)) {
                   int weaponSlot = this.shieldAxeSlot >= 0
                      ? this.shieldAxeSlot
                      : InvUtil.findBestSword();
                   if (weaponSlot >= 0) {
                      if (this.shieldAxeSlot < 0) InvUtil.select(weaponSlot);
 
-                     if (this.useCrystalAura.get()) {
-                        // Preserve sprint on every melee hit while CrystalAura is enabled.
+                     if (this.useCrystalAura.get() && !critMode) {
+                        // Sprint-hit combos keep sprint; sword crits deliberately release it.
                         mc.field_1690.field_1867.method_23481(true);
                         if (this.crystalCombo.get()) {
                            mc.field_1690.field_1894.method_23481(true);
