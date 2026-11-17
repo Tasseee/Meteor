@@ -6,12 +6,8 @@ import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Theme;
-import java.util.HashSet;
-import java.util.Locale;
 import java.util.Set;
 import net.minecraft.class_332;
-import net.minecraft.class_640;
-import net.minecraft.class_742;
 
 public final class AntiVanishHints extends HudModule {
    private static final int COLOR_VISIBLE = 0xFF72D69A;
@@ -20,9 +16,6 @@ public final class AntiVanishHints extends HudModule {
 
    private final NumberSetting maxRows = this.add(new NumberSetting("Max. HUD-Zeilen", 5.0, 3.0, 10.0, 1.0));
    private final BoolSetting compactMode = this.add(new BoolSetting("Kompaktes HUD", false));
-   private final Set<String> tabNames = new HashSet<>();
-   private final Set<String> loadedNames = new HashSet<>();
-   private boolean tabAvailable;
 
    public AntiVanishHints() {
       super("AntiVanishHints", "Verschiebbares HUD für clientseitige Präsenzhinweise; Abwesenheit beweist keinen Vanish.");
@@ -35,58 +28,20 @@ public final class AntiVanishHints extends HudModule {
 
    @Override
    protected void onEnable() {
-      this.clearPresence();
    }
 
    @Override
    protected void onDisable() {
-      this.clearPresence();
    }
 
    @Override
    public void onWorldLeave() {
-      this.clearPresence();
+      StaffPresence.reset();
    }
 
    @Override
    public void onTick() {
-      this.clearPresence();
-      StaffWatch staff = ModuleManager.get(StaffWatch.class);
-      if (staff == null || staff.isEnabled() || mc.field_1724 == null || mc.field_1687 == null || staff.staffNames.get().isEmpty()) {
-         return;
-      }
-
-      var network = mc.method_1562();
-      this.tabAvailable = network != null;
-      if (this.tabAvailable) {
-         for (class_640 entry : network.method_45732()) {
-            if (entry == null || entry.method_2966() == null) {
-               continue;
-            }
-
-            String name = entry.method_2966().name();
-            if (name != null && !name.isBlank()) {
-               this.tabNames.add(name.toLowerCase(Locale.ROOT));
-            }
-         }
-      }
-
-      for (class_742 player : mc.field_1687.method_18456()) {
-         if (player == null || player.method_7334() == null) {
-            continue;
-         }
-
-         String name = player.method_7334().name();
-         if (name != null && !name.isBlank()) {
-            this.loadedNames.add(name.toLowerCase(Locale.ROOT));
-         }
-      }
-   }
-
-   private void clearPresence() {
-      this.tabNames.clear();
-      this.loadedNames.clear();
-      this.tabAvailable = false;
+      // Presence is refreshed once centrally by ModuleManager.
    }
 
    @Override
@@ -157,7 +112,7 @@ public final class AntiVanishHints extends HudModule {
             }
             String status = preview ? "VORSCHAU" : this.status(name);
             int color = preview ? COLOR_UNKNOWN : this.statusColor(name);
-            this.drawRow(ctx, name, status, color, y, rowHeight);
+            this.drawRow(ctx, StaffPresence.displayName(name), status, color, y, rowHeight);
             y += rowHeight;
             index++;
          }
@@ -170,9 +125,9 @@ public final class AntiVanishHints extends HudModule {
    }
 
    private String status(String name) {
-      boolean inTab = this.tabNames.contains(name);
-      boolean inWorld = this.loadedNames.contains(name);
-      if (!this.tabAvailable) {
+      boolean inTab = StaffPresence.inTab(name);
+      boolean inWorld = StaffPresence.loadedInWorld(name);
+      if (!StaffPresence.tabAvailable()) {
          return inWorld ? "WELT · TAB N/A" : "TAB N/A · UNKLAR";
       }
       if (inTab && inWorld) {
