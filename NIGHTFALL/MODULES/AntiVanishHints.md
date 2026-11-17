@@ -8,6 +8,7 @@
 - **Renderer-SHA:** `eaeaf1f7e8b4a0dac7fbbf9adfeda2eecadeed88`
 - **Registrierung:** `src/main/java/dev/nightfall/module/ModuleManager.java`
 - **Gemeinsame Datenquelle:** `src/main/java/dev/nightfall/modules/StaffPresence.java`
+- **StaffPresence-SHA:** `5f40e634aabdc29aac3617864b4925b8ade0adcc`
 - **Status:** Code aktualisiert und dokumentiert; Build- und In-Game-Test offen
 
 ## Zweck und Grenzen
@@ -84,3 +85,4 @@ Ist der Netzwerkhandler nicht verfügbar, kennzeichnet das HUD die fehlende Tab-
 - Dunkles Theme-Panel, Akzentleiste, Status-Pills, Zähler-Badge und Vorschauzeilen im HUD-Editor.
 - Das Modul bleibt im normalen Spiel ausgeblendet, solange StaffWatch aktiv ist; im HUD-Editor bleibt es für getrennte Positionierung sichtbar.
 - Es werden keine zusätzlichen Netzwerkdaten gesammelt. `TAB/NETZ` enthält keine Information über den Unterserver eines Spielers.
+- **Build-Korrektur 2026-11-17:** Fehlender `ModuleManager`-Import in der gemeinsamen Präsenzklasse ergänzt; korrigierter CI-Lauf für den Gesamtstand läuft.
