@@ -3,11 +3,12 @@
 - **Status:** Code verbessert; Build- und In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `StaffWatch`
 - **Kategorie:** `HUD` (über `HudModule`)
-- **Quellcode-SHA StaffWatch:** `67b2af05b53ddc97d9ee27967eccc493f562c8d0`
+- **Quellcode-SHA StaffWatch:** `6540dd03044809e53142736768919c8daa09c06d`
 - **Tab-API-Änderung:** `getListedPlayerListEntries()` / `method_45732()`
 - **Quellcode-SHA StaffPresence:** `485c9210e19114c7b857470b65ae90652d7c57e9`
+- **Quellcode-SHA StaffHudPanel:** `eaeaf1f7e8b4a0dac7fbbf9adfeda2eecadeed88`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
-- **Quellcode-SHA AntiVanishHints:** `9ed794839c571599ec5a7f596617551d219dde23`
+- **Quellcode-SHA AntiVanishHints:** `dfec4af070522db1385a52b524f2b22b7096d10c`
 - **Mitgeprüfte Dateien:** `ListSetting.java`, `Commands.java`, `Config.java`, `Nightfall.java`, `ModuleManager.java`, `AntiVanishHints.java`
 
 ## Zweck und Verhalten
@@ -27,7 +28,8 @@ Das Modul stellt weder fest, ob ein Name tatsächlich zu einem Teammitglied geh�
 | `Max. HUD-Zeilen` | `8` (Min. `3`, Max. `12`) |
 | `Kompaktes HUD` | `AN`/`AUS`, Standard `AUS`; reduziert Zeilen- und Kopfhoehe |
 | `Sichtbare Treffer zuerst` | `AN`, Standard; sortiert nach TAB/WELT-Treffer, danach alphabetisch |
-| `Legende anzeigen` | `AN`, Standard; blendet die zwei Erklaerungszeilen ein/aus |
+| `Legende anzeigen` | `AN`, Standard; blendet die Erklärungszeilen im normalen HUD ein/aus |
+| `Untertitel anzeigen` | `AN`, Standard; blendet den Hinweis zur möglichen netzwerkweiten Tab-Liste ein/aus |
 | `/nf staff add <name>` | Fügt einen Namen hinzu |
 | `/nf staff del <name>` | Entfernt einen Namen |
 | `/nf staff list` | Listet die eingetragenen Namen |
@@ -140,3 +142,31 @@ Ein fehlender Tab-Eintrag oder eine nicht geladene Player-Entity ist kein Vanish
 - Der Cache wird zurückgesetzt, wenn die Welt verlassen wird. Bei deaktivierten beiden Modulen werden keine Spielerlisten durchlaufen.
 - AntiVanishHints zeigt nur Einträge mit einem sichtbaren TAB- oder geladenen Welt-Treffer. Keine Treffer ergeben den neutralen Hinweis `Nichts sichtbar – kein Beweis`.
 - Keine zusätzliche Backend-Erkennung: `TAB/NETZ` bleibt eine Netzwerk-Spielerliste, `WELT` eine aktuell geladene Entity. Ein Unterserverstatus wird nicht geraten.
+
+## Claude-HUD-Entwurf und Umsetzung (2026-11-17)
+
+Der visuelle Entwurf aus der bereitgestellten ZIP wurde an Nightfalls vorhandene Modul-, Setting-, Theme- und HUD-Editor-Infrastruktur angepasst. Es wurde kein zweites Namenslisten- oder Command-System eingeführt: `StaffWatch.staffNames`, `ListSetting`, `/nf staff add|del|list`, `Config.save()` und der zentrale `StaffPresence`-Snapshot bleiben die einzige Datenbasis.
+
+- Gemeinsamer Renderer: `src/main/java/dev/nightfall/modules/StaffHudPanel.java`.
+- Dunkles Theme-Panel mit Akzentkante, Zähler-Badge, Status-Pills, dezenten alternierenden Zeilen und pulsierendem Punkt für `TAB + WELT`.
+- Kompaktmodus, Zeilenlimit, Treffer-Sortierung, Legenden- und Untertitel-Schalter bleiben als echte Nightfall-Settings konfigurierbar.
+- Leere Listen zeigen im HUD-Editor Beispielzeilen; im Spiel erscheint stattdessen ein Hinweis zum Eintragen von Namen.
+- AntiVanishHints verwendet denselben Renderer und bleibt im Spiel ausgeblendet, wenn StaffWatch aktiv ist. Im HUD-Editor kann das Panel separat positioniert werden.
+
+## Unterserver-Erkennung: Rechercheergebnis
+
+Die Minecraft-Player-Info-/Tab-Daten, die der Client standardmäßig erhält, enthalten Profil-, Listen-, Spielmodus-, Ping-/Anzeigeinformationen, aber kein Feld, das für jeden gelisteten anderen Spieler dessen Proxy-Backend oder Unterserver benennt. Eine Client-Mod kann daraus keine verlässliche Spieler-zu-Unterserver-Zuordnung ableiten.
+
+Ein Proxy-Plugin kann serverseitig den aktuellen Zielserver eines Spielers kennen. Der Client würde diese Information aber nur erhalten, wenn HugoSMP sie ausdrücklich und öffentlich an den jeweiligen Client übermittelt, beispielsweise über eine sichtbare Tab-Kennzeichnung oder einen offiziell dokumentierten Client-Kanal. In den öffentlich auffindbaren HugoSMP-Informationen wurde keine solche clientseitige Zuordnung dokumentiert. Eine In-Game-Verifikation auf HugoSMP steht aus.
+
+Daher bleiben die Status bewusst begrenzt:
+- `TAB/NETZ`: Profil ist in der an den Client gelieferten Liste; Backend unbekannt.
+- `TAB + WELT`: Profil ist gelistet und eine passende Entity ist in der aktuell geladenen Client-Welt vorhanden.
+- Ein TAB-Eintrag allein wird niemals als bestätigter Unterserverstatus ausgegeben. Es gibt keine Abfrage fremder Backend-Listen oder versteckter Spielerinformationen.
+
+## Offene HUD-Prüfungen (2026-11-17)
+
+- [ ] Build auf dem neuen gemeinsamen Panel und beiden Modulen
+- [ ] In-Game: Name-/Statusüberlappung, lange Namen, kleine Auflösung und Skalierung
+- [ ] HUD-Editor: Vorschau, verschieben, skalieren, speichern und Neustart
+- [ ] HUGSMP: sichtbare Tab-Kennzeichnung / offizielle öffentliche Backend-Information suchen; keine Information erraten
