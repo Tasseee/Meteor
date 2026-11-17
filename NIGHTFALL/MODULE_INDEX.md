@@ -1,8 +1,8 @@
 # Modulindex
 
-**Aktueller Inventur-Abgleich:** `819ea2d17cf76c547e2bbbf55e3d404f4d63f797`  
+**Aktueller Inventur-Abgleich:** `218ca26c1c3d716c0c3280a117f61053b742237d`  
 **Nutzungsanzeige:** Aktivierungen und aktive Zeit stehen bei jedem Modul im ClickGUI; Details in [`MODULE_USAGE.md`](MODULE_USAGE.md).  
-**Letzte Code-Prüfungen:** `BaseFinder`, `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch`, `AntiVanishHints` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk`, `GhostSkin` (nur Renderpfad; In-Game-Test offen) (Build-/In-Game-Tests offen)  
+**Letzte Code-Prüfungen:** `BaseFinder`, `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlint`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch`, `AntiVanishHints` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk`, `GhostSkin`, `ItemGlow` (Rendererpfade geprüft; In-Game-Tests offen) (Build-/In-Game-Tests offen)  
 **Quelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`  
 **SHA der Quelle:** `7329859ce075c9708f749f30b00e904fdf523d6b`  
 **Registrierungen:** **102** – jede genau einmal im aktualisierten Audit-Ledger abgebildet.
@@ -11,9 +11,9 @@
 
 | Auditstatus | Anzahl | Anteil |
 |---|---:|---:|
-| Vollständig geprüft | 22 | 21,6 % |
+| Vollständig geprüft | 27 | 26,5 % |
 | Teilweise geprüft | 6 | 5,9 % |
-| Offen | 74 | 72,5 % |
+| Offen | 69 | 67,6 % |
 | **Gesamt** | **102** | **100 %** |
 
 Maßgeblich ist `MODULE_AUDIT_PROGRESS.md`. Ein Code-Review mit offenem Laufzeittest zählt nicht automatisch als vollständiger Audit.
@@ -53,8 +53,8 @@ Maßgeblich ist `MODULE_AUDIT_PROGRESS.md`. Ein Code-Review mit offenem Laufzeit
 | [`Coordinates`](MODULES/Coordinates.md) | `src/main/java/dev/nightfall/modules/Coordinates.java` | Vollständig geprüft |
 | [`CrystalAura`](MODULES/CrystalAura.md) | `src/main/java/dev/nightfall/modules/CrystalAura.java` | Offen |
 | [`CrystalTest`](MODULES/CrystalTest.md) | `src/main/java/dev/nightfall/modules/CrystalTest.java` | Offen |
-| [`CustomCrosshair`](MODULES/CustomCrosshair.md) | `src/main/java/dev/nightfall/modules/CustomCrosshair.java` | Code geprüft; Laufzeittest offen |
-| [`DebugHud`](MODULES/DebugHud.md) | `src/main/java/dev/nightfall/modules/DebugHud.java` | Code geprüft; Laufzeittest offen |
+| [`CustomCrosshair`](MODULES/CustomCrosshair.md) | `src/main/java/dev/nightfall/modules/CustomCrosshair.java` | Vollständig geprüft; In-Game-Test offen |
+| [`DebugHud`](MODULES/DebugHud.md) | `src/main/java/dev/nightfall/modules/DebugHud.java` | Vollständig geprüft; In-Game-Test offen |
 | [`DroppedItemNotifier`](MODULES/DroppedItemNotifier.md) | `src/main/java/dev/nightfall/modules/DroppedItemNotifier.java` | Code geprüft; Laufzeittest offen |
 | [`DTap`](MODULES/DTap.md) | `src/main/java/dev/nightfall/modules/DTap.java` | Teilweise geprüft |
 | [`ElytraFly`](MODULES/ElytraFly.md) | `src/main/java/dev/nightfall/modules/ElytraFly.java` | Code geprüft; Laufzeittest offen |
@@ -68,20 +68,20 @@ Maßgeblich ist `MODULE_AUDIT_PROGRESS.md`. Ein Code-Review mit offenem Laufzeit
 | [`Freecam`](MODULES/Freecam.md) | `src/main/java/dev/nightfall/modules/Freecam.java` | Code geprüft; Laufzeittest offen |
 | [`FreeLook`](MODULES/FreeLook.md) | `src/main/java/dev/nightfall/modules/FreeLook.java` | Code geprüft; Laufzeittest offen |
 | [`FriendManager`](MODULES/FriendManager.md) | `src/main/java/dev/nightfall/modules/FriendManager.java` | Code geprüft; Laufzeittest offen |
-| [`GhostSkin`](MODULES/GhostSkin.md) | `src/main/java/dev/nightfall/modules/GhostSkin.java` | Renderpfad codegeprüft; In-Game-Test offen |
+| [`GhostSkin`](MODULES/GhostSkin.md) | `src/main/java/dev/nightfall/modules/GhostSkin.java` | Vollständig geprüft; In-Game-Test offen |
 | [`GlowESP`](MODULES/GlowESP.md) | `src/main/java/dev/nightfall/modules/GlowESP.java` | Code geprüft; Laufzeittest offen |
 | [`GUITheme`](MODULES/GUITheme.md) | `src/main/java/dev/nightfall/modules/GUITheme.java` | Code geprüft; Laufzeittest offen |
 | [`Hats`](MODULES/Hats.md) | `src/main/java/dev/nightfall/modules/Hats.java` | Code geprüft; Laufzeittest offen |
 | [`HitParticles`](MODULES/HitParticles.md) | `src/main/java/dev/nightfall/modules/HitParticles.java` | Code geprüft; Laufzeittest offen |
 | [`InvSee`](MODULES/InvSee.md) | `src/main/java/dev/nightfall/modules/InvSee.java` | Offen |
 | [`ItemEsp`](MODULES/ItemEsp.md) | `src/main/java/dev/nightfall/modules/ItemEsp.java` | Code geprüft; Laufzeittest offen |
-| [`ItemGlow`](MODULES/ItemGlow.md) | `src/main/java/dev/nightfall/modules/ItemGlow.java` | Neu im Inventurabgleich; Prüfung offen |
+| [`ItemGlow`](MODULES/ItemGlow.md) | `src/main/java/dev/nightfall/modules/ItemGlow.java` | Vollständig geprüft; In-Game-Test offen |
 | [`Jesus`](MODULES/Jesus.md) | `src/main/java/dev/nightfall/modules/Jesus.java` | Code geprüft; Laufzeittest offen |
 | [`JumpCircles`](MODULES/JumpCircles.md) | `src/main/java/dev/nightfall/modules/JumpCircles.java` | Code geprüft; Laufzeittest offen |
 | [`KillAura`](MODULES/KillAura.md) | `src/main/java/dev/nightfall/modules/KillAura.java` | Offen |
 | [`LongJump`](MODULES/LongJump.md) | `src/main/java/dev/nightfall/modules/LongJump.java` | Code geprüft; Laufzeittest offen |
 | [`LootDropFinder`](MODULES/LootDropFinder.md) | `src/main/java/dev/nightfall/modules/LootDropFinder.java` | Code geprüft; Laufzeittest offen |
-| [`LowHealthWarning`](MODULES/LowHealthWarning.md) | `src/main/java/dev/nightfall/modules/LowHealthWarning.java` | Code geprüft; Laufzeittest offen |
+| [`LowHealthWarning`](MODULES/LowHealthWarning.md) | `src/main/java/dev/nightfall/modules/LowHealthWarning.java` | Vollständig geprüft; In-Game-Test offen |
 | [`MaceAssist`](MODULES/MaceAssist.md) | `src/main/java/dev/nightfall/modules/MaceAssist.java` | Teilweise geprüft |
 | [`MacroManager`](MODULES/MacroManager.md) | `src/main/java/dev/nightfall/modules/MacroManager.java` | Offen |
 | [`Minimap`](MODULES/Minimap.md) | `src/main/java/dev/nightfall/modules/Minimap.java` | Code geprüft; Laufzeittest offen |
