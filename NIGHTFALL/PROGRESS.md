@@ -109,3 +109,12 @@ Der vollständige Auditstatus wird in `MODULE_AUDIT_PROGRESS.md` und `MODULE_IND
 - Direkte Verbindung über eine rohe IP oder einen anderen Alias kann nicht sicher HugoSMP zugeordnet werden; dann steht `HUGOSMP N/A`. Öffentlich dokumentierte Standard-Tabdaten geben keine eindeutige Unterserver-Zuordnung pro Spieler her.
 - Build- und In-Game-Tests für diesen neuen Status-/Nähepfad sind offen.
 - **Status-Text-Präzisierung:** Kein TAB-/WELT-Treffer heißt `NICHT GELISTET`, nicht `OFFLINE`; aus fehlender Sichtbarkeit wird kein sicherer Offline-Status abgeleitet.
+
+## Lauf 2026-11-17 – AutoPvP Crit-Timing und Drive-by-Bewegung
+
+- `AutoPvp.java` ergänzt: Crit-Vorbereitung wartet auf mindestens 98 % Angriffscooldown, dann den konfigurierbaren `Crit-Sprungdelay` (Standard 2 Ticks, Bereich 0–6), und löst den Angriff nur bei tatsächlichem Fallen (`fallDistance > 0.08`, vertikale Geschwindigkeit < 0) sowie mindestens 90 % Cooldown aus.
+- Schwert-Crit-Vorbereitung funktioniert jetzt auch bei eingeschalteter CrystalAura-Integration; eine bereits aktive Crystal-Combo behält Vorrang. Sprint wird im Crit-Fenster freigegeben.
+- `An Gegner vorbeilaufen` (Standard AN) ergänzt: wechselnde seitliche Bewegung im Nahbereich; Seitenwechsel konfigurierbar von 4–14 Ticks, Standard 7. Vorwärtsbewegung ist weiterhin an einen freien sicheren Pfad gebunden.
+- Keine NoClip-/Kollisionsdeaktivierung: die Bewegung versucht, am Ziel seitlich vorbeizulaufen und kann nicht tatsächlich durch den Spielerkörper laufen.
+- Crit-Zustand wird bei Zielverlust, Modul-Deaktivierung und Weltwechsel zurückgesetzt. Config-Schlüssel der bestehenden Crit-Einstellung blieb zur Kompatibilität unverändert.
+- Build und In-Game-Tests bleiben offen; insbesondere Crit-Timing auf dem HugoSMP-Server und das Verhalten der seitlichen Bewegung müssen praktisch getestet werden.
