@@ -113,7 +113,7 @@ public final class FreecamController extends Module {
       savedPitch = mc.field_1724.method_36455();
 
       camWorld = mc.field_1687;
-      cam = new class_1531(class_1299.field_60980, camWorld);
+      cam = new class_1531(class_1299.field_6131, camWorld);
 
       camX = mc.field_1724.method_23317();
       camY = mc.field_1724.method_33571().field_1351;
@@ -205,9 +205,9 @@ public final class FreecamController extends Module {
          double dy = Math.max(-250.0, Math.min(250.0, cursorY[0] - lastMouseY));
 
          // Same mouse direction as the supplied FreecamController.
-         float yaw = cam.method_36454() + (float)dx * (float)sensitivity.get();
+         float yaw = cam.method_36454() + (float)dx * sensitivity.get().floatValue();
          float pitch = Math.max(-90.0F, Math.min(90.0F,
-            cam.method_36455() + (float)dy * (float)sensitivity.get()));
+            cam.method_36455() + (float)dy * sensitivity.get().floatValue()));
          cam.method_36456(yaw);
          cam.method_36457(pitch);
          
@@ -217,21 +217,21 @@ public final class FreecamController extends Module {
       lastMouseY = cursorY[0];
       mouseInitialized = true;
 
-      boolean forward = mc.options.forwardKey.isPressed();
-      boolean back = mc.options.backKey.isPressed();
-      boolean left = mc.options.leftKey.isPressed();
-      boolean right = mc.options.rightKey.isPressed();
-      boolean up = mc.options.jumpKey.isPressed();
-      boolean down = mc.options.sneakKey.isPressed();
-      boolean fast = mc.options.sprintKey.isPressed();
+      boolean forward = mc.field_1690.field_1894.method_1434();
+      boolean back = mc.field_1690.field_1881.method_1434();
+      boolean left = mc.field_1690.field_1913.method_1434();
+      boolean right = mc.field_1690.field_1849.method_1434();
+      boolean up = mc.field_1690.field_1903.method_1434();
+      boolean down = mc.field_1690.field_1832.method_1434();
+      boolean fast = mc.field_1690.field_1867.method_1434();
 
-      mc.options.forwardKey.setPressed(false);
-      mc.options.backKey.setPressed(false);
-      mc.options.leftKey.setPressed(false);
-      mc.options.rightKey.setPressed(false);
-      mc.options.jumpKey.setPressed(false);
-      mc.options.sneakKey.setPressed(false);
-      mc.options.sprintKey.setPressed(false);
+      mc.field_1690.field_1894.method_23481(false);
+      mc.field_1690.field_1881.method_23481(false);
+      mc.field_1690.field_1913.method_23481(false);
+      mc.field_1690.field_1849.method_23481(false);
+      mc.field_1690.field_1903.method_23481(false);
+      mc.field_1690.field_1832.method_23481(false);
+      mc.field_1690.field_1867.method_23481(false);
 
       class_243 move = class_243.field_1353;
       if (mc.field_1755 == null) {
