@@ -6,6 +6,9 @@ import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Theme;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 import net.minecraft.class_332;
 
@@ -63,26 +66,32 @@ public final class AntiVanishHints extends HudModule {
       }
 
       boolean emptyPreview = names.isEmpty();
+      List<String> hints = new ArrayList<>();
+      if (!emptyPreview) {
+         for (String name : names) {
+            if (name != null && !name.isBlank() && (StaffPresence.inTab(name) || StaffPresence.loadedInWorld(name))) {
+               hints.add(name);
+            }
+         }
+         hints.sort(Comparator.comparingInt(StaffPresence::rank).thenComparing(String.CASE_INSENSITIVE_ORDER));
+      }
+      boolean noHints = !emptyPreview && hints.isEmpty();
       int rowHeight = this.compactMode.get() ? 12 : 15;
       int headerHeight = this.compactMode.get() ? 20 : 23;
       int footerHeight = 27;
-      int shown = emptyPreview ? 1 : Math.min(this.maxRows.getInt(), names.size());
-      String emptyLabel = "Keine Namen eingetragen";
-      int nameWidth = emptyPreview ? mc.field_1772.method_1727(emptyLabel) : 0;
-      int statusWidth = mc.field_1772.method_1727(emptyPreview ? "HINWEIS" : "TAB + WELT");
+      int shown = emptyPreview || noHints ? 1 : Math.min(this.maxRows.getInt(), hints.size());
+      String emptyLabel = emptyPreview ? "Keine Namen eingetragen" : "Nichts sichtbar – kein Beweis";
+      int nameWidth = emptyPreview || noHints ? mc.field_1772.method_1727(emptyLabel) : 0;
+      int statusWidth = mc.field_1772.method_1727(emptyPreview || noHints ? "HINWEIS" : "TAB + WELT");
 
-      int measured = 0;
-      for (String name : names) {
-         if (name == null || name.isBlank() || measured >= shown) {
-            continue;
-         }
-         measured++;
-         nameWidth = Math.max(nameWidth, mc.field_1772.method_1727(name));
+      for (int i = 0; i < shown && !emptyPreview && !noHints; i++) {
+         String name = hints.get(i);
+         nameWidth = Math.max(nameWidth, mc.field_1772.method_1727(StaffPresence.displayName(name)));
          String status = preview ? "VORSCHAU" : this.status(name);
          statusWidth = Math.max(statusWidth, mc.field_1772.method_1727(status));
       }
 
-      String countLabel = preview && emptyPreview ? "0/0" : shown + "/" + names.size();
+      String countLabel = preview && emptyPreview ? "0/0" : hints.size() + " Hinweise";
       String legend = "TAB = gelisteter Profil-Eintrag · WELT = Entity geladen";
       String disclaimer = "Abwesenheit ist kein Vanish-Beweis";
       int contentWidth = 32 + nameWidth + statusWidth;
@@ -102,19 +111,15 @@ public final class AntiVanishHints extends HudModule {
       ctx.method_51433(mc.field_1772, countLabel, countX, this.compactMode.get() ? 5 : 7, Theme.TEXT_DIM, true);
 
       int y = headerHeight;
-      if (emptyPreview) {
+      if (emptyPreview || noHints) {
          this.drawRow(ctx, emptyLabel, "HINWEIS", COLOR_UNKNOWN, y, rowHeight);
       } else {
-         int index = 0;
-         for (String name : names) {
-            if (name == null || name.isBlank() || index >= shown) {
-               continue;
-            }
+         for (int i = 0; i < shown; i++) {
+            String name = hints.get(i);
             String status = preview ? "VORSCHAU" : this.status(name);
             int color = preview ? COLOR_UNKNOWN : this.statusColor(name);
             this.drawRow(ctx, StaffPresence.displayName(name), status, color, y, rowHeight);
             y += rowHeight;
-            index++;
          }
       }
 
