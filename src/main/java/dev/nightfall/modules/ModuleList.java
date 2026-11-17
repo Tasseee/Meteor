@@ -22,7 +22,18 @@ public final class ModuleList extends HudModule {
 
    @Override
    protected int[] defaultPos(int sw, int sh) {
-      return new int[]{sw - this.w - 4, 4};
+      return new int[]{sw - this.activeContentWidth() - 4, 4};
+   }
+
+   private int activeContentWidth() {
+      int maxTextWidth = 0;
+      for (Module module : ModuleManager.all()) {
+         if (module.isEnabled() && module.getCategory() != Category.HUD) {
+            maxTextWidth = Math.max(maxTextWidth, mc.field_1772.method_1727(module.getName()));
+         }
+      }
+
+      return Math.max(62, maxTextWidth + 12);
    }
 
    @Override
