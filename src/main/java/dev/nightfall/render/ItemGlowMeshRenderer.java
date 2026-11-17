@@ -41,6 +41,12 @@ public final class ItemGlowMeshRenderer {
          return;
       }
 
+      // The hand renderer uses a batched line format that requires LineWidth on
+      // every vertex. Some render backends (notably ImmediatelyFast) reject
+      // that format during world entry. Disable this mesh pass for now rather
+      // than allowing a cosmetic effect to crash the client.
+      return;
+
       Map<EdgeKey, EdgeInfo> edges = new LinkedHashMap<>();
       class_4587.class_4665 entry = matrices.method_23760();
       Matrix3f normalMatrix = entry.method_23762();
