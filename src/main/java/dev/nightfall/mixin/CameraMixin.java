@@ -1,7 +1,7 @@
 package dev.nightfall.mixin;
 
 import dev.nightfall.modules.FreeLook;
-import dev.nightfall.modules.Freecam;
+import dev.nightfall.modules.FreecamController;
 import net.minecraft.class_1297;
 import net.minecraft.class_1937;
 import net.minecraft.class_243;
@@ -28,7 +28,7 @@ public abstract class CameraMixin {
       ordinal = 0
    )
    private boolean nightfall$renderLocalPlayer(boolean thirdPerson) {
-      return thirdPerson || Freecam.isActive();
+      return thirdPerson || FreecamController.isActive();
    }
 
    @Inject(
@@ -39,9 +39,9 @@ public abstract class CameraMixin {
       class_1937 area, class_1297 focusedEntity, boolean thirdPerson, boolean inverseView, float tickDelta, CallbackInfo ci
    ) {
       if (Freecam.isActive()) {
-         class_243 pos = Freecam.interpolatedPosition(tickDelta);
+         class_243 pos = FreecamController.interpolatedPosition(tickDelta);
          this.method_19327(pos.field_1352, pos.field_1351, pos.field_1350);
-         this.method_19325(Freecam.interpolatedYaw(tickDelta), Freecam.interpolatedPitch(tickDelta));
+         this.method_19325(FreecamController.interpolatedYaw(tickDelta), FreecamController.interpolatedPitch(tickDelta));
       } else if (FreeLook.isActive()) {
          this.method_19325(FreeLook.cameraYaw(), FreeLook.cameraPitch());
       }
