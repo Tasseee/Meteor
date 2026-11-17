@@ -5,8 +5,8 @@
 - **Kategorie:** `HUD` (über `HudModule`)
 - **Quellcode-SHA StaffWatch:** `6540dd03044809e53142736768919c8daa09c06d`
 - **Tab-API-Änderung:** `getListedPlayerListEntries()` / `method_45732()`
-- **Quellcode-SHA StaffPresence:** `5f40e634aabdc29aac3617864b4925b8ade0adcc`
-- **Quellcode-SHA StaffHudPanel:** `eaeaf1f7e8b4a0dac7fbbf9adfeda2eecadeed88`
+- **Quellcode-SHA StaffPresence:** `0685ea75c3f989b54d22baabf1b5c2f84ffa45ca`
+- **Quellcode-SHA StaffHudPanel:** `466201d2bafaa3eb94d584a0e99df2a9baaecd10`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
 - **Quellcode-SHA AntiVanishHints:** `dfec4af070522db1385a52b524f2b22b7096d10c`
 - **Mitgeprüfte Dateien:** `ListSetting.java`, `Commands.java`, `Config.java`, `Nightfall.java`, `ModuleManager.java`, `AntiVanishHints.java`
@@ -172,3 +172,25 @@ Daher bleiben die Status bewusst begrenzt:
 - [ ] HUGSMP: sichtbare Tab-Kennzeichnung / offizielle öffentliche Backend-Information suchen; keine Information erraten
 
 - **Build-Korrektur 2026-11-17:** Fehlender Import von `ModuleManager` in `StaffPresence.java` ergänzt; der erste CI-Lauf des Panel-Einzelcommits hatte diesen Compilerfehler gemeldet. Neuer Build für den korrigierten Gesamtstand läuft.
+
+## HugoSMP-Status und Nähe-Alarm (2026-11-17)
+
+StaffWatch erkennt eine Verbindung zu HugoSMP über die offizielle Adresse `hugosmp.net` bzw. Subdomains davon. Grundlage ist die vom Spieler in Minecraft eingetragene Serveradresse (`ServerInfo.address`), nicht eine externe Serverabfrage. Wenn eine direkte IP statt `hugosmp.net` verwendet wird, kann der Client diese Verbindung nicht sicher als HugoSMP zuordnen und zeigt `HUGOSMP N/A`.
+
+| Anzeige | Bedeutung |
+|---|---|
+| `ONLINE` | Der Name steht in der vom verbundenen HugoSMP-Server gelieferten gelisteten Tab-Spielerliste. |
+| `SERVER` | Eine passende Spieler-Entity ist in deiner aktuell geladenen Client-Welt vorhanden. Das ist ein Hinweis auf denselben verbundenen Spielserver/Backend. |
+| `OFFLINE` | HugoSMP-Verbindung und Tab-Daten sind verfügbar, aber weder Tab-Profil noch Entity liefern einen Treffer. |
+| `TAB N/A` | Der Netzwerkhandler bzw. die Tab-Datenquelle ist nicht verfügbar. |
+| `HUGOSMP N/A` | Die aktuelle Serveradresse ist nicht als `hugosmp.net` erkannt. |
+
+`SERVER` ist kein ausgelesener Unterservername. Der Client kann damit sagen, dass die Entity in seiner aktuellen Welt geladen ist, aber nicht den Namen eines internen HugoSMP-Backends ermitteln. `ONLINE` hängt davon ab, welche Spieler HugoSMP in der an den Client gelieferten Tab-Liste aufführt; diese Liste kann lokal oder netzwerkweit sein.
+
+### Nähe-Alarm
+
+- Die Setting-Option `Nähe-Alarm` ist standardmäßig aktiviert und nur aktiv, wenn StaffWatch eingeschaltet ist.
+- Eine Meldung kommt nur, wenn ein manuell eingetragener Name als Entity in der aktuellen Welt geladen wird und innerhalb der aktuellen Minecraft-Renderdistanz liegt (Client-View-Distance in Chunks × 16 Blöcke).
+- Die Meldung lautet `<Name> is in your render distance` und wird beim Eintritt in den Bereich einmal ausgelöst. Verlässt der Spieler den Bereich und kommt später zurück, kann eine neue Meldung erscheinen.
+- Die Anzeige erkennt Nähe, nicht Blickrichtung oder Absicht. Sie behauptet deshalb nicht, dass der Spieler tatsächlich zusieht.
+- Es werden keine zusätzlichen Netzwerkdaten, versteckten Spielerlisten oder Backend-Abfragen verwendet.
