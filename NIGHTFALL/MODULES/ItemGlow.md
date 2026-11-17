@@ -2,54 +2,45 @@
 
 - **Registrierter Modulname:** `ItemGlow`
 - **Anzeigename:** `Item Glow`
-- **Auditstatus:** Vollständiger statischer Code-Audit; In-Game-Test offen
-- **Modul-Blob-SHA:** `b7c2a6753b33d4e55f3f45bedc98ddcc87766a45`
-- **Renderer:** `src/main/java/dev/nightfall/render/ItemGlowRenderer.java`
-- **Renderer-Blob-SHA:** `23604fb603d5d729e87786585dfb2698264155dc`
-- **Mixin-Accessor:** `src/main/java/dev/nightfall/mixin/HandledScreenAccessor.java`
-- **Accessor-Blob-SHA:** `67d0dae859cf6ff537ddf2f195f8181de52151dd`
+- **Kategorie:** `VISUALS`
+- **Quellpfad:** `src/main/java/dev/nightfall/modules/ItemGlow.java`
+- **Renderer:** `ItemGlowRenderer.java` (HUD-/Inventar-Glow) und `ItemGlowMeshRenderer.java` (3D-Mesh-Kontur)
+- **Mixin:** `ItemGlowMeshMixin.java`
 
-## Einstellungen
+## Zweck und Einstellungen
 
-| Einstellung | Standard | Bereich |
-|---|---:|---:|
+Neon-Effekte für gehaltene Items, Hotbar-/Inventarsymbole und eine optionale Kontur entlang der Silhouette des tatsächlich gerenderten First-Person-Item-Modells. Der Effekt ersetzt keinen Minecraft-Enchantment-Glint.
+
+| Einstellung | Standard | Bereich / Optionen |
+|---|---:|---|
 | Farbe | `0x39FF14` | RGB |
-| Glow-Radius | 6 | 1–12 |
-| Intensität | 0,85 | 0,10–1,00 |
-| Pulsieren | AN | Boolean |
-| Hotbar | AN | Boolean |
-| Inventar | AN | Boolean |
-
-Die `Hotbar`-Option steuert im aktuellen Renderer sowohl die neun Hotbar-Slots als auch den Offhand-Slot. Es gibt keine separate Offhand-Option. Das Modul-Description nennt Hotbar, Offhand und Inventar bereits gemeinsam.
+| Glow-Radius | 34 | 8–90 |
+| Intensität | 0,85 | 0,05–1,00 |
+| Pulsieren | AN | Ein/Aus |
+| Regenbogen | AUS | Ein/Aus |
+| Ring & Funken | AN | Ein/Aus |
+| Zweithand | AN | Ein/Aus |
+| Hotbar | AN | Ein/Aus |
+| Inventar | AN | Ein/Aus |
+| Position X | 0,74 | 0,50–0,95 |
+| Position Y | 0,80 | 0,50–0,95 |
+| Regenbogen-Tempo | 0,25 | 0,02–1,50 |
+| 3D-Kontur | AN | Ein/Aus |
+| Kontur-Stärke | 1,0 | 0,2–2,0 |
 
 ## Codebefunde
 
-- `ModuleManager.init()` registriert `ItemGlow` genau einmal in der Kategorie `VISUALS`.
-- `Nightfall.onInitializeClient()` ruft `ItemGlowRenderer.init()` einmal auf.
-- Der Renderer hängt einen HUD-Callback nach der Hotbar ein und einen `ScreenEvents.AFTER_INIT`-Callback für `HandledScreen`-Instanzen.
-- Der Hotbar-Pfad prüft Modulaktivierung, Option, Spieler und HUD-Sichtbarkeit; leere Itemstacks werden übersprungen.
-- Der Inventarpfad prüft Modulaktivierung und Option, liest Position/Handler über `HandledScreenAccessor` und überspringt leere Slots.
-- `HandledScreenAccessor` ist in `nightfall.mixins.json` als erforderlicher Client-Mixin eingetragen.
-- Radius und Alpha werden im Renderer begrenzt; der Inventarpfad begrenzt den Radius zusätzlich auf 4. Die Schleifen sind durch Slotanzahl und Radius-Einstellung beschränkt.
-- Pulsieren wird renderseitig über `System.nanoTime()` berechnet. Das Modul besitzt keine eigenen Threads, Timer oder Ressourcen.
-- Der Module-Lookup fällt bei fehlender Registrierung defensiv auf `null` zurück.
-- Es gibt keine modul-eigenen Enable-/Disable- oder World-Leave-Hooks; die global registrierten Rendercallbacks prüfen den Aktivierungsstatus.
-- Konfigurationswerte werden anhand des Einstellungsnamens gespeichert. `Hotbar` nicht ohne Migration umbenennen, da bestehende Konfigurationen sonst den alten Wert nicht mehr zuordnen könnten.
+- Das Modul ist in `ModuleManager.init()` genau einmal registriert.
+- `ItemGlowRenderer.init()` registriert den HUD-Callback und den Screen-Callback für Inventarbildschirme.
+- Die First-Person-Aura zeichnet mehrlagige Ringe und umlaufende Funken um gehaltene Items; Hotbar, Offhand und Inventar haben getrennte Ein-/Aus-Schalter.
+- `ItemGlowMeshMixin` hängt sich an Minecrafts Item-Render-Methode. Der Mesh-Renderer wertet die Baked-Quad-Geometrie aus und zeichnet eine Kontur an den Silhouettenkanten des First-Person-Modells.
+- Die 3D-Kontur verwendet Minecrafts Linien-Render-Layer; die Farbe folgt dem Regenbogenmodus.
+- Der Inventarzugriff läuft über `HandledScreenAccessor`; leere Slots werden übersprungen.
 
-## Befunde und offene Prüfung
+## Offene Tests
 
-- Kein eindeutiger nicht-angriffsbezogener Codefehler wurde bestätigt; daher keine Java-Änderung.
-- Das tatsächliche Aussehen und die korrekte Position des Offhand-Glows müssen im Spiel geprüft werden.
-- [ ] Hotbar und Offhand mit leerem/belegtem Slot prüfen.
-- [ ] Inventar in mehreren `HandledScreen`-Typen prüfen.
-- [ ] Radius-Minimum/-Maximum, Intensität und Pulsieren prüfen.
-- [ ] Wechsel zwischen Inventarbildschirmen und Schließen des Screens auf doppelte Callbacks prüfen.
-- [ ] In-Game-Test bleibt offen.
-
-## Build und Tests
-
-Der GitHub-Actions-Build `44039685234` auf Commit `5f7e942922c40f80c9534c93e151f3f16d226d98` hat `gradle build --no-daemon` erfolgreich ausgeführt. Dieser Commit enthält den hier geprüften Java-Stand; spätere Commits `e93fe8b` und `997db22` betreffen nur Dokumentation. Eine eigene `src/test`-Testsuite ist nicht vorhanden. Kein In-Game-Test wurde ausgeführt.
-
-## Inventurhinweis
-
-Die frühere Auditliste führte `ItemGlint`, aber `ModuleManager.init()` registriert aktuell `ItemGlow`. Ein aktuelles `ItemGlint`-Modul ist in der Java-Inventur nicht vorhanden. Die alte `ItemGlint.md`-Akte bleibt ein historischer Eintrag.
+- [ ] 3D-Kontur an Schwert, Werkzeug, Block und Bogen im First-Person-Modus prüfen.
+- [ ] Hotbar, Offhand und mehrere Inventarbildschirmtypen prüfen.
+- [ ] Rainbow, Pulsieren und Kontur-Stärke-Minimum/-Maximum prüfen.
+- [ ] Performance mit Items mit vielen Modell-Quads messen.
+- [ ] Build und In-Game-Test bleiben offen.
