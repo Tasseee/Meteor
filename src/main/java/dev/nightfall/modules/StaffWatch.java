@@ -111,8 +111,8 @@ public final class StaffWatch extends HudModule {
             String name = orderedNames.get(i);
             boolean inTab = StaffPresence.inTab(name);
             boolean inWorld = StaffPresence.loadedInWorld(name);
-            String status = preview ? "VORSCHAU" : this.status(name, this.tabAvailable);
-            int color = preview ? COLOR_UNKNOWN : this.statusColor(inTab, inWorld, this.tabAvailable);
+            String status = preview ? "VORSCHAU" : this.status(name, StaffPresence.tabAvailable());
+            int color = preview ? COLOR_UNKNOWN : this.statusColor(inTab, inWorld, StaffPresence.tabAvailable());
             this.drawRow(ctx, this.displayName(name), status, color, x, rowY, nameWidth, rowHeight);
             rowY += rowHeight;
          }
@@ -135,7 +135,7 @@ public final class StaffWatch extends HudModule {
       }
 
       if (this.sortVisibleFirst.get()) {
-         result.sort(Comparator.comparingInt(this::presenceRank).thenComparing(String.CASE_INSENSITIVE_ORDER));
+         result.sort(Comparator.comparingInt(StaffPresence::rank).thenComparing(String.CASE_INSENSITIVE_ORDER));
       }
       return result;
    }
@@ -149,20 +149,14 @@ public final class StaffWatch extends HudModule {
    }
 
    private String status(String name, boolean hasTab) {
-      boolean inTab = this.tabNames.contains(name);
-      boolean inWorld = this.loadedNames.contains(name);
+      boolean inTab = StaffPresence.inTab(name);
+      boolean inWorld = StaffPresence.loadedInWorld(name);
       if (!hasTab) {
          return inWorld ? "WELT · TAB N/A" : "TAB N/A · KEINE ENTITY";
       }
-      if (inTab && inWorld) {
-         return "TAB + WELT";
-      }
-      if (inTab) {
-         return "TAB/NETZ";
-      }
-      if (inWorld) {
-         return "NUR WELT";
-      }
+      if (inTab && inWorld) return "TAB + WELT";
+      if (inTab) return "TAB/NETZ";
+      if (inWorld) return "NUR WELT";
       return "KEINE QUELLE";
    }
 
