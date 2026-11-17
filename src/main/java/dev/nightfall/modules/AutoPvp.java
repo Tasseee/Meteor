@@ -817,10 +817,8 @@ public class AutoPvp extends Module {
                boolean approach = (distance > this.stop.get() && (detouring || this.safeForward(p, target)))
                   || (driveByActive && distance > 1.75 && this.safeForward(p, target));
                mc.field_1690.field_1894.method_23481(approach);
-               // CrystalAura mode keeps sprint enabled for sprint-hit combos;
-               // sword-only mode manages sprint separately for critical hits.
-               // Sprint while closing the distance so the bot reaches its target faster.
-               // In sword-only crit mode sprint is released again when preparing the critical hit.
+               // Keep sprint during approach/CrystalAura combos; crit mode below
+               // releases it as soon as a sword critical hit is being prepared.
                boolean crystalSprint = this.useCrystalAura.get();
                boolean sprintToTarget = approach && distance > this.stop.get() + 0.5;
                mc.field_1690.field_1867.method_23481(crystalSprint || sprintToTarget);
@@ -832,7 +830,7 @@ public class AutoPvp extends Module {
                   // Kurze, wechselnde Seitenschritte machen den Laufweg im Nahbereich weniger vorhersehbar.
                   if (this.driveByTimer-- <= 0) {
                      this.driveByDir = -this.driveByDir;
-                     this.driveByTimer = this.driveBySwitchTicks.getInt();
+                     this.driveByTimer = Math.max(1, this.driveBySwitchTicks.getInt() - 1);
                   }
                   mc.field_1690.field_1913.method_23481(this.driveByDir > 0);
                   mc.field_1690.field_1849.method_23481(this.driveByDir < 0);
