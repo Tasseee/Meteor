@@ -38,7 +38,7 @@ public abstract class CameraMixin {
    private void nightfall$applyCameraState(
       class_1937 area, class_1297 focusedEntity, boolean thirdPerson, boolean inverseView, float tickDelta, CallbackInfo ci
    ) {
-      if (Freecam.isActive()) {
+      if (FreecamController.isActive()) {
          class_243 pos = FreecamController.interpolatedPosition(tickDelta);
          this.method_19327(pos.field_1352, pos.field_1351, pos.field_1350);
          this.method_19325(FreecamController.interpolatedYaw(tickDelta), FreecamController.interpolatedPitch(tickDelta));
