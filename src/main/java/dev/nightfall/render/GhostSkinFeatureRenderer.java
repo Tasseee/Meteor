@@ -45,7 +45,7 @@ public final class GhostSkinFeatureRenderer extends class_3887<class_10055, clas
       if (!module.isEnabled()) return;
 
       class_310 mc = class_310.method_1551();
-      // Never render this overlay on other players. Identity is checked by UUID.
+      // Never render this overlay on other players. The render state carries the entity ID.
       if (mc.field_1724 == null || state.field_53528 != mc.field_1724.method_5628()) return;
       if (state.field_53520 == null || state.field_53520.comp_1626() == null) return;
 
