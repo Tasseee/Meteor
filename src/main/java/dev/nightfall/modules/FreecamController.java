@@ -25,6 +25,7 @@ public final class FreecamController extends Module {
    private static class_1531 cam;
    private static class_638 camWorld;
    private static double camX, camY, camZ;
+   private static double previousCamX, previousCamY, previousCamZ;
    private static double velX, velY, velZ;
    private static double eyeOffset;
 
@@ -62,19 +63,21 @@ public final class FreecamController extends Module {
    }
 
    public static float cameraYaw() {
-      return cam == null ? 0.0F : cam.getYaw();
+      return cam == null ? 0.0F : cam.method_36454();
    }
 
    public static float cameraPitch() {
-      return cam == null ? 0.0F : cam.getPitch();
+      return cam == null ? 0.0F : cam.method_36455();
    }
 
    public static class_243 interpolatedPosition(float tickDelta) {
       if (cam == null) return class_243.field_1353;
-      double x = cam.lastRenderX + (cam.getX() - cam.lastRenderX) * Math.max(0.0F, Math.min(1.0F, tickDelta));
-      double y = cam.lastRenderY + (cam.getY() - cam.lastRenderY) * Math.max(0.0F, Math.min(1.0F, tickDelta));
-      double z = cam.lastRenderZ + (cam.getZ() - cam.lastRenderZ) * Math.max(0.0F, Math.min(1.0F, tickDelta));
-      return new class_243(x, y + eyeOffset, z);
+      float t = Math.max(0.0F, Math.min(1.0F, tickDelta));
+      return new class_243(
+         previousCamX + (camX - previousCamX) * t,
+         previousCamY + (camY - previousCamY) * t,
+         previousCamZ + (camZ - previousCamZ) * t
+      );
    }
 
    public static float interpolatedYaw(float tickDelta) {
@@ -119,14 +122,17 @@ public final class FreecamController extends Module {
 
       float yaw = savedYaw;
       float pitch = savedPitch;
-      cam.setYaw(yaw);
-      cam.setPitch(pitch);
-      cam.prevYaw = yaw;
-      cam.prevPitch = pitch;
+      cam.method_36456(yaw);
+      cam.method_36457(pitch);
 
-      eyeOffset = cam.getEyeY();
-      cam.setPosition(camX, camY - eyeOffset, camZ);
-      syncPreviousPosition();
+      eyeOffset = cam.method_5751() - cam.method_23318();
+      previousCamX = camX;
+      previousCamY = camY;
+      previousCamZ = camZ;
+      cam.method_5814(camX, camY - eyeOffset, camZ);
+      previousCamX = camX;
+      previousCamY = camY;
+      previousCamZ = camZ;
 
       active = true;
       mc.field_1692 = cam;
@@ -184,7 +190,7 @@ public final class FreecamController extends Module {
 
       if (isBodyMode()) {
          velX = velY = velZ = 0.0;
-         cam.setPosition(camX, camY - eyeOffset, camZ);
+         cam.method_5814(camX, camY - eyeOffset, camZ);
          mc.field_1724.method_18799(class_243.field_1353);
          return;
       }
@@ -306,8 +312,8 @@ public final class FreecamController extends Module {
    private void syncPreviousPosition() {
       if (cam != null) {
          cam.lastRenderX = cam.getX();
-         cam.lastRenderY = cam.getY();
-         cam.lastRenderZ = cam.getZ();
+         cam.lastRenderY = cam.method_23318();
+         cam.lastRenderZ = cam.method_23321();
       }
    }
 }
