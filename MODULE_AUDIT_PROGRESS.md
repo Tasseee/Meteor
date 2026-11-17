@@ -137,5 +137,5 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - `AutoPvp` labels its Pearl option `Pearl zum Gegner`; the prior code review confirmed it throws toward the opponent's landing point, not catches a Pearl. This remains a label/identity note only.
 - Watermark uses the player's game-profile name (`method_7334().name()`), not the display component.
 - In-game verification is required for visual behavior such as FakeLag ghost skin rendering.
-- No `src/test` directory or test suite was found. CI runs `gradle build --no-daemon` on Java 21; record CI status against the exact commit SHA.
+- No `src/test` directory or test suite was found. GitHub Actions run `44039685234` for documentation commit `5f7e942922c40f80c9534c93e151f3f16d226d98` completed successfully; its `gradle build --no-daemon` step passed on Java 21 / Gradle 9.2.0.
 - `ItemGlint` is not a current registered module/class; the active registration is `ItemGlow`. The old `NIGHTFALL/MODULES/ItemGlint.md` is retained as a historical note only.
