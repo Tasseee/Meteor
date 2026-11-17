@@ -37,7 +37,7 @@ public final class StaffHudPanel {
          status = "TAB N/A";
          color = GRAY;
       } else {
-         status = "OFFLINE";
+         status = "NICHT GELISTET";
          color = GRAY;
       }
 
