@@ -3,7 +3,7 @@
 - **Registrierter Modulname:** `AutoPvp`
 - **Auditstatus:** Teilweise geprüft – ausgewählte Timing- und Bewegungslogik wurde angepasst; In-Game-Test offen
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/AutoPvp.java`
-- **Quell-Blob-SHA:** `b77abc47a02e0d81d186d14672f071df96e4ac91`
+- **Quell-Blob-SHA:** `bf000407904390b8fa072385fe08167afa965d37`
 
 ## Getrennte Bezeichnungen
 
