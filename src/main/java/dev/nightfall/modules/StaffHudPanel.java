@@ -67,7 +67,7 @@ public final class StaffHudPanel {
       if (badge != null) headerWidth += font.method_1727(badge) + 18;
       int contentWidth = 0;
       for (Row row : rows) {
-         contentWidth = Math.max(contentWidth, 33 + font.method_1727(row.name()) + font.method_1727(row.status()));
+         contentWidth = Math.max(contentWidth, 44 + font.method_1727(row.name()) + font.method_1727(row.status()));
       }
       if (empty != null) contentWidth = Math.max(contentWidth, font.method_1727(empty) + 24);
       if (subtitle != null && !compact) contentWidth = Math.max(contentWidth, font.method_1727(subtitle) + 18);
