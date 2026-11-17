@@ -1,7 +1,7 @@
 # Nightfall module audit progress
 
-Inventory snapshot: `819ea2d17cf76c547e2bbbf55e3d404f4d63f797` (main, 2026-11-17).
-Registered module instances: **102**. Fully reviewed: **22**. UI-/label-only partial reviews: **6**. Pending: **74**.
+Inventory snapshot: `feed85b8cc54c6d9336a98b82ad979068747d4e0` (main, 2026-11-17).
+Registered module instances: **102**. Fully reviewed: **27**. UI-/label-only partial reviews: **6**. Pending: **69**.
 
 This file is the shared progress ledger for the scheduled repository audits. Update it only after a module has been checked against registration, settings/defaults, UI/HUD, lifecycle, listeners/resource cleanup, null/boundary handling, logging, threading, performance, compatibility, tests, and documentation. A label-only review is not a full review.
 
@@ -12,6 +12,11 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - [x] `Coordinates`
 - [x] `CooldownHud`
 - [x] `NotificationsHud`
+- [x] `GhostSkin`
+- [x] `ItemGlow`
+- [x] `DebugHud`
+- [x] `LowHealthWarning`
+- [x] `CustomCrosshair`
 - [x] `WaypointHud`
 - [x] `Atmosphere`
 - [x] `AntiVanishHints`
@@ -85,9 +90,7 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - [ ] `SlowSwing`
 - [ ] `InvSee`
 - [ ] `GlowESP`
-- [ ] `ItemGlow`
 - [ ] `GUITheme`
-- [ ] `CustomCrosshair`
 - [ ] `SpawnerEsp`
 - [ ] `ChunkEsp`
 - [ ] `BlockESP`
@@ -108,17 +111,17 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - [ ] `ModuleList`
 - [ ] `Minimap`
 - [ ] `ScannerHud`
-- [ ] `LowHealthWarning`
 - [ ] `FakeStats`
-- [ ] `DebugHud`
-- [ ] `GhostSkin`
 
 ## Shared/support code inspected
 - `WaypointManager.java` — invalid JSON entries are now skipped safely (see commit `a66b3e2`).
 - `MapScreen.java`, `Commands.java`, `Storage.java` — Waypoint consumers and data source checked.
 - `Module.java`, `ModuleManager.java` — registration and common lifecycle checked; current `main` registers 102 unique module instances.
-- `GhostSkinFeatureRenderer.java` — own-player/skin-texture guards, alpha clamp, and matrix push/pop restoration inspected; In-Game-Test remains open.
-- `ItemGlow.java` — registration and setting accessors inventoried only; rendering hooks remain open.
+- `GhostSkin.java`, `GhostSkinFeatureRenderer.java` — module registration/settings, own-player and skin-texture guards, alpha clamp, global renderer registration, and matrix push/pop restoration checked; In-Game-Test remains open.
+- `ItemGlow.java`, `ItemGlowRenderer.java`, `HandledScreenAccessor.java`, `nightfall.mixins.json` — hotbar/offhand and handled-inventory render paths, mixin registration, bounds, config-key compatibility and callback lifecycle checked; In-Game-Test remains open. The `Hotbar` toggle also controls offhand.
+- `DebugHud.java` — HUD output, BaseFinder dependency/getters, static counters, no settings/listeners/resources, and central error handling checked.
+- `LowHealthWarning.java` — threshold bounds, player-null/world-leave reset, hysteresis, notification queue and HUD preview checked.
+- `CustomCrosshair.java` — style modes, size/gap bounds, RGB masking and render guards checked; `Abstand` is used only in `Kreuz` mode.
 - `NotificationCenter.java` — synchronized queue and snapshot behavior checked.
 - `HudModule.java`, `Projection.java`, `Draw.java` — HUD transform and projection support checked; `Draw.line()` now restores its matrix in `finally`.
 - `Config.java`, `ListSetting.java`, `Nightfall.java` — setting persistence, lowercase list normalization, and client message/lifecycle event wiring checked.
@@ -132,10 +135,10 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 
 ## Constraints and open verification
 - Do not modify or optimize automated attack/targeting/aim/click/tap/Crystal/Trap/combo behavior.
-- `AutoPvp` visibly labels the option `Windcharge -> Mace`; no `Stun-Slam` label or separately registered Stun-Slam module was found in the inventory. The user's separate Stun-Slam definition remains unverified; do not add its combat sequence.
-- `DTap` remains separately registered and is not labeled `Single-Tap`. `ObiTrapBot` is separately registered. `CombatStatusHud` displays TrapCrit/KillAura target details and a Mace estimate, but no Crystal/DTap/ObiTrap status or floor/obsidian context.
+- `AutoPvp` visibly labels the option `Windcharge -> Mace`; no `Stun-Slam` label or separately registered Stun-Slam module was found in the inventory. The user defines Stun-Slam separately as axe shield-break followed by a Mace hit while airborne. This meaning is now documented in `NIGHTFALL/MODULES/AutoPvp.md`; implementation/registration is not confirmed and no sequence may be added.
+- `DTap` remains separately registered and is not labeled `Single-Tap`. `ObiTrapBot` remains separately registered. `CombatStatusHud` displays TrapCrit/KillAura target details and a Mace estimate, but no Crystal/DTap/ObiTrap/Windcharge detection status or floor/obsidian context. `CooldownHud` displays Wind Charge cooldown only, not a detection state.
 - `AutoPvp` labels its Pearl option `Pearl zum Gegner`; the prior code review confirmed it throws toward the opponent's landing point, not catches a Pearl. This remains a label/identity note only.
 - Watermark uses the player's game-profile name (`method_7334().name()`), not the display component.
 - In-game verification is required for visual behavior such as FakeLag ghost skin rendering.
-- No `src/test` directory or test suite was found. GitHub Actions run `44039685234` for documentation commit `5f7e942922c40f80c9534c93e151f3f16d226d98` completed successfully; its `gradle build --no-daemon` step passed on Java 21 / Gradle 9.2.0.
+- No Gradle wrapper or `src/test` test suite is present. GitHub Actions run `44039685234` on commit `5f7e942922c40f80c9534c93e151f3f16d226d98` completed successfully: the `gradle build --no-daemon` step passed on Java 21 / Gradle 9.2.0. Subsequent commits `e93fe8b`, `997db22` and `feed85b` are documentation-only; the exact current documentation head has not been rebuilt.
 - `ItemGlint` is not a current registered module/class; the active registration is `ItemGlow`. The old `NIGHTFALL/MODULES/ItemGlint.md` is retained as a historical note only.
