@@ -108,3 +108,4 @@ Der vollständige Auditstatus wird in `MODULE_AUDIT_PROGRESS.md` und `MODULE_IND
 - Die Meldung beschreibt nur Nähe, nicht Blickrichtung oder Absicht. Es gibt keine versteckte Spieler-Erkennung, keine zusätzlichen Netzwerkabfragen und keine Ermittlung interner Backend-Namen.
 - Direkte Verbindung über eine rohe IP oder einen anderen Alias kann nicht sicher HugoSMP zugeordnet werden; dann steht `HUGOSMP N/A`. Öffentlich dokumentierte Standard-Tabdaten geben keine eindeutige Unterserver-Zuordnung pro Spieler her.
 - Build- und In-Game-Tests für diesen neuen Status-/Nähepfad sind offen.
+- **Status-Text-Präzisierung:** Kein TAB-/WELT-Treffer heißt `NICHT GELISTET`, nicht `OFFLINE`; aus fehlender Sichtbarkeit wird kein sicherer Offline-Status abgeleitet.
