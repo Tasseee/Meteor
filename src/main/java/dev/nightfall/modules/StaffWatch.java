@@ -20,14 +20,19 @@ public final class StaffWatch extends HudModule {
    private final BoolSetting sortVisibleFirst = this.add(new BoolSetting("Sichtbare Treffer zuerst", true));
    private final BoolSetting showLegend = this.add(new BoolSetting("Legende anzeigen", true));
    private final BoolSetting showSubtitle = this.add(new BoolSetting("Untertitel anzeigen", true));
+   private final BoolSetting nearbyAlert = this.add(new BoolSetting("Nähe-Alarm", true));
 
    public StaffWatch() {
-      super("StaffWatch", "Modernes, verschiebbares HUD für manuell eingetragene Namen; nur clientseitige Präsenzhinweise.");
+      super("StaffWatch", "HugoSMP-Online- und aktuelle-Server-Hinweise für manuell eingetragene Namen.");
    }
 
    @Override
    protected int[] defaultPos(int sw, int sh) {
       return new int[]{8, 42};
+   }
+
+   public boolean nearbyAlertEnabled() {
+      return this.nearbyAlert.get();
    }
 
    @Override
@@ -47,42 +52,49 @@ public final class StaffWatch extends HudModule {
       List<String> names = this.orderedNames(this.staffNames.get());
       List<StaffHudPanel.Row> rows = new ArrayList<>();
       String empty = null;
-      int loaded = 0;
+      int online = 0;
 
       if (!hasWorld && !preview) {
          empty = "Keine Welt geladen";
       } else if (names.isEmpty()) {
          if (preview) {
-            rows.add(new StaffHudPanel.Row("Beispiel_Admin", "TAB + WELT", 0xFF4ADE80));
-            rows.add(new StaffHudPanel.Row("ModMaus", "TAB/NETZ", 0xFFFBBF24));
-            rows.add(new StaffHudPanel.Row("Helferlein", "KEINE QUELLE", COLOR_UNKNOWN));
+            rows.add(new StaffHudPanel.Row("Beispiel_Admin", "SERVER", 0xFF4ADE80));
+            rows.add(new StaffHudPanel.Row("ModMaus", "ONLINE", 0xFFFBBF24));
+            rows.add(new StaffHudPanel.Row("Helferlein", "OFFLINE", COLOR_UNKNOWN));
          } else {
             empty = "Keine Namen - /nf staff add <Name>";
          }
       } else {
          int limit = this.maxRows.getInt();
          for (String name : names) {
-            if (StaffPresence.loadedInWorld(name)) loaded++;
-            if (rows.size() >= limit) continue;
-            rows.add(StaffHudPanel.fromPresence(name));
+            if (StaffPresence.onlineOnHugoSmp(name)) online++;
+            if (rows.size() < limit) rows.add(StaffHudPanel.fromPresence(name));
          }
          if (names.size() > limit) {
             rows.add(new StaffHudPanel.Row("+" + (names.size() - limit) + " weitere", "MEHR", COLOR_UNKNOWN));
          }
       }
 
-      String badge = preview && names.isEmpty() ? "VORSCHAU" : loaded + "/" + names.size() + " lokal";
-      String subtitle = this.showSubtitle.get() ? "Tab-Einträge können netzwerkweit sein" : null;
+      String badge = preview && names.isEmpty()
+         ? "VORSCHAU"
+         : StaffPresence.isHugoSmpServer() ? online + " ONLINE" : "HUGOSMP N/A";
+      String subtitle = null;
+      if (this.showSubtitle.get()) {
+         subtitle = StaffPresence.isHugoSmpServer()
+            ? "ONLINE = HugoSMP-Tabliste · SERVER = deine Welt"
+            : "Verbinde dich über hugosmp.net für HugoSMP-Status";
+      }
+
       int[] size = StaffHudPanel.render(
          ctx,
          "STAFFWATCH",
          badge,
-         loaded > 0 ? 0xFF4ADE80 : 0xFFFBBF24,
+         online > 0 ? 0xFF4ADE80 : 0xFFFBBF24,
          subtitle,
          rows,
          empty,
-         "TAB/NETZ = gelistet, Backend unbekannt",
-         "WELT = Entity in deiner geladenen Welt",
+         "ONLINE = Eintrag in der HugoSMP-Spielerliste",
+         "SERVER = Entity in deiner aktuellen Welt",
          this.compactMode.get(),
          this.showLegend.get(),
          this.scale()
