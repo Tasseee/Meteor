@@ -118,3 +118,11 @@ Der vollständige Auditstatus wird in `MODULE_AUDIT_PROGRESS.md` und `MODULE_IND
 - Keine NoClip-/Kollisionsdeaktivierung: die Bewegung versucht, am Ziel seitlich vorbeizulaufen und kann nicht tatsächlich durch den Spielerkörper laufen.
 - Crit-Zustand wird bei Zielverlust, Modul-Deaktivierung und Weltwechsel zurückgesetzt. Config-Schlüssel der bestehenden Crit-Einstellung blieb zur Kompatibilität unverändert.
 - Build und In-Game-Tests bleiben offen; insbesondere Crit-Timing auf dem HugoSMP-Server und das Verhalten der seitlichen Bewegung müssen praktisch getestet werden.
+
+## Lauf 2026-11-17 – AutoPvP kontinuierliches Durchlaufen/Seitenwechseln
+
+- Drive-by-Nahkampfbewegung angepasst: `Drive-by Seitenwechsel` standardmäßig 2 Ticks, konfigurierbar von 1 bis 4 Ticks. Links-/Rechtsinput wechselt damit deutlich schneller.
+- Vorwärtsinput bleibt im Drive-by-Bereich bis auf 0,35 Blöcke Abstand aktiv, auch wenn der konfigurierte Stop-Abstand bereits unterschritten ist. Der bestehende Block-/Bodencheck (`safeForward`) bleibt als Begrenzung aktiv.
+- Spieler-Kollision wird nicht deaktiviert: Das Verhalten drückt nach vorne und versucht, durch seitlichen Wechsel am Ziel vorbeizukommen; echtes NoClip/Durchlaufen durch die Spieler-Hitbox ist damit nicht garantiert.
+- Doppelte `onWorldLeave()`-Methode in `AutoPvp.java` zu einem Handler zusammengeführt; Crit-/Drive-by-Reset und bisheriger Weltwechsel-Cleanup bleiben enthalten.
+- In-Game-Test und erfolgreicher Build für diesen Stand sind noch offen.
