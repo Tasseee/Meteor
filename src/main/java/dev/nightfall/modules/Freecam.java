@@ -132,10 +132,9 @@ public final class Freecam extends Module {
          if (this.mouseInitialized) {
             double dx = Math.max(-250.0, Math.min(250.0, this.cursorX[0] - this.lastMouseX));
             double dy = Math.max(-250.0, Math.min(250.0, this.cursorY[0] - this.lastMouseY));
-            // Keep horizontal yaw unchanged; invert only vertical pitch when enabled.
+            // Invert both mouse axes for Freecam: right increases yaw, down decreases pitch.
             cameraYaw = cameraYaw + (float)(dx * this.sensitivity.get());
-            float pitchDelta = (float)(dy * this.sensitivity.get());
-            cameraPitch += this.invertVertical.get() ? -pitchDelta : pitchDelta;
+            cameraPitch = cameraPitch - (float)(dy * this.sensitivity.get());
             cameraPitch = Math.max(-90.0F, Math.min(90.0F, cameraPitch));
          }
 
