@@ -1,12 +1,12 @@
 # Nightfall – Fortschritt
 
-**Aktueller Inventur-Abgleich:** `2b6a75c767149fa24686fbf604b12752f351bef7` (Branch `main`, 2026-11-17)  
+**Aktueller Inventur-Abgleich:** `9477a2a7eb519ae9cfd3c6466c3db0d0ad470dc6` (Branch `main`, 2026-11-17)  
 **Nutzungsanzeige:** `MODULE_USAGE.md` – lokale Aktivierungszahl und aktive Zeit in jeder ClickGUI-Modulzeile.  
 **Letzte Nightfall-Prüfungen:** `BaseFinder`, `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `ItemGlow`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch`, `AntiVanishHints` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk` (2026-11-16)  
 **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`  
 **SHA der Registrierungsquelle:** `7329859ce075c9708f749f30b00e904fdf523d6b`  
 **Bisheriges Audit-Ledger:** `MODULE_AUDIT_PROGRESS.md`  
-**SHA des Audit-Ledgers:** `281981cf98714c92b9e97b7fdcc0628eeafffbf6`
+**SHA des Audit-Ledgers:** `920aca808b134877c85bf434e99cd6a60ced2661`
 
 ## Audit-Protokoll
 
@@ -14,7 +14,7 @@
 - **2026-11-16 – HUD-/AntiVanish-Upgrade:** StaffWatch bietet konfigurierbare Zeilenanzahl (3–12), Kompaktmodus, Sortierung sichtbarer Treffer und Legenden-Schalter. AntiVanishHints wurde als verschiebbares/skaliertes HudModule mit konfigurierbarem Zeilenlimit und Tick-basiertem Cache umgesetzt. Beide Module nutzen ausschließlich manuell eingetragene Namen und clientseitig gelistete Tab-Profile bzw. geladene Welt-Entities; fehlende Sichtbarkeit wird nicht als Vanish-Beweis interpretiert. Build- und In-Game-Tests offen.
 - **2026-11-16 – Freecam-Maussteuerung:** Option `Vertikale Maus invertieren` ergänzt, Standard `AN`; horizontale Maussteuerung bleibt unverändert. Details und offene Tests in `NIGHTFALL/MODULES/Freecam.md`.
 
-Der vollständige Auditstatus wird in `MODULE_AUDIT_PROGRESS.md` und `MODULE_INDEX.md` gemeinsam gepflegt: 27 vollständig geprüft, 6 teilweise geprüft und 69 offen (102 Registrierungen). Codeprüfung allein bedeutet nicht automatisch vollständigen Auditabschluss.
+Der vollständige Auditstatus wird in `MODULE_AUDIT_PROGRESS.md` und `MODULE_INDEX.md` gemeinsam gepflegt: 32 vollständig geprüft, 6 teilweise geprüft und 64 offen (102 Registrierungen). Codeprüfung allein bedeutet nicht automatisch vollständigen Auditabschluss.
 
 **Wichtig:** Die 22 zuvor vollständig geprüften Module wurden in diesem Lauf um 5 weitere vollständig statisch geprüfte Module ergänzt; 6 Module bleiben teilweise geprüft und 69 offen. Im aktuellen Nightfall-Arbeitslauf wurden die oben aufgeführten Module anhand des Quellcodes geprüft. `BaseFinder` wurde zusätzlich mit Fokus auf Datenhaltung und Lifecycle geprüft. Für sie stehen Build- und In-Game-Tests noch aus. `AutoCraftPlanner` fasst doppelte Zutaten zusammen; `DroppedItemNotifier` verwendet seine temporäre UUID-Sammlung wieder; `BlockNotifier` hat ein korrigiertes Scanintervall und verwendet seine Positionssammlung wieder; `EspBase` verwendet jetzt die übergebenen Standardreichweiten; `AutoFish` unterstützt die Nebenhand, wenn dies freigegeben ist; `Minimap` stellt Matrix und Scissor-Clip nach Renderfehlern wieder her; `WorldLyrics` stellt nach Renderfehlern seine Transformationsmatrix wieder her; `SpotifyLyricsHud` schließt seinen OAuth-Executor und verarbeitet mehrere LRC-Zeitmarken; `AutoFarm` stellt den Hotbar-Slot auch bei Interaktionsfehlern wieder her; `LootDropFinder` bereinigt abgelaufene Marker-Höhendaten; `FreeLook` verwendet Cursor-Arrays wieder; `SpawnerProtect` löscht alte Spawnerpositionen beim Weltwechsel. Die 102 registrierten Einträge wurden mit `ModuleManager.init()` abgeglichen. Der Abgleich hat zwei fehlende aktuelle Registrierungen (`ItemGlow`, `GhostSkin`) und einen veralteten Ledger-Namen (`ItemGlint`) aufgedeckt. Die fünf Einträge `TextHuds.*` sind eigenständige registrierte Unterklassen und teilen sich `TextHuds.java`.
 
@@ -79,3 +79,17 @@ Der vollständige Auditstatus wird in `MODULE_AUDIT_PROGRESS.md` und `MODULE_IND
 - **Pearl:** `Pearl zum Gegner` bleibt als Wurffunktion dokumentiert, nicht als Fangfunktion.
 - **Build/Tests:** GitHub Actions run `44039685234` auf Commit `5f7e942922c40f80c9534c93e151f3f16d226d98` lief erfolgreich (`gradle build --no-daemon`, Java 21 / Gradle 9.2.0). Die späteren Commits in diesem Lauf sind Dokumentationsänderungen; der aktuelle Dokumentations-Head wurde nicht erneut gebaut. Kein Gradle-Wrapper und keine `src/test`-Suite vorhanden. Kein In-Game-Test ausgeführt.
 - **Änderungsumfang:** Nur Dokumentation/Inventur; keine Java-Änderungen und keine Änderungen an automatisierten Kampfabläufen.
+
+
+## Lauf 2026-11-17 – HUD-/Theme-Gesamtaudit
+
+- **Ausgangsstand:** `main` vor dem Lauf-Audit-Fix: `f593906f6f94aeb78eeaa3bf454c73b7b3ac83c0`; Registrierungsquelle `ModuleManager.java` mit Blob-SHA `7329859ce075c9708f749f30b00e904fdf523d6b`; 102 registrierte Instanzen.
+- **Vollständig statisch geprüft:** `ModuleList`, `Minimap`, `ScannerHud` (Config-/Anzeigename `ScannerStatus`), `FakeStats` und `GUITheme`. Gemeinsame Grundlagen `HudModule`, `Module`, `ModuleManager` und `Config` wurden für Lifecycle, HUD-Platzierung und Persistenz mit herangezogen.
+- **ModuleList:** Fehler bei der Default-Rechtsausrichtung gefunden und behoben: Die Default-X-Position berücksichtigt jetzt die Breite der aktiven Nicht-HUD-Modulnamen bereits vor dem ersten Draw. Java-Commit `9477a2a7eb519ae9cfd3c6466c3db0d0ad470dc6`; Blob-SHA `9cdb8209c18d7374e9c5f015e6b663fa4b385be8`. Dokumentation aktualisiert.
+- **Minimap:** Einstellungsgrenzen, Player-/World-Guards, BaseFinder-Lesezugriff und Matrix-/Scissor-Cleanup geprüft. Rotierte Reichweite 24 zeichnet bis zu 73×73 Zellen; Profiling und In-Game-Test bleiben offen.
+- **ScannerHud:** Status- und Fortschrittsanzeige sowie Config-Key `ScannerStatus` geprüft. GONE-Zähler läuft pro Render über die gespeicherten Marks; bei vielen Marks beobachten. In-Game-Test offen.
+- **FakeStats:** lokale, deutlich als Fake markierte HUD-Werte und Einstellungsgrenzen geprüft; keine Serverdatenänderung, keine eigenen Listener/Threads.
+- **GUITheme:** Presets, Custom-Farben, GUI-Integration, Aktivierungs-/Deaktivierungsverhalten und Tick-Anwendung geprüft. Kein klarer Fehler; GUI-Test offen.
+- **Build/Tests:** Kein lokaler Build möglich; kein Wrapper und keine `src/test`-Suite vorhanden. GitHub-Status für den neuen Code-Commit war zum Prüfzeitpunkt nicht als erfolgreicher Build nachgewiesen.
+- **Sicherheitsumfang:** Keine Kampf- oder Angriffsautomatisierung untersucht oder geändert.
+- **Fortschritt:** 32 vollständig geprüft, 6 teilweise geprüft, 64 offen (102 Registrierungen).
