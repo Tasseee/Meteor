@@ -19,6 +19,25 @@ public class PlayerEsp extends EntityScanEsp {
    }
 
    @Override
+   protected String nameOf(class_1297 entity) {
+      String name = super.nameOf(entity);
+      if (!(entity instanceof class_1657)) return name;
+
+      var network = mc.method_1562();
+      if (network == null) return name + " §7Ping: N/A";
+
+      for (net.minecraft.class_640 entry : network.method_45732()) {
+         if (entry != null && entry.method_2966() != null
+            && name.equalsIgnoreCase(entry.method_2966().name())) {
+            int ping = Math.max(0, entry.method_2959());
+            return name + " §7" + ping + " ms";
+         }
+      }
+
+      return name + " §7Ping: N/A";
+   }
+
+   @Override
    protected boolean accept(class_1297 e) {
       return e instanceof class_1657;
    }
