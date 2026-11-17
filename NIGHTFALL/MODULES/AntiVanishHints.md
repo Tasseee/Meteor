@@ -3,7 +3,9 @@
 - **Modulname:** `AntiVanishHints`
 - **Kategorie:** `HUD` (über `HudModule`)
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/AntiVanishHints.java`
-- **Quellcode-SHA:** `9ed794839c571599ec5a7f596617551d219dde23`
+- **Quellcode-SHA:** `dfec4af070522db1385a52b524f2b22b7096d10c`
+- **Gemeinsamer Renderer:** `src/main/java/dev/nightfall/modules/StaffHudPanel.java`
+- **Renderer-SHA:** `eaeaf1f7e8b4a0dac7fbbf9adfeda2eecadeed88`
 - **Registrierung:** `src/main/java/dev/nightfall/module/ModuleManager.java`
 - **Gemeinsame Datenquelle:** `src/main/java/dev/nightfall/modules/StaffPresence.java`
 - **Status:** Code aktualisiert und dokumentiert; Build- und In-Game-Test offen
@@ -25,6 +27,8 @@ Wenn `StaffWatch` aktiv ist, blendet `AntiVanishHints` sein eigenes Panel aus, d
 |---|---:|---|
 | `Max. HUD-Zeilen` | 5 | 3–10 sichtbare Namen; Zähler zeigt sichtbare/gesamte Einträge |
 | `Kompaktes HUD` | AUS | Reduziert Kopf- und Zeilenhöhe |
+| `Legende anzeigen` | AN | Schaltet die Fußzeilenhinweise ein/aus (im Kompaktmodus ausgeblendet) |
+| `Untertitel anzeigen` | AN | Schaltet den erklärenden Untertitel ein/aus |
 
 Beide Einstellungen sind normale `Setting`-Einträge und werden über die vorhandene Config-Verwaltung gespeichert.
 
@@ -43,7 +47,7 @@ Ist der Netzwerkhandler nicht verfügbar, kennzeichnet das HUD die fehlende Tab-
 
 - Das Modul erbt von `HudModule`, gehört damit zur HUD-Kategorie und kann im HUD-Editor verschoben und skaliert werden.
 - Standardposition: `(8, 90)`.
-- Das Panel verwendet das aktive `Theme`-Farbschema und passt seine Höhe an Zeilenlimit und Kompaktmodus an.
+- Das Panel verwendet den gemeinsamen `StaffHudPanel`-Renderer mit aktivem `Theme`-Farbschema, Akzentkante, Zähler-Badge, Status-Pills und Zeilenhervorhebung. Die Höhe passt sich an Zeilenlimit und Kompaktmodus an. `Legende anzeigen` und `Untertitel anzeigen` steuern optionale Erklärungen.
 - `ModuleManager.tick()` aktualisiert `StaffPresence` einmal zentral pro Client-Tick, wenn StaffWatch oder AntiVanishHints aktiv ist. Beide HUD-Module lesen denselben Snapshot; `draw()` führt keine Tab-/Entity-Schleifen aus.
 - `onWorldLeave()` setzt den gemeinsamen Snapshot zurück. Sind beide Module deaktiviert, wird keine Präsenzabfrage ausgeführt.
 - Tab-Einträge, Profile, Profile-Namen, Welt-Spieler und Entity-Profile werden vor dem Zugriff auf fehlende Werte geprüft.
@@ -73,3 +77,10 @@ Ist der Netzwerkhandler nicht verfügbar, kennzeichnet das HUD die fehlende Tab-
 - Die Aktualisierung erfolgt zentral einmal pro Client-Tick in `ModuleManager.tick()`; doppelte Scans der Tab-Liste und der Welt-Entities entfallen.
 - AntiVanishHints filtert Einträge ohne sichtbaren TAB-/WELT-Treffer heraus und zeigt stattdessen `Nichts sichtbar – kein Beweis`.
 - `TAB/NETZ` ist kein Unterservernachweis. `WELT` bedeutet nur, dass die Entity aktuell in der Client-Welt geladen ist.
+
+## Gemeinsames HUD-Design (2026-11-17)
+
+- Verwendet denselben `StaffHudPanel`-Renderer wie StaffWatch; es gibt keine zweite Renderimplementierung.
+- Dunkles Theme-Panel, Akzentleiste, Status-Pills, Zähler-Badge und Vorschauzeilen im HUD-Editor.
+- Das Modul bleibt im normalen Spiel ausgeblendet, solange StaffWatch aktiv ist; im HUD-Editor bleibt es für getrennte Positionierung sichtbar.
+- Es werden keine zusätzlichen Netzwerkdaten gesammelt. `TAB/NETZ` enthält keine Information über den Unterserver eines Spielers.
