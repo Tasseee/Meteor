@@ -6,7 +6,7 @@
 - **Quellcode-SHA StaffWatch:** `6540dd03044809e53142736768919c8daa09c06d`
 - **Tab-API-Änderung:** `getListedPlayerListEntries()` / `method_45732()`
 - **Quellcode-SHA StaffPresence:** `0685ea75c3f989b54d22baabf1b5c2f84ffa45ca`
-- **Quellcode-SHA StaffHudPanel:** `466201d2bafaa3eb94d584a0e99df2a9baaecd10`
+- **Quellcode-SHA StaffHudPanel:** `3a29a950f554d831c3832c2033a2b2f7fb075f26`
 - **Quellcode-SHA Commands:** `59afd025d8e0f718488ed595b92cd67673fe6973`
 - **Quellcode-SHA AntiVanishHints:** `dfec4af070522db1385a52b524f2b22b7096d10c`
 - **Mitgeprüfte Dateien:** `ListSetting.java`, `Commands.java`, `Config.java`, `Nightfall.java`, `ModuleManager.java`, `AntiVanishHints.java`
@@ -181,7 +181,7 @@ StaffWatch erkennt eine Verbindung zu HugoSMP über die offizielle Adresse `hugo
 |---|---|
 | `ONLINE` | Der Name steht in der vom verbundenen HugoSMP-Server gelieferten gelisteten Tab-Spielerliste. |
 | `SERVER` | Eine passende Spieler-Entity ist in deiner aktuell geladenen Client-Welt vorhanden. Das ist ein Hinweis auf denselben verbundenen Spielserver/Backend. |
-| `OFFLINE` | HugoSMP-Verbindung und Tab-Daten sind verfügbar, aber weder Tab-Profil noch Entity liefern einen Treffer. |
+| `NICHT GELISTET` | HugoSMP-Verbindung und Tab-Daten sind verfügbar, aber weder Tab-Profil noch Entity liefern einen Treffer; das bestätigt keinen Offline-Status. |
 | `TAB N/A` | Der Netzwerkhandler bzw. die Tab-Datenquelle ist nicht verfügbar. |
 | `HUGOSMP N/A` | Die aktuelle Serveradresse ist nicht als `hugosmp.net` erkannt. |
 
