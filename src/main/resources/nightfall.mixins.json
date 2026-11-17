@@ -14,7 +14,8 @@
     "AutoShieldNetworkMixin",
     "FakeLagNetworkMixin",
     "FakeLagAttackMixin",
-    "HandledScreenAccessor"
+    "HandledScreenAccessor",
+    "ItemGlowMeshMixin"
   ],
   "injectors": {
     "defaultRequire": 1
