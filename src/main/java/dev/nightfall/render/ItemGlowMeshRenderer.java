@@ -11,7 +11,6 @@ import net.minecraft.class_4588;
 import net.minecraft.class_4597;
 import net.minecraft.class_777;
 import net.minecraft.class_811;
-import net.minecraft.class_310;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -83,7 +82,7 @@ public final class ItemGlowMeshRenderer {
 
       if (edges.isEmpty()) return;
 
-      int rgb = module.color();
+      int rgb = module.color(0.0F);
       int red = rgb >> 16 & 0xFF;
       int green = rgb >> 8 & 0xFF;
       int blue = rgb & 0xFF;
