@@ -5,6 +5,7 @@ import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.NumberSetting;
+import java.awt.Color;
 import net.minecraft.class_310;
 import net.minecraft.class_332;
 
@@ -13,10 +14,14 @@ public final class Atmosphere extends Module {
    private final NumberSetting density = this.add(new NumberSetting("Nebeldichte", 0.40, 0.0, 1.0, 0.01));
    private final NumberSetting vignette = this.add(new NumberSetting("Vignette", 0.60, 0.0, 1.0, 0.01));
    private final BoolSetting particles = this.add(new BoolSetting("Partikel", true));
-   private final NumberSetting particleAmount = this.add(new NumberSetting("Partikel-Anzahl", 60.0, 0.0, 150.0, 5.0));
+   private final NumberSetting particleAmount = this.add(new NumberSetting("Partikel-Anzahl", 70.0, 0.0, 200.0, 5.0));
+   private final BoolSetting rainbow = this.add(new BoolSetting("Regenbogen", false));
+   private final BoolSetting breathing = this.add(new BoolSetting("Atmen", true));
+   private final BoolSetting lightRays = this.add(new BoolSetting("Lichtstrahlen", true));
+   private final NumberSetting rainbowSpeed = this.add(new NumberSetting("Regenbogen-Tempo", 0.25, 0.02, 1.5, 0.01));
 
    public Atmosphere() {
-      super("Atmosphere", "Farbiger Nebel, wandernde Dunstbänder, Vignette und Leuchtpartikel.", Category.VISUALS);
+      super("Atmosphere", "Farbiger Nebel mit wandernden Dunstbändern, Lichtstrahlen, Vignette und Leuchtpartikeln.", Category.VISUALS);
    }
 
    public void renderAtmosphere(class_332 context) {
@@ -25,16 +30,19 @@ public final class Atmosphere extends Module {
 
       int width = context.method_51421();
       int height = context.method_51443();
-      int rgb = this.color.rgb();
-      float fog = this.density.get().floatValue();
       double time = (System.nanoTime() % 1_000_000_000_000L) / 1.0E9;
+      int rgb = this.currentColor();
+      float breath = this.breathing.get() ? 0.85F + 0.15F * (float)Math.sin(time * 0.8) : 1.0F;
+      float fog = this.density.get().floatValue() * breath;
 
+      // Soft global color wash.
       context.method_25294(0, 0, width, height, argb(fog * 0.30F, rgb));
 
+      // Five wide, slowly travelling mist bands.
       int clear = argb(0.0F, rgb);
-      int haze = argb(fog * 0.22F, rgb);
-      for (int i = 0; i < 4; i++) {
-         float centerY = height * (0.15F + 0.23F * i)
+      int haze = argb(fog * 0.24F, rgb);
+      for (int i = 0; i < 5; i++) {
+         float centerY = height * (0.10F + 0.20F * i)
             + (float)Math.sin(time * 0.35 + i * 1.7) * height * 0.06F;
          int half = (int)(height * 0.22F);
          int top = (int)centerY - half;
@@ -44,53 +52,85 @@ public final class Atmosphere extends Module {
          context.method_25296(0, middle, width, bottom, haze, clear);
       }
 
+      // Vertical soft light shafts, strongest near the top.
+      if (this.lightRays.get()) {
+         int bright = mix(rgb, 0xFFFFFF, 0.35F);
+         int subBands = 8;
+         for (int i = 0; i < 5; i++) {
+            float centerX = width * (0.12F + 0.76F * hash(i * 11 + 5))
+               + (float)Math.sin(time * 0.25 + i * 2.0) * width * 0.05F;
+            int halfWidth = (int)(width * (0.035F + 0.03F * hash(i * 3 + 1)));
+            float flicker = 0.6F + 0.4F * (float)Math.sin(time * 0.9 + i * 1.9);
+            int stripeWidth = Math.max(1, halfWidth * 2 / subBands);
+            for (int j = 0; j < subBands; j++) {
+               float distance = (j + 0.5F - subBands / 2.0F) / (subBands / 2.0F);
+               float profile = (float)Math.exp(-distance * distance * 2.2);
+               int x = (int)centerX - halfWidth + j * stripeWidth;
+               context.method_25296(
+                  x, 0, x + stripeWidth, (int)(height * 0.85F),
+                  argb(fog * 0.30F * profile * flicker, bright),
+                  argb(0.0F, bright)
+               );
+            }
+         }
+      }
+
+      // Darkened edges with soft horizontal and vertical fades.
       float edgeStrength = this.vignette.get().floatValue() * 0.75F;
+      if (this.breathing.get()) edgeStrength *= 0.9F + 0.1F * (float)Math.sin(time * 0.8 + 1.0);
       if (edgeStrength > 0.001F) {
          int dark = scale(rgb, 0.55F);
-         int bandX = (int)(width * 0.22F);
-         int bandY = (int)(height * 0.22F);
+         int bandX = (int)(width * 0.24F);
+         int bandY = (int)(height * 0.24F);
          context.method_25296(0, 0, width, bandY, argb(edgeStrength, dark), argb(0.0F, dark));
          context.method_25296(0, height - bandY, width, height, argb(0.0F, dark), argb(edgeStrength, dark));
 
          int steps = 20;
          for (int i = 0; i < steps; i++) {
             float fade = 1.0F - i / (float)steps;
-            int c = argb(edgeStrength * fade * fade, dark);
+            int edgeColor = argb(edgeStrength * fade * fade, dark);
             int x0 = i * bandX / steps;
             int x1 = (i + 1) * bandX / steps;
-            context.method_25294(x0, 0, x1, height, c);
-            context.method_25294(width - x1, 0, width - x0, height, c);
+            context.method_25294(x0, 0, x1, height, edgeColor);
+            context.method_25294(width - x1, 0, width - x0, height, edgeColor);
          }
       }
 
+      // Floating particles with tiny halos and pulsing brightness.
       if (this.particles.get()) {
-         int amount = this.particleAmount.getInt();
+         int count = this.particleAmount.getInt();
          int bright = mix(rgb, 0xFFFFFF, 0.5F);
-         for (int i = 0; i < amount; i++) {
-            float sx = hash(i * 2 + 1);
-            float sy = hash(i * 2 + 2);
+         for (int i = 0; i < count; i++) {
+            float startX = hash(i * 2 + 1);
+            float startY = hash(i * 2 + 2);
             float speed = 0.02F + hash(i * 7 + 3) * 0.05F;
             int size = 1 + (int)(hash(i * 5 + 4) * 2.5F);
-            float px = sx * width + (float)Math.sin(time * 0.6 + i) * 14.0F;
-            float py = (((sy - (float)(time * speed)) % 1.0F) + 1.0F) % 1.0F * height;
+            int x = (int)(startX * width + (float)Math.sin(time * 0.6 + i) * 14.0F);
+            int y = (int)((((startY - (float)(time * speed)) % 1.0F) + 1.0F) % 1.0F * height);
             float twinkle = 0.5F + 0.5F * (float)Math.sin(time * 2.0 + i * 1.3);
-            int x = (int)px;
-            int y = (int)py;
-            context.method_25294(x - 1, y - 1, x + size + 1, y + size + 1, argb(0.10F * twinkle, rgb));
+            context.method_25294(x - 2, y - 2, x + size + 2, y + size + 2, argb(0.10F * twinkle, rgb));
             context.method_25294(x, y, x + size, y + size, argb(0.15F + 0.55F * twinkle, bright));
          }
       }
    }
 
-   private static float hash(int n) {
-      double value = Math.sin(n * 12.9898) * 43758.5453;
-      return (float)(value - Math.floor(value));
+   private int currentColor() {
+      if (!this.rainbow.get()) return this.color.rgb();
+      double time = System.nanoTime() / 1_000_000_000.0;
+      return Color.HSBtoRGB((float)(time * this.rainbowSpeed.get()), 0.85F, 1.0F) & 0xFFFFFF;
+   }
+
+   private static float hash(int value) {
+      double x = Math.sin(value * 12.9898) * 43758.5453;
+      return (float)(x - Math.floor(x));
    }
 
    private static int scale(int rgb, float factor) {
-      return rgb(Math.round((rgb >> 16 & 0xFF) * factor),
+      return rgb(
+         Math.round((rgb >> 16 & 0xFF) * factor),
          Math.round((rgb >> 8 & 0xFF) * factor),
-         Math.round((rgb & 0xFF) * factor));
+         Math.round((rgb & 0xFF) * factor)
+      );
    }
 
    private static int mix(int first, int second, float amount) {
