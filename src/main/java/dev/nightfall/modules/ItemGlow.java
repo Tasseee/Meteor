@@ -20,6 +20,8 @@ public final class ItemGlow extends Module {
    private final NumberSetting positionX = this.add(new NumberSetting("Position X", 0.74, 0.50, 0.95, 0.01));
    private final NumberSetting positionY = this.add(new NumberSetting("Position Y", 0.80, 0.50, 0.95, 0.01));
    private final NumberSetting rainbowSpeed = this.add(new NumberSetting("Regenbogen-Tempo", 0.25, 0.02, 1.5, 0.01));
+   private final BoolSetting modelOutline = this.add(new BoolSetting("3D-Kontur", true));
+   private final NumberSetting outlineStrength = this.add(new NumberSetting("Kontur-Stärke", 1.0, 0.2, 2.0, 0.1));
 
    public ItemGlow() {
       super("Item Glow", "Neon-Aura mit Ring und Funken um gehaltene Items sowie Hotbar- und Inventar-Symbole.", Category.VISUALS);
@@ -43,4 +45,6 @@ public final class ItemGlow extends Module {
    public boolean inventory() { return this.inventory.get(); }
    public float positionX() { return this.positionX.get().floatValue(); }
    public float positionY() { return this.positionY.get().floatValue(); }
+   public boolean modelOutline() { return this.modelOutline.get(); }
+   public float outlineStrength() { return this.outlineStrength.get().floatValue(); }
 }
