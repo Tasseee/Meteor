@@ -33,7 +33,7 @@ public class AutoPvp extends Module {
    private final BoolSetting driveBy = this.add(new BoolSetting("An Gegner vorbeilaufen", true));
    private final NumberSetting driveBySwitchTicks = this.add(new NumberSetting("Drive-by Seitenwechsel", 2.0, 1.0, 4.0, 1.0));
    private final BoolSetting jump = this.add(new BoolSetting("Springen bei Hindernis", true));
-   private final NumberSetting critJumpDelay = this.add(new NumberSetting("Crit-Sprungdelay", 0.0, 0.0, 20.0, 1.0));
+   private final BoolSetting dauerCrit = this.add(new BoolSetting("Dauer-Crit", true));
    private final BoolSetting useWindchargeMace = this.add(new BoolSetting("Windcharge -> Mace", false));
    private final BoolSetting useShieldBreak = this.add(new BoolSetting("Schild mit Axt kontern", true));
    private final BoolSetting useAutoGap = this.add(new BoolSetting("AutoGap integrieren", true));
@@ -856,6 +856,7 @@ public class AutoPvp extends Module {
                // Sword crits also work while CrystalAura is integrated; an active
                // crystal-combo phase returned above and owns its own movement.
                boolean critMode = this.swordCrits.get()
+                  && this.dauerCrit.get()
                   && distance <= this.reach.get() + 0.8 && this.clearAbove(p, 2) && !obsidianInPath;
                if (critMode) {
                   mc.field_1690.field_1867.method_23481(false);
@@ -873,19 +874,13 @@ public class AutoPvp extends Module {
                   mc.field_1690.field_1894.method_23481(distance > this.stop.get() + 0.35);
 
                   if (p.method_24828()) {
-                     // Nach einer Landung erst den einstellbaren Delay abwarten.
-                     // Der Wert ist in Ticks (20 Ticks = 1 Sekunde).
-                     if (this.wasAirborne) {
-                        this.critJumpDelayTicks = this.critJumpDelay.getInt();
-                        this.wasAirborne = false;
-                     }
-
-                     if (this.critJumpDelayTicks > 0) {
-                        this.critJumpDelayTicks--;
-                        mc.field_1690.field_1903.method_23481(false);
-                     } else {
-                        mc.field_1690.field_1903.method_23481(p.method_7261(0.5F) >= 0.98F);
-                     }
+                     // Dauer-Crit: sobald der Spieler den Boden berührt,
+                     // wird ohne zusätzlichen Warte-Tick wieder gesprungen.
+                     // Der Crit-Sprung wird erst ausgelöst, wenn der Angriff
+                     // wieder bereit ist, damit jeder Sprung für einen Crit genutzt wird.
+                     this.critJumpDelayTicks = 0;
+                     this.wasAirborne = false;
+                     mc.field_1690.field_1903.method_23481(true);
                   } else {
                      this.wasAirborne = true;
                      mc.field_1690.field_1903.method_23481(false);
