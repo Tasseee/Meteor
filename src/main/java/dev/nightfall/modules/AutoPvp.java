@@ -812,13 +812,16 @@ public class AutoPvp extends Module {
                this.updateShieldAxe(target);
                this.driving = true;
             } else {
-               boolean obsidianInPath = this.obsidianAhead(p, target);
+               // AutoPvP soll immer aktiv auf den Gegner zulaufen.
+               // Die Obsidian-Prüfung gilt ausschließlich für CrystalAura:
+               // ohne CrystalAura wird Obsidian niemals als Grund zum Stehenbleiben
+               // oder Ausweichen verwendet.
+               boolean obsidianInPath = this.useCrystalAura.get() && this.obsidianAhead(p, target);
                int obsidianSide = obsidianInPath ? this.obsidianDetourSide(p, target) : 0;
                boolean detouring = obsidianSide != 0;
                boolean driveByActive = this.driveBy.get() && !detouring
                   && distance <= this.reach.get() + 0.8 && distance > 0.35;
-               boolean approach = (distance > this.stop.get() && (detouring || this.safeForward(p, target)))
-                  || (driveByActive && this.safeForward(p, target));
+               boolean approach = distance > this.stop.get() || detouring;
                mc.field_1690.field_1894.method_23481(approach);
                // Keep sprint during approach/CrystalAura combos; crit mode below
                // releases it as soon as a sword critical hit is being prepared.
