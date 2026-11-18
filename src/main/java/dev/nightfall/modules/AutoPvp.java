@@ -38,7 +38,7 @@ public class AutoPvp extends Module {
    private final BoolSetting useShieldBreak = this.add(new BoolSetting("Schild mit Axt kontern", true));
    private final BoolSetting useAutoGap = this.add(new BoolSetting("AutoGap integrieren", true));
    private final BoolSetting useAutoTotem = this.add(new BoolSetting("AutoTotem integrieren", true));
-   private final BoolSetting useCrystalAura = this.add(new BoolSetting("CrystalAura integrieren", true));
+   private final BoolSetting useCrystalAura = this.add(new BoolSetting("CrystalAura integrieren", false));
    private final BoolSetting useAutoAnchor = this.add(new BoolSetting("AutoAnchor integrieren", false));
    private final BoolSetting useMaceAssist = this.add(new BoolSetting("MaceAssist integrieren", true));
    private final BoolSetting pearlChase = this.add(new BoolSetting("Pearl zum Gegner", true));
@@ -57,7 +57,6 @@ public class AutoPvp extends Module {
    private boolean wasJump;
    private boolean ownsAutoGap;
    private boolean ownsAutoTotem;
-   private boolean ownsCrystalAura;
    private boolean ownsAutoAnchor;
    private boolean ownsMaceAssist;
    private int strafeDir = 1;
@@ -108,7 +107,6 @@ public class AutoPvp extends Module {
    private void syncAssistModules() {
       this.ownsAutoGap = this.syncModule(AutoGap.class, this.useAutoGap.get(), this.ownsAutoGap);
       this.ownsAutoTotem = this.syncModule(AutoTotem.class, this.useAutoTotem.get(), this.ownsAutoTotem);
-      this.ownsCrystalAura = this.syncModule(CrystalAura.class, this.useCrystalAura.get(), this.ownsCrystalAura);
       this.ownsAutoAnchor = this.syncModule(AutoAnchor.class, this.useAutoAnchor.get(), this.ownsAutoAnchor);
       this.ownsMaceAssist = this.syncModule(MaceAssist.class, this.useMaceAssist.get(), this.ownsMaceAssist);
    }
@@ -134,10 +132,9 @@ public class AutoPvp extends Module {
    private void disableOwnedAssistModules() {
       this.disableIfOwned(AutoGap.class, this.ownsAutoGap);
       this.disableIfOwned(AutoTotem.class, this.ownsAutoTotem);
-      this.disableIfOwned(CrystalAura.class, this.ownsCrystalAura);
       this.disableIfOwned(AutoAnchor.class, this.ownsAutoAnchor);
       this.disableIfOwned(MaceAssist.class, this.ownsMaceAssist);
-      this.ownsAutoGap = this.ownsAutoTotem = this.ownsCrystalAura = this.ownsAutoAnchor = this.ownsMaceAssist = false;
+      this.ownsAutoGap = this.ownsAutoTotem = this.ownsAutoAnchor = this.ownsMaceAssist = false;
    }
 
    private <T extends Module> void disableIfOwned(Class<T> type, boolean owned) {

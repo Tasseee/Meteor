@@ -2,7 +2,6 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
-import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.CombatUtil;
@@ -26,331 +25,150 @@ public class CrystalAura extends Module {
    private final NumberSetting placeRange = this.add(new NumberSetting("Platzier-Reichweite", 4.5, 2.0, 6.0, 0.5));
    private final NumberSetting breakRange = this.add(new NumberSetting("Zerstoer-Reichweite", 4.5, 2.0, 6.0, 0.5));
    private final NumberSetting placeDelay = this.add(new NumberSetting("Platzier-Delay (Ticks)", 0.0, 0.0, 20.0, 1.0));
-   private final NumberSetting placementsPerTick = this.add(new NumberSetting("Kristalle pro Tick", 4.0, 1.0, 8.0, 1.0));
    private final NumberSetting breakDelay = this.add(new NumberSetting("Zerstoer-Delay (Ticks)", 0.0, 0.0, 20.0, 1.0));
-   private final NumberSetting crystalHeight = this.add(new NumberSetting("Crystal-Mindesthoehe", 0.75, 0.0, 2.5, 0.05));
-   private final NumberSetting obsidianHeight = this.add(new NumberSetting("Obsidian-Mindesthoehe", 0.05, 0.0, 2.5, 0.05));
    private final BoolSetting place = this.add(new BoolSetting("Platzieren", true));
    private final BoolSetting breakC = this.add(new BoolSetting("Zerstoeren", true));
    private final BoolSetting autoSwitch = this.add(new BoolSetting("Auto-Switch", true));
-   private final BoolSetting placeObsidianOnHit = this.add(new BoolSetting("Obsidian automatisch", true));
-   private final NumberSetting obsidianSpacing = this.add(new NumberSetting("Abstand zwischen Obsidian", 2.0, 1.0, 6.0, 1.0));
-   private int trackedTargetId = -1;
-   private float lastTargetHealth = Float.NaN;
-   private int placeT;
-   private int breakT;
-   private boolean awaitingObsidian;
-   private boolean pendingObsidianHit;
+
+   private int placeTicks;
+   private int breakTicks;
+
+   public CrystalAura() {
+      super("CrystalAura", "Platziert und zerstoert End Crystals auf gueltigen Obsidian- und Bedrock-Bloecken.", Category.COMBAT);
+   }
 
    @Override
    public void onWorldLeave() {
-      this.placeT = 0;
-      this.breakT = 0;
-      this.trackedTargetId = -1;
-      this.lastTargetHealth = Float.NaN;
-      this.awaitingObsidian = false;
-      this.pendingObsidianHit = false;
+      this.resetTimers();
    }
 
    @Override
    protected void onDisable() {
-      this.placeT = 0;
-      this.breakT = 0;
-      this.trackedTargetId = -1;
-      this.lastTargetHealth = Float.NaN;
-      this.awaitingObsidian = false;
-      this.pendingObsidianHit = false;
+      this.resetTimers();
    }
 
-   public CrystalAura() {
-      super("CrystalAura", "Platziert und zerstoert End Crystals.", Category.COMBAT);
+   private void resetTimers() {
+      this.placeTicks = 0;
+      this.breakTicks = 0;
    }
 
+   private class_1511 findCrystalToBreak(class_746 player) {
+      class_1511 best = null;
+      double bestDistance = Double.MAX_VALUE;
 
-   private class_2338 findHitObsidianBase(class_746 player, class_1657 target) {
-      double dx = target.method_23317() - player.method_23317();
-      double dz = target.method_23321() - player.method_23321();
-      int forwardX = Math.abs(dx) >= Math.abs(dz) ? (dx >= 0 ? 1 : -1) : 0;
-      int forwardZ = forwardX == 0 ? (dz >= 0 ? 1 : -1) : 0;
-      int sideX = -forwardZ;
-      int sideZ = forwardX;
-      class_2338 feet = target.method_24515();
-      // Keep obsidian directly around the target: one block sideways is
-      // usually closer to the hitbox and gives the crystal a stronger blast.
-      class_2338[] candidates = new class_2338[] {
-         feet.method_10069(sideX, -1, sideZ),
-         feet.method_10069(-sideX, -1, -sideZ),
-         feet.method_10069(forwardX, -1, forwardZ),
-         feet.method_10069(-forwardX, -1, -forwardZ),
-         feet.method_10069(sideX + forwardX, -1, sideZ + forwardZ),
-         feet.method_10069(sideX - forwardX, -1, sideZ - forwardZ),
-         feet.method_10069(-sideX + forwardX, -1, -sideZ + forwardZ),
-         feet.method_10069(-sideX - forwardX, -1, -sideZ - forwardZ)
-      };
-      for (class_2338 base : candidates) {
-         class_2680 state = mc.field_1687.method_8320(base);
-         class_2338 support = base.method_10074();
-         if (!state.method_45474()) continue;
-         if (mc.field_1687.method_8320(support).method_26220(mc.field_1687, support).method_1110()) continue;
-         if (!mc.field_1687.method_8320(base.method_10084()).method_26215()
-            || !mc.field_1687.method_8320(base.method_10084().method_10084()).method_26215()) continue;
-         class_238 space = new class_238(base.method_10263(), base.method_10264(),
-            base.method_10260(), base.method_10263() + 1.0, base.method_10264() + 3.0,
-            base.method_10260() + 1.0);
-         if (!mc.field_1687.method_8335(null, space).isEmpty()) continue;
-         return base;
-      }
-      return null;
-   }
-
-   private class_2338 findSecondHitObsidianBase(class_746 player, class_2338 first) {
-      int distance = this.obsidianSpacing.getInt();
-      int[][] directions = {{1,0},{-1,0},{0,1},{0,-1}};
-      for (int[] direction : directions) {
-         class_2338 base = first.method_10069(direction[0] * distance, 0, direction[1] * distance);
-         class_2680 state = mc.field_1687.method_8320(base);
-         class_2338 support = base.method_10074();
-         if (!state.method_45474()) continue;
-         if (mc.field_1687.method_8320(support).method_26220(mc.field_1687, support).method_1110()) continue;
-         if (!mc.field_1687.method_8320(base.method_10084()).method_26215()
-            || !mc.field_1687.method_8320(base.method_10084().method_10084()).method_26215()) continue;
-         class_238 space = new class_238(base.method_10263(), base.method_10264(),
-            base.method_10260(), base.method_10263() + 1.0, base.method_10264() + 3.0,
-            base.method_10260() + 1.0);
-         if (!mc.field_1687.method_8335(null, space).isEmpty()) continue;
-         if (player.method_33571().method_1022(class_243.method_24953(base)) > this.placeRange.get() + 1.0) continue;
-         return base;
-      }
-      return null;
-   }
-
-   private boolean placeObsidianAt(class_746 player, class_2338 base) {
-      if (mc.field_1687.method_8320(base).method_27852(class_2246.field_9987)) return true;
-      int slot = InvUtil.ensureHotbar(class_1802.field_8281);
-      if (slot < 0) return false;
-      int previousSlot = InvUtil.selected();
-      boolean switched = slot != previousSlot;
-      if (switched) InvUtil.select(slot);
-      boolean accepted = false;
-      try {
-         for (class_2350 face : class_2350.values()) {
-            class_2338 neighbor = base.method_10093(face);
-            class_2680 neighborState = mc.field_1687.method_8320(neighbor);
-            if (neighborState.method_26220(mc.field_1687, neighbor).method_1110()) continue;
-            class_2350 clickedSide = face.method_10153();
-            class_243 hit = class_243.method_24953(neighbor)
-               .method_1031(clickedSide.method_10148() * 0.5, clickedSide.method_10164() * 0.5, clickedSide.method_10165() * 0.5);
-            class_3965 result = new class_3965(hit, clickedSide, neighbor, false);
-            if (mc.field_1761.method_2896(player, class_1268.field_5808, result).method_23665()) {
-               player.method_6104(class_1268.field_5808);
-               accepted = true;
-               break;
+      for (class_1297 entity : mc.field_1687.method_18112()) {
+         if (entity instanceof class_1511 crystal && crystal.method_5805()
+            && player.method_5739(crystal) <= this.breakRange.get()) {
+            double distance = crystal.method_5858(player);
+            if (distance < bestDistance) {
+               bestDistance = distance;
+               best = crystal;
             }
          }
-      } finally {
-         if (switched) InvUtil.select(previousSlot);
       }
-      return accepted;
+      return best;
    }
 
-   private boolean isTargetAirborne(class_1657 target) {
-      return !target.method_24828();
+   private boolean crystalSpaceFree(class_2338 base) {
+      class_238 space = new class_238(
+         base.method_10263(), base.method_10264() + 1.0, base.method_10260(),
+         base.method_10263() + 1.0, base.method_10264() + 3.0, base.method_10260() + 1.0
+      );
+      return mc.field_1687.method_8320(base.method_10084()).method_26215()
+         && mc.field_1687.method_8320(base.method_10084().method_10084()).method_26215()
+         && mc.field_1687.method_8335(null, space).isEmpty();
    }
 
-   // A target clearly above our player can be comboed even if it is not
-   // currently in the falling/airborne state.
-   private boolean isTargetElevated(class_746 player, class_1657 target) {
-      return target.method_23318() - player.method_23318() >= 1.5;
+   private class_2338 findBestBase(class_746 player, class_1657 target) {
+      class_2338 origin = player.method_24515();
+      int radius = (int)Math.ceil(this.placeRange.get());
+      class_2338 best = null;
+      double bestTargetDistance = Double.MAX_VALUE;
+
+      for (int x = -radius; x <= radius; x++) {
+         for (int y = -radius; y <= radius; y++) {
+            for (int z = -radius; z <= radius; z++) {
+               class_2338 base = origin.method_10069(x, y, z);
+               class_2680 state = mc.field_1687.method_8320(base);
+               if (!state.method_27852(class_2246.field_10540)
+                  && !state.method_27852(class_2246.field_9987)) continue;
+
+               class_243 hit = new class_243(
+                  base.method_10263() + 0.5, base.method_10264() + 1.0, base.method_10260() + 0.5
+               );
+               if (player.method_33571().method_1022(hit) > this.placeRange.get()) continue;
+               if (!this.crystalSpaceFree(base)) continue;
+
+               double targetDistance = target.method_5707(hit);
+               if (targetDistance > 144.0 || targetDistance >= bestTargetDistance) continue;
+
+               bestTargetDistance = targetDistance;
+               best = base.method_10062();
+            }
+         }
+      }
+      return best;
    }
 
-   private boolean canComboTarget(class_746 player, class_1657 target, double minimumHeight) {
-      double heightAboveBlock = target.method_23318() - target.method_24515().method_10264();
-      return isTargetElevated(player, target)
-         || (isTargetAirborne(target) && heightAboveBlock >= minimumHeight);
-   }
-
-   private boolean isCrystalHeight(class_746 player, class_1657 target) {
-      return canComboTarget(player, target, this.crystalHeight.get());
-   }
-
-   private boolean placeObsidianAfterHit(class_746 player, class_1657 target) {
-      if (!this.placeObsidianOnHit.get()
-         || !canComboTarget(player, target, this.obsidianHeight.get())) return false;
-
-      class_2338 first = findHitObsidianBase(player, target);
-      if (first == null) return false;
-      class_2338 second = findSecondHitObsidianBase(player, first);
-      if (second == null) return false;
-      boolean firstAccepted = placeObsidianAt(player, first);
-      boolean secondAccepted = placeObsidianAt(player, second);
-      return firstAccepted && secondAccepted;
+   private class_1268 crystalHand(class_746 player) {
+      if (player.method_6079().method_31574(class_1802.field_8301)) return class_1268.field_5810;
+      if (player.method_6047().method_31574(class_1802.field_8301)) return class_1268.field_5808;
+      return null;
    }
 
    @Override
    public void onTick() {
-      class_746 p = mc.field_1724;
-      if (p != null && mc.field_1687 != null && mc.field_1761 != null && mc.field_1755 == null) {
-         AutoPvp autoPvp = ModuleManager.get(AutoPvp.class);
-         if (autoPvp != null && autoPvp.isCrystalComboEnabled()) return;
-         if (this.placeT > 0) {
-            this.placeT--;
-         }
+      class_746 player = mc.field_1724;
+      if (player == null || mc.field_1687 == null || mc.field_1761 == null || mc.field_1755 != null) return;
 
-         if (this.breakT > 0) {
-            this.breakT--;
-         }
+      if (this.placeTicks > 0) this.placeTicks--;
+      if (this.breakTicks > 0) this.breakTicks--;
 
-         if (this.breakC.get() && this.breakT == 0) {
-            class_1511 best = null;
-            double bestDistance = Double.MAX_VALUE;
-
-            for (class_1297 e : mc.field_1687.method_18112()) {
-               if (e instanceof class_1511 c && c.method_5805() && p.method_5739(c) <= this.breakRange.get()) {
-                  double distance = c.method_5858(p);
-                  if (distance < bestDistance) {
-                     bestDistance = distance;
-                     best = c;
-                  }
-               }
-            }
-
-            if (best != null) {
-               // With zero break delay, clear every crystal already in range this tick
-               // instead of spending one full tick per crystal. This makes fast crystal
-               // chains detonate as soon as the server has spawned them.
-               if (this.breakDelay.getInt() == 0) {
-                  for (class_1297 e : mc.field_1687.method_18112()) {
-                     if (e instanceof class_1511 c && c.method_5805()
-                        && p.method_5739(c) <= this.breakRange.get()) {
-                        mc.field_1761.method_2918(p, c);
-                        p.method_6104(class_1268.field_5808);
-                     }
-                  }
-               } else {
-                  mc.field_1761.method_2918(p, best);
-                  p.method_6104(class_1268.field_5808);
-                  this.breakT = this.breakDelay.getInt();
-               }
-               return;
-            }
-         }
-
-         if (this.place.get() && this.placeT <= 0) {
-            class_1657 target = CombatUtil.nearestPlayer(this.targetRange.get());
-            if (target == null) {
-               this.trackedTargetId = -1;
-               this.lastTargetHealth = Float.NaN;
-               this.awaitingObsidian = false;
-               this.pendingObsidianHit = false;
-            } else {
-               float health = target.method_6032();
-               if (this.trackedTargetId != target.method_5628()) {
-                  this.trackedTargetId = target.method_5628();
-                  this.lastTargetHealth = health;
-                  this.awaitingObsidian = false;
-                  this.pendingObsidianHit = false;
-               } else {
-                  if (!Float.isNaN(this.lastTargetHealth) && health < this.lastTargetHealth - 0.01F) {
-                     this.pendingObsidianHit = true;
-                     this.awaitingObsidian = false;
-                  }
-                  this.lastTargetHealth = health;
-               }
-               if (this.pendingObsidianHit && !this.awaitingObsidian
-                  && this.placeObsidianAfterHit(p, target)) {
-                  this.awaitingObsidian = true;
-                  this.pendingObsidianHit = false;
-               }
-            }
-
-            if (target != null && this.isCrystalHeight(p, target)) {
-               class_1268 hand = p.method_6079().method_31574(class_1802.field_8301)
-                  ? class_1268.field_5810
-                  : (p.method_6047().method_31574(class_1802.field_8301) ? class_1268.field_5808 : null);
-               int previousSlot = InvUtil.selected();
-               boolean switchedForCrystal = false;
-               if (hand == null) {
-                  if (!this.autoSwitch.get()) {
-                     return;
-                  }
-
-                  int slot = InvUtil.ensureHotbar(class_1802.field_8301);
-                  if (slot < 0) {
-                     return;
-                  }
-
-                  if (slot != previousSlot) {
-                     InvUtil.select(slot);
-                     switchedForCrystal = true;
-                  }
-                  hand = class_1268.field_5808;
-               }
-
-               class_2338 origin = p.method_24515();
-               int r = (int)Math.ceil(this.placeRange.get());
-               int maxPlacements = this.placementsPerTick.getInt();
-               class_2338[] bestPositions = new class_2338[maxPlacements];
-               double[] bestDistances = new double[maxPlacements];
-               for (int i = 0; i < maxPlacements; i++) bestDistances[i] = Double.MAX_VALUE;
-
-               // Collect the closest valid crystal bases, not just one position.
-               for (int x = -r; x <= r; x++) {
-                  for (int y = -r; y <= r; y++) {
-                     for (int z = -r; z <= r; z++) {
-                        class_2338 bp = origin.method_10069(x, y, z);
-                        if (p.method_33571().method_1022(class_243.method_24953(bp)) > this.placeRange.get() + 1.0) continue;
-                        class_2680 state = mc.field_1687.method_8320(bp);
-                        if (!state.method_27852(class_2246.field_10540) && !state.method_27852(class_2246.field_9987)) continue;
-
-                        class_2338 up = bp.method_10084();
-                        if (!mc.field_1687.method_8320(up).method_26215()
-                           || !mc.field_1687.method_8320(up.method_10084()).method_26215()) continue;
-
-                        class_238 crystalSpace = new class_238(
-                           bp.method_10263(), bp.method_10264() + 1, bp.method_10260(),
-                           bp.method_10263() + 1, bp.method_10264() + 3, bp.method_10260() + 1
-                        );
-                        if (!mc.field_1687.method_8335(null, crystalSpace).isEmpty()) continue;
-
-                        class_243 crystalPos = new class_243(bp.method_10263() + 0.5, bp.method_10264() + 1.0, bp.method_10260() + 0.5);
-                        double targetDistance = target.method_5707(crystalPos);
-                        if (targetDistance > 144.0) continue;
-
-                        for (int i = 0; i < maxPlacements; i++) {
-                           if (targetDistance < bestDistances[i]) {
-                              for (int j = maxPlacements - 1; j > i; j--) {
-                                 bestDistances[j] = bestDistances[j - 1];
-                                 bestPositions[j] = bestPositions[j - 1];
-                              }
-                              bestDistances[i] = targetDistance;
-                              bestPositions[i] = bp.method_10062();
-                              break;
-                           }
-                        }
-                     }
-                  }
-               }
-
-               boolean placedAny = false;
-               try {
-                  for (class_2338 bestPos : bestPositions) {
-                     if (bestPos == null) continue;
-                     class_3965 hitResult = new class_3965(
-                        new class_243(bestPos.method_10263() + 0.5, bestPos.method_10264() + 1.0, bestPos.method_10260() + 0.5),
-                        class_2350.field_11036, bestPos, false
-                     );
-                     if (mc.field_1761.method_2896(p, hand, hitResult).method_23665()) {
-                        p.method_6104(hand);
-                        placedAny = true;
-                     }
-                  }
-               } finally {
-                  // Restore the selected slot even if one of the placement attempts fails.
-                  if (switchedForCrystal) InvUtil.select(previousSlot);
-               }
-               if (placedAny) this.placeT = this.placeDelay.getInt();
-               }
-            }
+      if (this.breakC.get() && this.breakTicks == 0) {
+         class_1511 crystal = this.findCrystalToBreak(player);
+         if (crystal != null) {
+            mc.field_1761.method_2918(player, crystal);
+            player.method_6104(class_1268.field_5808);
+            this.breakTicks = this.breakDelay.getInt();
+            return;
          }
       }
+
+      if (!this.place.get() || this.placeTicks > 0) return;
+
+      class_1657 target = CombatUtil.nearestPlayer(this.targetRange.get());
+      if (target == null) return;
+
+      class_1268 hand = this.crystalHand(player);
+      int previousSlot = InvUtil.selected();
+      boolean switchedSlot = false;
+
+      if (hand == null) {
+         if (!this.autoSwitch.get()) return;
+         int crystalSlot = InvUtil.ensureHotbar(class_1802.field_8301);
+         if (crystalSlot < 0) return;
+
+         if (crystalSlot != previousSlot) {
+            InvUtil.select(crystalSlot);
+            switchedSlot = true;
+         }
+         hand = class_1268.field_5808;
+      }
+
+      try {
+         class_2338 base = this.findBestBase(player, target);
+         if (base == null) return;
+
+         class_243 hit = new class_243(
+            base.method_10263() + 0.5, base.method_10264() + 1.0, base.method_10260() + 0.5
+         );
+         class_3965 result = new class_3965(hit, class_2350.field_11036, base, false);
+         if (mc.field_1761.method_2896(player, hand, result).method_23665()) {
+            player.method_6104(hand);
+            this.placeTicks = this.placeDelay.getInt();
+         }
+      } finally {
+         if (switchedSlot) InvUtil.select(previousSlot);
+      }
    }
+}
