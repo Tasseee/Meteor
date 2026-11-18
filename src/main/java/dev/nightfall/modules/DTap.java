@@ -99,7 +99,9 @@ public class DTap extends Module {
          if (stack.method_31574(item)) count += stack.method_7947();
       }
       net.minecraft.class_1799 offhand = player.method_6079();
-      if (offhand.method_31574(item)) count += offhand.method_7947();
+      if (item == class_1802.field_8301 && offhand.method_31574(item)) {
+         count += offhand.method_7947();
+      }
       return count;
    }
 
