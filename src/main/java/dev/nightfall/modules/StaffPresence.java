@@ -14,7 +14,7 @@ import net.minecraft.class_742;
 /**
  * Gemeinsamer, rein clientseitiger Präsenz-Snapshot für StaffWatch und AntiVanishHints.
  *
- * ONLINE bedeutet: Profil steht in der vom verbundenen HugoSMP-Netz gelieferten Tab-Liste.
+ * TAB bedeutet: Profil steht in der vom verbundenen Server gelieferten Tab-Liste.
  * SERVER bedeutet: Spieler-Entity ist in der aktuell verbundenen Client-Welt geladen.
  * Die Tab-Liste kann netzwerkweit sein und nennt keinen Backend-/Unterserver.
  */
@@ -54,12 +54,9 @@ public final class StaffPresence {
          return;
       }
 
+      // Die HugoSMP-Erkennung ist nur Zusatzinformation. Sie darf den normalen
+      // Tab-/Welt-Abgleich nicht blockieren: Nutzer können per IP oder Alias verbinden.
       hugoSmpServer = isHugoSmpAddress(mc);
-      if (!hugoSmpServer) {
-         // Auf fremden Servern keine HugoSMP-Online- oder Nähe-Aussage treffen.
-         NEARBY.clear();
-         return;
-      }
 
       var network = mc.method_1562();
       tabAvailable = network != null;
@@ -149,12 +146,18 @@ public final class StaffPresence {
       return hugoSmpServer;
    }
 
+   public static boolean presentOnConnectedServer(String name) {
+      return inTab(name) || loadedInWorld(name);
+   }
+
+   /** @deprecated Use presentOnConnectedServer; presence is not HugoSMP-specific. */
+   @Deprecated
    public static boolean onlineOnHugoSmp(String name) {
-      return hugoSmpServer && (inTab(name) || loadedInWorld(name));
+      return presentOnConnectedServer(name);
    }
 
    public static boolean onCurrentServer(String name) {
-      return hugoSmpServer && loadedInWorld(name);
+      return loadedInWorld(name);
    }
 
    public static boolean tabAvailable() { return tabAvailable; }
@@ -168,7 +171,6 @@ public final class StaffPresence {
    }
 
    public static int rank(String name) {
-      if (!hugoSmpServer) return 3;
       if (onCurrentServer(name)) return 0;
       if (inTab(name)) return 1;
       return 2;
