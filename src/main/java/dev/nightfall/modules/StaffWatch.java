@@ -67,7 +67,7 @@ public final class StaffWatch extends HudModule {
       } else {
          int limit = this.maxRows.getInt();
          for (String name : names) {
-            if (StaffPresence.onlineOnHugoSmp(name)) online++;
+            if (StaffPresence.presentOnConnectedServer(name)) online++;
             if (rows.size() < limit) rows.add(StaffHudPanel.fromPresence(name));
          }
          if (names.size() > limit) {
@@ -75,15 +75,10 @@ public final class StaffWatch extends HudModule {
          }
       }
 
-      String badge = preview && names.isEmpty()
-         ? "VORSCHAU"
-         : StaffPresence.isHugoSmpServer() ? online + " ONLINE" : "HUGOSMP N/A";
-      String subtitle = null;
-      if (this.showSubtitle.get()) {
-         subtitle = StaffPresence.isHugoSmpServer()
-            ? "ONLINE = HugoSMP-Tabliste · SERVER = deine Welt"
-            : "Verbinde dich über hugosmp.net für HugoSMP-Status";
-      }
+      String badge = preview && names.isEmpty() ? "VORSCHAU" : online + " GEFUNDEN";
+      String subtitle = this.showSubtitle.get()
+         ? "TAB = Spielerliste des verbundenen Servers · SERVER = deine Welt"
+         : null;
 
       int[] size = StaffHudPanel.render(
          ctx,
@@ -93,7 +88,7 @@ public final class StaffWatch extends HudModule {
          subtitle,
          rows,
          empty,
-         "ONLINE = Eintrag in der HugoSMP-Spielerliste",
+         "TAB = Profil in der Spielerliste des verbundenen Servers",
          "SERVER = Entity in deiner aktuellen Welt",
          this.compactMode.get(),
          this.showLegend.get(),
