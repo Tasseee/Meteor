@@ -24,14 +24,11 @@ public final class StaffHudPanel {
       String status;
       int color;
 
-      if (!StaffPresence.isHugoSmpServer()) {
-         status = "HUGOSMP N/A";
-         color = GRAY;
-      } else if (world) {
+      if (world) {
          status = "SERVER";
          color = GREEN;
       } else if (tab) {
-         status = "ONLINE";
+         status = "TAB";
          color = YELLOW;
       } else if (!StaffPresence.tabAvailable()) {
          status = "TAB N/A";
