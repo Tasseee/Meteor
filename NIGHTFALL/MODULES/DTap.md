@@ -23,5 +23,6 @@ Nur Modulname und sichtbare Beschreibung wurden betrachtet. Die Zustandsmaschine
 ## Kleine Inventar-Korrektur (2026-11-18)
 
 - Die Startprüfung zählt End-Crystals jetzt auch in der Nebenhand. Zuvor wurden nur die 36 normalen Inventar-/Hotbar-Slots gezählt, obwohl die Platzierfunktion die Nebenhand bereits unterstützt.
+- Die Treffererkennung vergleicht jetzt normale Lebenspunkte plus Absorptionspunkte. So werden Treffer nicht übersehen, wenn zuerst Absorptionsherzen verbraucht werden.
 - Die eigentliche DTap-Zustandsmaschine und ihre Platzier-/Zündzeiten wurden nicht umgebaut.
 - In-Game-Test bleibt offen.
