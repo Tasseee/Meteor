@@ -5,7 +5,6 @@ import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import net.minecraft.class_1297;
-import net.minecraft.class_243;
 
 public final class BoatFly extends Module {
    private final NumberSetting speed = this.add(new NumberSetting("Geschwindigkeit", 20.0, 1.0, 200.0, 1.0));
