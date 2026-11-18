@@ -1,52 +1,36 @@
 # CrystalAura
 
 - **Registrierter Modulname:** `CrystalAura`
-- **Bisheriger Prüfstatus:** **Offen**
+- **Prüfstatus:** Statisch anhand des aktuellen Quellcodes geprüft; In-Game-Test offen
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/CrystalAura.java`
-- **Inventur-Commit:** `21dc9f822a6295cdb6238037f344da799bbcca26`
-- **Registrierungsquelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`
 
-> Im vorhandenen Audit-Ledger als offen geführt. Eine inhaltliche Prüfung steht noch aus.
+## Vereinfachtes Verhalten (2026-11-18)
 
-## Zweck und Verhalten
-
-Bei der Prüfung anhand des aktuellen Quellcodes ergänzen. Belegte Codebeschreibung und beobachtetes In-Game-Verhalten getrennt festhalten.
+- Das Modul hat nur noch einen klaren Ablauf: nahe End-Crystals zerstören und neue Crystals auf gültigen Obsidian-/Bedrock-Blöcken platzieren.
+- Die frühere automatische Obsidian-Platzierung nach einem Treffer, Zielhöhen-Checks, Mehrfachplatzierungen pro Tick und zugehörige Zustandsfelder wurden entfernt.
+- Die Modulausführung enthält keine direkte Abfrage oder Pause wegen AutoPvP. CrystalAura läuft eigenständig.
+- Beim Verlassen der Welt und beim Deaktivieren werden beide Tick-Timer zurückgesetzt.
+- Der Hotbar-Slot wird nach einem temporären Auto-Switch auch bei einem fehlgeschlagenen Platzier-Versuch wiederhergestellt.
 
 ## Einstellungen
 
-| Einstellung | Standardwert | Bedeutung | geprüft |
-|---|---|---|---|
-| Noch nicht erfasst | – | – | Nein |
+| Einstellung | Standard |
+|---|---:|
+| Ziel-Reichweite | 10 Blöcke |
+| Platzier-Reichweite | 4,5 Blöcke |
+| Zerstör-Reichweite | 4,5 Blöcke |
+| Platzier-Delay | 0 Ticks |
+| Zerstör-Delay | 0 Ticks |
+| Platzieren | AN |
+| Zerstören | AN |
+| Auto-Switch | AN |
 
-## Technische Prüfung
+## Prüfgrenze
 
-- [ ] Registrierung und Kategorie
-- [ ] Einstellungen, Grenzwerte und Standardwerte
-- [ ] GUI-/HUD-Anzeige und Statusmeldungen
-- [ ] Aktivieren/Deaktivieren und Weltwechsel
-- [ ] Listener, Ressourcen und Cleanup
-- [ ] Null-/Grenzfälle und Fehlerbehandlung
-- [ ] Logging und Thread-Sicherheit
-- [ ] Speicher-/Performance-Verhalten
-- [ ] Versionskompatibilität
-- [ ] Tests und Dokumentation
-
-## Nutzererfahrungen und Testberichte
-
-Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speichern und hier verlinken.
-
-| Test-ID | Datum | Umgebung | Ergebnis | Beleg |
-|---|---|---|---|---|
-| Noch keine Testberichte | – | – | Nicht getestet | – |
-
-## Fehler und Verbesserungsideen
-
-| ID | Beschreibung | Priorität | Status |
-|---|---|---|---|
-| Noch keine bestätigten Einträge | – | – | – |
+Die Prüfung ist statisch. Serverreaktion, tatsächliches Platzieren/Zerstören, Timing und Kompatibilität mit anderen Combat-Modulen wurden nicht im Spiel getestet. CrystalAura baut kein Obsidian mehr automatisch; es setzt vorhandenes Obsidian bzw. Bedrock voraus.
 
 ## Änderungsverlauf
 
-| Datum | Commit | Änderung | Nachweis |
-|---|---|---|---|
-| 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+| Datum | Änderung |
+|---|---|
+| 2026-11-18 | CrystalAura auf eigenständige Place-/Break-Funktion vereinfacht; alte Auto-Obsidian-Combo-Logik entfernt |
