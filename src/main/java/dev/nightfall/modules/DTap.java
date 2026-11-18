@@ -92,6 +92,10 @@ public class DTap extends Module {
       phaseTicks = 0;
    }
 
+   private float totalTargetHealth(class_1657 target) {
+      return target.method_6032() + target.method_6067();
+   }
+
    private int countInventory(class_746 player, class_1792 item) {
       int count = 0;
       for (int i = 0; i < 36; i++) {
@@ -268,7 +272,7 @@ public class DTap extends Module {
       base = null;
       if (target != null && target.method_5805()) {
          trackedTargetId = target.method_5628();
-         lastTargetHealth = target.method_6032();
+         lastTargetHealth = this.totalTargetHealth(target);
       } else {
          trackedTargetId = -1;
          lastTargetHealth = Float.NaN;
@@ -295,7 +299,7 @@ public class DTap extends Module {
             return;
          }
 
-         float health = target.method_6032();
+         float health = this.totalTargetHealth(target);
          boolean wasHit = !Float.isNaN(lastTargetHealth) && health < lastTargetHealth - 0.01F;
          lastTargetHealth = health;
          if (wasHit) pendingHit = true;
@@ -320,7 +324,7 @@ public class DTap extends Module {
 
       // Do not lose hits that happen while the two-crystal sequence is running.
       // Queue the next DTap and start it as soon as the current sequence finishes.
-      float activeHealth = target.method_6032();
+      float activeHealth = this.totalTargetHealth(target);
       if (!Float.isNaN(lastTargetHealth) && activeHealth < lastTargetHealth - 0.01F) pendingHit = true;
       lastTargetHealth = activeHealth;
 
