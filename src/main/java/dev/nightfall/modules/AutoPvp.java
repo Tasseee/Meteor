@@ -41,7 +41,6 @@ public class AutoPvp extends Module {
    private final BoolSetting useCrystalAura = this.add(new BoolSetting("CrystalAura integrieren", true));
    private final BoolSetting useAutoAnchor = this.add(new BoolSetting("AutoAnchor integrieren", false));
    private final BoolSetting useMaceAssist = this.add(new BoolSetting("MaceAssist integrieren", true));
-   private final BoolSetting crystalCombo = this.add(new BoolSetting("Sprint-Hit + Obsidian + 2 Crystals", true));
    private final BoolSetting pearlChase = this.add(new BoolSetting("Pearl zum Gegner", true));
    private final NumberSetting pearlDistance = this.add(new NumberSetting("Pearl ab Distanz", 12.0, 6.0, 24.0, 1.0));
    private int pearlUseDelay;
@@ -84,7 +83,7 @@ public class AutoPvp extends Module {
    }
 
    public boolean isCrystalComboEnabled() {
-      return this.isEnabled() && this.crystalCombo.get() && this.crystalComboPhase > 1;
+      return this.isEnabled() && this.crystalComboPhase > 1;
    }
 
    @Override
@@ -558,7 +557,7 @@ public class AutoPvp extends Module {
    private boolean tickCrystalCombo(class_746 p, class_1657 target) {
       // AutoPvP owns the crystal sequence: it starts after its own melee hit
       // and waits until the target is airborne before placing obsidian.
-      if (!this.crystalCombo.get() || !this.useCrystalAura.get()) {
+      if (!this.useCrystalAura.get()) {
          this.resetCrystalCombo();
          return false;
       }
@@ -913,13 +912,11 @@ public class AutoPvp extends Module {
                      if (this.useCrystalAura.get() && !critMode) {
                         // Sprint-hit combos keep sprint; sword crits deliberately release it.
                         mc.field_1690.field_1867.method_23481(true);
-                        if (this.crystalCombo.get()) {
-                           mc.field_1690.field_1894.method_23481(true);
-                        }
+                        mc.field_1690.field_1894.method_23481(true);
                      }
                      mc.field_1761.method_2918(p, target);
                      p.method_6104(class_1268.field_5808);
-                     if (this.crystalCombo.get() && this.useCrystalAura.get()
+                     if (this.useCrystalAura.get()
                         && InvUtil.findInventory(class_1802.field_8281) >= 0
                         && InvUtil.findInventory(class_1802.field_8301) >= 0) {
                         this.crystalComboPhase = 1;
