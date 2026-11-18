@@ -11,6 +11,7 @@ public sealed class ClientModule : INotifyPropertyChanged
     public required ModuleCategory Category { get; init; }
     public required string Description { get; init; }
     public required ModuleStatus Status { get; init; }
+    public Action<bool>? ToggleHandler { get; init; }
 
     public string StatusLabel => Status switch
     {
@@ -20,14 +21,15 @@ public sealed class ClientModule : INotifyPropertyChanged
         _ => "PLACEHOLDER"
     };
 
-    public bool CanToggle => Status is ModuleStatus.Ready or ModuleStatus.Partial;
+    public bool CanToggle => ToggleHandler is not null;
 
     public bool IsEnabled
     {
         get => _isEnabled;
         set
         {
-            if (_isEnabled == value || !CanToggle) return;
+            if (_isEnabled == value || ToggleHandler is null) return;
+            ToggleHandler(value);
             _isEnabled = value;
             OnPropertyChanged();
         }

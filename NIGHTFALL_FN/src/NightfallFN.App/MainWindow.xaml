@@ -8,7 +8,7 @@
     <Grid.RowDefinitions><RowDefinition Height="58"/><RowDefinition Height="*"/><RowDefinition Height="24"/></Grid.RowDefinitions>
     <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1" CornerRadius="13" Padding="15">
       <DockPanel>
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <StackPanel x:Name="BrandBlock" Orientation="Horizontal" VerticalAlignment="Center">
           <Border Width="32" Height="32" CornerRadius="9" Background="{StaticResource AccentBrush}">
             <TextBlock Text="N" FontSize="21" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
@@ -54,9 +54,9 @@
           <Border x:Name="MetricsCard" Grid.Row="2" Background="#FF211E2B" CornerRadius="10" Padding="12" Margin="0,0,0,12">
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-              <StackPanel><TextBlock Text="SYSTEM CPU" Foreground="{StaticResource MutedBrush}" FontSize="9"/><TextBlock x:Name="CpuText" Text="Telemetry pending" FontSize="15" FontWeight="SemiBold" Margin="0,4,0,0"/></StackPanel>
-              <StackPanel Grid.Column="1"><TextBlock Text="SYSTEM RAM" Foreground="{StaticResource MutedBrush}" FontSize="9"/><TextBlock x:Name="MemoryText" Text="Telemetry pending" FontSize="15" FontWeight="SemiBold" Margin="0,4,0,0"/></StackPanel>
-              <StackPanel Grid.Column="2"><TextBlock Text="LOCAL TIME" Foreground="{StaticResource MutedBrush}" FontSize="9"/><TextBlock x:Name="ClockText" Text="--:--:--" FontSize="15" FontWeight="SemiBold" Margin="0,4,0,0"/></StackPanel>
+              <StackPanel><TextBlock Text="SYSTEM CPU" Foreground="{StaticResource MutedBrush}" FontSize="9"/><TextBlock x:Name="CpuText" Text="Sampling…" FontSize="15" FontWeight="SemiBold" Margin="0,4,0,0"/></StackPanel>
+              <StackPanel Grid.Column="1"><TextBlock Text="SYSTEM RAM" Foreground="{StaticResource MutedBrush}" FontSize="9"/><TextBlock x:Name="MemoryText" Text="Sampling…" FontSize="15" FontWeight="SemiBold" Margin="0,4,0,0"/></StackPanel>
+              <StackPanel x:Name="ClockPanel" Grid.Column="2"><TextBlock Text="LOCAL TIME" Foreground="{StaticResource MutedBrush}" FontSize="9"/><TextBlock x:Name="ClockText" Text="--:--:--" FontSize="15" FontWeight="SemiBold" Margin="0,4,0,0"/></StackPanel>
             </Grid>
           </Border>
           <StackPanel Grid.Row="3">
@@ -92,7 +92,7 @@
           <Button x:Name="ToggleButton" Content="Enable / Disable" Click="ToggleSelected_Click"/>
           <Button Content="Open Queue Profile" Click="QueueProfile_Click" Margin="0,7,0,0"/>
           <Border Background="#FF211E2B" CornerRadius="8" Padding="10" Margin="0,19,0,0">
-            <TextBlock Text="Chest Debug needs map-authored UEFN markers. Player ESP is not part of NIGHTFALL FN." Foreground="{StaticResource AccentSoftBrush}" FontSize="10" TextWrapping="Wrap"/>
+            <TextBlock Text="Chest Debug needs creator-authored UEFN markers. Player ESP is not included." Foreground="{StaticResource AccentSoftBrush}" FontSize="10" TextWrapping="Wrap"/>
           </Border>
         </StackPanel>
       </Border>

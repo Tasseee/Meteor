@@ -10,9 +10,10 @@ namespace NightfallFN;
 
 public partial class MainWindow : Window
 {
-    private readonly ObservableCollection<ClientModule> _modules = new(ModuleCatalog.Create());
+    private readonly ObservableCollection<ClientModule> _modules;
     private readonly ICollectionView _moduleView;
     private readonly SettingsStore _settingsStore = new();
+    private readonly SystemTelemetryService _telemetry = new();
     private readonly DispatcherTimer _timer;
     private readonly AppSettings _settings;
     private ModuleCategory? _categoryFilter;
@@ -20,17 +21,36 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
         _settings = _settingsStore.Load();
+        var handlers = new Dictionary<string, Action<bool>>
+        {
+            ["Performance Dashboard"] = enabled => MetricsCard.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed,
+            ["Clock"] = enabled => ClockPanel.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed,
+            ["Watermark"] = enabled => BrandBlock.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed
+        };
+
+        _modules = new ObservableCollection<ClientModule>(ModuleCatalog.Create(handlers));
         _moduleView = CollectionViewSource.GetDefaultView(_modules);
         _moduleView.Filter = FilterModule;
         ModuleList.ItemsSource = _moduleView;
+
+        SetInitialState("Performance Dashboard", true);
+        SetInitialState("Clock", true);
+        SetInitialState("Watermark", true);
+
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _timer.Tick += (_, _) => ClockText.Text = DateTime.Now.ToString("HH:mm:ss");
+        _timer.Tick += (_, _) => UpdateDashboard();
         _timer.Start();
-        ClockText.Text = DateTime.Now.ToString("HH:mm:ss");
-        CpuText.Text = "See system dashboard";
-        MemoryText.Text = "See system dashboard";
+        UpdateDashboard();
+
         if (_modules.Count > 0) ModuleList.SelectedIndex = 0;
+    }
+
+    private void SetInitialState(string moduleName, bool enabled)
+    {
+        var module = _modules.FirstOrDefault(m => m.Name == moduleName);
+        if (module is not null) module.IsEnabled = enabled;
     }
 
     private bool FilterModule(object item)
@@ -41,6 +61,14 @@ public partial class MainWindow : Window
         return string.IsNullOrWhiteSpace(query)
             || module.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
             || module.Description.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void UpdateDashboard()
+    {
+        var (cpu, memory) = _telemetry.Sample();
+        CpuText.Text = cpu.ToString("0") + "%";
+        MemoryText.Text = memory.ToString("0") + "%";
+        ClockText.Text = DateTime.Now.ToString("HH:mm:ss");
     }
 
     private void SearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) =>
@@ -91,9 +119,12 @@ public partial class MainWindow : Window
 
     private void QueueProfile_Click(object sender, RoutedEventArgs e)
     {
-        var p = _settings.QueueProfile;
-        var message = $"Profile: {p.Name}\nMaximum players: {p.MaximumPlayers}\nMinimum players: {p.MinimumPlayers}\nOvertime target: {p.OvertimePlayerTarget}\nMain duration: {p.MainDurationSeconds}s\nOvertime duration: {p.OvertimeDurationSeconds}s\n\nReference values only. Apply these in your UEFN island settings.";
-        MessageBox.Show(this, message, "Private Map Queue Profile", MessageBoxButton.OK, MessageBoxImage.Information);
+        var window = new QueueProfileWindow(_settings.QueueProfile, profile =>
+        {
+            _settings.QueueProfile = profile;
+            _settingsStore.Save(_settings);
+        }) { Owner = this };
+        window.ShowDialog();
     }
 
     private void Window_KeyDown(object sender, KeyEventArgs e)

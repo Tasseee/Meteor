@@ -1,0 +1,39 @@
+<Window x:Class="NightfallFN.QueueProfileWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="NIGHTFALL · Private Map Queue" Height="510" Width="520" ResizeMode="NoResize"
+ WindowStartupLocation="CenterOwner" Background="{StaticResource BgBrush}">
+  <Grid Margin="20">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <StackPanel Margin="0,0,0,16">
+      <TextBlock Text="PRIVATE MAP QUEUE" FontSize="20" FontWeight="Bold"/>
+      <TextBlock Text="Local setup profile for your own UEFN island." Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,4,0,0"/>
+    </StackPanel>
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="120"/></Grid.ColumnDefinitions>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="38"/><RowDefinition Height="38"/><RowDefinition Height="38"/>
+        <RowDefinition Height="38"/><RowDefinition Height="38"/><RowDefinition Height="38"/>
+      </Grid.RowDefinitions>
+      <TextBlock Text="Profile name" VerticalAlignment="Center"/>
+      <TextBox x:Name="NameBox" Grid.Column="1" Margin="0,3"/>
+      <TextBlock Text="Maximum players" Grid.Row="1" VerticalAlignment="Center"/>
+      <TextBox x:Name="MaximumBox" Grid.Row="1" Grid.Column="1" Margin="0,3"/>
+      <TextBlock Text="Minimum players" Grid.Row="2" VerticalAlignment="Center"/>
+      <TextBox x:Name="MinimumBox" Grid.Row="2" Grid.Column="1" Margin="0,3"/>
+      <TextBlock Text="Overtime player target" Grid.Row="3" VerticalAlignment="Center"/>
+      <TextBox x:Name="OvertimeTargetBox" Grid.Row="3" Grid.Column="1" Margin="0,3"/>
+      <TextBlock Text="Main queue duration (sec)" Grid.Row="4" VerticalAlignment="Center"/>
+      <TextBox x:Name="MainDurationBox" Grid.Row="4" Grid.Column="1" Margin="0,3"/>
+      <TextBlock Text="Overtime duration (sec)" Grid.Row="5" VerticalAlignment="Center"/>
+      <TextBox x:Name="OvertimeDurationBox" Grid.Row="5" Grid.Column="1" Margin="0,3"/>
+    </Grid>
+    <StackPanel Grid.Row="2" Margin="0,14,0,0">
+      <TextBlock x:Name="ValidationText" Foreground="#FFE3B7A8" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,10"/>
+      <DockPanel>
+        <TextBlock Text="Saved locally only · apply settings in UEFN" Foreground="{StaticResource MutedBrush}" FontSize="9" VerticalAlignment="Center"/>
+        <Button DockPanel.Dock="Right" Content="Save profile" Width="110" Click="Save_Click"/>
+      </DockPanel>
+    </StackPanel>
+  </Grid>
+</Window>

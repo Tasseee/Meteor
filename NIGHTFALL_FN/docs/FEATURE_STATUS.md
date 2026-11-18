@@ -1,22 +1,29 @@
 # Feature status
 
-## Implemented in the first scaffold
-- WPF desktop shell, category navigation, module filter and inspector
-- Local clock
-- Local JSON settings model and persistence service
-- Explicit module status labels
+## Implemented in this scaffold
+- WPF desktop shell, category navigation, module search and inspector
+- System-wide Windows CPU and RAM telemetry
+- Local clock and watermark, both with real visibility toggles
+- Editable queue reference profile saved under the user's AppData folder
+- Explicit status labels and toggle controls that are enabled only when a real handler exists
 
-## Partial
-- FPS Display: no supported FPS source is connected; no fabricated value is shown.
-- Performance Dashboard: system telemetry is planned as a local Windows-only service.
-- HUD Editor: desktop preview only, not a Fortnite overlay.
-- Keybind Manager: RightShift is a focused-window shortcut, not a global hook.
+## Partial / not connected
+- Fortnite FPS: no supported data source is connected; no value is fabricated.
+- RightShift: works only while the application is focused.
+- Queue profile: local settings helper only; it does not start or control matchmaking.
 
-## UEFN integration required
-- Chest Debug: use map-authored devices/Verse in the creator's own island. Epic documents map_indicator_device for minimap/overview markers and beacon_device for in-world/HUD markers. Do not scan Fortnite memory.
-- Private Map Queue: matchmaking thresholds and queue timing are configured in island settings. The desktop app stores reference values; it does not start matchmaking.
+## UEFN map-side sample
+- Chest Debug: the Verse sample toggles creator-placed map_indicator_device markers. These are fixed map-authored locations, not a scan for live chest inventory or state. Configure the devices in your own island. Keep the toggle button restricted to your private testing area.
+
+## Placeholders
+- HUD Editor
+- Chest Counter
+- Shader Presets
+- Notifications
+- Theme selector
+- Sound Settings
 
 ## Excluded
 - Player ESP
-- External auto-join or automated game input
+- External auto-join and automated game input
 - Fortnite process injection, memory inspection, and game-file modification

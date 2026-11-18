@@ -1,0 +1,23 @@
+name: NIGHTFALL FN WPF build
+
+on:
+  push:
+    branches: [nightfall-fn]
+    paths:
+      - "NIGHTFALL_FN/**"
+      - ".github/workflows/nightfall-fn-build.yml"
+  pull_request:
+    paths:
+      - "NIGHTFALL_FN/**"
+      - ".github/workflows/nightfall-fn-build.yml"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Build WPF solution
+        run: dotnet build NIGHTFALL_FN/NIGHTFALL_FN.sln --configuration Release

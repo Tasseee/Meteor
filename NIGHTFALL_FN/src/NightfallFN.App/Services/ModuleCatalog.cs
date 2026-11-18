@@ -4,23 +4,36 @@ namespace NightfallFN.Services;
 
 public static class ModuleCatalog
 {
-    public static IReadOnlyList<ClientModule> Create() =>
-    [
-        new() { Name = "FPS Display", Category = ModuleCategory.Visuals, Description = "Fortnite FPS is not yet connected to a supported source.", Status = ModuleStatus.Partial },
-        new() { Name = "Performance Dashboard", Category = ModuleCategory.Visuals, Description = "Local Windows CPU and memory telemetry; no game-process inspection.", Status = ModuleStatus.Partial },
-        new() { Name = "Shader Presets", Category = ModuleCategory.Visuals, Description = "Minimal Violet, Night and High Contrast themes for NIGHTFALL only.", Status = ModuleStatus.Ready },
-        new() { Name = "Clock", Category = ModuleCategory.Visuals, Description = "Displays the local Windows time.", Status = ModuleStatus.Ready },
-        new() { Name = "Watermark", Category = ModuleCategory.Visuals, Description = "NIGHTFALL FN client branding.", Status = ModuleStatus.Ready },
-        new() { Name = "Module List", Category = ModuleCategory.Visuals, Description = "Shows enabled NIGHTFALL desktop modules.", Status = ModuleStatus.Ready },
-        new() { Name = "Chest Debug", Category = ModuleCategory.Visuals, Description = "Creator-owned UEFN map markers. Requires map-side device/Verse integration.", Status = ModuleStatus.UefnIntegrationRequired },
-        new() { Name = "Private Map Queue", Category = ModuleCategory.Misc, Description = "Local helper profile for UEFN queue settings. Does not start or automate matchmaking.", Status = ModuleStatus.Ready },
-        new() { Name = "Chest Counter", Category = ModuleCategory.Misc, Description = "Manual desktop-side count; not connected to live Fortnite state.", Status = ModuleStatus.Ready },
-        new() { Name = "ClickGUI", Category = ModuleCategory.Client, Description = "Module browser with categories, search and inspector.", Status = ModuleStatus.Ready },
-        new() { Name = "HUD Editor", Category = ModuleCategory.Client, Description = "Desktop layout preview, not an in-game overlay.", Status = ModuleStatus.Partial },
-        new() { Name = "Notifications", Category = ModuleCategory.Client, Description = "In-client notifications.", Status = ModuleStatus.Ready },
-        new() { Name = "Keybind Manager", Category = ModuleCategory.Client, Description = "RightShift shortcut while the app is focused.", Status = ModuleStatus.Partial },
-        new() { Name = "Theme Settings", Category = ModuleCategory.Client, Description = "Changes NIGHTFALL's own color palette.", Status = ModuleStatus.Ready },
-        new() { Name = "Module Manager", Category = ModuleCategory.Client, Description = "Enable and disable desktop modules.", Status = ModuleStatus.Ready },
-        new() { Name = "Sound Settings", Category = ModuleCategory.Client, Description = "Reserved for a later implementation.", Status = ModuleStatus.Placeholder }
-    ];
+    public static IReadOnlyList<ClientModule> Create(IReadOnlyDictionary<string, Action<bool>> handlers)
+    {
+        ClientModule Add(string name, ModuleCategory category, string description, ModuleStatus status) =>
+            new()
+            {
+                Name = name,
+                Category = category,
+                Description = description,
+                Status = status,
+                ToggleHandler = handlers.TryGetValue(name, out var handler) ? handler : null
+            };
+
+        return
+        [
+            Add("FPS Display", ModuleCategory.Visuals, "Fortnite FPS is not connected to a supported source yet.", ModuleStatus.Partial),
+            Add("Performance Dashboard", ModuleCategory.Visuals, "Displays whole-system CPU and RAM usage from Windows.", ModuleStatus.Ready),
+            Add("Shader Presets", ModuleCategory.Visuals, "Theme presets for the NIGHTFALL desktop interface; selector is not built yet.", ModuleStatus.Placeholder),
+            Add("Clock", ModuleCategory.Visuals, "Shows the local Windows clock in the dashboard.", ModuleStatus.Ready),
+            Add("Watermark", ModuleCategory.Visuals, "NIGHTFALL FN branding in the application header.", ModuleStatus.Ready),
+            Add("Module List", ModuleCategory.Visuals, "The local NIGHTFALL module catalogue.", ModuleStatus.Ready),
+            Add("Chest Debug", ModuleCategory.Visuals, "Creator-authored chest markers inside your own UEFN island. Requires map-side setup.", ModuleStatus.UefnIntegrationRequired),
+            Add("Private Map Queue", ModuleCategory.Misc, "Editable local reference profile for UEFN queue settings; does not launch matchmaking.", ModuleStatus.Partial),
+            Add("Chest Counter", ModuleCategory.Misc, "Manual counter UI has not been implemented yet.", ModuleStatus.Placeholder),
+            Add("ClickGUI", ModuleCategory.Client, "WPF module browser with categories, search and inspector.", ModuleStatus.Ready),
+            Add("HUD Editor", ModuleCategory.Client, "Desktop preview/editor is planned; no in-game overlay is created.", ModuleStatus.Placeholder),
+            Add("Notifications", ModuleCategory.Client, "Notification center is planned and not yet connected.", ModuleStatus.Placeholder),
+            Add("Keybind Manager", ModuleCategory.Client, "RightShift minimizes/restores the app only while it has focus.", ModuleStatus.Partial),
+            Add("Theme Settings", ModuleCategory.Client, "Theme selection UI is planned.", ModuleStatus.Placeholder),
+            Add("Module Manager", ModuleCategory.Client, "Module catalogue and status inspector.", ModuleStatus.Ready),
+            Add("Sound Settings", ModuleCategory.Client, "Reserved for a future implementation.", ModuleStatus.Placeholder)
+        ];
+    }
 }
