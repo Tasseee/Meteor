@@ -33,6 +33,7 @@ public class AutoPvp extends Module {
    private final BoolSetting driveBy = this.add(new BoolSetting("An Gegner vorbeilaufen", true));
    private final NumberSetting driveBySwitchTicks = this.add(new NumberSetting("Drive-by Seitenwechsel", 2.0, 1.0, 4.0, 1.0));
    private final BoolSetting jump = this.add(new BoolSetting("Springen bei Hindernis", true));
+   private final NumberSetting critJumpDelay = this.add(new NumberSetting("Crit-Sprungdelay", 0.0, 0.0, 20.0, 1.0));
    private final BoolSetting useWindchargeMace = this.add(new BoolSetting("Windcharge -> Mace", false));
    private final BoolSetting useShieldBreak = this.add(new BoolSetting("Schild mit Axt kontern", true));
    private final BoolSetting useAutoGap = this.add(new BoolSetting("AutoGap integrieren", true));
@@ -74,6 +75,8 @@ public class AutoPvp extends Module {
    private int originalSlot = -1;
    private int windSlot = -1;
    private int maceSlot = -1;
+   private int critJumpDelayTicks;
+   private boolean wasAirborne;
 
    public AutoPvp() {
       super("AutoPvP", "Kaempft situationsabhaengig mit sanfter Rotation und Umgebungschecks.", Category.COMBAT);
@@ -92,6 +95,8 @@ public class AutoPvp extends Module {
    protected void onDisable() {
       this.pearlUseDelay = 0;
       this.resetCritCycle();
+      this.critJumpDelayTicks = 0;
+      this.wasAirborne = false;
       this.driveByTimer = 0;
       this.resetCrystalCombo();
       this.cancelWindchargeMace(true);
@@ -846,10 +851,21 @@ public class AutoPvp extends Module {
                   }
 
                   if (p.method_24828()) {
-                     // Nach der Landung sofort den naechsten Crit-Sprung starten,
-                     // sobald der Angriffscooldown wieder bereit ist. Kein Extra-Delay.
-                     mc.field_1690.field_1903.method_23481(p.method_7261(0.5F) >= 0.98F);
+                     // Nach einer Landung erst den einstellbaren Delay abwarten.
+                     // Der Wert ist in Ticks (20 Ticks = 1 Sekunde).
+                     if (this.wasAirborne) {
+                        this.critJumpDelayTicks = this.critJumpDelay.getInt();
+                        this.wasAirborne = false;
+                     }
+
+                     if (this.critJumpDelayTicks > 0) {
+                        this.critJumpDelayTicks--;
+                        mc.field_1690.field_1903.method_23481(false);
+                     } else {
+                        mc.field_1690.field_1903.method_23481(p.method_7261(0.5F) >= 0.98F);
+                     }
                   } else {
+                     this.wasAirborne = true;
                      mc.field_1690.field_1903.method_23481(false);
                   }
                } else {
