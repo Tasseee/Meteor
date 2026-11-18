@@ -32,7 +32,6 @@ public class AutoPvp extends Module {
    private final BoolSetting strafe = this.add(new BoolSetting("Strafen", false));
    private final BoolSetting driveBy = this.add(new BoolSetting("An Gegner vorbeilaufen", true));
    private final NumberSetting driveBySwitchTicks = this.add(new NumberSetting("Drive-by Seitenwechsel", 2.0, 1.0, 4.0, 1.0));
-   private final NumberSetting critJumpDelay = this.add(new NumberSetting("Crit-Sprungdelay", 2.0, 0.0, 6.0, 1.0));
    private final BoolSetting jump = this.add(new BoolSetting("Springen bei Hindernis", true));
    private final BoolSetting useWindchargeMace = this.add(new BoolSetting("Windcharge -> Mace", false));
    private final BoolSetting useShieldBreak = this.add(new BoolSetting("Schild mit Axt kontern", true));
@@ -65,10 +64,7 @@ public class AutoPvp extends Module {
    private int strafeTimer;
    private int driveByDir = 1;
    private int driveByTimer;
-   private int critJumpDelayTicks;
    private int critTargetId = -1;
-   private boolean critCycleReady;
-   private boolean critWasAirborne;
    private int shieldPreviousSlot = -1;
    private int shieldAxeSlot = -1;
    private int shieldTargetId = -1;
@@ -149,10 +145,7 @@ public class AutoPvp extends Module {
    }
 
    private void resetCritCycle() {
-      this.critJumpDelayTicks = 0;
       this.critTargetId = -1;
-      this.critCycleReady = false;
-      this.critWasAirborne = false;
    }
 
    private void resetCrystalCombo() {
@@ -853,25 +846,10 @@ public class AutoPvp extends Module {
                   }
 
                   if (p.method_24828()) {
-                     if (this.critWasAirborne || !this.critCycleReady) {
-                        this.critJumpDelayTicks = this.critJumpDelay.getInt();
-                        this.critCycleReady = true;
-                     }
-                     this.critWasAirborne = false;
-
-                     // Wait until the attack cooldown is nearly full, then add a small
-                     // configurable grounded delay before beginning the critical jump.
-                     if (p.method_7261(0.5F) < 0.98F) {
-                        this.critJumpDelayTicks = this.critJumpDelay.getInt();
-                        mc.field_1690.field_1903.method_23481(false);
-                     } else if (this.critJumpDelayTicks > 0) {
-                        this.critJumpDelayTicks--;
-                        mc.field_1690.field_1903.method_23481(false);
-                     } else {
-                        mc.field_1690.field_1903.method_23481(true);
-                     }
+                     // Nach der Landung sofort den naechsten Crit-Sprung starten,
+                     // sobald der Angriffscooldown wieder bereit ist. Kein Extra-Delay.
+                     mc.field_1690.field_1903.method_23481(p.method_7261(0.5F) >= 0.98F);
                   } else {
-                     this.critWasAirborne = true;
                      mc.field_1690.field_1903.method_23481(false);
                   }
                } else {
