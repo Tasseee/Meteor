@@ -77,6 +77,7 @@ public class AutoPvp extends Module {
    private int maceSlot = -1;
    private int critJumpDelayTicks;
    private boolean wasAirborne;
+   private int critOrbitDir = 1;
 
    public AutoPvp() {
       super("AutoPvP", "Kaempft situationsabhaengig mit sanfter Rotation und Umgebungschecks.", Category.COMBAT);
@@ -151,6 +152,7 @@ public class AutoPvp extends Module {
 
    private void resetCritCycle() {
       this.critTargetId = -1;
+      this.critOrbitDir = 1;
    }
 
    private void resetCrystalCombo() {
@@ -227,9 +229,21 @@ public class AutoPvp extends Module {
             p.method_36456(yaw);
             p.method_36457(pitch);
          } else {
-            float max = this.turnSpeed.get().floatValue();
-            p.method_36456(p.method_36454() + class_3532.method_15363(class_3532.method_15393(yaw - p.method_36454()), -max, max));
-            p.method_36457(p.method_36455() + class_3532.method_15363(class_3532.method_15393(pitch - p.method_36455()), -max, max));
+            // Do not snap the head by a huge amount every tick. The old 35-degree
+            // per-tick limit caused visible shaking when the target moved.
+            float yawError = class_3532.method_15393(yaw - p.method_36454());
+            float pitchError = pitch - p.method_36455();
+            if (Math.abs(yawError) < 0.35F) yawError = 0.0F;
+            if (Math.abs(pitchError) < 0.25F) pitchError = 0.0F;
+
+            float speed = this.turnSpeed.get().floatValue();
+            float maxYaw = 2.0F + speed * 0.22F;
+            float maxPitch = 1.5F + speed * 0.16F;
+            float yawStep = class_3532.method_15363(yawError, -maxYaw, maxYaw);
+            float pitchStep = class_3532.method_15363(pitchError, -maxPitch, maxPitch);
+
+            p.method_36456(p.method_36454() + yawStep);
+            p.method_36457(class_3532.method_15363(p.method_36455() + pitchStep, -90.0F, 90.0F));
          }
       }
    }
@@ -848,7 +862,15 @@ public class AutoPvp extends Module {
                   if (this.critTargetId != target.method_5628()) {
                      this.resetCritCycle();
                      this.critTargetId = target.method_5628();
+                     this.critOrbitDir = target.method_5628() % 2 == 0 ? 1 : -1;
                   }
+
+                  // During continuous sword crits, circle the opponent instead of
+                  // standing still. Strafing is done while the view stays locked
+                  // smoothly on the target, producing a stable orbit.
+                  mc.field_1690.field_1913.method_23481(this.critOrbitDir > 0);
+                  mc.field_1690.field_1849.method_23481(this.critOrbitDir < 0);
+                  mc.field_1690.field_1894.method_23481(distance > this.stop.get() + 0.35);
 
                   if (p.method_24828()) {
                      // Nach einer Landung erst den einstellbaren Delay abwarten.
