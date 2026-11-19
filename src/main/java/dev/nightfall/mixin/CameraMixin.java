@@ -28,7 +28,7 @@ public abstract class CameraMixin {
       ordinal = 0
    )
    private boolean nightfall$renderLocalPlayer(boolean thirdPerson) {
-      return thirdPerson || FreecamController.isActive();
+      return thirdPerson || FreecamController.isActive() || FreeLook.isActive();
    }
 
    @Inject(
@@ -43,7 +43,28 @@ public abstract class CameraMixin {
          this.method_19327(pos.field_1352, pos.field_1351, pos.field_1350);
          this.method_19325(FreecamController.interpolatedYaw(tickDelta), FreecamController.interpolatedPitch(tickDelta));
       } else if (FreeLook.isActive()) {
-         this.method_19325(FreeLook.cameraYaw(), FreeLook.cameraPitch());
+         float yaw = FreeLook.cameraYaw();
+         float pitch = FreeLook.cameraPitch();
+         this.method_19325(yaw, pitch);
+
+         double distance = FreeLook.cameraDistance();
+         if (distance > 0.0 && focusedEntity != null) {
+            double yawRad = Math.toRadians(yaw);
+            double pitchRad = Math.toRadians(pitch);
+            double forwardX = -Math.sin(yawRad) * Math.cos(pitchRad);
+            double forwardY = -Math.sin(pitchRad);
+            double forwardZ = Math.cos(yawRad) * Math.cos(pitchRad);
+
+            class_243 eye = focusedEntity.method_33571();
+            // Directly place the camera at the requested distance. No block raycast
+            // or third-person collision adjustment is performed, so FreeLook can
+            // pass through solid blocks.
+            this.method_19327(
+               eye.field_1352 - forwardX * distance,
+               eye.field_1351 - forwardY * distance,
+               eye.field_1350 - forwardZ * distance
+            );
+         }
       }
    }
 }
