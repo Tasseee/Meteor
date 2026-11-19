@@ -278,7 +278,7 @@ public final class FreecamController extends Module {
       double k = Math.max(0.03, Math.min(1.0, smoothing.get()));
       velX += (target.field_1352 - velX) * k;
       velY += (target.field_1351 - velY) * k;
-      velZ += (target.field_1352 - velZ) * k;
+      velZ += (target.field_1350 - velZ) * k;
 
       double dt = 0.05;
       camX += velX * dt;
