@@ -3,6 +3,7 @@ package dev.nightfall.modules;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.ModuleManager;
+import dev.nightfall.module.setting.NumberSetting;
 import org.lwjgl.glfw.GLFW;
 
 public final class FreeLook extends Module {
@@ -16,6 +17,7 @@ public final class FreeLook extends Module {
    private boolean mouseInitialized;
    private final double[] cursorX = new double[1];
    private final double[] cursorY = new double[1];
+   private final NumberSetting cameraDistance = this.add(new NumberSetting("Kamera-Reichweite", 4.0, 0.0, 50.0, 0.25));
 
    public FreeLook() {
       super("FreeLook", "Mit der Maus umsehen, ohne die Blickrichtung des Spielers zu aendern.", Category.VISUALS);
@@ -31,6 +33,15 @@ public final class FreeLook extends Module {
 
    public static float cameraPitch() {
       return cameraPitch;
+   }
+
+   public static double cameraDistance() {
+      try {
+         FreeLook module = ModuleManager.get(FreeLook.class);
+         return module.cameraDistance.get();
+      } catch (Throwable ignored) {
+         return 4.0;
+      }
    }
 
    private boolean activateIfReady() {
