@@ -43,8 +43,8 @@ public abstract class CameraMixin {
          this.method_19327(pos.field_1352, pos.field_1351, pos.field_1350);
          this.method_19325(FreecamController.interpolatedYaw(tickDelta), FreecamController.interpolatedPitch(tickDelta));
       } else if (FreeLook.isActive()) {
-         float yaw = FreeLook.cameraYaw();
-         float pitch = FreeLook.cameraPitch();
+         float yaw = FreeLook.interpolatedYaw(tickDelta);
+         float pitch = FreeLook.interpolatedPitch(tickDelta);
          this.method_19325(yaw, pitch);
 
          double distance = FreeLook.cameraDistance();
