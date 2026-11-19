@@ -553,6 +553,9 @@ public final class NightfallGuiScreen extends class_437 {
       if (this.editingColor != null || this.editingString != null || this.editingMessages != null || this.editingList != null) {
          this.drawTextEditor(ctx);
       }
+      if (this.editingEntities != null) {
+         this.drawEntityEditor(ctx, mx, my, click, rightClick);
+      }
 
       if (System.currentTimeMillis() < this.feedbackUntil) {
          this.drawFeedback(ctx);
@@ -723,6 +726,9 @@ public final class NightfallGuiScreen extends class_437 {
 
       if (this.editingColor != null || this.editingString != null || this.editingMessages != null || this.editingList != null) {
          this.drawTextEditor(ctx);
+      }
+      if (this.editingEntities != null) {
+         this.drawEntityEditor(ctx, mx, my, click, rightClick);
       }
       if (System.currentTimeMillis() < this.feedbackUntil) {
          this.drawFeedback(ctx);
@@ -1141,6 +1147,18 @@ public final class NightfallGuiScreen extends class_437 {
             c.cycle(-1);
             Config.save();
          }
+      } else if (s instanceof EntityTypeSetting entities) {
+         int selected = entities.get().size();
+         String value = selected == 0 ? "Alle / Standard" : selected + " ausgewählt";
+         ctx.method_51433(mc.field_1772, entities.getName(), x + 5, y + 7, Theme.TEXT_DIM, false);
+         ctx.method_51433(mc.field_1772, value, x + w - 8 - mc.field_1772.method_1727(value), y + 7, Theme.ACCENT, false);
+         if (click && over) {
+            this.editingEntities = entities;
+            this.entitySearchQuery = "";
+            this.entitySearchFocused = false;
+            this.entityScroll = 0;
+            this.searchFocused = false;
+         }
       } else if (s instanceof StringSetting st) {
          String valuex = st.get();
          if (valuex.length() > 18) {
@@ -1182,6 +1200,92 @@ public final class NightfallGuiScreen extends class_437 {
             this.showFeedback("Letzter Eintrag entfernt");
          }
       }
+   }
+
+   private void drawEntityEditor(class_332 ctx, int mx, int my, boolean click, boolean rightClick) {
+      class_310 mc = class_310.method_1551();
+      int modalW = Math.min(520, Math.max(300, this.field_22789 - 30));
+      int modalH = Math.min(430, Math.max(250, this.field_22790 - 40));
+      int x = (this.field_22789 - modalW) / 2;
+      int y = (this.field_22790 - modalH) / 2;
+
+      ctx.method_25294(0, 0, this.field_22789, this.field_22790, 0x66000000);
+      roundedRect(ctx, x - 3, y - 3, modalW + 6, modalH + 6, Config.cornerRadius + 3, Theme.withAlpha(Theme.ACCENT, 150));
+      roundedRect(ctx, x, y, modalW, modalH, Config.cornerRadius, 0xF20B0A11);
+
+      ctx.method_51433(mc.field_1772, "ENTITY ESP · ENTITIES", x + 14, y + 12, Theme.TEXT, true);
+
+      int searchY = y + 35;
+      boolean searchOver = inside(mx, my, x + 12, searchY, modalW - 24, 21);
+      roundedRect(ctx, x + 12, searchY, modalW - 24, 21, 7, 0xCC15121F);
+      ctx.method_51433(mc.field_1772,
+         (this.entitySearchQuery.isEmpty() ? "Entity suchen..." : this.entitySearchQuery)
+            + (this.entitySearchFocused ? "_" : ""),
+         x + 19, searchY + 7,
+         this.entitySearchQuery.isEmpty() ? Theme.TEXT_DIM : Theme.TEXT, false);
+
+      int allY = y + 62;
+      int buttonW = 64;
+      boolean allOver = inside(mx, my, x + 12, allY, buttonW, 19);
+      boolean noneOver = inside(mx, my, x + 82, allY, buttonW, 19);
+      roundedRect(ctx, x + 12, allY, buttonW, 19, 7, Theme.withAlpha(Theme.ACCENT, allOver ? 150 : 80));
+      roundedRect(ctx, x + 82, allY, buttonW, 19, 7, Theme.withAlpha(Theme.TEXT_DIM, noneOver ? 110 : 55));
+      ctx.method_51433(mc.field_1772, "ALLE", x + 27, allY + 6, Theme.TEXT, true);
+      ctx.method_51433(mc.field_1772, "KEINE", x + 94, allY + 6, Theme.TEXT, true);
+
+      List<String> ids = this.editingEntities.allTypes();
+      String q = this.entitySearchQuery.toLowerCase(Locale.ROOT).trim();
+      if (!q.isEmpty()) {
+         ids.removeIf(id -> !id.contains(q));
+      }
+
+      int rowY = y + 88 - this.entityScroll;
+      int rowH = 24;
+      int listTop = y + 86;
+      int listBottom = y + modalH - 12;
+      int maxScroll = Math.max(0, ids.size() * rowH - (listBottom - listTop));
+      this.entityScroll = Math.max(0, Math.min(this.entityScroll, maxScroll));
+
+      ctx.method_44379(x + 8, listTop, x + modalW - 8, listBottom);
+      for (String id : ids) {
+         if (rowY + rowH >= listTop && rowY <= listBottom) {
+            boolean selected = this.editingEntities.has(id);
+            boolean over = inside(mx, my, x + 12, rowY, modalW - 24, rowH - 2);
+            if (over) roundedRect(ctx, x + 12, rowY, modalW - 24, rowH - 2, 6, Theme.withAlpha(Theme.ACCENT, 55));
+            ctx.method_25294(x + 17, rowY + 7, x + 25, rowY + 15, selected ? Theme.ACCENT : 0xFF302A3A);
+            if (selected) {
+               ctx.method_51433(mc.field_1772, "✓", x + 17, rowY + 4, Theme.TEXT, true);
+            }
+            String display = id.contains(":") ? id.substring(id.indexOf(':') + 1) : id;
+            ctx.method_51433(mc.field_1772, display, x + 34, rowY + 5, selected ? Theme.TEXT : Theme.TEXT_DIM, false);
+            ctx.method_51433(mc.field_1772, id, x + 34, rowY + 14, Theme.TEXT_DIM, false);
+
+            if (click && over) {
+               if (selected) this.editingEntities.remove(id);
+               else this.editingEntities.add(id);
+               Config.save();
+            }
+         }
+         rowY += rowH;
+      }
+      ctx.method_44380();
+
+      if (click && searchOver) {
+         this.entitySearchFocused = true;
+      } else if (click && allOver) {
+         for (String id : this.editingEntities.allTypes()) this.editingEntities.add(id);
+         Config.save();
+      } else if (click && noneOver) {
+         for (String id : new ArrayList<>(this.editingEntities.get())) this.editingEntities.remove(id);
+         Config.save();
+      } else if (click && !searchOver) {
+         this.entitySearchFocused = false;
+      }
+
+      String hint = this.editingEntities.isEmpty()
+         ? "Keine Auswahl = Feindlich/Passiv-Filter"
+         : this.editingEntities.get().size() + " Entity-Typen ausgewählt · ESC schließen";
+      ctx.method_51433(mc.field_1772, hint, x + 14, y + modalH - 9, Theme.TEXT_DIM, false);
    }
 
    private void closeEditor() {
