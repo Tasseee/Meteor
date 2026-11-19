@@ -1,6 +1,5 @@
 package dev.nightfall.mixin;
 
-import dev.nightfall.modules.FreeLook;
 import dev.nightfall.modules.FreecamController;
 import net.minecraft.class_1297;
 import net.minecraft.class_1937;
@@ -28,43 +27,23 @@ public abstract class CameraMixin {
       ordinal = 0
    )
    private boolean nightfall$renderLocalPlayer(boolean thirdPerson) {
-      return thirdPerson || FreecamController.isActive() || FreeLook.isActive();
+      return thirdPerson || FreecamController.isActive();
    }
 
    @Inject(
       method = {"method_19321"},
       at = {@At("TAIL")}
    )
-   private void nightfall$applyCameraState(
+   private void nightfall$applyFreecamState(
       class_1937 area, class_1297 focusedEntity, boolean thirdPerson, boolean inverseView, float tickDelta, CallbackInfo ci
    ) {
       if (FreecamController.isActive()) {
          class_243 pos = FreecamController.interpolatedPosition(tickDelta);
          this.method_19327(pos.field_1352, pos.field_1351, pos.field_1350);
-         this.method_19325(FreecamController.interpolatedYaw(tickDelta), FreecamController.interpolatedPitch(tickDelta));
-      } else if (FreeLook.isActive()) {
-         float yaw = FreeLook.interpolatedYaw(tickDelta);
-         float pitch = FreeLook.interpolatedPitch(tickDelta);
-         this.method_19325(yaw, pitch);
-
-         double distance = FreeLook.cameraDistance();
-         if (distance > 0.0 && focusedEntity != null) {
-            double yawRad = Math.toRadians(yaw);
-            double pitchRad = Math.toRadians(pitch);
-            double forwardX = -Math.sin(yawRad) * Math.cos(pitchRad);
-            double forwardY = -Math.sin(pitchRad);
-            double forwardZ = Math.cos(yawRad) * Math.cos(pitchRad);
-
-            class_243 eye = focusedEntity.method_33571();
-            // Directly place the camera at the requested distance. No block raycast
-            // or third-person collision adjustment is performed, so FreeLook can
-            // pass through solid blocks.
-            this.method_19327(
-               eye.field_1352 - forwardX * distance,
-               eye.field_1351 - forwardY * distance,
-               eye.field_1350 - forwardZ * distance
-            );
-         }
+         this.method_19325(
+            FreecamController.interpolatedYaw(tickDelta),
+            FreecamController.interpolatedPitch(tickDelta)
+         );
       }
    }
 }
