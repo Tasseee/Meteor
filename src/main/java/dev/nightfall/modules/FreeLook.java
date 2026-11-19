@@ -10,6 +10,8 @@ public final class FreeLook extends Module {
    private static boolean active;
    private static float cameraYaw;
    private static float cameraPitch;
+   private static float previousCameraYaw;
+   private static float previousCameraPitch;
    private float playerYaw;
    private float playerPitch;
    private double lastMouseX;
@@ -33,6 +35,16 @@ public final class FreeLook extends Module {
 
    public static float cameraPitch() {
       return cameraPitch;
+   }
+
+   public static float interpolatedYaw(float tickDelta) {
+      float t = Math.max(0.0F, Math.min(1.0F, tickDelta));
+      return previousCameraYaw + net.minecraft.class_3532.method_15393(cameraYaw - previousCameraYaw) * t;
+   }
+
+   public static float interpolatedPitch(float tickDelta) {
+      float t = Math.max(0.0F, Math.min(1.0F, tickDelta));
+      return previousCameraPitch + (cameraPitch - previousCameraPitch) * t;
    }
 
    public static double cameraDistance() {
@@ -61,6 +73,8 @@ public final class FreeLook extends Module {
          this.playerPitch = mc.field_1724.method_36455();
          cameraYaw = this.playerYaw;
          cameraPitch = this.playerPitch;
+         previousCameraYaw = cameraYaw;
+         previousCameraPitch = cameraPitch;
          this.mouseInitialized = false;
          active = true;
          return true;
@@ -79,6 +93,8 @@ public final class FreeLook extends Module {
       if (!active) {
          this.activateIfReady();
       } else if (mc.field_1724 != null && mc.field_1687 != null && mc.method_22683() != null) {
+         previousCameraYaw = cameraYaw;
+         previousCameraPitch = cameraPitch;
          long window = mc.method_22683().method_4490();
          GLFW.glfwGetCursorPos(window, this.cursorX, this.cursorY);
          if (this.mouseInitialized) {
