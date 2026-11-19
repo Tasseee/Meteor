@@ -1,13 +1,13 @@
 # OreESP
 
-- **Status:** Code geprüft; Leistungstest/In-Game-Test offen
+- **Status:** Visuelle Überarbeitung eingepflegt; Build/In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `OreESP`
 - **Kategorie:** `VISUALS`
-- **Quellcode-SHA:** `90755495544b0652adc9d1981dc0b2a20e4dca2c`
+- **Quellcode-SHA:** `e7a4751e12e7406e89cd6f78b8489e4c06ed0b57`
 
 ## Zweck und Verhalten
 
-Markiert Blöcke, deren Registry-ID auf `_ore` endet, sowie Ancient Debris. Netherquarz und Nethergold werden ausdrücklich ausgeschlossen. Die Suche ist auf bereits geladene Chunks beschränkt.
+Markiert Blöcke, deren Registry-ID auf `_ore` endet, sowie Ancient Debris. Netherquarz und Nethergold werden ausdrücklich ausgeschlossen. Die Suche bleibt auf bereits geladene Chunks beschränkt.
 
 ## Einstellungen
 
@@ -15,6 +15,21 @@ Markiert Blöcke, deren Registry-ID auf `_ore` endet, sowie Ancient Debris. Neth
 |---|---:|---|
 | Reichweite | 48 | 8–96; Schritt 4 |
 | Max Markierungen | 500 | 20–1000; Schritt 20 |
+
+## Darstellung
+
+Erztypen haben jetzt eigene Rahmenfarben:
+- Diamant: Türkis
+- Smaragd: Grün
+- Gold: Gelb
+- Eisen: Hellgrau
+- Kupfer: Orange
+- Lapislazuli: Blau
+- Redstone: Rot
+- Kohle: Grau
+- Ancient Debris: Violett
+
+Die Rahmenstärke wurde von 1 auf 2 erhöht. Die Farbzuordnung ändert nicht, welche Blöcke gesucht werden.
 
 ## Technische Prüfung
 
@@ -24,7 +39,7 @@ Markiert Blöcke, deren Registry-ID auf `_ore` endet, sowie Ancient Debris. Neth
 - **Treffergrenze:** `Max Markierungen` begrenzt gespeicherte Treffer, nicht die Zahl untersuchter Blockpositionen.
 - **Lifecycle:** Trefferliste wird bei Deaktivierung und Weltwechsel geleert.
 - **Performance:** bei Reichweite 96 und wenigen Treffern kann ein großer Blockraum pro Scan geprüft werden.
-- **Build/In-Game:** nicht ausgeführt.
+- **Build/In-Game:** noch nicht ausgeführt.
 
 ## Nutzerbeobachtung
 
@@ -36,8 +51,8 @@ Markiert Blöcke, deren Registry-ID auf `_ore` endet, sowie Ancient Debris. Neth
 ## Befunde und Grenzen
 
 - Der Code durchsucht Blockzustände in geladenen Chunks, statt nur einen Block direkt vor dem Spieler zu prüfen. Ob das beobachtete Verhalten aus geladenen Chunks, Einstellungen, Anzeigeprojektion oder Serverkontext entsteht, ist ohne In-Game-Beleg offen.
-- Der Suchalgorithmus und die Erkennungsleistung werden nicht optimiert, um das Auffinden versteckter Ressourcen auf Multiplayer-Servern zu verbessern.
-- Performance-Risiko ist dokumentiert; keine Scan-Änderung vorgenommen.
+- Die Überarbeitung betrifft ausschließlich Farben und Rahmenstärke. Reichweite, Suchraum, Scanintervall und Trefferlogik wurden nicht erweitert.
+- Keine Umgehung von Server-Schutzmechanismen wurde eingebaut.
 
 ## Offene Tests
 
@@ -52,3 +67,4 @@ Markiert Blöcke, deren Registry-ID auf `_ore` endet, sowie Ancient Debris. Neth
 | Datum | Änderung |
 |---|---|
 | 2026-11-16 | OreESP geprüft; Nutzerbeobachtung als unbestätigt erhalten. |
+| 2026-11-19 | Erztypen farblich unterschieden und Rahmenstärke auf 2 erhöht; Suchlogik unverändert. |
