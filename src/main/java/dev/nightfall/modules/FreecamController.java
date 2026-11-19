@@ -8,6 +8,7 @@ import net.minecraft.class_1531;
 import net.minecraft.class_243;
 import net.minecraft.class_332;
 import net.minecraft.class_310;
+import net.minecraft.class_3532;
 import net.minecraft.class_638;
 import org.lwjgl.glfw.GLFW;
 
@@ -26,6 +27,7 @@ public final class FreecamController extends Module {
    private static class_638 camWorld;
    private static double camX, camY, camZ;
    private static double previousCamX, previousCamY, previousCamZ;
+   private static float previousCamYaw, previousCamPitch;
    private static double velX, velY, velZ;
    private static double eyeOffset;
 
@@ -81,11 +83,15 @@ public final class FreecamController extends Module {
    }
 
    public static float interpolatedYaw(float tickDelta) {
-      return cameraYaw();
+      if (cam == null) return 0.0F;
+      float t = Math.max(0.0F, Math.min(1.0F, tickDelta));
+      return previousCamYaw + class_3532.method_15393(cam.method_36454() - previousCamYaw) * t;
    }
 
    public static float interpolatedPitch(float tickDelta) {
-      return cameraPitch();
+      if (cam == null) return 0.0F;
+      float t = Math.max(0.0F, Math.min(1.0F, tickDelta));
+      return previousCamPitch + (cam.method_36455() - previousCamPitch) * t;
    }
 
    public static boolean isBodyMode() {
@@ -129,6 +135,8 @@ public final class FreecamController extends Module {
       previousCamX = camX;
       previousCamY = camY;
       previousCamZ = camZ;
+      previousCamYaw = yaw;
+      previousCamPitch = pitch;
       cam.method_5814(camX, camY - eyeOffset, camZ);
       previousCamX = camX;
       previousCamY = camY;
@@ -189,6 +197,8 @@ public final class FreecamController extends Module {
       previousCamX = camX;
       previousCamY = camY;
       previousCamZ = camZ;
+      previousCamYaw = cam.method_36454();
+      previousCamPitch = cam.method_36455();
 
       if (isBodyMode()) {
          velX = velY = velZ = 0.0;
