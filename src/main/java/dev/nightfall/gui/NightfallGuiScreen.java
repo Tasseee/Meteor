@@ -5,6 +5,7 @@ import dev.nightfall.module.Module;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.ColorSetting;
+import dev.nightfall.module.setting.EntityTypeSetting;
 import dev.nightfall.module.setting.ListSetting;
 import dev.nightfall.module.setting.MessageListSetting;
 import dev.nightfall.module.setting.ModeSetting;
@@ -71,6 +72,10 @@ public final class NightfallGuiScreen extends class_437 {
    private StringSetting editingString;
    private MessageListSetting editingMessages;
    private ListSetting editingList;
+   private EntityTypeSetting editingEntities;
+   private String entitySearchQuery = "";
+   private boolean entitySearchFocused;
+   private int entityScroll;
    private String messageDraft = "";
    private String feedback = "";
    private long feedbackUntil;
@@ -100,7 +105,9 @@ public final class NightfallGuiScreen extends class_437 {
    public boolean method_25401(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
       int mx = (int)mouseX;
       int my = (int)mouseY;
-      if (this.activeTab.equals("Config")
+      if (this.editingEntities != null) {
+         this.entityScroll = Math.max(0, this.entityScroll - (int)Math.round(verticalAmount * 24.0));
+      } else if (this.activeTab.equals("Config")
          && inside(mx, my, this.configPanelX, this.configPanelY + 25, this.configPanelW, this.configPanelH)) {
          this.configScroll = Math.max(0, Math.min(this.configScrollMax, this.configScroll - (int)Math.round(verticalAmount * 28.0)));
       } else {
@@ -133,7 +140,7 @@ public final class NightfallGuiScreen extends class_437 {
             this.showFeedback("Keybind entfernt");
             return true;
          }
-      } else if (this.editingColor == null && this.editingString == null && this.editingMessages == null && this.editingList == null) {
+      } else if (this.editingColor == null && this.editingString == null && this.editingMessages == null && this.editingList == null && this.editingEntities == null) {
          if (this.searchFocused) {
             if (key == 256 || key == 257 || key == 335) {
                this.searchFocused = false;
@@ -158,6 +165,24 @@ public final class NightfallGuiScreen extends class_437 {
             return super.method_25404(input);
          } else {
             this.method_25419();
+            return true;
+         }
+      } else if (this.editingEntities != null) {
+         if (key == 256) {
+            this.closeEditor();
+            return true;
+         } else if (key == 259) {
+            if (!this.entitySearchQuery.isEmpty()) {
+               this.entitySearchQuery = this.entitySearchQuery.substring(0, this.entitySearchQuery.length() - 1);
+            }
+            this.entityScroll = 0;
+            return true;
+         } else {
+            String typed = keyText(key);
+            if (typed != null && this.entitySearchQuery.length() < 40) {
+               this.entitySearchQuery = this.entitySearchQuery + typed;
+               this.entityScroll = 0;
+            }
             return true;
          }
       } else if (key == 256) {
@@ -1164,6 +1189,10 @@ public final class NightfallGuiScreen extends class_437 {
       this.editingString = null;
       this.editingMessages = null;
       this.editingList = null;
+      this.editingEntities = null;
+      this.entitySearchQuery = "";
+      this.entitySearchFocused = false;
+      this.entityScroll = 0;
       this.messageDraft = "";
    }
 
