@@ -34,7 +34,7 @@ public final class EntityTypeSetting extends Setting<Set<String>> {
    public List<String> allTypes() {
       List<String> ids = new ArrayList<>();
       try {
-         class_2378<class_1299<?>> registry = (class_2378<class_1299<?>>) class_7923.field_41176;
+         class_2378<class_1299<?>> registry = (class_2378<class_1299<?>>) class_7923.field_41177;
          for (class_1299<?> type : registry) {
             class_2960 id = registry.method_10221(type);
             if (id != null) ids.add(id.toString().toLowerCase(Locale.ROOT));
