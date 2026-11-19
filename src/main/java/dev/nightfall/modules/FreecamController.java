@@ -12,13 +12,6 @@ import net.minecraft.class_3532;
 import net.minecraft.class_638;
 import org.lwjgl.glfw.GLFW;
 
-/**
- * FreecamController replaces the old Nightfall Freecam implementation.
- *
- * The camera is a local ArmorStand camera entity. The real player remains at
- * the saved position and keeps normal interaction. Holding Left Alt switches
- * control back to the real body while the camera stays frozen.
- */
 public final class FreecamController extends Module {
    private static final int BODY_KEY = GLFW.GLFW_KEY_LEFT_ALT;
 
@@ -45,6 +38,10 @@ public final class FreecamController extends Module {
       this.add(new dev.nightfall.module.setting.NumberSetting("Geschwindigkeit", 0.6, 0.1, 3.0, 0.05));
    private final dev.nightfall.module.setting.NumberSetting smoothing =
       this.add(new dev.nightfall.module.setting.NumberSetting("Gleiten", 0.25, 0.03, 1.0, 0.01));
+   private final dev.nightfall.module.setting.BoolSetting freeLook =
+      this.add(new dev.nightfall.module.setting.BoolSetting("FreeLook", false));
+   private final dev.nightfall.module.setting.NumberSetting cameraDistance =
+      this.add(new dev.nightfall.module.setting.NumberSetting("FreeLook-Reichweite", 4.0, 0.0, 50.0, 0.25));
    private final dev.nightfall.module.setting.BoolSetting stopOnDamage =
       this.add(new dev.nightfall.module.setting.BoolSetting("Stopp bei Schaden", true));
    private final dev.nightfall.module.setting.BoolSetting hud =
@@ -94,10 +91,26 @@ public final class FreecamController extends Module {
       return previousCamPitch + (cam.method_36455() - previousCamPitch) * t;
    }
 
-   public static boolean isBodyMode() {
-      class_310 mc = class_310.method_1551();
-      if (mc.method_22683() == null) return false;
-      return GLFW.glfwGetKey(mc.method_22683().method_4490(), BODY_KEY) == GLFW.GLFW_PRESS;
+   private void updateFreeLookCamera(class_310 mc) {
+      if (mc.field_1724 == null || cam == null) return;
+
+      double distance = Math.max(0.0, cameraDistance.get());
+      double yawRad = Math.toRadians(cam.method_36454());
+      double pitchRad = Math.toRadians(cam.method_36455());
+
+      double forwardX = -Math.sin(yawRad) * Math.cos(pitchRad);
+      double forwardY = -Math.sin(pitchRad);
+      double forwardZ = Math.cos(yawRad) * Math.cos(pitchRad);
+
+      class_243 eye = mc.field_1724.method_33571();
+      camX = eye.field_1352 - forwardX * distance;
+      camY = eye.field_1351 - forwardY * distance;
+      camZ = eye.field_1350 - forwardZ * distance;
+
+      // FreeLook is attached to the player position but does not rotate the body.
+      // No third-person collision correction is applied, so the camera can pass
+      // through blocks.
+      cam.method_5814(camX, camY - eyeOffset, camZ);
    }
 
    @Override
@@ -108,11 +121,6 @@ public final class FreecamController extends Module {
    private void enableFreecam() {
       class_310 mc = class_310.method_1551();
       if (mc.field_1724 == null || mc.field_1687 == null) return;
-
-      try {
-         ModuleManager.get(FreeLook.class).setEnabled(false);
-      } catch (Throwable ignored) {
-      }
 
       playerStart = mc.field_1724.method_73189();
       savedYaw = mc.field_1724.method_36454();
@@ -138,9 +146,6 @@ public final class FreecamController extends Module {
       previousCamYaw = yaw;
       previousCamPitch = pitch;
       cam.method_5814(camX, camY - eyeOffset, camZ);
-      previousCamX = camX;
-      previousCamY = camY;
-      previousCamZ = camZ;
 
       active = true;
       mc.field_1692 = cam;
@@ -200,13 +205,6 @@ public final class FreecamController extends Module {
       previousCamYaw = cam.method_36454();
       previousCamPitch = cam.method_36455();
 
-      if (isBodyMode()) {
-         velX = velY = velZ = 0.0;
-         cam.method_5814(camX, camY - eyeOffset, camZ);
-         mc.field_1724.method_18799(class_243.field_1353);
-         return;
-      }
-
       long window = mc.method_22683().method_4490();
       GLFW.glfwGetCursorPos(window, cursorX, cursorY);
 
@@ -214,18 +212,27 @@ public final class FreecamController extends Module {
          double dx = Math.max(-250.0, Math.min(250.0, cursorX[0] - lastMouseX));
          double dy = Math.max(-250.0, Math.min(250.0, cursorY[0] - lastMouseY));
 
-         // Same mouse direction as the supplied FreecamController.
          float yaw = cam.method_36454() + (float)dx * sensitivity.get().floatValue();
          float pitch = Math.max(-90.0F, Math.min(90.0F,
             cam.method_36455() + (float)dy * sensitivity.get().floatValue()));
          cam.method_36456(yaw);
          cam.method_36457(pitch);
-         
       }
 
       lastMouseX = cursorX[0];
       lastMouseY = cursorY[0];
       mouseInitialized = true;
+
+      // FreeLook mode: camera rotates independently around the player.
+      // The real player's yaw/pitch are restored every tick.
+      if (freeLook.get()) {
+         velX = velY = velZ = 0.0;
+         updateFreeLookCamera(mc);
+         mc.field_1724.method_18799(class_243.field_1353);
+         mc.field_1724.method_36456(savedYaw);
+         mc.field_1724.method_36457(savedPitch);
+         return;
+      }
 
       boolean forward = mc.field_1690.field_1894.method_1434();
       boolean back = mc.field_1690.field_1881.method_1434();
@@ -271,7 +278,7 @@ public final class FreecamController extends Module {
       double k = Math.max(0.03, Math.min(1.0, smoothing.get()));
       velX += (target.field_1352 - velX) * k;
       velY += (target.field_1351 - velY) * k;
-      velZ += (target.field_1350 - velZ) * k;
+      velZ += (target.field_1352 - velZ) * k;
 
       double dt = 0.05;
       camX += velX * dt;
@@ -302,11 +309,10 @@ public final class FreecamController extends Module {
    public void renderHud(class_332 context) {
       if (!isEnabled() || !hud.get() || !active || mc.field_1724 == null) return;
 
-      String title = isBodyMode() ? "FREECAM  -  KOERPER-MODUS" : "FREECAM";
-      String info = String.format(
-         "X %.1f   Y %.1f   Z %.1f   |   Tempo %.2f",
-         camX, camY, camZ, speed.get()
-      );
+      String title = freeLook.get() ? "FREECAM  -  FREELOOK" : "FREECAM";
+      String info = freeLook.get()
+         ? String.format("Reichweite %.1f   |   Spielerblick bleibt fest", cameraDistance.get())
+         : String.format("X %.1f   Y %.1f   Z %.1f   |   Tempo %.2f", camX, camY, camZ, speed.get());
 
       int width = Math.max(mc.field_1772.method_1727(title), mc.field_1772.method_1727(info)) + 24;
       int center = context.method_51421() / 2;
@@ -319,5 +325,4 @@ public final class FreecamController extends Module {
       context.method_51433(mc.field_1772, title, center - mc.field_1772.method_1727(title) / 2, 9, 0xFF39FFB6, true);
       context.method_51433(mc.field_1772, info, center - mc.field_1772.method_1727(info) / 2, 21, 0xFFFFFFFF, true);
    }
-
 }
