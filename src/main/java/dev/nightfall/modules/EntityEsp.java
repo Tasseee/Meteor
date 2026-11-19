@@ -23,7 +23,7 @@ public class EntityEsp extends EntityScanEsp {
    protected boolean accept(class_1297 e) {
       if (!this.entities.isEmpty()) {
          try {
-            class_2378<class_1299<?>> registry = (class_2378<class_1299<?>>) class_7923.field_41176;
+            class_2378<class_1299<?>> registry = (class_2378<class_1299<?>>) class_7923.field_41177;
             String id = registry.method_10221(e.method_5864()).toString().toLowerCase(java.util.Locale.ROOT);
             return this.entities.has(id);
          } catch (Throwable ignored) {
