@@ -17,19 +17,37 @@ import net.minecraft.class_7923;
 public final class OreESP extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 48.0, 8.0, 96.0, 4.0));
    private final NumberSetting maxBlocks = this.add(new NumberSetting("Max Markierungen", 500.0, 20.0, 1000.0, 20.0));
-   private final List<class_238> found = new ArrayList<>();
+   private final List<OreMarker> found = new ArrayList<>();
    private int timer;
 
    public OreESP() {
       super("OreESP", "Markiert Erze im geladenen Gebiet; Netherquarz und Nethergold werden ignoriert.", Category.VISUALS);
    }
 
-   private boolean isOre(class_2248 block) {
+   private String blockId(class_2248 block) {
       class_2378 registry = (class_2378)class_7923.field_41175;
-      String id = registry.method_10221(block).toString();
+      return registry.method_10221(block).toString();
+   }
+
+   private boolean isOre(class_2248 block) {
+      String id = this.blockId(block);
       if (id.equals("minecraft:ancient_debris")) return true;
       if (id.equals("minecraft:nether_quartz_ore") || id.equals("minecraft:nether_gold_ore")) return false;
       return id.endsWith("_ore");
+   }
+
+   private int oreColor(class_2248 block) {
+      String id = this.blockId(block);
+      if (id.equals("minecraft:ancient_debris")) return 0xFFB56CFF;
+      if (id.endsWith("diamond_ore")) return 0xFF40DFFF;
+      if (id.endsWith("emerald_ore")) return 0xFF45E08A;
+      if (id.endsWith("gold_ore")) return 0xFFFFD34D;
+      if (id.endsWith("iron_ore")) return 0xFFE1D7C8;
+      if (id.endsWith("copper_ore")) return 0xFFFF9255;
+      if (id.endsWith("lapis_ore")) return 0xFF568CFF;
+      if (id.endsWith("redstone_ore")) return 0xFFFF5757;
+      if (id.endsWith("coal_ore")) return 0xFF9AA3AD;
+      return 0xFFFFFFFF;
    }
 
    @Override
@@ -54,7 +72,10 @@ public final class OreESP extends Module {
                for (int z = sz; z <= ez && this.found.size() < cap; z++) {
                   for (int y = minY; y <= maxY && this.found.size() < cap; y++) {
                      class_2338 bp = new class_2338(x, y, z);
-                     if (this.isOre(mc.field_1687.method_8320(bp).method_26204())) this.found.add(new class_238(bp));
+                     class_2248 block = mc.field_1687.method_8320(bp).method_26204();
+                     if (this.isOre(block)) {
+                        this.found.add(new OreMarker(new class_238(bp), this.oreColor(block)));
+                     }
                   }
                }
             }
@@ -64,7 +85,11 @@ public final class OreESP extends Module {
 
    @Override
    public void renderHud(class_332 ctx) {
-      if (Projection.valid()) for (class_238 box : this.found) Draw.box(ctx, box, -16711936, 2, true);
+      if (Projection.valid()) {
+         for (OreMarker marker : this.found) {
+            Draw.box(ctx, marker.box(), marker.color(), 2, true);
+         }
+      }
    }
 
    @Override
@@ -72,4 +97,7 @@ public final class OreESP extends Module {
 
    @Override
    public void onWorldLeave() { this.found.clear(); this.timer = 0; }
+
+   private record OreMarker(class_238 box, int color) {
+   }
 }
