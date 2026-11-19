@@ -33,9 +33,28 @@ public final class FakeLag extends Module {
    private final BoolSetting flushOnAttack = this.add(new BoolSetting("Bei Angriff senden", true));
    private final BoolSetting flushOnDamage = this.add(new BoolSetting("Bei Treffer senden", true));
    private final BoolSetting flushOnScreen = this.add(new BoolSetting("Bei GUI senden", true));
+   private final BoolSetting showHud = this.add(new BoolSetting("HUD anzeigen", true));
 
    public FakeLag() {
       super("FakeLag", "Verzoegert ausgehende Bewegungspakete.", Category.COMBAT);
+   }
+
+   /** Whether the compact Nightfall status badge should be rendered. */
+   public boolean shouldShowHud() {
+      return this.showHud.get();
+   }
+
+   /** Number of this client's outgoing movement packets currently queued. */
+   public int queuedMovementPacketCount() {
+      return QUEUE.size();
+   }
+
+   public int configuredDelayMs() {
+      return this.maxDelay.getInt();
+   }
+
+   public int configuredMaxPackets() {
+      return this.maxPackets.getInt();
    }
 
    /**
