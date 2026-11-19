@@ -15,6 +15,7 @@ import dev.nightfall.render.HatsRenderer;
 import dev.nightfall.render.GhostSkinFeatureRenderer;
 import dev.nightfall.render.ItemGlowRenderer;
 import dev.nightfall.render.FakeLagGhostRenderer;
+import dev.nightfall.render.FakeLagHud;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import dev.nightfall.render.SkyVisualRenderer;
 import dev.nightfall.scanner.WaypointManager;
@@ -63,6 +64,7 @@ public class Nightfall implements ClientModInitializer {
       SkyVisualRenderer.register();
       HatsRenderer.register();
       FakeLagGhostRenderer.register();
+      HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, class_2960.method_60655("nightfall", "fake_lag_status"), (ctx, tickCounter) -> FakeLagHud.render(ctx));
       WorldRenderEvents.AFTER_ENTITIES.register(ModuleManager::renderWorld);
       ClientLifecycleEvents.CLIENT_STARTED.register((ClientStarted)client -> SeedCracker.syncState());
       ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
