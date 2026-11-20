@@ -18,3 +18,10 @@ Nur Modulname und sichtbare Beschreibung wurden betrachtet. Die Zustandsmaschine
 - [ ] Sichtbare Beschriftungen im laufenden Client prüfen.
 - [ ] Nicht-angreifende Status-/Fehleranzeige prüfen, ohne Ausführungslogik anzufassen.
 - [ ] Build-/In-Game-Nachweis fehlt.
+
+
+## Lifecycle-Prüfung (2026-11-20)
+
+- Bereits vorhanden: `reset()` wird bei Aktivierung, Deaktivierung und Weltwechsel aufgerufen.
+- Der Reset leert Phase, Timer, Ziel-ID, Basisposition und ausstehenden Status.
+- Keine Änderung an der Sequenz- oder Angriffslogik vorgenommen.
