@@ -17,7 +17,8 @@ public class SpawnerEsp extends BlockEntityEsp {
       this.add(new BoolSetting("Natürliche Dungeons filtern", true));
 
    public SpawnerEsp() {
-      super("SpawnerESP", "Markiert Spawner und filtert typische Dungeon-Räume.", 128, 256, 0xB66CFF, 3);
+      // Start at the maximum supported range (256 blocks).
+      super("SpawnerESP", "Markiert Spawner und filtert typische Dungeon-Räume.", 256, 256, 0xB66CFF, 3);
    }
 
    @Override
