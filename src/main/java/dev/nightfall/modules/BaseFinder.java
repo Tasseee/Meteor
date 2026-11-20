@@ -21,9 +21,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import net.minecraft.class_2246;
 import net.minecraft.class_2248;
 import net.minecraft.class_2561;
@@ -89,7 +91,9 @@ public class BaseFinder extends Module {
    private int candidatesLastRefill;
    private int scannedSinceRefill;
    private boolean paused;
+   private int scanErrors;
    private final Map<Long, Integer> mobClusterMaxByChunk = new HashMap<>();
+   private final Map<Long, Integer> matureKelpByChunk = new HashMap<>();
 
    public BaseFinder() {
       super("BaseFinder", "Findet verdaechtige Chunks anhand von Storage, Tunnelspuren, Hoppern und weiteren Signalen in geladenen Chunks.", Category.BASEFINDER);
@@ -147,6 +151,36 @@ public class BaseFinder extends Module {
       return this.results.size();
    }
 
+   public int scanErrors() {
+      return this.scanErrors;
+   }
+
+   public int matureKelpCount() {
+      int total = 0;
+      for (int count : this.matureKelpByChunk.values()) {
+         total += count;
+      }
+      return total;
+   }
+
+   public int matureKelpChunkCount() {
+      int chunks = 0;
+      for (int count : this.matureKelpByChunk.values()) {
+         if (count > 0) {
+            chunks++;
+         }
+      }
+      return chunks;
+   }
+
+   public int goneCount() {
+      int count = 0;
+      for (ChunkResult result : this.marks) {
+         if (result.status == ChunkResult.Status.GONE) count++;
+      }
+      return count;
+   }
+
    public boolean isPaused() {
       return this.paused;
    }
@@ -196,7 +230,9 @@ public class BaseFinder extends Module {
       this.scannedSinceRefill = 0;
       this.lastScanned = 0;
       this.lastScanNanos = 0L;
+      this.scanErrors = 0;
       this.mobClusterMaxByChunk.clear();
+      this.matureKelpByChunk.clear();
    }
 
    public void clearMarks() {
@@ -245,7 +281,17 @@ public class BaseFinder extends Module {
 
             int n;
             for (n = 0; !this.queue.isEmpty() && System.nanoTime() < deadline; this.scannedSinceRefill++) {
-               this.scan(w, this.queue.poll());
+               long chunkKey = this.queue.poll();
+               try {
+                  this.scan(w, chunkKey);
+               } catch (RuntimeException failure) {
+                  this.scanErrors++;
+                  int cx = (int)chunkKey;
+                  int cz = (int)(chunkKey >> 32);
+                  if (this.scanErrors <= 3 || (this.scanErrors & (this.scanErrors - 1)) == 0) {
+                     Nightfall.LOGGER.error("BaseFinder-Scan fuer Chunk {}, {} fehlgeschlagen (Fehler {})", cx, cz, this.scanErrors, failure);
+                  }
+               }
                n++;
             }
 
@@ -266,20 +312,27 @@ public class BaseFinder extends Module {
       int r = this.range.getInt();
       long minAge = this.rescan.getInt() * 20L;
       List<long[]> cand = new ArrayList<>();
+      Set<Long> loadedInRange = new HashSet<>();
 
       for (int dz = -r; dz <= r; dz++) {
          for (int dx = -r; dx <= r; dx++) {
             int d2 = dx * dx + dz * dz;
             if (d2 <= r * r) {
                long k = key(pcx + dx, pcz + dz);
-               ChunkResult res = this.results.get(k);
-               if ((res == null || res.lastScanTick == 0L || this.tick - res.lastScanTick >= minAge)
-                  && w.method_2935().method_21730(pcx + dx, pcz + dz) != null) {
-                  cand.add(new long[]{d2, k});
+               class_2818 loadedChunk = w.method_2935().method_21730(pcx + dx, pcz + dz);
+               if (loadedChunk != null) {
+                  loadedInRange.add(k);
+                  ChunkResult res = this.results.get(k);
+                  if (res == null || res.lastScanTick == 0L || this.tick - res.lastScanTick >= minAge) {
+                     cand.add(new long[]{d2, k});
+                  }
                }
             }
          }
       }
+
+      // Keep only statistics for chunks that are still loaded inside the configured scan radius.
+      this.matureKelpByChunk.keySet().retainAll(loadedInRange);
 
       cand.sort(Comparator.comparingLong(a -> a[0]));
       this.queue.clear();
@@ -309,6 +362,7 @@ public class BaseFinder extends Module {
          int lightSources = 0;
          int redstoneBlocks = 0;
          int farmBlocks = 0;
+         int matureKelp = 0;
          int buddingAmethyst = 0;
          int amethystClusters = 0;
          int geodeShell = 0;
@@ -383,8 +437,16 @@ public class BaseFinder extends Module {
                         || blockName.contains("beetroots")
                         || blockName.contains("melon_stem")
                         || blockName.contains("pumpkin_stem")
-                        || blockName.contains("sugar_cane")) {
+                        || blockName.contains("sugar_cane")
+                        || blockName.contains("kelp")
+                        || blockName.contains("bamboo")) {
                         farmBlocks++;
+                     }
+                     // Kelp age 25 is the maximum vanilla growth stage.
+                     // This is only a growth-stage hint, not proof of chunk uptime.
+                     if (blockName.contains("kelp")
+                        && state.toString().toLowerCase(Locale.ROOT).contains("age=25")) {
+                        matureKelp++;
                      }
                      int localIndex = y * 256 + z * 16 + x;
                      if (state.method_26215()) {
@@ -418,6 +480,8 @@ public class BaseFinder extends Module {
                }
             }
          }
+
+         this.matureKelpByChunk.put(k, matureKelp);
 
          int[] tunnelInfo = this.countTunnelRuns(air, sections.length * 16);
          int tunnelRuns = tunnelInfo[0];
@@ -808,20 +872,38 @@ public class BaseFinder extends Module {
          try {
             List<BaseFinder.FakePattern> loaded = (List<BaseFinder.FakePattern>)GSON.fromJson(Files.readString(f), FAKE_LIST);
             if (loaded != null) {
+               int skipped = 0;
                for (BaseFinder.FakePattern pattern : loaded) {
-                  if (pattern != null) {
-                     if (pattern.seenChunks == null) {
-                        pattern.seenChunks = new ArrayList<>();
-                     }
-
-                     this.fakePatterns.add(pattern);
+                  if (!isValidFakePattern(pattern)) {
+                     skipped++;
+                     continue;
                   }
+                  pattern.seenChunks.removeIf(location -> location == null || !location.matches("-?\\d+,-?\\d+"));
+                  if (pattern.seenChunks.isEmpty()) {
+                     skipped++;
+                     continue;
+                  }
+                  this.fakePatterns.add(pattern);
+               }
+               if (skipped > 0) {
+                  Nightfall.LOGGER.warn("{} ungueltige Fake-Base-Profile uebersprungen: {}", skipped, f);
                }
             }
          } catch (Exception var5) {
             Nightfall.LOGGER.error("Fake-Base-Fingerprints defekt: {}", f, var5);
          }
       }
+   }
+
+   private static boolean isValidFakePattern(BaseFinder.FakePattern pattern) {
+      return pattern != null && pattern.version >= 2
+         && pattern.storage >= 0 && pattern.shulker >= 0 && pattern.hopper >= 0
+         && pattern.furnace >= 0 && pattern.redstone >= 0 && pattern.spawner >= 0
+         && pattern.rotatedDeepslate >= 0 && pattern.lightSources >= 0
+         && pattern.redstoneBlocks >= 0 && pattern.farmBlocks >= 0
+         && pattern.amethystClusters >= 0 && pattern.sculk >= 0
+         && pattern.tunnelRuns >= 0 && pattern.tunnelBlocks >= 0
+         && pattern.seenChunks != null;
    }
 
    private static String fmt(double value) {

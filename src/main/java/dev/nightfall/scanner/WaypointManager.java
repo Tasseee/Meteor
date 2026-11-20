@@ -8,8 +8,10 @@ import dev.nightfall.util.Storage;
 import dev.nightfall.util.Theme;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -73,10 +75,25 @@ public final class WaypointManager {
    public static void save() {
       all();
 
+      Path target = file();
+      Path temporary = target.resolveSibling(target.getFileName() + ".tmp");
       try {
-         Files.writeString(file(), GSON.toJson(LIST_));
-      } catch (IOException var1) {
-         Nightfall.LOGGER.error("Waypoints speichern fehlgeschlagen", var1);
+         Path parent = target.getParent();
+         if (parent != null) Files.createDirectories(parent);
+         Files.writeString(temporary, GSON.toJson(LIST_));
+         try {
+            Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+         } catch (AtomicMoveNotSupportedException unsupported) {
+            Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
+         }
+      } catch (IOException failure) {
+         Nightfall.LOGGER.error("Waypoints speichern fehlgeschlagen", failure);
+      } finally {
+         try {
+            Files.deleteIfExists(temporary);
+         } catch (IOException cleanupFailure) {
+            Nightfall.LOGGER.warn("Temporäre Waypoint-Datei konnte nicht entfernt werden: {}", temporary, cleanupFailure);
+         }
       }
    }
 

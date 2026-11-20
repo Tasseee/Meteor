@@ -28,19 +28,25 @@ public class PlayerEsp extends EntityScanEsp {
    @Override
    protected String nameOf(class_1297 entity) {
       String name = super.nameOf(entity);
-      if (!(entity instanceof class_1657)) return name;
+      if (!(entity instanceof class_1657 player)) return name;
 
       var network = mc.method_1562();
-      if (network == null) return name + " §7Ping: N/A";
+      var profile = player.method_7334();
+      if (network == null || profile == null || profile.id() == null) {
+         return name + " §7Ping: N/A";
+      }
 
+      // Match the tab-list entry by UUID rather than the rendered display name.
+      // Display names may contain team prefixes or server-specific formatting.
       for (net.minecraft.class_640 entry : network.method_45732()) {
-         if (entry != null && entry.method_2966() != null
-            && name.equalsIgnoreCase(entry.method_2966().name())) {
-            int ping = Math.max(0, entry.method_2959());
-            return name + " §7" + ping + " ms";
+         var entryProfile = entry == null ? null : entry.method_2966();
+         if (entryProfile != null && profile.id().equals(entryProfile.id())) {
+            int ping = entry.method_2959();
+            return ping >= 0 ? name + " §7" + ping + " ms" : name + " §7Ping: N/A";
          }
       }
 
+      // A ping is only available when the server provides this player in the tab list.
       return name + " §7Ping: N/A";
    }
 

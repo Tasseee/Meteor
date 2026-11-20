@@ -1,9 +1,9 @@
 # BaseFinder
 
-- **Status:** Code geprüft; Persistenzkorrekturen gespeichert; Build-/In-Game-Test offen
+- **Status:** Statusstatistiken und Scanfehler-Behandlung ergänzt; Build-/In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `BaseFinder`
 - **Kategorie:** `BASEFINDER`
-- **Aktueller Quellcode-SHA:** `d41cbfc6fe3a3a8b368739cf43aab3383f38fa19`
+- **Aktueller Quellcode-SHA:** `764f0b4464d2e1e909133cb10d9166406ee41e84`
 - **Datenklassen:** `ChunkResult`, interne `Mark`- und `FakePattern`-Datensätze
 - **Speicher-Hilfsklasse:** `Storage`
 
@@ -119,3 +119,20 @@ Null-Einträge, fehlende/ungültige Statuswerte, CLEAN-Einträge und nicht endli
 | Datum | Änderung |
 |---|---|
 | 2026-11-16 | Vollständige statische Prüfung der Einstellungen, Queue, Status, Persistenz und Lifecycle; atomare Dateiersetzung und robuste Markierungsvalidierung ergänzt. |
+
+## Ergänzungen: Status und Datenpflege
+
+- `ScannerStatus` zeigt zusätzlich SUS-Anzahl, SUS-WEG-Anzahl und die Gesamtzahl der erfassten Chunk-Ergebnisse.
+- Bei fehlgeschlagenen Einzel-Scans wird der Fehler gezählt und in der Nightfall-Konsole protokolliert. Der Scan-Tick läuft weiter, statt an einem einzelnen fehlerhaften Chunk abzubrechen.
+- `Debug` zeigt SUS-/SUS-WEG-Zahlen und die Zahl der fehlgeschlagenen Chunk-Scans.
+- Ungültige oder unvollständige gespeicherte Fake-Profile werden beim Laden übersprungen und protokolliert. Die Bewertungs- und Vergleichsregeln wurden dabei nicht geändert.
+
+**Teststatus:** Änderungen statisch geprüft; Build und In-Game-Test stehen noch aus.
+
+## Globale Kelp-Statistik
+
+- `ScannerStatus` zeigt eine zusätzliche Zeile mit der Anzahl ausgewachsener Kelp-Blöcke und der Zahl der Chunks, in denen diese vorkommen.
+- Die Summe umfasst nur bereits geladene und vom BaseFinder gescannte Chunks innerhalb des eingestellten `Range (Chunks)`-Radius.
+- Beim Neuaufbau der Scan-Queue werden Statistik-Einträge für nicht mehr geladene oder außerhalb des Scanradius liegende Chunks entfernt.
+- Die Statistik ist eine reine Anzeige. Sie verändert weder Score noch SUS-/GONE-/CLEAN-Status oder Fake-Pattern-Vergleich.
+- Ausgewachsener Kelp ist kein Beweis für eine bestimmte Ladezeit; die Anzeige ist lediglich eine Bestandszählung des aktuell erfassten Bereichs.
