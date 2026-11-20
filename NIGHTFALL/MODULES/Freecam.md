@@ -12,7 +12,7 @@
 - **Space:** Kamera nach oben.
 - **Shift:** Kamera nach unten.
 - **Sprint:** Temporärer Geschwindigkeitsschub.
-- Mausbewegung: Kamera drehen.
+- Mausbewegung: Kamera drehen; horizontale Bewegung folgt jetzt der natürlichen Rechts-/Links-Richtung.
 
 W/A/S/D ist unabhängig von der vertikalen Blickneigung. Nach oben oder unten schauen und W drücken bewegt die Kamera daher weiter horizontal. Vertikale Bewegung erfolgt nur über Space/Shift.
 
@@ -21,7 +21,8 @@ W/A/S/D ist unabhängig von der vertikalen Blickneigung. Nach oben oder unten sc
 - Beschleunigungs- und Bremsglättung wurde entfernt, damit die Kamera unmittelbar auf Tastendruck reagiert.
 - Loslassen der Bewegungstaste stoppt die Kamera direkt; es gibt kein Nachgleiten.
 - Diagonale Bewegungen werden normalisiert, damit sie nicht schneller sind als gerade Bewegung.
-- Blickrichtung, Maussteuerung, FreeLook-Modus, Schadens-Stopp, HUD und Wiederherstellung der Spielerposition bleiben erhalten.
+- Horizontale Maus-Yaw-Änderung wurde umgedreht, damit eine Mausbewegung nach rechts die Kamera auch nach rechts dreht.
+- Blickrichtung, FreeLook-Modus, Schadens-Stopp, HUD und Wiederherstellung der Spielerposition bleiben erhalten.
 - Kamerabewegung bleibt clientseitig; die Spielerposition wird weiterhin auf den gespeicherten Ausgangspunkt zurückgesetzt.
 
 ## Einstellungen
@@ -39,6 +40,7 @@ Die frühere Einstellung `Gleiten` wurde entfernt, weil die Bewegung jetzt bewus
 
 ## Offene Tests
 
+- [ ] Mausbewegung links/rechts
 - [ ] W/A/S/D bei waagerechtem und steilem Blickwinkel
 - [ ] Space/Shift nach oben und unten
 - [ ] Diagonale Bewegung und Sprint-Boost
