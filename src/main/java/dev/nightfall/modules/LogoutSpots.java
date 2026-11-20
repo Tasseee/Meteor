@@ -26,6 +26,7 @@ import net.minecraft.class_332;
  */
 public final class LogoutSpots extends Module {
    private final NumberSetting maxDistance = this.add(new NumberSetting("Max. Distanz", 3000.0, 64.0, 10000.0, 64.0));
+   private final NumberSetting maxSnapshotAge = this.add(new NumberSetting("Max. Positionsalter (s)", 120.0, 5.0, 600.0, 5.0));
    private final NumberSetting lifetimeMinutes = this.add(new NumberSetting("Marker-Dauer (Min.)", 60.0, 1.0, 1440.0, 1.0));
    private final NumberSetting maxMarkers = this.add(new NumberSetting("Max. Marker", 48.0, 1.0, 128.0, 1.0));
    private final BoolSetting showCoordinates = this.add(new BoolSetting("Koordinaten", true));
@@ -83,7 +84,7 @@ public final class LogoutSpots extends Module {
 
          this.lastSeen.put(
             player.method_5667(),
-            new Snapshot(name, player.method_23317(), player.method_23318(), player.method_23321(), dimension)
+            new Snapshot(name, player.method_23317(), player.method_23318(), player.method_23321(), dimension, System.currentTimeMillis())
          );
       }
 
@@ -100,7 +101,7 @@ public final class LogoutSpots extends Module {
       for (UUID uuid : this.previousOnline) {
          if (!onlineNow.contains(uuid)) {
             Snapshot snapshot = this.lastSeen.remove(uuid);
-            if (snapshot != null) {
+            if (snapshot != null && System.currentTimeMillis() - snapshot.observedAt() <= this.maxSnapshotAge.getInt() * 1000L) {
                this.markers.put(
                   uuid,
                   new Marker(snapshot.name(), snapshot.x(), snapshot.y(), snapshot.z(), snapshot.dimension(), System.currentTimeMillis())
@@ -182,6 +183,6 @@ public final class LogoutSpots extends Module {
       }
    }
 
-   private record Snapshot(String name, double x, double y, double z, String dimension) {}
+   private record Snapshot(String name, double x, double y, double z, String dimension, long observedAt) {}
    private record Marker(String name, double x, double y, double z, String dimension, long createdAt) {}
 }
