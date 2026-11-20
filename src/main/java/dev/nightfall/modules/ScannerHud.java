@@ -31,9 +31,11 @@ public class ScannerHud extends HudModule {
       int gone = bf.goneCount();
       int errors = bf.scanErrors();
       int shown = Math.min(top.size(), 5);
+      String kelpSummary = "Ausgew. Kelp: " + bf.matureKelpCount()
+         + " in " + bf.matureKelpChunkCount() + " Chunks";
 
-      this.w = 204;
-      this.h = 38 + shown * 10 + (gone > 0 ? 10 : 0) + (errors > 0 ? 10 : 0);
+      this.w = Math.max(204, mc.field_1772.method_1727(kelpSummary) + 12);
+      this.h = 48 + shown * 10 + (gone > 0 ? 10 : 0) + (errors > 0 ? 10 : 0);
       ctx.method_25294(0, 0, this.w, this.h, Theme.HUD_PANEL);
       ctx.method_25294(0, 0, 2, this.h, Theme.ACCENT);
       ctx.method_51433(
@@ -54,6 +56,9 @@ public class ScannerHud extends HudModule {
       ctx.method_51433(mc.field_1772, summary, 6, 27, Theme.TEXT, false);
 
       int y = 38;
+      ctx.method_51433(mc.field_1772, kelpSummary, 6, y, Theme.TEXT_DIM, false);
+      y += 10;
+
       for (int i = 0; i < shown; i++) {
          ChunkResult result = top.get(i);
          String line = "SUS " + result.blockX() + ", " + result.blockZ() + "  " + String.format(java.util.Locale.ROOT, "%.1f", result.score);
