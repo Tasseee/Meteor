@@ -1,40 +1,44 @@
 package dev.nightfall.modules;
 
-import dev.nightfall.module.setting.BoolSetting;
-import dev.nightfall.module.setting.EntityTypeSetting;
-import net.minecraft.class_7923;
-import net.minecraft.class_2378;
+import dev.nightfall.module.Module;
 import net.minecraft.class_1297;
-import net.minecraft.class_1309;
-import net.minecraft.class_1311;
-import net.minecraft.class_1657;
 import net.minecraft.class_1299;
+import net.minecraft.class_2378;
+import net.minecraft.class_7923;
+import java.util.Locale;
+import java.util.Set;
 
 public class EntityEsp extends EntityScanEsp {
-   private final BoolSetting hostile = this.add(new BoolSetting("Feindlich", true));
-   private final BoolSetting passive = this.add(new BoolSetting("Passiv", false));
-   private final EntityTypeSetting entities = this.add(new EntityTypeSetting("Entities"));
+   private static final Set<String> ALLOWED_ENTITY_TYPES = Set.of(
+      "minecraft:armor_stand",
+      "minecraft:item_frame",
+      "minecraft:glow_item_frame",
+      "minecraft:ender_pearl",
+      "minecraft:wind_charge",
+      "minecraft:breeze_wind_charge",
+      "minecraft:armadillo",
+      "minecraft:splash_potion"
+   );
 
    public EntityEsp() {
-      super("EntityESP", "Markiert Mobs.", 128, 512, 16096779);
+      super("EntityESP", "Zeigt nur Armor Stands, Item Frames, Enderperlen, Wind Charges, Armadillos, Boote und Splash-Traenke.", 128, 512, 16096779);
    }
 
    @Override
-   protected boolean accept(class_1297 e) {
-      if (!this.entities.isEmpty()) {
-         try {
-            class_2378<class_1299<?>> registry = (class_2378<class_1299<?>>) class_7923.field_41177;
-            String id = registry.method_10221(e.method_5864()).toString().toLowerCase(java.util.Locale.ROOT);
-            return this.entities.has(id);
-         } catch (Throwable ignored) {
-            return false;
-         }
-      }
+   protected boolean accept(class_1297 entity) {
+      if (entity == null) return false;
 
-      if (e instanceof class_1309 && !(e instanceof class_1657)) {
-         boolean h = e.method_5864().method_5891() == class_1311.field_6302;
-         return h ? this.hostile.get() : this.passive.get();
-      } else {
+      try {
+         class_2378<class_1299<?>> registry = (class_2378<class_1299<?>>) class_7923.field_41177;
+         var identifier = registry.method_10221(entity.method_5864());
+         if (identifier == null) return false;
+
+         String id = identifier.toString().toLowerCase(Locale.ROOT);
+         return ALLOWED_ENTITY_TYPES.contains(id)
+            || id.equals("minecraft:boat")
+            || id.endsWith("_boat")
+            || id.endsWith("_raft");
+      } catch (RuntimeException ignored) {
          return false;
       }
    }
