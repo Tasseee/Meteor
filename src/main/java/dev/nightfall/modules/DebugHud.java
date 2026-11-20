@@ -7,12 +7,30 @@ import net.minecraft.class_332;
 
 public class DebugHud extends HudModule {
    public DebugHud() {
-      super("Debug", "Scanner-, ESP- und Fehlerstatistik.");
+      super("Debug", "Scanner-, ESP-, Modul-Tick- und Fehlerstatistik.");
+   }
+
+   @Override
+   protected void onEnable() {
+      ModuleManager.setCombatTickProfiling(true);
+   }
+
+   @Override
+   protected void onDisable() {
+      ModuleManager.setCombatTickProfiling(false);
    }
 
    @Override
    protected int[] defaultPos(int sw, int sh) {
       return new int[]{4, 164};
+   }
+
+   private static String profileLine(String moduleName) {
+      long average = ModuleManager.combatTickAverageMicros(moduleName);
+      long max = ModuleManager.combatTickMaxMicros(moduleName);
+      return average == 0L && max == 0L
+         ? moduleName + ": noch keine Messung"
+         : moduleName + ": Ø " + average + " / max " + max + " µs";
    }
 
    @Override
@@ -24,7 +42,13 @@ public class DebugHud extends HudModule {
          "Chunks/Tick " + bf.lastScanned() + "  Queue " + bf.queueSize(),
          "Ergebnisse " + bf.resultCount() + "  Markiert " + bf.marks().size(),
          "ESP-Objekte (Frame) " + EspBase.drawn,
-         "Modul-Fehler " + ModuleManager.errorCount
+         "Modul-Fehler " + ModuleManager.errorCount,
+         "Combat-Tick-Profil (Ø/Max µs)",
+         profileLine("AutoShield"),
+         profileLine("ShieldBreaker"),
+         profileLine("AutoPvP"),
+         profileLine("CrystalAura"),
+         profileLine("DTap")
       };
       int mw = 0;
 
