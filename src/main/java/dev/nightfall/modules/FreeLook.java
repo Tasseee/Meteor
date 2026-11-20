@@ -7,7 +7,6 @@ import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import net.minecraft.class_310;
-import net.minecraft.class_3532;
 
 /**
  * Third-person camera rotation independent from the local player's view.
@@ -58,16 +57,19 @@ public final class FreeLook extends Module {
       class_310 mc = class_310.method_1551();
       if (current == null || !current.scrollZoom.get() || mc.field_1755 != null) return false;
 
-      current.targetDistance = class_3532.method_15350(
-         current.targetDistance - vertical * current.scrollStep.get(),
+      current.targetDistance = Math.max(
          0.5,
-         current.maxDistance.get()
+         Math.min(current.maxDistance.get(), current.targetDistance - vertical * current.scrollStep.get())
       );
       return true;
    }
 
    public boolean isFrontPerspective() {
       return perspective.is("Dritte Person vorne");
+   }
+
+   public boolean isNoClip() {
+      return noclip.get();
    }
 
    public float getCameraYaw() {
@@ -86,7 +88,7 @@ public final class FreeLook extends Module {
    public void changeLook(double dx, double dy) {
       float scale = 0.15F * sensitivity.get().floatValue();
       cameraYaw += (float) dx * scale;
-      cameraPitch = class_3532.method_15363(cameraPitch + (float) dy * scale, -90.0F, 90.0F);
+      cameraPitch = Math.max(-90.0F, Math.min(90.0F, cameraPitch + (float) dy * scale));
    }
 
    @Override
