@@ -1,10 +1,10 @@
 # EntityEsp
 
-- **Status:** Erweiterte Positivliste im Code gespeichert; Build-/In-Game-Test offen
+- **Status:** Positivlisten-Filter im Code gespeichert; Build-/In-Game-Test offen
 - **Java-Klasse:** `EntityEsp`
 - **Anzeigename:** `EntityESP`
 - **Kategorie:** `VISUALS`
-- **Code-Commit:** 6519578c01f3ab50cba3b52c33cd22d9509722a3
+- **Code-Commit:** ffdb6229d8a254c3d3c847d7c175d12a357f81f3
 - **Gemeinsame Renderlogik:** `EntityScanEsp` / `EspBase`
 
 ## Zweck und Verhalten
@@ -17,12 +17,10 @@ EntityESP zeigt nur diese Entity-Gruppen:
 - Armor Stands
 - Item Frames und Glow Item Frames
 - Enderperlen
-- Wind Charges (Spieler- und Breeze-Variante)
 - Armadillos
-- Splash-Potions
 - Boote und Rafts (einschließlich Chest-Varianten)
 
-Alle anderen Entity-Typen werden vom Filter ausgeschlossen. Die Anzeige verwendet weiterhin die gemeinsame Reichweiten-, Sichtbarkeits-, Objektlimit- und HUD-Renderlogik aus `EntityScanEsp` / `EspBase`.
+Andere Entity-Typen werden vom Filter ausgeschlossen. Die Anzeige verwendet weiterhin die gemeinsame Reichweiten-, Sichtbarkeits-, Objektlimit- und HUD-Renderlogik aus `EntityScanEsp` / `EspBase`.
 
 ## Einstellungen
 
@@ -51,8 +49,7 @@ Die frühere freie Entity-Type-Auswahl wurde entfernt, damit die Positivliste ve
 - [ ] Wolf/Hund, Katze und Villager
 - [ ] Eisen- und Schneegolem
 - [ ] Armor Stand / Item Frame / Glow Item Frame
-- [ ] Ender Pearl und beide Wind-Charge-Varianten
-- [ ] Armadillo und Splash-Potion
+- [ ] Ender Pearl und Armadillo
 - [ ] Boot / Chest Boat / Raft
 - [ ] Andere Mobs und Entity-Typen bleiben ausgeblendet
 - [ ] Reichweite, Sichtbarkeit und Max-Objekte-Limit
