@@ -4,7 +4,7 @@
 - **Java-Klasse:** `EntityEsp`
 - **Anzeigename:** `EntityESP`
 - **Kategorie:** `VISUALS`
-- **Code-Commit:** e50d73e268672b82836a25a9ea9424e597cf1761
+- **Code-Commit:** 6519578c01f3ab50cba3b52c33cd22d9509722a3
 - **Gemeinsame Renderlogik:** `EntityScanEsp` / `EspBase`
 
 ## Zweck und Verhalten
