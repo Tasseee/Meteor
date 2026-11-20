@@ -44,6 +44,7 @@ import dev.nightfall.modules.EntityScanEsp;
 import dev.nightfall.modules.EspBase;
 import dev.nightfall.modules.FakeBases;
 import dev.nightfall.modules.FakeStats;
+import dev.nightfall.modules.FakeRain;
 import dev.nightfall.modules.FakeLag;
 import dev.nightfall.modules.FavoriteChunk;
 import dev.nightfall.modules.FirstPersonStyle;
@@ -165,6 +166,7 @@ public final class ModuleManager {
       MODULES.add(new MovementParticles());
       MODULES.add(new TargetMarker());
       MODULES.add(new Atmosphere());
+      MODULES.add(new FakeRain());
       MODULES.add(new SkyVisuals());
       MODULES.add(new Hats());
       MODULES.add(new FirstPersonStyle());
