@@ -20,9 +20,9 @@ Markiert andere geladene Spieler. Zusätzlich besitzt das Modul eine Funktion `A
 | Nur sichtbare (geerbt) | aus |
 | Reichweite (korrigierter Default) | 256 |
 | Max Objekte | 512 |
-| Box / Name / Distanz | geerbte ESP-Einstellungen |
+| Linienstaerke | Standard 1 px; PlayerESP begrenzt gespeicherte Werte auf max. 2 px |\n| Box / Name / Distanz | geerbte ESP-Einstellungen |
 
-## Technische Prüfung
+## Darstellung\n\n- Boxen und Tracer verwenden die dünnere PlayerESP-Linienstärke (Standard 1 px, maximal 2 px).\n- Die gemeinsame ESP-Beschriftung hat keinen Hintergrund mehr; sie wird weiß, fett und mit Schatten gezeichnet.\n\n## Technische Prüfung
 
 - **Namensvalidierung:** akzeptiert nur Namen mit 3–16 ASCII-Buchstaben/Ziffern/Unterstrichen.
 - **Deduplizierung:** sendet den Befehl pro Name höchstens einmal je Weltobjekt; Set wird bei Weltwechsel, fehlender Verbindung und Deaktivierung geleert.
@@ -56,4 +56,4 @@ Die Option steht standardmäßig auf an und sendet automatisch einen Serverbefeh
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | PlayerEsp und Shared-Renderpfad geprüft; Range-Default korrigiert. |
+| 2026-11-16 | PlayerEsp und Shared-Renderpfad geprüft; Range-Default korrigiert. |\n| 2026-11-20 | Box- und Tracerlinien dünner gemacht; Namenslabel ohne Hintergrund, mit fetter Schrift und Schatten. |
