@@ -40,6 +40,7 @@ import dev.nightfall.modules.DebugHud;
 import dev.nightfall.modules.DroppedItemNotifier;
 import dev.nightfall.modules.ElytraFly;
 import dev.nightfall.modules.EntityEsp;
+import dev.nightfall.modules.EntityEsp2D;
 import dev.nightfall.modules.EntityScanEsp;
 import dev.nightfall.modules.EspBase;
 import dev.nightfall.modules.FakeBases;
@@ -161,6 +162,7 @@ public final class ModuleManager {
       MODULES.add(new PlayerEsp());
       MODULES.add(new LogoutSpots());
       MODULES.add(new EntityEsp());
+      MODULES.add(new EntityEsp2D());
       MODULES.add(new ItemEsp());
       MODULES.add(new DroppedItemNotifier());
       MODULES.add(new SpotifyLyricsHud());
