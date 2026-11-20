@@ -11,7 +11,6 @@ import dev.nightfall.util.Theme;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -19,7 +18,6 @@ import java.util.Set;
 import net.minecraft.class_1657;
 import net.minecraft.class_332;
 import net.minecraft.class_640;
-import net.minecraft.class_243;
 
 public final class LogoutSpots extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Max Reichweite", 256.0, 16.0, 1024.0, 16.0));
@@ -46,12 +44,12 @@ public final class LogoutSpots extends Module {
       }
 
       long now = System.currentTimeMillis();
-      Map<String, String> currentOnline = new HashMap<>();
-      for (class_640 entry : mc.method_1562().method_45732()) {
+      Set<String> currentOnline = new HashSet<>();
+      for (class_640 entry : mc.method_1562().method_2880()) {
          if (entry == null || entry.method_2966() == null) continue;
          String name = entry.method_2966().name();
          if (name == null || name.isBlank()) continue;
-         currentOnline.put(key(name), name);
+         currentOnline.add(key(name));
       }
 
       for (class_1657 player : mc.field_1687.method_18456()) {
@@ -65,7 +63,7 @@ public final class LogoutSpots extends Module {
       }
 
       for (String previous : new HashSet<>(this.online)) {
-         if (!currentOnline.containsKey(previous)) {
+         if (!currentOnline.contains(previous)) {
             LastSeen seen = this.lastSeen.get(previous);
             if (seen != null && now - seen.time <= this.maxPositionAge.get() * 1000.0) {
                double dx = seen.x - mc.field_1724.method_23317();
@@ -80,7 +78,7 @@ public final class LogoutSpots extends Module {
       }
 
       this.online.clear();
-      this.online.addAll(currentOnline.keySet());
+      this.online.addAll(currentOnline);
       this.markers.removeIf(marker -> now - marker.createdAt > this.markerDuration.get() * 1000.0);
       while (this.markers.size() > this.maxMarkers.getInt()) this.markers.remove(0);
       this.lastSeen.entrySet().removeIf(entry -> now - entry.getValue().time > this.maxPositionAge.get() * 2000.0);
