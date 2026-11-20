@@ -107,7 +107,7 @@ public class SpawnerEsp extends BlockEntityEsp {
    private boolean looksLikeGeneratedDungeon(class_2338 spawnerPos) {
       int roughStone = 0;
       boolean nearbyChest = false;
-      class_2378<?> blockRegistry = (class_2378<?>)class_7923.field_41175;
+      class_2378 blockRegistry = (class_2378)class_7923.field_41175;
 
       for (int y = -2; y <= 2; y++) {
          for (int z = -4; z <= 4; z++) {
