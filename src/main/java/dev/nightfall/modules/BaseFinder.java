@@ -11,6 +11,7 @@ import dev.nightfall.scanner.Waypoint;
 import dev.nightfall.scanner.WaypointManager;
 import dev.nightfall.util.Storage;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
