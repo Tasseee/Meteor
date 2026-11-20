@@ -115,12 +115,18 @@ import org.lwjgl.glfw.GLFW;
 public final class ModuleManager {
    private static final List<Module> MODULES = new ArrayList<>();
    private static final boolean[] KEY_DOWN = new boolean[349];
+   private static final long[] COMBAT_TICK_AVG_NANOS = new long[5];
+   private static final long[] COMBAT_TICK_LAST_NANOS = new long[5];
+   private static final long[] COMBAT_TICK_MAX_NANOS = new long[5];
+   private static final long[] COMBAT_TICK_SAMPLES = new long[5];
+   private static boolean combatTickProfiling;
    public static int errorCount;
 
    private ModuleManager() {
    }
 
    public static void init() {
+      setCombatTickProfiling(false);
       MODULES.clear();
       MODULES.add(new TrapCrit());
       MODULES.add(new KillAura());
@@ -311,18 +317,76 @@ public final class ModuleManager {
       }
    }
 
+   public static void setCombatTickProfiling(boolean enabled) {
+      if (combatTickProfiling == enabled) return;
+      combatTickProfiling = enabled;
+      for (int i = 0; i < COMBAT_TICK_AVG_NANOS.length; i++) {
+         COMBAT_TICK_AVG_NANOS[i] = 0L;
+         COMBAT_TICK_LAST_NANOS[i] = 0L;
+         COMBAT_TICK_MAX_NANOS[i] = 0L;
+         COMBAT_TICK_SAMPLES[i] = 0L;
+      }
+   }
+
+   public static long combatTickAverageMicros(String moduleName) {
+      int index = combatProfileIndex(moduleName);
+      return index < 0 ? 0L : COMBAT_TICK_AVG_NANOS[index] / 1_000L;
+   }
+
+   public static long combatTickLastMicros(String moduleName) {
+      int index = combatProfileIndex(moduleName);
+      return index < 0 ? 0L : COMBAT_TICK_LAST_NANOS[index] / 1_000L;
+   }
+
+   public static long combatTickMaxMicros(String moduleName) {
+      int index = combatProfileIndex(moduleName);
+      return index < 0 ? 0L : COMBAT_TICK_MAX_NANOS[index] / 1_000L;
+   }
+
+   public static boolean isCombatTickProfiling() {
+      return combatTickProfiling;
+   }
+
+   private static int combatProfileIndex(String moduleName) {
+      if (moduleName == null) return -1;
+      return switch (moduleName) {
+         case "AutoShield" -> 0;
+         case "ShieldBreaker" -> 1;
+         case "AutoPvP" -> 2;
+         case "CrystalAura" -> 3;
+         case "DTap" -> 4;
+         default -> -1;
+      };
+   }
+
+   private static void recordCombatTick(int index, long elapsedNanos) {
+      COMBAT_TICK_LAST_NANOS[index] = elapsedNanos;
+      long samples = ++COMBAT_TICK_SAMPLES[index];
+      long average = COMBAT_TICK_AVG_NANOS[index];
+      COMBAT_TICK_AVG_NANOS[index] = samples <= 20L
+         ? average + (elapsedNanos - average) / samples
+         : average + (elapsedNanos - average) / 20L;
+      COMBAT_TICK_MAX_NANOS[index] = Math.max(COMBAT_TICK_MAX_NANOS[index], elapsedNanos);
+   }
+
    public static void tick() {
       class_310 mc = class_310.method_1551();
       StaffPresence.update(mc);
       if (mc.field_1724 != null && mc.field_1687 != null) {
          for (Module m : MODULES) {
             if (m.isEnabled()) {
+               int profileIndex = combatTickProfiling ? combatProfileIndex(m.getName()) : -1;
+               long startedAt = profileIndex >= 0 ? System.nanoTime() : 0L;
                try {
                   m.onTick();
                } catch (Throwable var4) {
                   Nightfall.LOGGER.error("Fehler in Modul {} - Modul wird deaktiviert", m.getName(), var4);
                   errorCount++;
                   m.setEnabled(false);
+               } finally {
+                  if (profileIndex >= 0) {
+                     recordCombatTick(profileIndex, Math.max(0L, System.nanoTime() - startedAt));
+                  }
                }
             }
          }
