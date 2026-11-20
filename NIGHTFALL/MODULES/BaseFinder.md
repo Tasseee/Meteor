@@ -3,7 +3,7 @@
 - **Status:** Statusstatistiken und Scanfehler-Behandlung ergänzt; Build-/In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `BaseFinder`
 - **Kategorie:** `BASEFINDER`
-- **Aktueller Quellcode-SHA:** `d71040d061664bc955df031767d2744e4a54dc9a`
+- **Aktueller Quellcode-SHA:** `764f0b4464d2e1e909133cb10d9166406ee41e84`
 - **Datenklassen:** `ChunkResult`, interne `Mark`- und `FakePattern`-Datensätze
 - **Speicher-Hilfsklasse:** `Storage`
 
