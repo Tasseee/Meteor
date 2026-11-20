@@ -1,45 +1,50 @@
 # SpawnerEsp
 
-- **Status:** Code geprüft; In-Game-Test offen
+- **Status:** Code angepasst; Build- und In-Game-Test offen
 - **Java-Klasse:** `SpawnerEsp`
 - **Anzeigename:** `SpawnerESP`
 - **Kategorie:** `VISUALS`
-- **Modul-SHA:** `98c077c97bb4abaf94f619b76adc0bb407c5a407`
 - **Gemeinsame Renderlogik:** `BlockEntityEsp` / `EspBase`
 
 ## Zweck und Verhalten
 
-Markiert Spawner-Block-Entities in geladenen Chunks. Die Klasse selbst hat keine zusätzlichen Filter; die Scan-, Distanz- und Renderlogik kommt aus `BlockEntityEsp` und `EspBase`.
+Markiert normale Mob-Spawner-Block-Entities in bereits geladenen Chunks. Es werden keine Chunks nachgeladen. Zusätzlich können generierte Spawner herausgefiltert werden:
+
+- **Struktur-Spawner ausblenden:** Prüft die Bounding-Boxen der geladenen Structure-Starts. Das deckt insbesondere Spawner in Minenschächten und Netherfestungen ab.
+- **Dungeon-Spawner ausblenden:** Nutzt eine Näherung für die klassischen Dungeon-Räume, die als Welt-Feature statt als Structure-Start generiert werden. Dafür werden Cobblestone-/Mossy-Cobblestone-Anteile und eine nahe Truhe geprüft.
+
+Die Dungeon-Erkennung ist absichtlich separat abschaltbar: Ein vom Spieler gebauter Raum, der wie ein Dungeon aussieht, könnte sonst ebenfalls ausgeblendet werden. Minecraft speichert bei einem normalen Mob-Spawner keine verlässliche Herkunftsmarkierung, mit der sich jeder generierte Spawner zweifelsfrei von einem platzierten unterscheiden ließe.
 
 ## Einstellungen
 
-Geerbte ESP-Einstellungen: Reichweite (vorgesehener Default 128, Maximum 256), Max Objekte (512), Linienstärke, Transparenz, Antialiasing, Distanz-Fade, Box-Stil, Tracer, Name und Distanz.
+Zusätzlich zu den geerbten ESP-Einstellungen:
+
+| Einstellung | Standard | Wirkung |
+|---|---:|---|
+| Struktur-Spawner ausblenden | an | Blendet Spawner innerhalb geladener Struktur-Bounding-Boxen aus |
+| Dungeon-Spawner ausblenden | an | Blendet Spawner mit typischem Dungeon-Raum-Muster aus |
+
+Geerbte Einstellungen: Reichweite (128, maximal 256), Max Objekte, Linienstärke, Transparenz, Antialiasing, Distanz-Fade, Box-Stil, Tracer, Name und Distanz.
 
 ## Technische Prüfung
 
-- **Scanquelle:** Block-Entities in geladenen Chunks; keine automatische Chunk-Ladung.
-- **Intervall:** geerbter Scanpfad alle 11 geeigneten Ticks.
-- **Sortierung:** nach Entfernung von der Kameraposition.
+- **Scanquelle:** Block-Entities in geladenen Chunks und Strukturstarts; kein Chunk-Forcing.
+- **Strukturfilter:** Liest Bounding-Boxen benachbarter geladener Structure-Starts ein.
+- **Dungeonfilter:** Best-effort-Blockmusterprüfung, getrennt konfigurierbar.
 - **Lifecycle:** Cache wird bei Deaktivierung/Weltwechsel geleert.
-- **Build/In-Game:** nicht ausgeführt.
-
-## Befunde und Verbesserungen
-
-### SE-01 – geerbter Range-Default
-
-**Behoben im gemeinsamen Code:** `c03f2c5205b1a6bec2c01d23ad48cdc4fe488a8d`. SpawnerESP verwendet jetzt den im Konstruktor angegebenen Default 128 statt Maximalwert 256.
-
-**Verifikation:** Quellcode gespeichert und erneut gelesen; Build-/In-Game-Test offen.
+- **Build/In-Game:** noch nicht ausgeführt.
 
 ## Offene Tests
 
-- [ ] Spawner in geladenen Chunks
-- [ ] Reichweite 128 / Maximum 256
-- [ ] Weltwechsel / Chunk-Entladung
-- [ ] Max Objekte und Renderleistung
+- [ ] Minenschacht-Spawner wird ausgeblendet
+- [ ] Netherfestungs-Spawner wird ausgeblendet
+- [ ] Dungeon-Spawner wird ausgeblendet
+- [ ] Spielerplatzierter Spawner außerhalb einer Struktur bleibt sichtbar
+- [ ] Spielerplatzierter Spawner in einer Struktur-Bounding-Box / dungeonähnlichem Raum: mögliche Fehlklassifikation prüfen
+- [ ] Chunk-Entladung, Weltwechsel und Renderleistung
 
 ## Änderungsverlauf
 
 | Datum | Änderung |
 |---|---|
-| 2026-11-16 | SpawnerEsp und geerbten Scanpfad geprüft; Range-Default korrigiert. |
+| 2026-11-20 | Filter für generierte Struktur- und typische Dungeon-Spawner hinzugefügt; Laufzeittest offen. |
