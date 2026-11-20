@@ -64,6 +64,7 @@ import dev.nightfall.modules.JumpCircles;
 import dev.nightfall.modules.KillAura;
 import dev.nightfall.modules.LongJump;
 import dev.nightfall.modules.LootDropFinder;
+import dev.nightfall.modules.LogoutSpots;
 import dev.nightfall.modules.LowHealthWarning;
 import dev.nightfall.modules.MaceAssist;
 import dev.nightfall.modules.MacroManager;
@@ -158,6 +159,7 @@ public final class ModuleManager {
       MODULES.add(new FreecamController());
       MODULES.add(new NoFall());
       MODULES.add(new PlayerEsp());
+      MODULES.add(new LogoutSpots());
       MODULES.add(new EntityEsp());
       MODULES.add(new ItemEsp());
       MODULES.add(new DroppedItemNotifier());
