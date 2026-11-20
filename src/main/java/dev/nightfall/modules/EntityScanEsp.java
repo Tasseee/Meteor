@@ -22,7 +22,11 @@ public abstract class EntityScanEsp extends EspBase {
    private static final Comparator<RenderTarget> BY_DIST = Comparator.comparingDouble(RenderTarget::distanceSquared);
 
    protected EntityScanEsp(String n, String d, int r, int mr, int rgb) {
-      super(n, d, r, mr, rgb);
+      this(n, d, r, mr, rgb, 4);
+   }
+
+   protected EntityScanEsp(String n, String d, int r, int mr, int rgb, int defaultThickness) {
+      super(n, d, r, mr, rgb, defaultThickness);
    }
 
    protected abstract boolean accept(class_1297 var1);
