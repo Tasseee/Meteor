@@ -52,6 +52,7 @@ public class BaseFinder extends Module {
    private final NumberSetting threshold = this.add(new NumberSetting("Min Score", 6.0, 3.0, 100.0, 1.0));
    private final NumberSetting minSignals = this.add(new NumberSetting("Min. Signaltypen", 2.0, 1.0, 10.0, 1.0));
    private final NumberSetting wStorage = this.add(new NumberSetting("Gewicht Storage", 1.0, 0.1, 5.0, 0.1));
+   private final NumberSetting wChestPenalty = this.add(new NumberSetting("Gewicht Kisten-Abzug", 1.5, 0.0, 5.0, 0.1));
    private final NumberSetting wHopper = this.add(new NumberSetting("Gewicht Hopper", 1.5, 0.1, 5.0, 0.1));
    private final NumberSetting wFurnace = this.add(new NumberSetting("Gewicht Furnace", 0.7, 0.1, 5.0, 0.1));
    private final NumberSetting wRedstone = this.add(new NumberSetting("Gewicht Redstone", 1.2, 0.1, 5.0, 0.1));
@@ -300,6 +301,7 @@ public class BaseFinder extends Module {
       class_2818 ch = w.method_2935().method_21730(cx, cz);
       if (ch != null) {
          int storage = 0;
+         int chest = 0;
          int shulker = 0;
          int hopper = 0;
          int furnace = 0;
@@ -317,7 +319,10 @@ public class BaseFinder extends Module {
 
          for (class_2586 be : ch.method_12214().values()) {
             boolean dense = false;
-            if (be instanceof class_2595 || be instanceof class_3719) {
+            if (be instanceof class_2595) {
+               chest++;
+               dense = true;
+            } else if (be instanceof class_3719) {
                storage++;
                dense = true;
             } else if (be instanceof class_2627) {
@@ -447,6 +452,7 @@ public class BaseFinder extends Module {
             : 0.0;
          double naturalSignalScore = amethystScore + sculkScore;
          double score = storage * this.wStorage.get()
+            - chest * this.wChestPenalty.get()
             + shulker * this.wStorage.get() * 1.5
             + hopper * this.wHopper.get()
             + furnace * this.wFurnace.get()
@@ -460,7 +466,7 @@ public class BaseFinder extends Module {
             + redstonePatternScore
             + farmScore
             + mobClusterScore;
-         int signalKinds = (storage + shulker > 0 ? 1 : 0)
+         int signalKinds = (storage + chest + shulker > 0 ? 1 : 0)
             + (hopper > 0 ? 1 : 0)
             + (furnace > 0 ? 1 : 0)
             + (redstone > 0 ? 1 : 0)
@@ -482,7 +488,11 @@ public class BaseFinder extends Module {
          res.lastScanTick = this.tick;
          res.reasons.clear();
          if (storage > 0) {
-            res.reasons.add(storage + " Chest/Barrel (" + fmt(storage * this.wStorage.get()) + ")");
+            res.reasons.add(storage + " Barrel (" + fmt(storage * this.wStorage.get()) + ")");
+         }
+
+         if (chest > 0) {
+            res.reasons.add(chest + " Chest (" + fmt(-chest * this.wChestPenalty.get()) + ")");
          }
 
          if (shulker > 0) {
@@ -543,7 +553,7 @@ public class BaseFinder extends Module {
          if (farmScore > 0.0) res.reasons.add("Farm-Struktur (" + farmBlocks + ", +" + fmt(farmScore) + ")");
          if (mobClusterScore > 0.0) res.reasons.add("Mob-Cluster (" + maxMobCell + " in 4x4x4, +" + fmt(mobClusterScore) + ")");
 
-         int fakeSignalKinds = (storage > 0 || shulker > 0 ? 1 : 0)
+         int fakeSignalKinds = (storage > 0 || chest > 0 || shulker > 0 ? 1 : 0)
             + (hopper > 0 ? 1 : 0)
             + (furnace > 0 ? 1 : 0)
             + (redstone > 0 ? 1 : 0)
@@ -555,10 +565,10 @@ public class BaseFinder extends Module {
             + (farmBlocks >= 12 ? 1 : 0)
             + (rotatedDeepslate >= 3 ? 1 : 0)
             + (amethystScore > 0.0 && !geodeSignature ? 1 : 0);
-         boolean repeatedFakePattern = score >= this.threshold.get()
+         boolean repeatedFakePattern = (score >= this.threshold.get() || chest > 0)
             && signalKinds >= this.minSignals.getInt()
             && fakeSignalKinds >= 2
-            && this.isRepeatedFakePattern(storage, shulker, hopper, furnace, redstone, spawner,
+            && this.isRepeatedFakePattern(storage, chest, shulker, hopper, furnace, redstone, spawner,
                rotatedDeepslate, lightSources, redstoneBlocks, farmBlocks, amethystClusters,
                sculk, tunnelRuns, tunnelBlocks, cx, cz);
 
@@ -707,12 +717,13 @@ public class BaseFinder extends Module {
          && air[sideB] == 0;
    }
 
-   private boolean isRepeatedFakePattern(int storage, int shulker, int hopper, int furnace, int redstone, int spawner,
+   private boolean isRepeatedFakePattern(int storage, int chest, int shulker, int hopper, int furnace, int redstone, int spawner,
       int rotatedDeepslate, int lightSources, int redstoneBlocks, int farmBlocks, int amethystClusters,
       int sculk, int tunnelRuns, int tunnelBlocks, int cx, int cz) {
       for (BaseFinder.FakePattern p : this.fakePatterns) {
-         if (p.version >= 2
+         if (p.version >= 3
             && similar(p.storage, storage)
+            && similar(p.chest, chest)
             && similar(p.shulker, shulker)
             && similar(p.hopper, hopper)
             && similar(p.furnace, furnace)
@@ -758,8 +769,9 @@ public class BaseFinder extends Module {
       }
 
       BaseFinder.FakePattern px = new BaseFinder.FakePattern();
-      px.version = 2;
+      px.version = 3;
       px.storage = storage;
+      px.chest = chest;
       px.shulker = shulker;
       px.hopper = hopper;
       px.furnace = furnace;
@@ -950,6 +962,7 @@ public class BaseFinder extends Module {
    private static final class FakePattern {
       int version;
       int storage;
+      int chest;
       int shulker;
       int hopper;
       int furnace;
