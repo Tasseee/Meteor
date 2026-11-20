@@ -154,3 +154,11 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - Die Messung wird nur bei aktiviertem Debug-HUD durchgeführt. Das ist eine Diagnose, keine Optimierung des Kampfverhaltens.
 - Die Module `AutoShield`, `ShieldBreaker`, `AutoPvp`, `CrystalAura` und `DTap` bleiben bezüglich ihrer automatisierten Kampfabläufe ausdrücklich unverändert und nicht vollständig auditiert.
 - Build- und In-Game-Test des Profilers bleiben offen.
+
+
+## Sichere Lifecycle-Verbesserungen (2026-11-20)
+- [~] `AutoShield` — identisches Cleanup in `resetState()` zentralisiert; Kampf-Erkennungslogik nicht verändert
+- [~] `ShieldBreaker` — Hotbar-Cleanup respektiert manuelle Slot-Wechsel; Ziel-/Angriffslogik nicht verändert
+- [~] `AutoPvp` — temporäre Crit-Zustände werden auch beim Weltwechsel zurückgesetzt; Kampfabläufe nicht verändert
+- [~] `CrystalAura` — identisches Cleanup in `resetState()` zentralisiert; Platzierungs-/Zerstörungslogik nicht verändert
+- [~] `DTap` — bestehender zentraler Reset für Enable/Disable/Weltwechsel geprüft; keine Änderung nötig
