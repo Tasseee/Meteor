@@ -73,15 +73,18 @@ public final class AutoShield extends Module {
       this.ownsUseKey = false;
    }
 
-   @Override
-   protected void onDisable() {
+   private void resetState() {
       this.ticksRemaining = 0;
       this.release();
    }
 
    @Override
+   protected void onDisable() {
+      this.resetState();
+   }
+
+   @Override
    public void onWorldLeave() {
-      this.ticksRemaining = 0;
-      this.release();
+      this.resetState();
    }
 }
