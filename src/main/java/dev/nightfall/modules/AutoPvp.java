@@ -760,6 +760,8 @@ public class AutoPvp extends Module {
    public void onWorldLeave() {
       this.pearlUseDelay = 0;
       this.resetCritCycle();
+      this.critJumpDelayTicks = 0;
+      this.wasAirborne = false;
       this.driveByTimer = 0;
       this.resetCrystalCombo();
       this.lastCrystalObsidianBase = null;
