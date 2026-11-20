@@ -1,45 +1,36 @@
 # SpawnerEsp
 
-- **Status:** Code geprüft; In-Game-Test offen
+- **Status:** Neu aufgebaut; Build und In-Game-Test offen
 - **Java-Klasse:** `SpawnerEsp`
 - **Anzeigename:** `SpawnerESP`
 - **Kategorie:** `VISUALS`
-- **Modul-SHA:** `98c077c97bb4abaf94f619b76adc0bb407c5a407`
 - **Gemeinsame Renderlogik:** `BlockEntityEsp` / `EspBase`
 
-## Zweck und Verhalten
+## Neues Verhalten
 
-Markiert Spawner-Block-Entities in geladenen Chunks. Die Klasse selbst hat keine zusätzlichen Filter; die Scan-, Distanz- und Renderlogik kommt aus `BlockEntityEsp` und `EspBase`.
+- Markiert Spawner-Block-Entities in bereits geladenen Chunks.
+- Lila Akzentfarbe und kompaktere 3D-Box als Standard.
+- Label: `✦ Spawner`; Distanzanzeige bleibt über die geerbten ESP-Einstellungen verfügbar.
+- Neuer Schalter **Natürliche Dungeons filtern** (standardmäßig an).
+- Der Filter prüft beim Scan die sichtbaren Blockzustände in einer Umgebung von 9×5×9 Blöcken. Ein Bereich wird als typischer Dungeon gewertet, wenn mindestens 28 Cobblestone-/Mossy-Cobblestone-Blöcke und mindestens eine Truhe gefunden werden.
+- Die Umgebungsprüfung läuft nur beim periodischen Scan, nicht in jedem Render-Frame.
 
-## Einstellungen
+## Wichtige Einschränkung
 
-Geerbte ESP-Einstellungen: Reichweite (vorgesehener Default 128, Maximum 256), Max Objekte (512), Linienstärke, Transparenz, Antialiasing, Distanz-Fade, Box-Stil, Tracer, Name und Distanz.
+Das ist eine Heuristik, keine sichere Erkennung. Ein Custom-Spawner in einer cobblestoneartigen Farm mit Truhe kann fälschlich ausgeblendet werden; ein natürlicher Dungeon ohne passende Truhe/Blockmenge kann durchrutschen. Wenn Server-Custom-Spawner und natürliche Spawner identische Block-Entity-Daten verwenden, kann der Client sie nicht zweifelsfrei unterscheiden.
 
-## Technische Prüfung
+Der Filter liest ausschließlich Blockzustände, die der Client bereits in geladenen Chunks kennt. Er lädt keine Chunks und umgeht keine serverseitigen Sichtbarkeits- oder Anti-Xray-Regeln.
 
-- **Scanquelle:** Block-Entities in geladenen Chunks; keine automatische Chunk-Ladung.
-- **Intervall:** geerbter Scanpfad alle 11 geeigneten Ticks.
-- **Sortierung:** nach Entfernung von der Kameraposition.
-- **Lifecycle:** Cache wird bei Deaktivierung/Weltwechsel geleert.
-- **Build/In-Game:** nicht ausgeführt.
+## Geerbte Einstellungen
 
-## Befunde und Verbesserungen
-
-### SE-01 – geerbter Range-Default
-
-**Behoben im gemeinsamen Code:** `c03f2c5205b1a6bec2c01d23ad48cdc4fe488a8d`. SpawnerESP verwendet jetzt den im Konstruktor angegebenen Default 128 statt Maximalwert 256.
-
-**Verifikation:** Quellcode gespeichert und erneut gelesen; Build-/In-Game-Test offen.
+Reichweite (Default 128, Maximum 256), Max Objekte, Linienstärke, Transparenz, Antialiasing, Distanz-Fade, Box-Stil, Tracer, Name und Distanz.
 
 ## Offene Tests
 
-- [ ] Spawner in geladenen Chunks
-- [ ] Reichweite 128 / Maximum 256
+- [ ] Build für die konfigurierte Minecraft-/Fabric-Version
+- [ ] Custom-Spawner auf HugoSMP
+- [ ] Natürliche Dungeons mit und ohne Truhe
+- [ ] False positives in Spieler-Farmen
 - [ ] Weltwechsel / Chunk-Entladung
-- [ ] Max Objekte und Renderleistung
+- [ ] Renderleistung bei vielen Spawnern
 
-## Änderungsverlauf
-
-| Datum | Änderung |
-|---|---|
-| 2026-11-16 | SpawnerEsp und geerbten Scanpfad geprüft; Range-Default korrigiert. |
