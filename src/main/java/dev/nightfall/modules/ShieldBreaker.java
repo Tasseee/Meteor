@@ -13,6 +13,7 @@ public final class ShieldBreaker extends Module {
    private final NumberSetting delay = this.add(new NumberSetting("Angriffsintervall (Ticks)", 3.0, 1.0, 12.0, 1.0));
    private int cooldown;
    private int previousSlot = -1;
+   private int selectedAxeSlot = -1;
    private class_1657 pendingTarget;
 
    public ShieldBreaker() {
@@ -52,6 +53,7 @@ public final class ShieldBreaker extends Module {
 
             if (axeSlot >= 0) {
                this.previousSlot = mc.field_1724.method_31548().method_67532();
+               this.selectedAxeSlot = axeSlot;
                this.pendingTarget = target;
                mc.field_1724.method_31548().method_61496(axeSlot);
             }
@@ -60,11 +62,15 @@ public final class ShieldBreaker extends Module {
    }
 
    private void restore() {
-      if (this.previousSlot >= 0 && mc.field_1724 != null) {
+      if (this.previousSlot >= 0 && this.previousSlot < 9 && this.selectedAxeSlot >= 0
+         && mc.field_1724 != null && mc.field_1724.method_31548().method_67532() == this.selectedAxeSlot) {
+         // Restore only while the slot selected by this module is still active.
+         // A manual hotbar change belongs to the player and must not be overwritten.
          mc.field_1724.method_31548().method_61496(this.previousSlot);
       }
 
       this.previousSlot = -1;
+      this.selectedAxeSlot = -1;
       this.pendingTarget = null;
    }
 
