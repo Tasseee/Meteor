@@ -1,16 +1,16 @@
 package dev.nightfall.modules;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import dev.nightfall.Nightfall;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.scanner.ChunkResult;
+import dev.nightfall.scanner.Waypoint;
+import dev.nightfall.scanner.WaypointManager;
 import dev.nightfall.util.Storage;
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -49,10 +49,10 @@ public class BaseFinder extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Range (Chunks)", 32.0, 2.0, 48.0, 1.0));
    private final NumberSetting budgetMs = this.add(new NumberSetting("Budget ms/Tick", 2.5, 0.2, 5.0, 0.1));
    private final NumberSetting rescan = this.add(new NumberSetting("Rescan (s)", 8.0, 2.0, 120.0, 1.0));
-   private final NumberSetting threshold = this.add(new NumberSetting("Min Score", 6.0, 3.0, 100.0, 1.0));
+   private final NumberSetting threshold = this.add(new NumberSetting("Min Score", 8.0, 3.0, 100.0, 1.0));
    private final NumberSetting minSignals = this.add(new NumberSetting("Min. Signaltypen", 2.0, 1.0, 10.0, 1.0));
    private final NumberSetting wStorage = this.add(new NumberSetting("Gewicht Storage", 1.0, 0.1, 5.0, 0.1));
-   private final NumberSetting wChestPenalty = this.add(new NumberSetting("Gewicht Kisten-Abzug", 1.5, 0.0, 5.0, 0.1));
+   private final NumberSetting wChestPenalty = this.add(new NumberSetting("Gewicht Kisten-Abzug", 0.25, 0.0, 5.0, 0.1));
    private final NumberSetting wHopper = this.add(new NumberSetting("Gewicht Hopper", 1.5, 0.1, 5.0, 0.1));
    private final NumberSetting wFurnace = this.add(new NumberSetting("Gewicht Furnace", 0.7, 0.1, 5.0, 0.1));
    private final NumberSetting wRedstone = this.add(new NumberSetting("Gewicht Redstone", 1.2, 0.1, 5.0, 0.1));
@@ -74,12 +74,10 @@ public class BaseFinder extends Module {
    private static final Gson GSON = new Gson();
    private static final Map<class_2248, String> BLOCK_NAME_CACHE = new HashMap<>();
    private static final Type MARK_LIST = (new TypeToken<List<BaseFinder.Mark>>() {}).getType();
-   private static final Type FAKE_LIST = (new TypeToken<List<BaseFinder.FakePattern>>() {}).getType();
    private final Map<Long, ChunkResult> results = new HashMap<>();
    private final ArrayDeque<Long> queue = new ArrayDeque<>();
    private final List<ChunkResult> top = new ArrayList<>();
    private final List<ChunkResult> marks = new ArrayList<>();
-   private final List<BaseFinder.FakePattern> fakePatterns = new ArrayList<>();
    private boolean dirty = true;
    private boolean marksDirty;
    private class_638 lastWorld;
@@ -93,7 +91,7 @@ public class BaseFinder extends Module {
    private final Map<Long, Integer> mobClusterMaxByChunk = new HashMap<>();
 
    public BaseFinder() {
-      super("BaseFinder", "Findet verdaechtige Chunks anhand von Storage, Tunnelspuren, Hoppern und weiteren Signalen in geladenen Chunks.", Category.BASEFINDER);
+      super("BaseFinder", "Findet auffaellige Basis-Chunks in geladenen Chunks anhand von dichter Lagerung und mehreren unabhaengigen Technik-Signalen.", Category.BASEFINDER);
    }
 
    private static long key(int cx, int cz) {
@@ -109,14 +107,16 @@ public class BaseFinder extends Module {
    }
 
    public boolean isFakeChunk(int cx, int cz) {
-      String location = cx + "," + cz;
-
-      for (BaseFinder.FakePattern pattern : this.fakePatterns) {
-         if (pattern.seenChunks != null && pattern.seenChunks.size() >= 3 && pattern.seenChunks.contains(location)) {
+      // Explicit FakeBases waypoint: suppress only its containing chunk.
+      for (Waypoint waypoint : WaypointManager.all()) {
+         if (waypoint != null
+            && FakeBases.CATEGORY.equalsIgnoreCase(waypoint.category)
+            && Storage.dim().equals(waypoint.dim)
+            && Math.floorDiv(waypoint.x, 16) == cx
+            && Math.floorDiv(waypoint.z, 16) == cz) {
             return true;
          }
       }
-
       return false;
    }
 
@@ -174,9 +174,7 @@ public class BaseFinder extends Module {
 
    public void clear() {
       this.saveMarks();
-      this.saveFakePatterns();
       this.clearData();
-      this.fakePatterns.clear();
       this.lastWorld = null;
       this.ctxKey = null;
    }
@@ -220,9 +218,7 @@ public class BaseFinder extends Module {
             this.clearData();
             this.lastWorld = w;
             this.ctxKey = Storage.server() + "_" + Storage.dim();
-            this.fakePatterns.clear();
             this.loadMarks();
-            this.loadFakePatterns();
          }
 
          this.tick++;
@@ -299,6 +295,16 @@ public class BaseFinder extends Module {
       int cx = (int)k;
       int cz = (int)(k >> 32);
       class_2818 ch = w.method_2935().method_21730(cx, cz);
+      if (this.isFakeChunk(cx, cz)) {
+         ChunkResult ignored = this.results.get(k);
+         if (ignored != null) {
+            ignored.status = ChunkResult.Status.CLEAN;
+            ignored.reasons.clear();
+         }
+         this.dirty = true;
+         this.marksDirty = true;
+         return;
+      }
       if (ch != null) {
          int storage = 0;
          int chest = 0;
@@ -435,7 +441,7 @@ public class BaseFinder extends Module {
             maxCell = Math.max(maxCell, v);
          }
 
-         double cluster = maxCell >= 6 ? (maxCell - 5) * this.wCluster.get() : 0.0;
+         double cluster = maxCell >= 8 ? (maxCell - 7) * this.wCluster.get() : 0.0;
          double rotatedDeepslateScore = rotatedDeepslate >= 3 ? Math.min(6.0, (rotatedDeepslate - 2) * this.wRotatedDeepslate.get()) : 0.0;
          double lightScore = lightSources >= 4 ? Math.min(5.0, (lightSources - 3) * this.wLightSources.get() * 0.25) : 0.0;
          double redstonePatternScore = redstoneBlocks >= 5 ? Math.min(6.0, (redstoneBlocks - 4) * this.wRedstonePattern.get() * 0.5) : 0.0;
@@ -450,36 +456,35 @@ public class BaseFinder extends Module {
          double tunnelScore = tunnelRuns > 0
             ? Math.min(6.0, tunnelRuns * this.wTunnel.get() + Math.max(0, tunnelBlocks - tunnelRuns * this.minTunnelLength.getInt()) * this.wTunnel.get() * 0.25)
             : 0.0;
-         double naturalSignalScore = amethystScore + sculkScore;
+
+         // Environmental hints are noisy (caves, geodes, farms and normal
+         // lighting). They add only a small capped bonus and never count as
+         // independent proof of a base.
+         double softHints = tunnelScore * 0.15 + rotatedDeepslateScore * 0.15
+            + lightScore * 0.15 + redstonePatternScore * 0.10 + farmScore * 0.10
+            + mobClusterScore * 0.15 + sculkScore * 0.10 + amethystScore * 0.10;
+         double softHintBonus = Math.min(1.5, softHints);
+
+         int containerCount = storage + shulker + chest;
+         boolean storageSignal = containerCount >= 4;
+         boolean automationSignal = hopper >= 2 || redstone >= 2 || furnace >= 3
+            || hopper >= 1 && (redstone >= 1 || furnace >= 2);
+         boolean spawnerSignal = spawner >= 1;
+         int signalKinds = (storageSignal ? 1 : 0) + (automationSignal ? 1 : 0) + (spawnerSignal ? 1 : 0);
+
+         // Require substantial storage plus a separate technical signal.
+         // This prevents caves, farms, tunnels and lighting alone from
+         // generating BaseFinder alerts.
          double score = storage * this.wStorage.get()
-            - chest * this.wChestPenalty.get()
+            + Math.max(0, chest - 2) * 0.65
+            - Math.min(chest, 2) * this.wChestPenalty.get()
             + shulker * this.wStorage.get() * 1.5
             + hopper * this.wHopper.get()
             + furnace * this.wFurnace.get()
             + redstone * this.wRedstone.get()
             + spawner * this.wSpawner.get()
             + cluster
-            + naturalSignalScore
-            + tunnelScore
-            + rotatedDeepslateScore
-            + lightScore
-            + redstonePatternScore
-            + farmScore
-            + mobClusterScore;
-         int signalKinds = (storage + chest + shulker > 0 ? 1 : 0)
-            + (hopper > 0 ? 1 : 0)
-            + (furnace > 0 ? 1 : 0)
-            + (redstone > 0 ? 1 : 0)
-            + (spawner > 0 ? 1 : 0)
-            + (cluster > 0.0 ? 1 : 0)
-            + (amethystScore > 0.0 ? 1 : 0)
-            + (sculkScore > 0.0 ? 1 : 0)
-            + (tunnelScore > 0.0 ? 1 : 0)
-            + (rotatedDeepslateScore > 0.0 ? 1 : 0)
-            + (lightScore > 0.0 ? 1 : 0)
-            + (redstonePatternScore > 0.0 ? 1 : 0)
-            + (farmScore > 0.0 ? 1 : 0)
-            + (mobClusterScore > 0.0 ? 1 : 0);
+            + softHintBonus;
          ChunkResult old = this.results.get(k);
          ChunkResult res = old != null ? old : new ChunkResult(cx, cz);
          ChunkResult.Status prev = res.status;
@@ -553,31 +558,11 @@ public class BaseFinder extends Module {
          if (farmScore > 0.0) res.reasons.add("Farm-Struktur (" + farmBlocks + ", +" + fmt(farmScore) + ")");
          if (mobClusterScore > 0.0) res.reasons.add("Mob-Cluster (" + maxMobCell + " in 4x4x4, +" + fmt(mobClusterScore) + ")");
 
-         int fakeSignalKinds = (storage > 0 || chest > 0 || shulker > 0 ? 1 : 0)
-            + (hopper > 0 ? 1 : 0)
-            + (furnace > 0 ? 1 : 0)
-            + (redstone > 0 ? 1 : 0)
-            + (spawner > 0 ? 1 : 0)
-            + (tunnelRuns > 0 ? 1 : 0)
-            + (sculk >= 3 && !geodeSignature ? 1 : 0)
-            + (lightSources >= 4 ? 1 : 0)
-            + (redstoneBlocks >= 5 ? 1 : 0)
-            + (farmBlocks >= 12 ? 1 : 0)
-            + (rotatedDeepslate >= 3 ? 1 : 0)
-            + (amethystScore > 0.0 && !geodeSignature ? 1 : 0);
-         boolean repeatedFakePattern = (score >= this.threshold.get() || chest > 0)
-            && signalKinds >= this.minSignals.getInt()
-            && fakeSignalKinds >= 2
-            && this.isRepeatedFakePattern(storage, chest, shulker, hopper, furnace, redstone, spawner,
-               rotatedDeepslate, lightSources, redstoneBlocks, farmBlocks, amethystClusters,
-               sculk, tunnelRuns, tunnelBlocks, cx, cz);
+         if (softHintBonus > 0.0) {
+            res.reasons.add("Umfeld-Hinweise (gedeckelter Zusatzbonus +" + fmt(softHintBonus) + ")");
+         }
 
-         if (repeatedFakePattern) {
-            res.status = ChunkResult.Status.CLEAN;
-            res.reasons.clear();
-            this.dirty = true;
-            this.marksDirty = true;
-         } else if (score >= this.threshold.get() && signalKinds >= this.minSignals.getInt()) {
+         if (score >= this.threshold.get() && storageSignal && signalKinds >= this.minSignals.getInt()) {
             res.status = ChunkResult.Status.SUS;
             if (prev != ChunkResult.Status.SUS) {
                res.foundAtMillis = System.currentTimeMillis();
@@ -606,8 +591,8 @@ public class BaseFinder extends Module {
             }
          } else if (prev != ChunkResult.Status.SUS && prev != ChunkResult.Status.GONE) {
             res.status = ChunkResult.Status.CLEAN;
-            if (score >= this.threshold.get() && signalKinds < this.minSignals.getInt()) {
-               res.reasons.add("Score hoch, aber nur " + signalKinds + " Signaltyp(en) — nicht als SUS markiert");
+            if (score >= this.threshold.get() && (!storageSignal || signalKinds < this.minSignals.getInt())) {
+               res.reasons.add("Hinweise vorhanden, aber kein bestaetigtes Storage-/Technik-Muster");
             }
          } else {
             res.status = ChunkResult.Status.GONE;
@@ -715,125 +700,6 @@ public class BaseFinder extends Module {
          && air[index + 512] == 0
          && air[sideA] == 0
          && air[sideB] == 0;
-   }
-
-   private boolean isRepeatedFakePattern(int storage, int chest, int shulker, int hopper, int furnace, int redstone, int spawner,
-      int rotatedDeepslate, int lightSources, int redstoneBlocks, int farmBlocks, int amethystClusters,
-      int sculk, int tunnelRuns, int tunnelBlocks, int cx, int cz) {
-      for (BaseFinder.FakePattern p : this.fakePatterns) {
-         if (p.version >= 3
-            && similar(p.storage, storage)
-            && similar(p.chest, chest)
-            && similar(p.shulker, shulker)
-            && similar(p.hopper, hopper)
-            && similar(p.furnace, furnace)
-            && similar(p.redstone, redstone)
-            && similar(p.spawner, spawner)
-            && similar(p.rotatedDeepslate, rotatedDeepslate)
-            && similar(p.lightSources, lightSources)
-            && similar(p.redstoneBlocks, redstoneBlocks)
-            && similar(p.farmBlocks, farmBlocks)
-            && similar(p.amethystClusters, amethystClusters)
-            && similar(p.sculk, sculk)
-            && similar(p.tunnelRuns, tunnelRuns)
-            && similar(p.tunnelBlocks, tunnelBlocks)) {
-            String location = cx + "," + cz;
-            if (!p.seenChunks.contains(location)) {
-               p.seenChunks.add(location);
-               this.saveFakePatterns();
-            }
-
-            if (p.seenChunks.size() >= 3) {
-               for (String seen : p.seenChunks) {
-                  String[] parts = seen.split(",");
-                  if (parts.length == 2) {
-                     try {
-                        ChunkResult previous = this.results.get(key(Integer.parseInt(parts[0]), Integer.parseInt(parts[1])));
-                        if (previous != null) {
-                           previous.status = ChunkResult.Status.CLEAN;
-                           previous.reasons.clear();
-                        }
-                     } catch (NumberFormatException var16) {
-                     }
-                  }
-               }
-
-               this.dirty = true;
-               this.marksDirty = true;
-               this.saveMarks();
-               return true;
-            }
-
-            return false;
-         }
-      }
-
-      BaseFinder.FakePattern px = new BaseFinder.FakePattern();
-      px.version = 3;
-      px.storage = storage;
-      px.chest = chest;
-      px.shulker = shulker;
-      px.hopper = hopper;
-      px.furnace = furnace;
-      px.redstone = redstone;
-      px.spawner = spawner;
-      px.rotatedDeepslate = rotatedDeepslate;
-      px.lightSources = lightSources;
-      px.redstoneBlocks = redstoneBlocks;
-      px.farmBlocks = farmBlocks;
-      px.amethystClusters = amethystClusters;
-      px.sculk = sculk;
-      px.tunnelRuns = tunnelRuns;
-      px.tunnelBlocks = tunnelBlocks;
-      px.seenChunks.add(cx + "," + cz);
-      this.fakePatterns.add(px);
-      this.saveFakePatterns();
-      return false;
-   }
-
-   private static boolean similar(int a, int b) {
-      // A missing signal must not be treated as equivalent to a small positive count.
-      if (a == 0 || b == 0) return a == b;
-      // Compare block-entity counts rather than positions or block-state orientation.
-      // This keeps rotated builds and small edits within the same fingerprint.
-      return Math.abs(a - b) <= Math.max(3, Math.round(Math.max(a, b) * 0.35F));
-   }
-
-   private Path fakePatternsFile() {
-      return Storage.dir().resolve("fake_patterns_" + this.ctxKey + ".json");
-   }
-
-   private void saveFakePatterns() {
-      if (this.ctxKey != null) {
-         try {
-            writeAtomically(this.fakePatternsFile(), GSON.toJson(this.fakePatterns));
-         } catch (IOException var2) {
-            Nightfall.LOGGER.error("Fake-Base-Fingerprints konnten nicht gespeichert werden", var2);
-         }
-      }
-   }
-
-   private void loadFakePatterns() {
-      this.fakePatterns.clear();
-      Path f = this.fakePatternsFile();
-      if (Files.exists(f)) {
-         try {
-            List<BaseFinder.FakePattern> loaded = (List<BaseFinder.FakePattern>)GSON.fromJson(Files.readString(f), FAKE_LIST);
-            if (loaded != null) {
-               for (BaseFinder.FakePattern pattern : loaded) {
-                  if (pattern != null) {
-                     if (pattern.seenChunks == null) {
-                        pattern.seenChunks = new ArrayList<>();
-                     }
-
-                     this.fakePatterns.add(pattern);
-                  }
-               }
-            }
-         } catch (Exception var5) {
-            Nightfall.LOGGER.error("Fake-Base-Fingerprints defekt: {}", f, var5);
-         }
-      }
    }
 
    private static String fmt(double value) {
@@ -957,26 +823,6 @@ public class BaseFinder extends Module {
       } catch (AtomicMoveNotSupportedException unsupported) {
          Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
       }
-   }
-
-   private static final class FakePattern {
-      int version;
-      int storage;
-      int chest;
-      int shulker;
-      int hopper;
-      int furnace;
-      int redstone;
-      int spawner;
-      int rotatedDeepslate;
-      int lightSources;
-      int redstoneBlocks;
-      int farmBlocks;
-      int amethystClusters;
-      int sculk;
-      int tunnelRuns;
-      int tunnelBlocks;
-      List<String> seenChunks = new ArrayList<>();
    }
 
    private static final class Mark {
