@@ -1,36 +1,32 @@
 # SpawnerEsp
 
-- **Status:** Neu aufgebaut; Build und In-Game-Test offen
+- **Status:** Verbesserungen umgesetzt; Build und In-Game-Test offen
 - **Java-Klasse:** `SpawnerEsp`
 - **Anzeigename:** `SpawnerESP`
 - **Kategorie:** `VISUALS`
-- **Gemeinsame Renderlogik:** `BlockEntityEsp` / `EspBase`
 
-## Neues Verhalten
+## Verhalten und Einstellungen
 
 - Markiert Spawner-Block-Entities in bereits geladenen Chunks.
-- Lila Akzentfarbe und kompaktere 3D-Box als Standard.
-- Label: `✦ Spawner`; Distanzanzeige bleibt über die geerbten ESP-Einstellungen verfügbar.
-- Neuer Schalter **Natürliche Dungeons filtern** (standardmäßig an).
-- Der Filter prüft beim Scan die sichtbaren Blockzustände in einer Umgebung von 9×5×9 Blöcken. Ein Bereich wird als typischer Dungeon gewertet, wenn mindestens 28 Cobblestone-/Mossy-Cobblestone-Blöcke und mindestens eine Truhe gefunden werden.
-- Die Umgebungsprüfung läuft nur beim periodischen Scan, nicht in jedem Render-Frame.
+- Standard-Reichweite: **256 Blöcke** (Maximum).
+- Lila ESP-Box; Entfernung erscheint direkt im Label, z. B. `✦ Spawner · 42m`.
+- **Dungeon-Filter** hat drei Modi:
+  - **Vorsichtig:** filtert nur deutlich dungeonartige Umgebungen; erhöhte Schwelle (mindestens 40 Cobblestone-/Mossy-Cobblestone-Blöcke plus mindestens eine Truhe).
+  - **Vergleichen:** blendet nichts aus; wahrscheinliche Dungeon-Spawner werden orange markiert und mit `?Dungeon` gekennzeichnet.
+  - **Aus:** keine Dungeon-Prüfung.
+- Umgebungsprüfungen werden pro Spawner zwischengespeichert und höchstens nach fünf periodischen Scans neu berechnet.
 
-## Wichtige Einschränkung
+## Einschränkungen
 
-Das ist eine Heuristik, keine sichere Erkennung. Ein Custom-Spawner in einer cobblestoneartigen Farm mit Truhe kann fälschlich ausgeblendet werden; ein natürlicher Dungeon ohne passende Truhe/Blockmenge kann durchrutschen. Wenn Server-Custom-Spawner und natürliche Spawner identische Block-Entity-Daten verwenden, kann der Client sie nicht zweifelsfrei unterscheiden.
+Der Filter bleibt eine Heuristik. Spieler-Farmen mit vielen Cobblestone-Blöcken und Truhe können weiterhin ähnlich aussehen; natürliche Dungeons ohne diese Merkmale können durchrutschen. Wenn Custom- und natürliche Spawner dieselben clientseitigen Daten haben, ist eine sichere Unterscheidung nicht möglich.
 
-Der Filter liest ausschließlich Blockzustände, die der Client bereits in geladenen Chunks kennt. Er lädt keine Chunks und umgeht keine serverseitigen Sichtbarkeits- oder Anti-Xray-Regeln.
-
-## Geerbte Einstellungen
-
-Reichweite (Default 128, Maximum 256), Max Objekte, Linienstärke, Transparenz, Antialiasing, Distanz-Fade, Box-Stil, Tracer, Name und Distanz.
+Es werden ausschließlich Blockzustände in bereits geladenen Client-Chunks gelesen. Es werden keine Chunks nachgeladen und keine serverseitigen Sichtbarkeitsregeln umgangen.
 
 ## Offene Tests
 
 - [ ] Build für die konfigurierte Minecraft-/Fabric-Version
-- [ ] Custom-Spawner auf HugoSMP
-- [ ] Natürliche Dungeons mit und ohne Truhe
-- [ ] False positives in Spieler-Farmen
+- [ ] HugoSMP: Custom-Spawner in verschiedenen Umgebungen
+- [ ] Vergleichsmodus: orange Markierung plausibel?
+- [ ] Natürliche Dungeons und Spieler-Farmen (False Positives/Negatives)
 - [ ] Weltwechsel / Chunk-Entladung
 - [ ] Renderleistung bei vielen Spawnern
-
