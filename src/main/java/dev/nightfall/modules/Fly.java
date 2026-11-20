@@ -16,7 +16,24 @@ public class Fly extends Module {
    }
 
    @Override
+   protected void onEnable() {
+      applyFlightVelocity();
+   }
+
+   @Override
    public void onTick() {
+      applyFlightVelocity();
+   }
+
+   @Override
+   protected void onDisable() {
+      class_746 p = mc.field_1724;
+      if (p != null && !p.method_5765() && !p.method_6128()) {
+         p.method_18799(class_243.field_1353);
+      }
+   }
+
+   private void applyFlightVelocity() {
       class_746 p = mc.field_1724;
       if (p != null && !p.method_5765() && !p.method_6128()) {
          class_243 dir = MoveUtil.direction();
