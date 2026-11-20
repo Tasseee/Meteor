@@ -101,7 +101,7 @@ public class SpawnerEsp extends BlockEntityEsp {
 
    @Override
    protected int colorOf(class_2586 be) {
-      if (this.dungeonMode.is("Vergleichen") && this.looksLikeDungeon(be.method_11016())) {
+      if (this.dungeonMode.is("Dungeon markieren") && this.looksLikeDungeon(be.method_11016())) {
          return 0xFFAA33;
       }
       return this.color.rgb();
