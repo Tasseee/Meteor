@@ -36,8 +36,6 @@ public final class FreecamController extends Module {
 
    private final dev.nightfall.module.setting.NumberSetting speed =
       this.add(new dev.nightfall.module.setting.NumberSetting("Geschwindigkeit", 0.6, 0.1, 3.0, 0.05));
-   private final dev.nightfall.module.setting.NumberSetting smoothing =
-      this.add(new dev.nightfall.module.setting.NumberSetting("Gleiten", 0.25, 0.03, 1.0, 0.01));
    private final dev.nightfall.module.setting.BoolSetting freeLook =
       this.add(new dev.nightfall.module.setting.BoolSetting("FreeLook", false));
    private final dev.nightfall.module.setting.NumberSetting cameraDistance =
@@ -253,14 +251,11 @@ public final class FreecamController extends Module {
       class_243 move = class_243.field_1353;
       if (mc.field_1755 == null) {
          double yawR = Math.toRadians(cam.method_36454());
-         double pitchR = Math.toRadians(cam.method_36455());
 
-         class_243 forwardVec = new class_243(
-            -Math.sin(yawR) * Math.cos(pitchR),
-            -Math.sin(pitchR),
-            Math.cos(yawR) * Math.cos(pitchR)
-         );
-         class_243 rightVec = new class_243(-Math.cos(yawR), 0.0, -Math.sin(yawR));
+         // Creative-style camera movement: WASD is always horizontal and
+         // follows yaw only. Looking up/down never tilts forward movement.
+         class_243 forwardVec = new class_243(-Math.sin(yawR), 0.0, Math.cos(yawR));
+         class_243 rightVec = new class_243(Math.cos(yawR), 0.0, Math.sin(yawR));
 
          if (forward) move = move.method_1019(forwardVec);
          if (back) move = move.method_1020(forwardVec);
@@ -271,19 +266,18 @@ public final class FreecamController extends Module {
       }
 
       double speedValue = speed.get() * (fast ? 2.0 : 1.0);
-      class_243 target = move.method_1027() > 1.0E-4
-         ? move.method_1029().method_1021(speedValue * 20.0)
+      class_243 step = move.method_1027() > 1.0E-4
+         ? move.method_1029().method_1021(speedValue)
          : class_243.field_1353;
 
-      double k = Math.max(0.03, Math.min(1.0, smoothing.get()));
-      velX += (target.field_1352 - velX) * k;
-      velY += (target.field_1351 - velY) * k;
-      velZ += (target.field_1350 - velZ) * k;
-
-      double dt = 0.05;
-      camX += velX * dt;
-      camY += velY * dt;
-      camZ += velZ * dt;
+      // Apply input immediately: no acceleration tail, no delayed start and
+      // no continued drift after the movement key is released.
+      velX = step.field_1352;
+      velY = step.field_1351;
+      velZ = step.field_1350;
+      camX += velX;
+      camY += velY;
+      camZ += velZ;
 
       cam.method_5814(camX, camY - eyeOffset, camZ);
 
