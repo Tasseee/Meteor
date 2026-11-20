@@ -1,6 +1,7 @@
 package dev.nightfall.modules;
 
 import dev.nightfall.module.setting.BoolSetting;
+import dev.nightfall.module.setting.NumberSetting;
 import java.util.HashMap;
 import java.util.Map;
 import net.minecraft.class_2248;
@@ -13,6 +14,8 @@ import net.minecraft.class_7923;
 public class SpawnerEsp extends BlockEntityEsp {
    private final BoolSetting hideStructureSpawners = this.add(new BoolSetting("Struktur-Spawner ausblenden", false));
    private final BoolSetting hideDungeonSpawners = this.add(new BoolSetting("Dungeon-Spawner ausblenden", false));
+   private final BoolSetting ignoreChunkCorners = this.add(new BoolSetting("Spawner in Chunk-Ecken ignorieren", true));
+   private final NumberSetting cornerMargin = this.add(new NumberSetting("Ecken-Abstand", 2.0, 1.0, 4.0, 1.0));
    private final Map<class_2338, Boolean> filterCache = new HashMap<>();
    private int filterCacheTimer;
 
@@ -23,6 +26,7 @@ public class SpawnerEsp extends BlockEntityEsp {
    @Override
    protected boolean accept(class_2586 be) {
       if (!(be instanceof class_2636)) return false;
+      if (this.ignoreChunkCorners.get() && isChunkCorner(be.method_11016())) return false;
       if (!this.hideStructureSpawners.get() && !this.hideDungeonSpawners.get()) return true;
 
       class_2338 pos = be.method_11016().method_10062();
@@ -33,6 +37,17 @@ public class SpawnerEsp extends BlockEntityEsp {
          || this.hideStructureSpawners.get() && isStructureRoom(pos);
       this.filterCache.put(pos, !hide);
       return !hide;
+   }
+
+   private boolean isChunkCorner(class_2338 pos) {
+      int margin = this.cornerMargin.getInt();
+      int x = pos.method_10263() & 15;
+      int z = pos.method_10260() & 15;
+      boolean nearWest = x < margin;
+      boolean nearEast = x >= 16 - margin;
+      boolean nearNorth = z < margin;
+      boolean nearSouth = z >= 16 - margin;
+      return nearWest && nearNorth || nearWest && nearSouth || nearEast && nearNorth || nearEast && nearSouth;
    }
 
    private boolean isDungeonRoom(class_2338 center) {
