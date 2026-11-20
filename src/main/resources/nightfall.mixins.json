@@ -13,7 +13,6 @@
     "SeedCrackerDataIntegrityMixin",
     "AutoShieldNetworkMixin",
     "FakeLagNetworkMixin",
-    "GhostlagNetworkMixin",
     "FakeLagAttackMixin",
     "HandledScreenAccessor",
     "ItemGlowMeshMixin"
