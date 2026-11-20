@@ -14,7 +14,7 @@ Markiert Blöcke, deren Registry-ID auf `_ore` endet, sowie Ancient Debris. Neth
 | Einstellung | Standard | Grenzen |
 |---|---:|---|
 | Reichweite | 48 | 8–96; Schritt 4 |
-| Max Markierungen | 500 | 20–1000; Schritt 20 |
+| Max Erzblöcke pro Scan | 500 | 20–1000; Schritt 20 |
 
 ## Darstellung
 
@@ -29,14 +29,14 @@ Erztypen haben jetzt eigene Rahmenfarben:
 - Kohle: Grau
 - Ancient Debris: Violett
 
-Die Rahmenstärke wurde von 1 auf 2 erhöht. Die Farbzuordnung ändert nicht, welche Blöcke gesucht werden.
+Jede zusammenhängende Ader erhält eine einzige Box, deren Grenzen die äußersten Blöcke dieser Ader umschließen. Die Gruppierung folgt 6er-Nachbarschaft (Flächenkontakt) und derselben Erzart. Der letzte gefundene Ader-Cluster wird vollständig abgeschlossen, auch wenn er das eingestellte Blocklimit überschreitet. Die Farbzuordnung ändert nicht, welche Blöcke gesucht werden.
 
 ## Technische Prüfung
 
 - **Scanintervall:** bei `timer-- > 0`, danach `timer=12`; Folge-Scans liegen 13 geeignete Ticks auseinander.
 - **Suchraum:** achsenparalleler X/Y/Z-Würfel innerhalb der Welt-Höhenlimits.
 - **Chunk-Sicherheit:** ungeladene Chunks werden übersprungen; es werden keine Chunks nachgeladen.
-- **Treffergrenze:** `Max Markierungen` begrenzt gespeicherte Treffer, nicht die Zahl untersuchter Blockpositionen.
+- **Treffergrenze:** `Max Erzblöcke pro Scan` begrenzt die Anzahl der in Vein-Clustern erfassten Erzblöcke; ein bereits begonnener Cluster wird vollständig abgeschlossen.
 - **Lifecycle:** Trefferliste wird bei Deaktivierung und Weltwechsel geleert.
 - **Performance:** bei Reichweite 96 und wenigen Treffern kann ein großer Blockraum pro Scan geprüft werden.
 - **Build/In-Game:** noch nicht ausgeführt.
@@ -51,7 +51,7 @@ Die Rahmenstärke wurde von 1 auf 2 erhöht. Die Farbzuordnung ändert nicht, we
 ## Befunde und Grenzen
 
 - Der Code durchsucht Blockzustände in geladenen Chunks, statt nur einen Block direkt vor dem Spieler zu prüfen. Ob das beobachtete Verhalten aus geladenen Chunks, Einstellungen, Anzeigeprojektion oder Serverkontext entsteht, ist ohne In-Game-Beleg offen.
-- Die Überarbeitung betrifft ausschließlich Farben und Rahmenstärke. Reichweite, Suchraum, Scanintervall und Trefferlogik wurden nicht erweitert.
+- Die Vein-Gruppierung ergänzt den bestehenden Scan. Eine Box bildet jeweils die achsenparallelen Grenzen eines zusammenhängenden Clusters derselben Erzart ab. Bei nicht geladenen angrenzenden Chunks kann die Ader nicht über diese Grenze hinaus vervollständigt werden.
 - Keine Umgehung von Server-Schutzmechanismen wurde eingebaut.
 
 ## Offene Tests
@@ -67,4 +67,4 @@ Die Rahmenstärke wurde von 1 auf 2 erhöht. Die Farbzuordnung ändert nicht, we
 | Datum | Änderung |
 |---|---|
 | 2026-11-16 | OreESP geprüft; Nutzerbeobachtung als unbestätigt erhalten. |
-| 2026-11-19 | Erztypen farblich unterschieden und Rahmenstärke auf 2 erhöht; Suchlogik unverändert. |
+| 2026-11-19 | Erztypen farblich unterschieden und Rahmenstärke auf 2 erhöht. |\n| 2026-11-20 | Zusammenhängende Erzblöcke derselben Sorte werden zu einer gemeinsamen Vein-Box gruppiert. |
