@@ -52,7 +52,7 @@ public class SpawnerEsp extends BlockEntityEsp {
    @Override
    public void onTick() {
       if (mc.field_1687 != null && mc.field_1724 != null && this.cacheTimer-- <= 0) {
-         this.cacheTimer = 20;
+         this.cacheTimer = 40;
          this.rebuildGeneratedSpawnerCache();
       }
       super.onTick();
