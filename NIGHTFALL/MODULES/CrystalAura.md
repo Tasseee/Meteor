@@ -50,3 +50,10 @@ Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speiche
 | Datum | Commit | Änderung | Nachweis |
 |---|---|---|---|
 | 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+
+
+## Lifecycle-Verbesserung (2026-11-20)
+
+- Die identischen Reset-Zuweisungen für Deaktivierung und Weltwechsel sind in `resetState()` zusammengeführt.
+- Timer, Ziel-ID und ausstehende lokale Statusflags werden weiterhin zurückgesetzt.
+- Platzierungs-/Zerstörungslogik und Timing wurden nicht verändert.
