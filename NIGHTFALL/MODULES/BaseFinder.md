@@ -119,3 +119,12 @@ Null-Einträge, fehlende/ungültige Statuswerte, CLEAN-Einträge und nicht endli
 | Datum | Änderung |
 |---|---|
 | 2026-11-16 | Vollständige statische Prüfung der Einstellungen, Queue, Status, Persistenz und Lifecycle; atomare Dateiersetzung und robuste Markierungsvalidierung ergänzt. |
+
+## Ergänzungen: Status und Datenpflege
+
+- `ScannerStatus` zeigt zusätzlich SUS-Anzahl, SUS-WEG-Anzahl und die Gesamtzahl der erfassten Chunk-Ergebnisse.
+- Bei fehlgeschlagenen Einzel-Scans wird der Fehler gezählt und in der Nightfall-Konsole protokolliert. Der Scan-Tick läuft weiter, statt an einem einzelnen fehlerhaften Chunk abzubrechen.
+- `Debug` zeigt SUS-/SUS-WEG-Zahlen und die Zahl der fehlgeschlagenen Chunk-Scans.
+- Ungültige oder unvollständige gespeicherte Fake-Profile werden beim Laden übersprungen und protokolliert. Die Bewertungs- und Vergleichsregeln wurden dabei nicht geändert.
+
+**Teststatus:** Änderungen statisch geprüft; Build und In-Game-Test stehen noch aus.
