@@ -10,10 +10,12 @@
 
 Markiert normale Mob-Spawner-Block-Entities in bereits geladenen Chunks. Es werden keine Chunks nachgeladen. Zusätzlich können generierte Spawner herausgefiltert werden:
 
-- **Struktur-Spawner ausblenden:** Prüft die Bounding-Boxen der geladenen Structure-Starts. Das deckt insbesondere Spawner in Minenschächten und Netherfestungen ab.
+- **Struktur-Spawner ausblenden:** Prüft die Bounding-Boxen der geladenen Structure-Starts. Das deckt Spawner in Minenschächten, Netherfestungen, Strongholds, Waldanwesen und Bastionsruinen ab, sofern deren Structure-Start samt Bounding-Box in geladenen Chunks gefunden wird.
 - **Dungeon-Spawner ausblenden:** Nutzt eine Näherung für die klassischen Dungeon-Räume, die als Welt-Feature statt als Structure-Start generiert werden. Dafür werden Cobblestone-/Mossy-Cobblestone-Anteile und eine nahe Truhe geprüft.
 
 Die Dungeon-Erkennung ist absichtlich separat abschaltbar: Ein vom Spieler gebauter Raum, der wie ein Dungeon aussieht, könnte sonst ebenfalls ausgeblendet werden. Minecraft speichert bei einem normalen Mob-Spawner keine verlässliche Herkunftsmarkierung, mit der sich jeder generierte Spawner zweifelsfrei von einem platzierten unterscheiden ließe.
+
+Die Vanilla-Generation führt reguläre Mob-Spawner in Monster-Räumen, Minenschächten, Waldanwesen, Strongholds, Netherfestungen und Bastionsruinen auf. Trial-Spawner sind ein eigener Blocktyp und nicht Teil dieses normalen Mob-Spawner-ESP. Die Struktur-Bounding-Boxen decken die eigentlichen Struktur-Spawner ab; Monster-Räume werden separat heuristisch gefiltert.
 
 ## Einstellungen
 
@@ -30,7 +32,7 @@ Geerbte Einstellungen: Reichweite (128, maximal 256), Max Objekte, Linienstärke
 
 - **Scanquelle:** Block-Entities in geladenen Chunks und Strukturstarts; kein Chunk-Forcing.
 - **Strukturfilter:** Liest Bounding-Boxen benachbarter geladener Structure-Starts ein.
-- **Dungeonfilter:** Best-effort-Blockmusterprüfung, getrennt konfigurierbar.
+- **Dungeonfilter:** Best-effort-Blockmusterprüfung, getrennt konfigurierbar; Cache-Aktualisierung alle 40 Ticks.
 - **Lifecycle:** Cache wird bei Deaktivierung/Weltwechsel geleert.
 - **Build/In-Game:** noch nicht ausgeführt.
 
