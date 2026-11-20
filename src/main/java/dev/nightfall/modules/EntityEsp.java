@@ -1,6 +1,5 @@
 package dev.nightfall.modules;
 
-import dev.nightfall.module.Module;
 import net.minecraft.class_1297;
 import net.minecraft.class_1299;
 import net.minecraft.class_2378;
@@ -14,14 +13,11 @@ public class EntityEsp extends EntityScanEsp {
       "minecraft:item_frame",
       "minecraft:glow_item_frame",
       "minecraft:ender_pearl",
-      "minecraft:wind_charge",
-      "minecraft:breeze_wind_charge",
-      "minecraft:armadillo",
-      "minecraft:splash_potion"
+      "minecraft:armadillo"
    );
 
    public EntityEsp() {
-      super("EntityESP", "Zeigt nur Armor Stands, Item Frames, Enderperlen, Wind Charges, Armadillos, Boote und Splash-Traenke.", 128, 512, 16096779);
+      super("EntityESP", "Zeigt Armor Stands, Item Frames, Enderperlen, Armadillos und Boote.", 128, 512, 16096779);
    }
 
    @Override
