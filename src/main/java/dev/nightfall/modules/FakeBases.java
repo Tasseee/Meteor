@@ -23,10 +23,7 @@ public final class FakeBases extends Module {
       super("FakeBases", "Eigene lokale TEST/DECOY-Markierungen; verändert keine Weltblöcke.", Category.WORLD);
    }
 
-   @Override
-   public void onWorldLeave() {
-      WaypointManager.removeCategory(CATEGORY);
-   }
+   // FakeBase waypoints are saved per server and remain available after reconnecting.
 
    @Override
    public void renderHud(class_332 ctx) {
