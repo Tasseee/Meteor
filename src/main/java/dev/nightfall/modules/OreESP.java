@@ -5,8 +5,11 @@ import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Draw;
 import dev.nightfall.util.Projection;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.class_2248;
 import net.minecraft.class_2338;
 import net.minecraft.class_2378;
@@ -16,12 +19,17 @@ import net.minecraft.class_7923;
 
 public final class OreESP extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 48.0, 8.0, 96.0, 4.0));
-   private final NumberSetting maxBlocks = this.add(new NumberSetting("Max Markierungen", 500.0, 20.0, 1000.0, 20.0));
+   private final NumberSetting maxBlocks = this.add(new NumberSetting("Max Erzblöcke pro Scan", 500.0, 20.0, 1000.0, 20.0));
    private final List<OreMarker> found = new ArrayList<>();
+   private static final int[][] NEIGHBORS = {
+      {1, 0, 0}, {-1, 0, 0},
+      {0, 1, 0}, {0, -1, 0},
+      {0, 0, 1}, {0, 0, -1}
+   };
    private int timer;
 
    public OreESP() {
-      super("OreESP", "Markiert Erze im geladenen Gebiet; Netherquarz und Nethergold werden ignoriert.", Category.VISUALS);
+      super("OreESP", "Umschließt zusammenhängende Erzadern im geladenen Gebiet mit je einer Box; Netherquarz und Nethergold werden ignoriert.", Category.VISUALS);
    }
 
    private String blockId(class_2248 block) {
@@ -50,6 +58,61 @@ public final class OreESP extends Module {
       return 0xFFFFFFFF;
    }
 
+   private OreMarker collectVein(class_2338 start, class_2248 ore, Set<class_2338> visited) {
+      ArrayDeque<class_2338> pending = new ArrayDeque<>();
+      pending.add(start);
+      visited.add(start);
+
+      int minX = start.method_10263();
+      int minY = start.method_10264();
+      int minZ = start.method_10260();
+      int maxX = minX;
+      int maxY = minY;
+      int maxZ = minZ;
+      int blockCount = 0;
+      int bottomY = mc.field_1687.method_31607();
+      int topY = mc.field_1687.method_31600();
+
+      while (!pending.isEmpty()) {
+         class_2338 current = pending.removeFirst();
+         int x = current.method_10263();
+         int y = current.method_10264();
+         int z = current.method_10260();
+         blockCount++;
+
+         minX = Math.min(minX, x);
+         minY = Math.min(minY, y);
+         minZ = Math.min(minZ, z);
+         maxX = Math.max(maxX, x);
+         maxY = Math.max(maxY, y);
+         maxZ = Math.max(maxZ, z);
+
+         for (int[] direction : NEIGHBORS) {
+            class_2338 neighbor = current.method_10069(direction[0], direction[1], direction[2]);
+            if (visited.contains(neighbor)) continue;
+
+            int nx = neighbor.method_10263();
+            int ny = neighbor.method_10264();
+            int nz = neighbor.method_10260();
+            if (ny < bottomY || ny >= topY) continue;
+
+            // Do not request or load neighboring chunks just to complete a vein.
+            if (mc.field_1687.method_2935().method_21730(nx >> 4, nz >> 4) == null) continue;
+
+            if (mc.field_1687.method_8320(neighbor).method_26204() == ore) {
+               visited.add(neighbor);
+               pending.addLast(neighbor);
+            }
+         }
+      }
+
+      class_238 bounds = new class_238(
+         minX, minY, minZ,
+         maxX + 1.0, maxY + 1.0, maxZ + 1.0
+      );
+      return new OreMarker(bounds, this.oreColor(ore), blockCount);
+   }
+
    @Override
    public void onTick() {
       if (mc.field_1724 == null || mc.field_1687 == null || this.timer-- > 0) return;
@@ -62,19 +125,27 @@ public final class OreESP extends Module {
       int maxY = Math.min(mc.field_1687.method_31600(), p.method_10264() + r);
       int minX = p.method_10263() - r, maxX = p.method_10263() + r;
       int minZ = p.method_10260() - r, maxZ = p.method_10260() + r;
+      int scannedOreBlocks = 0;
+      Set<class_2338> visited = new HashSet<>();
 
-      for (int cx = minX >> 4; cx <= maxX >> 4 && this.found.size() < cap; cx++) {
-         for (int cz = minZ >> 4; cz <= maxZ >> 4 && this.found.size() < cap; cz++) {
+      for (int cx = minX >> 4; cx <= maxX >> 4 && scannedOreBlocks < cap; cx++) {
+         for (int cz = minZ >> 4; cz <= maxZ >> 4 && scannedOreBlocks < cap; cz++) {
             if (mc.field_1687.method_2935().method_21730(cx, cz) == null) continue;
             int sx = Math.max(minX, cx << 4), ex = Math.min(maxX, (cx << 4) + 15);
             int sz = Math.max(minZ, cz << 4), ez = Math.min(maxZ, (cz << 4) + 15);
-            for (int x = sx; x <= ex && this.found.size() < cap; x++) {
-               for (int z = sz; z <= ez && this.found.size() < cap; z++) {
-                  for (int y = minY; y <= maxY && this.found.size() < cap; y++) {
+            for (int x = sx; x <= ex && scannedOreBlocks < cap; x++) {
+               for (int z = sz; z <= ez && scannedOreBlocks < cap; z++) {
+                  for (int y = minY; y <= maxY && scannedOreBlocks < cap; y++) {
                      class_2338 bp = new class_2338(x, y, z);
+                     if (visited.contains(bp)) continue;
+
                      class_2248 block = mc.field_1687.method_8320(bp).method_26204();
                      if (this.isOre(block)) {
-                        this.found.add(new OreMarker(new class_238(bp), this.oreColor(block)));
+                        OreMarker vein = this.collectVein(bp, block, visited);
+                        this.found.add(vein);
+                        // The last connected vein is always completed, even if
+                        // its size takes this count beyond the configured limit.
+                        scannedOreBlocks += vein.blockCount();
                      }
                   }
                }
@@ -98,6 +169,6 @@ public final class OreESP extends Module {
    @Override
    public void onWorldLeave() { this.found.clear(); this.timer = 0; }
 
-   private record OreMarker(class_238 box, int color) {
+   private record OreMarker(class_238 box, int color, int blockCount) {
    }
 }
