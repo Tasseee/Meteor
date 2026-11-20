@@ -1,40 +1,47 @@
 # Freecam
 
-- **Status:** Codeänderung gespeichert; Kamera-/In-Game-Test offen
-- **Java-Klasse / Anzeigename:** `Freecam`
+- **Status:** Steuerungsänderung gespeichert; Build-/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `FreecamController` / `Freecam`
 - **Kategorie:** `MOVEMENT`
 - **Mixin:** `CameraMixin`
+- **Code-Commit:** `e7fbdc392a0f44b1e91be434ef2ddf1c7b9ef5b6`
 
-## Zweck und Verhalten
+## Steuerung
 
-Die vorhandene Nightfall-Freecam bleibt die einzige Kamera-Implementierung. Die ZIP-eigene separate `FreecamController`-Architektur wurde nicht zusätzlich registriert, da sie eigene Entity-/GameRenderer-Mixins voraussetzt.
+- **W/A/S/D:** Horizontale Bewegung relativ zur Kamera-Yaw-Richtung.
+- **Space:** Kamera nach oben.
+- **Shift:** Kamera nach unten.
+- **Sprint:** Temporärer Geschwindigkeitsschub.
+- Mausbewegung: Kamera drehen.
 
-Die Kamera bewegt sich lokal unabhängig vom Spieler. Ergänzt wurden sanftes Beschleunigen/Abbremsen, ein optionaler Stopp bei Schaden sowie eine Koordinaten-/Geschwindigkeitsanzeige.
+W/A/S/D ist unabhängig von der vertikalen Blickneigung. Nach oben oder unten schauen und W drücken bewegt die Kamera daher weiter horizontal. Vertikale Bewegung erfolgt nur über Space/Shift.
+
+## Änderungen
+
+- Beschleunigungs- und Bremsglättung wurde entfernt, damit die Kamera unmittelbar auf Tastendruck reagiert.
+- Loslassen der Bewegungstaste stoppt die Kamera direkt; es gibt kein Nachgleiten.
+- Diagonale Bewegungen werden normalisiert, damit sie nicht schneller sind als gerade Bewegung.
+- Blickrichtung, Maussteuerung, FreeLook-Modus, Schadens-Stopp, HUD und Wiederherstellung der Spielerposition bleiben erhalten.
+- Kamerabewegung bleibt clientseitig; die Spielerposition wird weiterhin auf den gespeicherten Ausgangspunkt zurückgesetzt.
 
 ## Einstellungen
 
 | Einstellung | Standard | Grenzen |
 |---|---:|---|
 | Geschwindigkeit | 0,6 | 0,1–3,0; Schritt 0,05 |
-| Gleiten | 0,25 | 0,03–1,0; Schritt 0,01 |
-| Stopp bei Schaden | AN | Ein/Aus |
-| Freecam-Anzeige | AN | Ein/Aus |
+| FreeLook | aus | Ein/Aus |
+| FreeLook-Reichweite | 4,0 | 0–50; Schritt 0,25 |
+| Stopp bei Schaden | an | Ein/Aus |
+| Freecam-Anzeige | an | Ein/Aus |
 | Kamera-Sensitivität | 0,15 | 0,03–0,5; Schritt 0,01 |
-| Vertikale Maus invertieren | AN | Ein/Aus |
 
-## Technische Prüfung
-
-- Die bisherige Kamera-/Maussteuerung und `CameraMixin` bleiben erhalten.
-- Die neue Geschwindigkeitsglättung wird über eine separate Kamerageschwindigkeit gerechnet.
-- Bei Schaden wird das Modul deaktiviert; der vorhandene Disable-Pfad stellt die gespeicherte Spielerposition und Blickrichtung wieder her.
-- Die Anzeige wird im regulären Nightfall-HUD-Renderdurchlauf gezeichnet.
-- Der Alt-Body-Modus aus dem ZIP wurde nicht übernommen, da die dazugehörigen Hooks nicht mitgeliefert wurden.
+Die frühere Einstellung `Gleiten` wurde entfernt, weil die Bewegung jetzt bewusst ohne Verzögerung reagiert.
 
 ## Offene Tests
 
-- [ ] WASD, Space und Shift mit niedriger/hoher Geschwindigkeit prüfen.
-- [ ] Gleiten-Minimum/-Maximum und sofortiges Loslassen der Tasten prüfen.
-- [ ] Schaden-Stopp und Rückkehr zur gespeicherten Spielerposition prüfen.
-- [ ] HUD-Position und Koordinatenanzeige prüfen.
-- [ ] Maus-Invertierung bleibt unverändert funktionsfähig.
-- [ ] Build und In-Game-Test bleiben offen.
+- [ ] W/A/S/D bei waagerechtem und steilem Blickwinkel
+- [ ] Space/Shift nach oben und unten
+- [ ] Diagonale Bewegung und Sprint-Boost
+- [ ] Sofortiger Stillstand beim Loslassen
+- [ ] FreeLook, Schaden-Stopp und Weltwechsel
+- [ ] Build und In-Game-Test
