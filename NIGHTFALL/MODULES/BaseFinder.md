@@ -128,3 +128,11 @@ Null-Einträge, fehlende/ungültige Statuswerte, CLEAN-Einträge und nicht endli
 - Ungültige oder unvollständige gespeicherte Fake-Profile werden beim Laden übersprungen und protokolliert. Die Bewertungs- und Vergleichsregeln wurden dabei nicht geändert.
 
 **Teststatus:** Änderungen statisch geprüft; Build und In-Game-Test stehen noch aus.
+
+## Globale Kelp-Statistik
+
+- `ScannerStatus` zeigt eine zusätzliche Zeile mit der Anzahl ausgewachsener Kelp-Blöcke und der Zahl der Chunks, in denen diese vorkommen.
+- Die Summe umfasst nur bereits geladene und vom BaseFinder gescannte Chunks innerhalb des eingestellten `Range (Chunks)`-Radius.
+- Beim Neuaufbau der Scan-Queue werden Statistik-Einträge für nicht mehr geladene oder außerhalb des Scanradius liegende Chunks entfernt.
+- Die Statistik ist eine reine Anzeige. Sie verändert weder Score noch SUS-/GONE-/CLEAN-Status oder Fake-Pattern-Vergleich.
+- Ausgewachsener Kelp ist kein Beweis für eine bestimmte Ladezeit; die Anzeige ist lediglich eine Bestandszählung des aktuell erfassten Bereichs.
