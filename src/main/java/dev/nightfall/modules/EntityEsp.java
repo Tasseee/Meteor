@@ -13,19 +13,16 @@ public class EntityEsp extends EntityScanEsp {
       "minecraft:item_frame",
       "minecraft:glow_item_frame",
       "minecraft:ender_pearl",
-      "minecraft:wind_charge",
-      "minecraft:breeze_wind_charge",
       "minecraft:armadillo",
       "minecraft:wolf",
       "minecraft:cat",
       "minecraft:villager",
       "minecraft:iron_golem",
-      "minecraft:snow_golem",
-      "minecraft:splash_potion"
+      "minecraft:snow_golem"
    );
 
    public EntityEsp() {
-      super("EntityESP", "Zeigt ausgewaehlte Tiere, Villager, Golems, Armor Stands, Item Frames, Wind Charges, Enderperlen, Splash-Potions und Boote.", 128, 512, 16096779);
+      super("EntityESP", "Zeigt ausgewaehlte Tiere, Villager, Golems, Armor Stands, Item Frames, Enderperlen und Boote.", 128, 512, 16096779);
    }
 
    @Override
