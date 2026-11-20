@@ -14,7 +14,7 @@ import net.minecraft.class_2636;
  */
 public class SpawnerEsp extends BlockEntityEsp {
    private final ModeSetting dungeonMode =
-      this.add(new ModeSetting("Dungeon-Filter", "Vorsichtig", "Vorsichtig", "Vergleichen", "Aus"));
+      this.add(new ModeSetting("Dungeon-Modus", "Dungeon ausblenden", "Alle zeigen", "Dungeon markieren", "Dungeon ausblenden"));
    private final Map<class_2338, DungeonCache> dungeonCache = new HashMap<>();
    private int scanEpoch;
 
@@ -43,12 +43,12 @@ public class SpawnerEsp extends BlockEntityEsp {
       if (!this.accept(be)) {
          return false;
       }
-      if (this.dungeonMode.is("Aus")) {
+      if (this.dungeonMode.is("Alle zeigen")) {
          return true;
       }
 
       boolean dungeon = this.looksLikeDungeon(be.method_11016());
-      return this.dungeonMode.is("Vergleichen") || !dungeon;
+      return !this.dungeonMode.is("Dungeon ausblenden") || !dungeon;
    }
 
    private boolean looksLikeDungeon(class_2338 pos) {
