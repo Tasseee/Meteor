@@ -838,7 +838,7 @@ public class BaseFinder extends Module {
                      skipped++;
                      continue;
                   }
-                  pattern.seenChunks.removeIf(location -> location == null || !location.matches("-?\\\\d+,-?\\\\d+"));
+                  pattern.seenChunks.removeIf(location -> location == null || !location.matches("-?\\d+,-?\\d+"));
                   if (pattern.seenChunks.isEmpty()) {
                      skipped++;
                      continue;
