@@ -42,8 +42,7 @@ public class CrystalAura extends Module {
    private boolean awaitingObsidian;
    private boolean pendingObsidianHit;
 
-   @Override
-   public void onWorldLeave() {
+   private void resetState() {
       this.placeT = 0;
       this.breakT = 0;
       this.trackedTargetId = -1;
@@ -53,13 +52,13 @@ public class CrystalAura extends Module {
    }
 
    @Override
+   public void onWorldLeave() {
+      this.resetState();
+   }
+
+   @Override
    protected void onDisable() {
-      this.placeT = 0;
-      this.breakT = 0;
-      this.trackedTargetId = -1;
-      this.lastTargetHealth = Float.NaN;
-      this.awaitingObsidian = false;
-      this.pendingObsidianHit = false;
+      this.resetState();
    }
 
    public CrystalAura() {
