@@ -50,3 +50,10 @@ Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speiche
 | Datum | Commit | Änderung | Nachweis |
 |---|---|---|---|
 | 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+
+
+## Lifecycle-Verbesserung (2026-11-20)
+
+- Identisches Deaktivierungs-/Weltwechsel-Cleanup ist in `resetState()` zusammengeführt.
+- Der Reset setzt den lokalen Tick-Zähler zurück und gibt die temporär übernommene Benutzen-Taste frei.
+- Erkennungs- und Blockverhalten wurden nicht verändert.
