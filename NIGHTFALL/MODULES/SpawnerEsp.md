@@ -1,45 +1,31 @@
 # SpawnerEsp
 
-- **Status:** Code geprüft; In-Game-Test offen
+- **Status:** Änderungen umgesetzt; Build und In-Game-Test offen
 - **Java-Klasse:** `SpawnerEsp`
 - **Anzeigename:** `SpawnerESP`
 - **Kategorie:** `VISUALS`
-- **Modul-SHA:** `98c077c97bb4abaf94f619b76adc0bb407c5a407`
-- **Gemeinsame Renderlogik:** `BlockEntityEsp` / `EspBase`
 
-## Zweck und Verhalten
+## Verhalten und Einstellungen
 
-Markiert Spawner-Block-Entities in geladenen Chunks. Die Klasse selbst hat keine zusätzlichen Filter; die Scan-, Distanz- und Renderlogik kommt aus `BlockEntityEsp` und `EspBase`.
+- Markiert Spawner-Block-Entities in bereits geladenen Chunks.
+- Standard-Reichweite: **256 Blöcke** (Maximum).
+- Lila ESP-Box; Entfernung direkt im Label, z. B. `✦ Spawner · 42m`.
+- **Dungeon-Modus** bietet drei frei wählbare Einstellungen:
+  - **Alle zeigen:** zeigt alle Spawner ohne Dungeon-Markierung.
+  - **Dungeon markieren:** zeigt alle Spawner; vermutete Dungeon-Spawner werden orange markiert und mit `?Dungeon` gekennzeichnet.
+  - **Dungeon ausblenden:** blendet Spawner aus, deren Umgebung stark nach einem natürlichen Dungeon aussieht.
+- Dungeon-Umgebungsprüfungen werden pro Spawner zwischengespeichert und nach fünf periodischen Scans erneut berechnet.
 
-## Einstellungen
+## Dungeon-Erkennung
 
-Geerbte ESP-Einstellungen: Reichweite (vorgesehener Default 128, Maximum 256), Max Objekte (512), Linienstärke, Transparenz, Antialiasing, Distanz-Fade, Box-Stil, Tracer, Name und Distanz.
+Die Heuristik prüft einen Bereich von 9×5×9 Blöcken und wertet mindestens 40 Cobblestone-/Mossy-Cobblestone-Blöcke plus mindestens eine Truhe als dungeonverdächtig. Das ist nur eine Annäherung: Spieler-Farmen können ähnlich aussehen und natürliche Dungeons können durchrutschen.
 
-## Technische Prüfung
-
-- **Scanquelle:** Block-Entities in geladenen Chunks; keine automatische Chunk-Ladung.
-- **Intervall:** geerbter Scanpfad alle 11 geeigneten Ticks.
-- **Sortierung:** nach Entfernung von der Kameraposition.
-- **Lifecycle:** Cache wird bei Deaktivierung/Weltwechsel geleert.
-- **Build/In-Game:** nicht ausgeführt.
-
-## Befunde und Verbesserungen
-
-### SE-01 – geerbter Range-Default
-
-**Behoben im gemeinsamen Code:** `c03f2c5205b1a6bec2c01d23ad48cdc4fe488a8d`. SpawnerESP verwendet jetzt den im Konstruktor angegebenen Default 128 statt Maximalwert 256.
-
-**Verifikation:** Quellcode gespeichert und erneut gelesen; Build-/In-Game-Test offen.
+Die Prüfung liest ausschließlich Blockzustände, die der Client bereits in geladenen Chunks kennt. Sie lädt keine Chunks und umgeht keine serverseitigen Sichtbarkeitsregeln. Wenn Custom- und natürliche Spawner dieselben clientseitigen Daten haben, ist keine sichere Unterscheidung möglich.
 
 ## Offene Tests
 
-- [ ] Spawner in geladenen Chunks
-- [ ] Reichweite 128 / Maximum 256
+- [ ] Build für die konfigurierte Minecraft-/Fabric-Version
+- [ ] HugoSMP: alle drei Modi testen
+- [ ] Natürliche Dungeons und Spieler-Farmen vergleichen
 - [ ] Weltwechsel / Chunk-Entladung
-- [ ] Max Objekte und Renderleistung
-
-## Änderungsverlauf
-
-| Datum | Änderung |
-|---|---|
-| 2026-11-16 | SpawnerEsp und geerbten Scanpfad geprüft; Range-Default korrigiert. |
+- [ ] Renderleistung bei vielen Spawnern

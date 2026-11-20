@@ -21,9 +21,35 @@ public abstract class BlockEntityEsp extends EspBase {
       super(n, d, r, mr, rgb);
    }
 
+   protected BlockEntityEsp(String n, String d, int r, int mr, int rgb, int defaultThickness) {
+      super(n, d, r, mr, rgb, defaultThickness);
+   }
+
    protected abstract boolean accept(class_2586 var1);
 
+   /**
+    * Separate scan-time filtering from render-time validation so expensive
+    * environment checks are not repeated every frame.
+    */
+   protected boolean acceptForScan(class_2586 be) {
+      return this.accept(be);
+   }
+
    protected abstract String nameOf(class_2586 var1);
+
+   protected void onScanStart() {
+   }
+
+   protected void onEspReset() {
+   }
+
+   protected String labelOf(class_2586 be, double distance) {
+      return this.label(this.nameOf(be), distance);
+   }
+
+   protected int colorOf(class_2586 be) {
+      return this.color.rgb();
+   }
 
    protected boolean acceptChunk(class_2818 chunk) {
       return true;
@@ -33,6 +59,7 @@ public abstract class BlockEntityEsp extends EspBase {
    protected void onDisable() {
       this.cache.clear();
       this.boxes.clear();
+      this.onEspReset();
    }
 
    @Override
@@ -40,6 +67,7 @@ public abstract class BlockEntityEsp extends EspBase {
       this.cache.clear();
       this.boxes.clear();
       this.timer = 0;
+      this.onEspReset();
    }
 
    @Override
@@ -47,6 +75,7 @@ public abstract class BlockEntityEsp extends EspBase {
       if (mc.field_1687 != null && mc.field_1724 != null) {
          if (this.timer-- <= 0) {
             this.timer = 10;
+            this.onScanStart();
             this.cache.clear();
             this.boxes.clear();
             int r = this.range.getInt();
@@ -65,7 +94,7 @@ public abstract class BlockEntityEsp extends EspBase {
                   class_2818 ch = mc.field_1687.method_2935().method_21730(pcx + dx, pcz + dz);
                   if (ch != null && this.acceptChunk(ch)) {
                      for (class_2586 be : ch.method_12214().values()) {
-                        if (this.accept(be)) {
+                        if (this.acceptForScan(be)) {
                            class_2338 bp = be.method_11016();
                            if (!(bp.method_40081(px, py, pz) > r2)) {
                               this.cache.add(bp.method_10062());
@@ -113,7 +142,7 @@ public abstract class BlockEntityEsp extends EspBase {
             class_2586 be = mc.field_1687.method_8321(bp);
             if (be != null && this.accept(be)) {
                double d = Math.sqrt(bp.method_40081(Projection.eyeX(), Projection.eyeY(), Projection.eyeZ()));
-               this.drawTarget(ctx, this.boxes.get(i), this.label(this.nameOf(be), d), this.color.rgb());
+               this.drawTarget(ctx, this.boxes.get(i), this.labelOf(be, d), this.colorOf(be));
                shown++;
             }
          }
