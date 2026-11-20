@@ -75,6 +75,7 @@ import dev.nightfall.modules.NotificationsHud;
 import dev.nightfall.modules.ObiTrapBot;
 import dev.nightfall.modules.ParticleTrail;
 import dev.nightfall.modules.PlayerEsp;
+import dev.nightfall.modules.LogoutSpots;
 import dev.nightfall.modules.SafeWalk;
 import dev.nightfall.modules.ScannerHud;
 import dev.nightfall.modules.SeedCracker;
@@ -158,6 +159,7 @@ public final class ModuleManager {
       MODULES.add(new FreecamController());
       MODULES.add(new NoFall());
       MODULES.add(new PlayerEsp());
+      MODULES.add(new LogoutSpots());
       MODULES.add(new EntityEsp());
       MODULES.add(new ItemEsp());
       MODULES.add(new DroppedItemNotifier());
