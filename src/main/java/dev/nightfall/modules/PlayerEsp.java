@@ -15,7 +15,14 @@ public class PlayerEsp extends EntityScanEsp {
    private class_638 trackedWorld;
 
    public PlayerEsp() {
-      super("PlayerESP", "Markiert andere Spieler und kann sie automatisch mit /invsee öffnen.", 256, 512, 15680580);
+      super("PlayerESP", "Markiert andere Spieler und kann sie automatisch mit /invsee öffnen.", 256, 512, 15680580, 1);
+   }
+
+   @Override
+   protected int effectiveThickness() {
+      // Keep PlayerESP's box and tracer strokes fine even with older configs
+      // that may still store the previous 4 px default.
+      return Math.min(2, this.thickness.getInt());
    }
 
    @Override
