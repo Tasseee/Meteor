@@ -32,8 +32,13 @@ public abstract class EspBase extends Module {
    private final double[] pt = new double[2];
 
    protected EspBase(String name, String desc, int defRange, int maxRange, int rgb) {
+      this(name, desc, defRange, maxRange, rgb, 4);
+   }
+
+   protected EspBase(String name, String desc, int defRange, int maxRange, int rgb, int defaultThickness) {
       super(name, desc, Category.VISUALS);
       this.range = this.add(new NumberSetting("Reichweite", defRange, 8.0, maxRange, 8.0));
+      this.thickness.set(defaultThickness);
       this.color = this.add(new ColorSetting("Farbe", rgb));
    }
 
@@ -44,6 +49,10 @@ public abstract class EspBase extends Module {
    private int argb(int rgb, double fade) {
       int alpha = (int)Math.max(0L, Math.min(255L, Math.round(this.opacity.get() * 255.0 * fade)));
       return Theme.withAlpha(rgb, alpha);
+   }
+
+   protected int effectiveThickness() {
+      return this.thickness.getInt();
    }
 
    protected boolean capReached() {
@@ -82,7 +91,7 @@ public abstract class EspBase extends Module {
                shown = Draw.box(ctx,
                   box.field_1323 + offsetX, box.field_1322 + offsetY, box.field_1321 + offsetZ,
                   box.field_1320 + offsetX, box.field_1325 + offsetY, box.field_1324 + offsetZ,
-                  col, this.thickness.getInt(), this.style.is("3D"), this.smoothing.get());
+                  col, this.effectiveThickness(), this.style.is("3D"), this.smoothing.get());
             }
 
             boolean centerOk = Projection.project(cx, cy, cz, this.pt);
@@ -96,10 +105,10 @@ public abstract class EspBase extends Module {
                float sx = Projection.width() / 2.0F;
                float sy = this.origin.is("Mitte") ? Projection.height() / 2.0F : Projection.height();
                if (centerOk) {
-                  Draw.line(ctx, sx, sy, (float)this.pt[0], (float)this.pt[1], col, this.thickness.getInt(), this.smoothing.get());
+                  Draw.line(ctx, sx, sy, (float)this.pt[0], (float)this.pt[1], col, this.effectiveThickness(), this.smoothing.get());
                   shown = true;
                } else if (Projection.projectToEdge(cx, cy, cz, this.pt)) {
-                  Draw.line(ctx, sx, sy, (float)this.pt[0], (float)this.pt[1], col, this.thickness.getInt());
+                  Draw.line(ctx, sx, sy, (float)this.pt[0], (float)this.pt[1], col, this.effectiveThickness());
                   shown = true;
                }
             }
@@ -112,11 +121,11 @@ public abstract class EspBase extends Module {
    }
 
    private void drawCleanLabel(class_332 ctx, String label, float centerX, float topY) {
-      int w = mc.field_1772.method_1727(label);
+      String styledLabel = "§f§l" + label;
+      int w = mc.field_1772.method_1727(styledLabel);
       int x = Math.round(centerX - w / 2.0F);
       int y = Math.round(topY);
-      ctx.method_25294(x - 3, y - 2, x + w + 3, y + 10, -1190129125);
-      ctx.method_51433(mc.field_1772, label, x, y, -854790, true);
+      ctx.method_51433(mc.field_1772, styledLabel, x, y, 0xFFFFFFFF, true);
    }
 
    protected void drawLabelOnly(class_332 ctx, class_238 box, String label) {
