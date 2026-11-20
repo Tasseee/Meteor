@@ -26,6 +26,7 @@ import dev.nightfall.modules.AutoTotem;
 import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.BlockESP;
+import dev.nightfall.modules.BlockHighlight;
 import dev.nightfall.modules.OreESP;
 import dev.nightfall.modules.BlockNotifier;
 import dev.nightfall.modules.BoatFly;
@@ -192,6 +193,7 @@ public final class ModuleManager {
       MODULES.add(new SpawnerEsp());
       MODULES.add(new ChunkEsp());
       MODULES.add(new BlockESP());
+      MODULES.add(new BlockHighlight());
       MODULES.add(new OreESP());
       MODULES.add(new StructureESP());
       MODULES.add(new Waypoints());
