@@ -1,22 +1,30 @@
 # EntityEsp
 
-- **Status:** Code geprüft; In-Game-Test offen
+- **Status:** Positivlisten-Filter im Code gespeichert; Build-/In-Game-Test offen
 - **Java-Klasse:** `EntityEsp`
 - **Anzeigename:** `EntityESP`
 - **Kategorie:** `VISUALS`
-- **Modul-SHA:** `602ca828e38119201b76d80f4e3b2ca8922cb614`
+- **Code-Commit:** `05c234882e067df842a1844bce70536b94e0043d`
 - **Gemeinsame Renderlogik:** `EntityScanEsp` / `EspBase`
 
 ## Zweck und Verhalten
 
-Markiert geladene lebende Nicht-Spieler-Entities. Feindliche und passive Kategorien können getrennt ein- und ausgeschaltet werden.
+EntityESP zeigt nur diese Entity-Gruppen:
+
+- Armor Stands
+- Item Frames und Glow Item Frames
+- Enderperlen
+- Wind Charges (Spieler- und Breeze-Variante)
+- Armadillos
+- Boote und Rafts (einschließlich Chest-Varianten)
+- Splash-Potions
+
+Alle anderen Entity-Typen werden vom Filter ausgeschlossen. Die Anzeige verwendet weiterhin die gemeinsame Reichweiten-, Sichtbarkeits-, Objektlimit- und HUD-Renderlogik aus `EntityScanEsp` / `EspBase`.
 
 ## Einstellungen
 
 | Einstellung | Standard |
 |---|---:|
-| Feindlich | an |
-| Passiv | aus |
 | Health (geerbt) | an |
 | Nur sichtbare (geerbt) | aus |
 | Reichweite (korrigierter Default) | 128 |
@@ -25,34 +33,22 @@ Markiert geladene lebende Nicht-Spieler-Entities. Feindliche und passive Kategor
 | Name / Distanz | an |
 | Tracer | aus |
 
+Die früheren Umschalter für feindliche/passive Mobs und die freie Entity-Type-Auswahl wurden entfernt, damit die Positivliste verbindlich bleibt.
+
 ## Technische Prüfung
 
-- **Klassifizierung:** prüft Entity-Typ und Klassifizierung hostile/passive; Spieler werden ausgeschlossen.
+- **Klassifizierung:** Registry-ID des Entity-Typs wird gegen eine feste Positivliste geprüft. Boot- und Raft-Varianten werden über ihre IDs erkannt.
 - **Renderpfad:** geladene Entities werden jedes HUD-Frame durchlaufen; Positionen/Boxen werden mit TickDelta interpoliert.
-- **Sortierung:** Renderbuffer wird nach Distanz sortiert, wenn die Anzahl über Max Objekte liegt.
-- **Null-/Lifecycle:** Spieler, Welt und Projection müssen verfügbar sein; eigener Zustand/Thread nicht vorhanden.
-- **Performance:** pro passender Entity wird ein RenderTarget-Record pro Frame erzeugt; Messung steht aus.
-
-## Befunde und Verbesserungen
-
-### EE-01 – Standardreichweite aus gemeinsamem Konstruktor war falsch
-
-**Behoben im Code:** `c03f2c5205b1a6bec2c01d23ad48cdc4fe488a8d`.
-
-`EspBase` ignorierte den übergebenen Parameter `defRange` und verwendete stets `maxRange`. EntityESP startet jetzt mit dem vorgesehenen Default 128 statt 512; Maximum bleibt 512.
-
-**Verifikation:** Code gespeichert und erneut gelesen; Build-/In-Game-Test offen.
+- **Sortierung:** Renderbuffer wird nach Distanz sortiert, wenn die Anzahl über Max Objects liegt.
+- **Fehlerbehandlung:** fehlende Registry-IDs oder Registry-Laufzeitfehler führen dazu, dass die Entity nicht akzeptiert wird.
+- **Performance:** kein zusätzlicher Welt-Scan; die bestehende Render-Schleife wird weiterverwendet. Messung steht aus.
 
 ## Offene Tests
 
-- [ ] Feindlich/passiv Filter
-- [ ] Health und Nur sichtbare
-- [ ] Reichweite 128 / Maximum 512
-- [ ] Viele Entities und Renderleistung
-- [ ] Welt-/Perspektivwechsel
-
-## Änderungsverlauf
-
-| Datum | Änderung |
-|---|---|
-| 2026-11-16 | EntityEsp und gemeinsame Entity-Renderlogik geprüft; Range-Default korrigiert. |
+- [ ] Armor Stand / Item Frame / Glow Item Frame
+- [ ] Ender Pearl und beide Wind-Charge-Varianten
+- [ ] Armadillo, Boot / Chest Boat / Raft
+- [ ] Splash-Potion wird angezeigt; Lingering-Potion bleibt ausgeblendet
+- [ ] Andere Mobs und Projektile bleiben ausgeblendet
+- [ ] Reichweite, Sichtbarkeit und Max-Objekte-Limit
+- [ ] Build und In-Game-Test
