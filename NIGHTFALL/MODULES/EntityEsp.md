@@ -1,23 +1,28 @@
 # EntityEsp
 
-- **Status:** Positivlisten-Filter im Code gespeichert; Build-/In-Game-Test offen
+- **Status:** Erweiterte Positivliste im Code gespeichert; Build-/In-Game-Test offen
 - **Java-Klasse:** `EntityEsp`
 - **Anzeigename:** `EntityESP`
 - **Kategorie:** `VISUALS`
-- **Code-Commit:** 5bd26e43b8593e7f4d7b026a14c2573805028fdc
+- **Code-Commit:** e50d73e268672b82836a25a9ea9424e597cf1761
 - **Gemeinsame Renderlogik:** `EntityScanEsp` / `EspBase`
 
 ## Zweck und Verhalten
 
 EntityESP zeigt nur diese Entity-Gruppen:
 
+- Wölfe (auch gezähmte Hunde) und Katzen
+- Villager
+- Eisen- und Schneegolems
 - Armor Stands
 - Item Frames und Glow Item Frames
 - Enderperlen
+- Wind Charges (Spieler- und Breeze-Variante)
 - Armadillos
+- Splash-Potions
 - Boote und Rafts (einschließlich Chest-Varianten)
 
-Alle anderen Entity-Typen werden vom Filter ausgeschlossen. Die Anzeige verwendet weiterhin die gemeinsame Reichweiten-, Sichtbarkeits-, Objektlimit- und HUD-Renderlogik aus `EntityScanEsp` / `EspBase`. Kampfbezogene Wurfobjekte und Trank-Projektile bleiben ausgeblendet.
+Alle anderen Entity-Typen werden vom Filter ausgeschlossen. Die Anzeige verwendet weiterhin die gemeinsame Reichweiten-, Sichtbarkeits-, Objektlimit- und HUD-Renderlogik aus `EntityScanEsp` / `EspBase`.
 
 ## Einstellungen
 
@@ -31,7 +36,7 @@ Alle anderen Entity-Typen werden vom Filter ausgeschlossen. Die Anzeige verwende
 | Name / Distanz | an |
 | Tracer | aus |
 
-Die früheren Umschalter für feindliche/passive Mobs und die freie Entity-Type-Auswahl wurden entfernt, damit die Positivliste verbindlich bleibt.
+Die frühere freie Entity-Type-Auswahl wurde entfernt, damit die Positivliste verbindlich bleibt.
 
 ## Technische Prüfung
 
@@ -43,8 +48,11 @@ Die früheren Umschalter für feindliche/passive Mobs und die freie Entity-Type-
 
 ## Offene Tests
 
+- [ ] Wolf/Hund, Katze und Villager
+- [ ] Eisen- und Schneegolem
 - [ ] Armor Stand / Item Frame / Glow Item Frame
-- [ ] Ender Pearl und Armadillo
+- [ ] Ender Pearl und beide Wind-Charge-Varianten
+- [ ] Armadillo und Splash-Potion
 - [ ] Boot / Chest Boat / Raft
 - [ ] Andere Mobs und Entity-Typen bleiben ausgeblendet
 - [ ] Reichweite, Sichtbarkeit und Max-Objekte-Limit
