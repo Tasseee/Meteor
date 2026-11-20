@@ -13,7 +13,7 @@ BaseFinder bewertet bereits geladene Chunks im eingestellten Chunk-Radius anhand
 
 Der Client lädt durch diesen Modulcode keine zusätzlichen Chunks. Der Scan-Queue werden nur Chunks hinzugefügt, die der Client bereits geladen hat.
 
-**Wichtig:** Die folgende Akte dokumentiert den bestehenden Code und seine Grenzen. Die Erkennung versteckter Basen, die Bewertung von Serverdaten und das Umgehen von FakeBase-/Server-Schutz werden nicht verbessert.
+**Hinweis zum Erkennungsverhalten:** Kisten (Chest-Block-Entities) ziehen jetzt mit einem eigenen einstellbaren Gewicht Punkte vom Score ab. Kisten-Chunks können außerdem unabhängig vom Mindestscore in den wiederholten FakePattern-Fingerabdruckvergleich eingehen, sofern mindestens zwei Signaltypen und zwei Fake-Signale vorliegen. Eine Übereinstimmung wird erst ab drei Chunks intern als FakePattern behandelt. Das ist eine heuristische Bewertung und muss im Spiel getestet werden.
 
 ## Einstellungen
 
@@ -25,6 +25,7 @@ Der Client lädt durch diesen Modulcode keine zusätzlichen Chunks. Der Scan-Que
 | Min Score | 6 | 3–100 |
 | Min. Signaltypen | 2 | 1–10 |
 | Gewicht Storage | 1,0 | 0,1–5,0 |
+| Gewicht Kisten-Abzug | 1,5 | 0–5; wird pro erkannter Kiste vom Score abgezogen |
 | Gewicht Hopper | 1,5 | 0,1–5,0 |
 | Gewicht Furnace | 0,7 | 0,1–5,0 |
 | Gewicht Redstone | 1,2 | 0,1–5,0 |
@@ -61,7 +62,10 @@ Der Client lädt durch diesen Modulcode keine zusätzlichen Chunks. Der Scan-Que
 - Bereits gescannte Chunks werden abhängig von `Rescan (s)` erst nach Ablauf des Alters erneut berücksichtigt.
 - Der Tick-Loop beendet weitere Chunk-Scans, sobald das Zeitbudget erreicht ist. Ein einzelner `scan()`-Aufruf ist jedoch nicht unterbrechbar; ein einzelner Chunk-Scan kann das konfigurierte Budget überschreiten.
 - Mob-Cluster-Zählung wird separat alle 20 Ticks aus aktuell geladenen Nicht-Spieler-LivingEntities aufgebaut.
-- Fake-Pattern-Übereinstimmungen werden bei der Ergebnislistenbildung aus `suspects()` und `marks()` ausgeschlossen. Die interne Scan-/Bewertungslogik bleibt davon getrennt.
+- Fake-Pattern-Übereinstimmungen werden bei der Ergebnislistenbildung aus `suspects()` und `marks()` ausgeschlossen.
+- Kisten (Chest-Block-Entities) werden getrennt von Fässern gezählt und mit `Gewicht Kisten-Abzug` negativ bewertet; Fässer behalten das positive Storage-Gewicht.
+- Kisten-Chunks können bei mindestens zwei Signaltypen und zwei Fake-Signalen auch unterhalb des Score-Schwellwerts Fingerprints bilden. Fingerprints vergleichen die Kistenanzahl zusätzlich; ab drei ähnlichen Chunks werden diese intern als FakePattern behandelt.
+- FakePattern-Datensätze verwenden Version 3; ältere Fingerprints werden nicht mit dem neuen Schema verglichen und können bei Bedarf neu angelernt werden.
 
 ### Persistenz
 
@@ -119,3 +123,4 @@ Null-Einträge, fehlende/ungültige Statuswerte, CLEAN-Einträge und nicht endli
 | Datum | Änderung |
 |---|---|
 | 2026-11-16 | Vollständige statische Prüfung der Einstellungen, Queue, Status, Persistenz und Lifecycle; atomare Dateiersetzung und robuste Markierungsvalidierung ergänzt. |
+| 2026-11-20 | Kisten separat gezählt und negativ gewichtet; Kistenanzahl in FakePattern-Version 3 aufgenommen und Fingerprint-Erfassung für passende Kisten-Chunks unterhalb des Score-Schwellwerts ermöglicht. |
