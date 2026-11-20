@@ -333,6 +333,7 @@ public class BaseFinder extends Module {
          int lightSources = 0;
          int redstoneBlocks = 0;
          int farmBlocks = 0;
+         int matureKelp = 0;
          int buddingAmethyst = 0;
          int amethystClusters = 0;
          int geodeShell = 0;
@@ -407,8 +408,16 @@ public class BaseFinder extends Module {
                         || blockName.contains("beetroots")
                         || blockName.contains("melon_stem")
                         || blockName.contains("pumpkin_stem")
-                        || blockName.contains("sugar_cane")) {
+                        || blockName.contains("sugar_cane")
+                        || blockName.contains("kelp")
+                        || blockName.contains("bamboo")) {
                         farmBlocks++;
+                     }
+                     // Kelp age 25 is the maximum vanilla growth stage.
+                     // This is only a growth-stage hint, not proof of chunk uptime.
+                     if (blockName.contains("kelp")
+                        && state.toString().toLowerCase(Locale.ROOT).contains("age=25")) {
+                        matureKelp++;
                      }
                      int localIndex = y * 256 + z * 16 + x;
                      if (state.method_26215()) {
@@ -565,6 +574,7 @@ public class BaseFinder extends Module {
          if (lightScore > 0.0) res.reasons.add("Ungewoehnliche Lichtquellen (" + lightSources + ", +" + fmt(lightScore) + ")");
          if (redstonePatternScore > 0.0) res.reasons.add("Redstone-Muster (" + redstoneBlocks + ", +" + fmt(redstonePatternScore) + ")");
          if (farmScore > 0.0) res.reasons.add("Farm-Struktur (" + farmBlocks + ", +" + fmt(farmScore) + ")");
+         if (matureKelp > 0) res.reasons.add("Ausgewachsener Kelp (Wachstumsstufe 25): " + matureKelp + " — möglicher Hinweis auf längere Ladezeit");
          if (mobClusterScore > 0.0) res.reasons.add("Mob-Cluster (" + maxMobCell + " in 4x4x4, +" + fmt(mobClusterScore) + ")");
 
          int fakeSignalKinds = (storage > 0 || shulker > 0 ? 1 : 0)
