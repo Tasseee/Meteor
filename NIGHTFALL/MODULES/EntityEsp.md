@@ -4,7 +4,7 @@
 - **Java-Klasse:** `EntityEsp`
 - **Anzeigename:** `EntityESP`
 - **Kategorie:** `VISUALS`
-- **Code-Commit:** `05c234882e067df842a1844bce70536b94e0043d`
+- **Code-Commit:** 5bd26e43b8593e7f4d7b026a14c2573805028fdc
 - **Gemeinsame Renderlogik:** `EntityScanEsp` / `EspBase`
 
 ## Zweck und Verhalten
@@ -14,12 +14,10 @@ EntityESP zeigt nur diese Entity-Gruppen:
 - Armor Stands
 - Item Frames und Glow Item Frames
 - Enderperlen
-- Wind Charges (Spieler- und Breeze-Variante)
 - Armadillos
 - Boote und Rafts (einschließlich Chest-Varianten)
-- Splash-Potions
 
-Alle anderen Entity-Typen werden vom Filter ausgeschlossen. Die Anzeige verwendet weiterhin die gemeinsame Reichweiten-, Sichtbarkeits-, Objektlimit- und HUD-Renderlogik aus `EntityScanEsp` / `EspBase`.
+Alle anderen Entity-Typen werden vom Filter ausgeschlossen. Die Anzeige verwendet weiterhin die gemeinsame Reichweiten-, Sichtbarkeits-, Objektlimit- und HUD-Renderlogik aus `EntityScanEsp` / `EspBase`. Kampfbezogene Wurfobjekte und Trank-Projektile bleiben ausgeblendet.
 
 ## Einstellungen
 
@@ -46,9 +44,8 @@ Die früheren Umschalter für feindliche/passive Mobs und die freie Entity-Type-
 ## Offene Tests
 
 - [ ] Armor Stand / Item Frame / Glow Item Frame
-- [ ] Ender Pearl und beide Wind-Charge-Varianten
-- [ ] Armadillo, Boot / Chest Boat / Raft
-- [ ] Splash-Potion wird angezeigt; Lingering-Potion bleibt ausgeblendet
-- [ ] Andere Mobs und Projektile bleiben ausgeblendet
+- [ ] Ender Pearl und Armadillo
+- [ ] Boot / Chest Boat / Raft
+- [ ] Andere Mobs und Entity-Typen bleiben ausgeblendet
 - [ ] Reichweite, Sichtbarkeit und Max-Objekte-Limit
 - [ ] Build und In-Game-Test
