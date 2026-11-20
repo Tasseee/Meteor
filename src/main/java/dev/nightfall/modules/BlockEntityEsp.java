@@ -33,6 +33,20 @@ public abstract class BlockEntityEsp extends EspBase {
 
    protected abstract String nameOf(class_2586 var1);
 
+   protected void onScanStart() {
+   }
+
+   protected void onEspReset() {
+   }
+
+   protected String labelOf(class_2586 be, double distance) {
+      return this.label(this.nameOf(be), distance);
+   }
+
+   protected int colorOf(class_2586 be) {
+      return this.color.rgb();
+   }
+
    protected boolean acceptChunk(class_2818 chunk) {
       return true;
    }
@@ -41,6 +55,7 @@ public abstract class BlockEntityEsp extends EspBase {
    protected void onDisable() {
       this.cache.clear();
       this.boxes.clear();
+      this.onEspReset();
    }
 
    @Override
@@ -48,6 +63,7 @@ public abstract class BlockEntityEsp extends EspBase {
       this.cache.clear();
       this.boxes.clear();
       this.timer = 0;
+      this.onEspReset();
    }
 
    @Override
@@ -55,6 +71,7 @@ public abstract class BlockEntityEsp extends EspBase {
       if (mc.field_1687 != null && mc.field_1724 != null) {
          if (this.timer-- <= 0) {
             this.timer = 10;
+            this.onScanStart();
             this.cache.clear();
             this.boxes.clear();
             int r = this.range.getInt();
@@ -121,7 +138,7 @@ public abstract class BlockEntityEsp extends EspBase {
             class_2586 be = mc.field_1687.method_8321(bp);
             if (be != null && this.accept(be)) {
                double d = Math.sqrt(bp.method_40081(Projection.eyeX(), Projection.eyeY(), Projection.eyeZ()));
-               this.drawTarget(ctx, this.boxes.get(i), this.label(this.nameOf(be), d), this.color.rgb());
+               this.drawTarget(ctx, this.boxes.get(i), this.labelOf(be, d), this.colorOf(be));
                shown++;
             }
          }
