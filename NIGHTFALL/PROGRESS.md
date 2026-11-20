@@ -126,3 +126,12 @@ Der vollständige Auditstatus wird in `MODULE_AUDIT_PROGRESS.md` und `MODULE_IND
 - Spieler-Kollision wird nicht deaktiviert: Das Verhalten drückt nach vorne und versucht, durch seitlichen Wechsel am Ziel vorbeizukommen; echtes NoClip/Durchlaufen durch die Spieler-Hitbox ist damit nicht garantiert.
 - Doppelte `onWorldLeave()`-Methode in `AutoPvp.java` zu einem Handler zusammengeführt; Crit-/Drive-by-Reset und bisheriger Weltwechsel-Cleanup bleiben enthalten.
 - In-Game-Test und erfolgreicher Build für diesen Stand sind noch offen.
+
+
+## Lauf 2026-11-20 – Performance-Diagnose für angefragte Module
+
+- `ModuleManager` misst optional die Laufzeit von `onTick()` für `AutoShield`, `ShieldBreaker`, `AutoPvP`, `CrystalAura` und `DTap`.
+- `DebugHud` zeigt den geglätteten Durchschnitt sowie das bisherige Maximum in Mikrosekunden.
+- Profiling ist nur bei aktiviertem HUD `Debug` aktiv; beim Ausschalten werden Messwerte zurückgesetzt. Es werden feste Arrays verwendet.
+- Keine Änderungen an Zielsuche, Rotation, Angriffstiming, Klick-/Tap-Folgen, Crystal-Platzierung, Netzwerkaktionen oder anderen Kampfabläufen.
+- Build und In-Game-Test bleiben offen.
