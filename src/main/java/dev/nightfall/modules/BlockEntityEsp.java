@@ -21,6 +21,10 @@ public abstract class BlockEntityEsp extends EspBase {
       super(n, d, r, mr, rgb);
    }
 
+   protected BlockEntityEsp(String n, String d, int r, int mr, int rgb, int defaultThickness) {
+      super(n, d, r, mr, rgb, defaultThickness);
+   }
+
    protected abstract boolean accept(class_2586 var1);
 
    /**
