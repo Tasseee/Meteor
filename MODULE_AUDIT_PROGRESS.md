@@ -119,7 +119,7 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - `Module.java`, `ModuleManager.java` — registration and common lifecycle checked; current `main` registers 102 unique module instances.
 - `GhostSkin.java`, `GhostSkinFeatureRenderer.java` — module registration/settings, own-player and skin-texture guards, alpha clamp, global renderer registration, and matrix push/pop restoration checked; In-Game-Test remains open.
 - `ItemGlow.java`, `ItemGlowRenderer.java`, `HandledScreenAccessor.java`, `nightfall.mixins.json` — hotbar/offhand and handled-inventory render paths, mixin registration, bounds, config-key compatibility and callback lifecycle checked; In-Game-Test remains open. The `Hotbar` toggle also controls offhand.
-- `DebugHud.java` — HUD output, BaseFinder dependency/getters, static counters, no settings/listeners/resources, and central error handling checked.
+- `DebugHud.java`, `ModuleManager.java` — opt-in tick-time diagnostics for AutoShield, ShieldBreaker, AutoPvP, CrystalAura and DTap; fixed-size counters, disabled unless Debug HUD is enabled. Combat execution logic remains out of scope.
 - `LowHealthWarning.java` — threshold bounds, player-null/world-leave reset, hysteresis, notification queue and HUD preview checked.
 - `CustomCrosshair.java` — style modes, size/gap bounds, RGB masking and render guards checked; `Abstand` is used only in `Kreuz` mode.
 - `NotificationCenter.java` — synchronized queue and snapshot behavior checked.
@@ -147,3 +147,10 @@ This file is the shared progress ledger for the scheduled repository audits. Upd
 - In-game verification is required for visual behavior such as FakeLag ghost skin rendering.
 - No Gradle wrapper or `src/test` test suite is present. GitHub Actions run `44039685234` on commit `5f7e942922c40f80c9534c93e151f3f16d226d98` completed successfully: the `gradle build --no-daemon` step passed on Java 21 / Gradle 9.2.0. Subsequent commits `e93fe8b`, `997db22` and `feed85b` are documentation-only; the exact current documentation head has not been rebuilt.
 - `ItemGlint` is not a current registered module/class; the active registration is `ItemGlow`. The old `NIGHTFALL/MODULES/ItemGlint.md` is retained as a historical note only.
+
+
+## Performance-Diagnose (2026-11-20)
+- Die fünf angefragten Module werden über ihren `onTick()`-Handler optional gemessen; Anzeige in `Debug` als geglätteter Durchschnitt und Maximum in Mikrosekunden.
+- Die Messung wird nur bei aktiviertem Debug-HUD durchgeführt. Das ist eine Diagnose, keine Optimierung des Kampfverhaltens.
+- Die Module `AutoShield`, `ShieldBreaker`, `AutoPvp`, `CrystalAura` und `DTap` bleiben bezüglich ihrer automatisierten Kampfabläufe ausdrücklich unverändert und nicht vollständig auditiert.
+- Build- und In-Game-Test des Profilers bleiben offen.
