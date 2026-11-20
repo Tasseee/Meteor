@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin({class_4184.class})
 public abstract class CameraMixin {
@@ -42,11 +43,31 @@ public abstract class CameraMixin {
       return inverseView || (freeLook != null && freeLook.isFrontPerspective());
    }
 
+   @Inject(method = {"method_19318"}, at = {@At("HEAD")}, cancellable = true)
+   private void nightfall$freeLookNoClip(float desired, CallbackInfoReturnable<Float> cir) {
+      FreeLook freeLook = FreeLook.active();
+      if (freeLook != null && freeLook.isNoClip()) {
+         cir.setReturnValue(freeLook.getDistance());
+      }
+   }
+
+   @ModifyVariable(
+      method = {"method_19318"},
+      at = @At("HEAD"),
+      argsOnly = true,
+      ordinal = 0
+   )
+   private float nightfall$freeLookDistance(float desired) {
+      FreeLook freeLook = FreeLook.active();
+      if (freeLook == null || freeLook.isNoClip()) return desired;
+      return freeLook.getDistance();
+   }
+
    @Inject(
       method = {"method_19321"},
       at = {@At("TAIL")}
    )
-   private void nightfall$applyFreecamState(
+   private void nightfall$applyCameraState(
       class_1937 area, class_1297 focusedEntity, boolean thirdPerson, boolean inverseView, float tickDelta, CallbackInfo ci
    ) {
       if (FreecamController.isActive()) {
