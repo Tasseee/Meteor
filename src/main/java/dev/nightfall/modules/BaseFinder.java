@@ -475,9 +475,10 @@ public class BaseFinder extends Module {
          // Require substantial storage plus a separate technical signal.
          // This prevents caves, farms, tunnels and lighting alone from
          // generating BaseFinder alerts.
+         double chestScore = Math.max(0, chest - 2) * 0.65
+            - Math.min(chest, 2) * this.wChestPenalty.get();
          double score = storage * this.wStorage.get()
-            + Math.max(0, chest - 2) * 0.65
-            - Math.min(chest, 2) * this.wChestPenalty.get()
+            + chestScore
             + shulker * this.wStorage.get() * 1.5
             + hopper * this.wHopper.get()
             + furnace * this.wFurnace.get()
@@ -497,7 +498,7 @@ public class BaseFinder extends Module {
          }
 
          if (chest > 0) {
-            res.reasons.add(chest + " Chest (" + fmt(-chest * this.wChestPenalty.get()) + ")");
+            res.reasons.add(chest + " Chest (Storage-Beitrag " + fmt(chestScore) + ")");
          }
 
          if (shulker > 0) {
