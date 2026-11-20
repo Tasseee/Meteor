@@ -135,3 +135,15 @@ Der vollständige Auditstatus wird in `MODULE_AUDIT_PROGRESS.md` und `MODULE_IND
 - Profiling ist nur bei aktiviertem HUD `Debug` aktiv; beim Ausschalten werden Messwerte zurückgesetzt. Es werden feste Arrays verwendet.
 - Keine Änderungen an Zielsuche, Rotation, Angriffstiming, Klick-/Tap-Folgen, Crystal-Platzierung, Netzwerkaktionen oder anderen Kampfabläufen.
 - Build und In-Game-Test bleiben offen.
+
+
+## Lauf 2026-11-20 – Sichere Lifecycle-Verbesserungen der fünf angefragten Module
+
+- `AutoShield`: Aktivierungs-/Weltwechsel-Cleanup auf einen gemeinsamen `resetState()`-Pfad gelegt; die temporär übernommene Benutzen-Taste wird weiterhin freigegeben.
+- `ShieldBreaker`: vorheriger Hotbar-Slot wird nur wiederhergestellt, wenn die vom Modul gewählte Axt noch aktiv ist. Eine zwischenzeitliche manuelle Slot-Auswahl wird respektiert.
+- `AutoPvP`: `critJumpDelayTicks` und `wasAirborne` werden nun auch bei Weltwechsel zurückgesetzt.
+- `CrystalAura`: identisches Deaktivierungs-/Weltwechsel-Cleanup auf `resetState()` zentralisiert.
+- `DTap`: bestehender `reset()`-Pfad für Aktivierung, Deaktivierung und Weltwechsel geprüft; keine Änderung erforderlich.
+- Die Tick-Laufzeitmessung bleibt optional und nur bei aktiviertem `Debug`-HUD aktiv.
+- Keine Änderungen an Zielsuche, Rotation, Angriffstiming, Klick-/Tap-Folgen, Crystal-Platzierung, Detonation oder Kampfsequenzen.
+- Build/In-Game-Test für diese zusätzlichen Änderungen: noch offen.
