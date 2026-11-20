@@ -50,3 +50,10 @@ Neue Beobachtungen als einzelne Berichte in `NIGHTFALL/TESTING/RESULTS/` speiche
 | Datum | Commit | Änderung | Nachweis |
 |---|---|---|---|
 | 2026-11-16 | `21dc9f8` | Modulakte angelegt; keine Java-Codeänderung | Dokumentationsinitialisierung |
+
+
+## Stabilitätskorrektur (2026-11-20)
+
+- Beim Aufräumen stellt ShieldBreaker den vorherigen Hotbar-Slot nur wieder her, wenn der aktuell ausgewählte Slot noch der vom Modul ausgewählte Axt-Slot ist.
+- Wechselt der Spieler zwischenzeitlich manuell den Slot, bleibt diese Eingabe erhalten und wird nicht mehr vom Cleanup überschrieben.
+- Die Ziel-/Angriffslogik und ihr Timing wurden nicht verändert.
