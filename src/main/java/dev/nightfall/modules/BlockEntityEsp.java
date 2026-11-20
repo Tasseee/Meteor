@@ -23,6 +23,14 @@ public abstract class BlockEntityEsp extends EspBase {
 
    protected abstract boolean accept(class_2586 var1);
 
+   /**
+    * Separate scan-time filtering from render-time validation so expensive
+    * environment checks are not repeated every frame.
+    */
+   protected boolean acceptForScan(class_2586 be) {
+      return this.accept(be);
+   }
+
    protected abstract String nameOf(class_2586 var1);
 
    protected boolean acceptChunk(class_2818 chunk) {
@@ -65,7 +73,7 @@ public abstract class BlockEntityEsp extends EspBase {
                   class_2818 ch = mc.field_1687.method_2935().method_21730(pcx + dx, pcz + dz);
                   if (ch != null && this.acceptChunk(ch)) {
                      for (class_2586 be : ch.method_12214().values()) {
-                        if (this.accept(be)) {
+                        if (this.acceptForScan(be)) {
                            class_2338 bp = be.method_11016();
                            if (!(bp.method_40081(px, py, pz) > r2)) {
                               this.cache.add(bp.method_10062());
