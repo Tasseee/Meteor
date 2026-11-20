@@ -1,6 +1,7 @@
 package dev.nightfall.modules;
 
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import dev.nightfall.Nightfall;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
@@ -454,6 +455,7 @@ public class BaseFinder extends Module {
             ? Math.min(8.0, amethystClusters * this.clusterWeight.get()) * (geodeSignature ? 0.15 : 1.0)
             : 0.0;
          double sculkScore = sculk >= 3 ? (sculk - 2) * this.wSculk.get() : 0.0;
+         double naturalSignalScore = amethystScore + sculkScore;
          double tunnelScore = tunnelRuns > 0
             ? Math.min(6.0, tunnelRuns * this.wTunnel.get() + Math.max(0, tunnelBlocks - tunnelRuns * this.minTunnelLength.getInt()) * this.wTunnel.get() * 0.25)
             : 0.0;
