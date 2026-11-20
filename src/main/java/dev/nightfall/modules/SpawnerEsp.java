@@ -89,8 +89,8 @@ public class SpawnerEsp extends BlockEntityEsp {
    @Override
    protected String labelOf(class_2586 be, double distance) {
       String name = this.nameOf(be);
-      if (!this.dungeonMode.is("Aus") && this.looksLikeDungeon(be.method_11016())
-         && this.dungeonMode.is("Vergleichen")) {
+      if (!this.dungeonMode.is("Alle zeigen") && this.looksLikeDungeon(be.method_11016())
+         && this.dungeonMode.is("Dungeon markieren")) {
          name += " · ?Dungeon";
       }
       if (this.distance.get()) {
