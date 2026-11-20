@@ -21,9 +21,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import net.minecraft.class_2246;
 import net.minecraft.class_2248;
 import net.minecraft.class_2561;
@@ -91,6 +93,7 @@ public class BaseFinder extends Module {
    private boolean paused;
    private int scanErrors;
    private final Map<Long, Integer> mobClusterMaxByChunk = new HashMap<>();
+   private final Map<Long, Integer> matureKelpByChunk = new HashMap<>();
 
    public BaseFinder() {
       super("BaseFinder", "Findet verdaechtige Chunks anhand von Storage, Tunnelspuren, Hoppern und weiteren Signalen in geladenen Chunks.", Category.BASEFINDER);
@@ -152,6 +155,24 @@ public class BaseFinder extends Module {
       return this.scanErrors;
    }
 
+   public int matureKelpCount() {
+      int total = 0;
+      for (int count : this.matureKelpByChunk.values()) {
+         total += count;
+      }
+      return total;
+   }
+
+   public int matureKelpChunkCount() {
+      int chunks = 0;
+      for (int count : this.matureKelpByChunk.values()) {
+         if (count > 0) {
+            chunks++;
+         }
+      }
+      return chunks;
+   }
+
    public int goneCount() {
       int count = 0;
       for (ChunkResult result : this.marks) {
@@ -211,6 +232,7 @@ public class BaseFinder extends Module {
       this.lastScanNanos = 0L;
       this.scanErrors = 0;
       this.mobClusterMaxByChunk.clear();
+      this.matureKelpByChunk.clear();
    }
 
    public void clearMarks() {
@@ -290,20 +312,27 @@ public class BaseFinder extends Module {
       int r = this.range.getInt();
       long minAge = this.rescan.getInt() * 20L;
       List<long[]> cand = new ArrayList<>();
+      Set<Long> loadedInRange = new HashSet<>();
 
       for (int dz = -r; dz <= r; dz++) {
          for (int dx = -r; dx <= r; dx++) {
             int d2 = dx * dx + dz * dz;
             if (d2 <= r * r) {
                long k = key(pcx + dx, pcz + dz);
-               ChunkResult res = this.results.get(k);
-               if ((res == null || res.lastScanTick == 0L || this.tick - res.lastScanTick >= minAge)
-                  && w.method_2935().method_21730(pcx + dx, pcz + dz) != null) {
-                  cand.add(new long[]{d2, k});
+               class_2818 loadedChunk = w.method_2935().method_21730(pcx + dx, pcz + dz);
+               if (loadedChunk != null) {
+                  loadedInRange.add(k);
+                  ChunkResult res = this.results.get(k);
+                  if (res == null || res.lastScanTick == 0L || this.tick - res.lastScanTick >= minAge) {
+                     cand.add(new long[]{d2, k});
+                  }
                }
             }
          }
       }
+
+      // Keep only statistics for chunks that are still loaded inside the configured scan radius.
+      this.matureKelpByChunk.keySet().retainAll(loadedInRange);
 
       cand.sort(Comparator.comparingLong(a -> a[0]));
       this.queue.clear();
@@ -451,6 +480,8 @@ public class BaseFinder extends Module {
                }
             }
          }
+
+         this.matureKelpByChunk.put(k, matureKelp);
 
          int[] tunnelInfo = this.countTunnelRuns(air, sections.length * 16);
          int tunnelRuns = tunnelInfo[0];
