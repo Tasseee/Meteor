@@ -46,7 +46,6 @@ import dev.nightfall.modules.FakeBases;
 import dev.nightfall.modules.FakeStats;
 import dev.nightfall.modules.FakeRain;
 import dev.nightfall.modules.FakeLag;
-import dev.nightfall.modules.Ghostlag;
 import dev.nightfall.modules.FavoriteChunk;
 import dev.nightfall.modules.FirstPersonStyle;
 import dev.nightfall.modules.Fly;
@@ -180,7 +179,6 @@ public final class ModuleManager {
       MODULES.add(new WeaponAnimations());
       MODULES.add(new SlowSwing());
       MODULES.add(new FakeLag());
-      MODULES.add(new Ghostlag());
       MODULES.add(new InvSee());
       MODULES.add(new GlowESP());
       MODULES.add(new ItemGlow());
