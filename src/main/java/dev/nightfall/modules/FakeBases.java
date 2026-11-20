@@ -20,7 +20,7 @@ public final class FakeBases extends Module {
    private final double[] point = new double[2];
 
    public FakeBases() {
-      super("FakeBases", "Eigene lokale TEST/DECOY-Markierungen; verändert keine Weltblöcke.", Category.WORLD);
+      super("FakeBases", "Manuelle FakeBase-Markierungen: Der BaseFinder ignoriert den markierten Chunk; Markierungen bleiben serverbezogen gespeichert.", Category.WORLD);
    }
 
    // FakeBase waypoints are saved per server and remain available after reconnecting.
