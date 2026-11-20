@@ -45,3 +45,14 @@ Offen: Debug aktivieren, BaseFinder ein-/ausschalten, Werte bei leerer Scan-Queu
 | Datum | Änderung |
 |---|---|
 | 2026-11-16 | Erste Codeprüfung; keine Java-Änderung in diesem Audit-Eintrag. |
+
+
+## Performance-Diagnose für die angefragten Module (2026-11-20)
+
+Das HUD misst optional die Dauer von `onTick()` für `AutoShield`, `ShieldBreaker`, `AutoPvP`, `CrystalAura` und `DTap`. Die Ausgabe zeigt geglätteten Durchschnitt und bisheriges Maximum in Mikrosekunden.
+
+- Die Messung startet nur, wenn das HUD `Debug` aktiviert ist, und wird beim Deaktivieren beendet sowie zurückgesetzt.
+- Es werden nur die fünf festgelegten Modul-Tick-Handler gemessen; keine Event-Callbacks, Netzwerk-Listener oder HUD-Renderpfade.
+- Der Messpfad verwendet feste Arrays und keine pro Tick neu angelegten Sammlungen.
+- Die Diagnose ändert keine Einstellungen oder Ausführungslogik der gemessenen Module.
+- **Build- und In-Game-Test:** noch offen.
