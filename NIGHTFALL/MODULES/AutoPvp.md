@@ -38,3 +38,10 @@ Der aktuelle `CombatStatusHud` zeigt keinen Crystal-/DTap-/ObiTrap-Status und ke
 - Zielauswahl und bestehende Crystal-/Trap-Combos wurden nicht neu gestaltet.
 - Build und In-Game-Test für die neue Crit-/Drive-by-Logik sind offen.
 - Die vorhandene Einstellung `Schwert-Crits ohne CrystalAura` behält ihren gespeicherten Namen zur Config-Kompatibilität; das Verhalten umfasst nun auch den integrierten CrystalAura-Betrieb.
+
+
+## Lifecycle-Korrektur (2026-11-20)
+
+- Beim Weltwechsel werden jetzt zusätzlich `critJumpDelayTicks` und `wasAirborne` zurückgesetzt.
+- Dadurch bleiben keine temporären Crit-Vorbereitungswerte aus der vorherigen Welt erhalten.
+- Automatisierte Kampfabläufe, Ziele, Rotation und Timing wurden nicht verändert.
