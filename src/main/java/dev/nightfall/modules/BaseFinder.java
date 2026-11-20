@@ -605,7 +605,6 @@ public class BaseFinder extends Module {
          if (lightScore > 0.0) res.reasons.add("Ungewoehnliche Lichtquellen (" + lightSources + ", +" + fmt(lightScore) + ")");
          if (redstonePatternScore > 0.0) res.reasons.add("Redstone-Muster (" + redstoneBlocks + ", +" + fmt(redstonePatternScore) + ")");
          if (farmScore > 0.0) res.reasons.add("Farm-Struktur (" + farmBlocks + ", +" + fmt(farmScore) + ")");
-         if (matureKelp > 0) res.reasons.add("Ausgewachsener Kelp (Wachstumsstufe 25): " + matureKelp + " — möglicher Hinweis auf längere Ladezeit");
          if (mobClusterScore > 0.0) res.reasons.add("Mob-Cluster (" + maxMobCell + " in 4x4x4, +" + fmt(mobClusterScore) + ")");
 
          int fakeSignalKinds = (storage > 0 || shulker > 0 ? 1 : 0)
