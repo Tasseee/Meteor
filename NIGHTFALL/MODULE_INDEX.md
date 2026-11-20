@@ -60,12 +60,12 @@ Maßgeblich ist `MODULE_AUDIT_PROGRESS.md`. Ein Code-Review mit offenem Laufzeit
 | [`ElytraFly`](MODULES/ElytraFly.md) | `src/main/java/dev/nightfall/modules/ElytraFly.java` | Code geprüft; Laufzeittest offen |
 | [`EntityEsp`](MODULES/EntityEsp.md) | `src/main/java/dev/nightfall/modules/EntityEsp.java` | Code geprüft; Laufzeittest offen |
 | [`FakeBases`](MODULES/FakeBases.md) | `src/main/java/dev/nightfall/modules/FakeBases.java` | Vollständig geprüft |
-| [`FakeLag`](MODULES/FakeLag.md) | `src/main/java/dev/nightfall/modules/FakeLag.java` | Teilweise geprüft |
+| [`FakeLag`](MODULES/FakeLag.md) | `src/main/java/dev/nightfall/modules/FakeLag.java` | Teilweise geprüft |\n| [`FakeRain`](MODULES/FakeRain.md) | `src/main/java/dev/nightfall/modules/FakeRain.java` | Code erstellt; Build-/In-Game-Test offen |
 | [`FakeStats`](MODULES/FakeStats.md) | `src/main/java/dev/nightfall/modules/FakeStats.java` | Code geprüft; Laufzeittest offen |
 | [`FavoriteChunk`](MODULES/FavoriteChunk.md) | `src/main/java/dev/nightfall/modules/FavoriteChunk.java` | Code geprüft; Laufzeittest offen |
 | [`FirstPersonStyle`](MODULES/FirstPersonStyle.md) | `src/main/java/dev/nightfall/modules/FirstPersonStyle.java` | Code geprüft; Laufzeittest offen |
 | [`Fly`](MODULES/Fly.md) | `src/main/java/dev/nightfall/modules/Fly.java` | Code geprüft; Laufzeittest offen |
-| [`Freecam`](MODULES/Freecam.md) | `src/main/java/dev/nightfall/modules/Freecam.java` | Code geprüft; Laufzeittest offen |
+| [`Freecam`](MODULES/Freecam.md) | `src/main/java/dev/nightfall/modules/FreecamController.java` | Steuerung überarbeitet; Build-/In-Game-Test offen |
 | [`FreeLook`](MODULES/FreeLook.md) | `src/main/java/dev/nightfall/modules/FreeLook.java` | Code geprüft; Laufzeittest offen |
 | [`FriendManager`](MODULES/FriendManager.md) | `src/main/java/dev/nightfall/modules/FriendManager.java` | Code geprüft; Laufzeittest offen |
 | [`GhostSkin`](MODULES/GhostSkin.md) | `src/main/java/dev/nightfall/modules/GhostSkin.java` | Vollständig geprüft; In-Game-Test offen |
