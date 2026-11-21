@@ -2,7 +2,6 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
-import dev.nightfall.module.ModuleManager;
 import net.minecraft.class_1299;
 import net.minecraft.class_1531;
 import net.minecraft.class_243;
@@ -36,10 +35,6 @@ public final class FreecamController extends Module {
 
    private final dev.nightfall.module.setting.NumberSetting speed =
       this.add(new dev.nightfall.module.setting.NumberSetting("Geschwindigkeit", 0.6, 0.1, 3.0, 0.05));
-   private final dev.nightfall.module.setting.BoolSetting freeLook =
-      this.add(new dev.nightfall.module.setting.BoolSetting("FreeLook", false));
-   private final dev.nightfall.module.setting.NumberSetting cameraDistance =
-      this.add(new dev.nightfall.module.setting.NumberSetting("FreeLook-Reichweite", 4.0, 0.0, 50.0, 0.25));
    private final dev.nightfall.module.setting.BoolSetting stopOnDamage =
       this.add(new dev.nightfall.module.setting.BoolSetting("Stopp bei Schaden", true));
    private final dev.nightfall.module.setting.BoolSetting hud =
@@ -89,28 +84,6 @@ public final class FreecamController extends Module {
       return previousCamPitch + (cam.method_36455() - previousCamPitch) * t;
    }
 
-   private void updateFreeLookCamera(class_310 mc) {
-      if (mc.field_1724 == null || cam == null) return;
-
-      double distance = Math.max(0.0, cameraDistance.get());
-      double yawRad = Math.toRadians(cam.method_36454());
-      double pitchRad = Math.toRadians(cam.method_36455());
-
-      double forwardX = -Math.sin(yawRad) * Math.cos(pitchRad);
-      double forwardY = -Math.sin(pitchRad);
-      double forwardZ = Math.cos(yawRad) * Math.cos(pitchRad);
-
-      class_243 eye = mc.field_1724.method_33571();
-      camX = eye.field_1352 - forwardX * distance;
-      camY = eye.field_1351 - forwardY * distance;
-      camZ = eye.field_1350 - forwardZ * distance;
-
-      // FreeLook is attached to the player position but does not rotate the body.
-      // No third-person collision correction is applied, so the camera can pass
-      // through blocks.
-      cam.method_5814(camX, camY - eyeOffset, camZ);
-   }
-
    @Override
    protected void onEnable() {
       enableFreecam();
@@ -126,8 +99,6 @@ public final class FreecamController extends Module {
 
       camWorld = mc.field_1687;
       cam = new class_1531(class_1299.field_6131, camWorld);
-      // The detached camera must never collide with blocks or entity hitboxes.
-      cam.field_5960 = true;
 
       camX = mc.field_1724.method_23317();
       camY = mc.field_1724.method_33571().field_1351;
@@ -225,17 +196,6 @@ public final class FreecamController extends Module {
       lastMouseY = cursorY[0];
       mouseInitialized = true;
 
-      // FreeLook mode: camera rotates independently around the player.
-      // The real player's yaw/pitch are restored every tick.
-      if (freeLook.get()) {
-         velX = velY = velZ = 0.0;
-         updateFreeLookCamera(mc);
-         mc.field_1724.method_18799(class_243.field_1353);
-         mc.field_1724.method_36456(savedYaw);
-         mc.field_1724.method_36457(savedPitch);
-         return;
-      }
-
       boolean forward = mc.field_1690.field_1894.method_1434();
       boolean back = mc.field_1690.field_1881.method_1434();
       boolean left = mc.field_1690.field_1913.method_1434();
@@ -308,10 +268,8 @@ public final class FreecamController extends Module {
    public void renderHud(class_332 context) {
       if (!isEnabled() || !hud.get() || !active || mc.field_1724 == null) return;
 
-      String title = freeLook.get() ? "FREECAM  -  FREELOOK" : "FREECAM";
-      String info = freeLook.get()
-         ? String.format("Reichweite %.1f   |   Spielerblick bleibt fest", cameraDistance.get())
-         : String.format("X %.1f   Y %.1f   Z %.1f   |   Tempo %.2f", camX, camY, camZ, speed.get());
+      String title = "FREECAM";
+      String info = String.format("X %.1f   Y %.1f   Z %.1f   |   Tempo %.2f", camX, camY, camZ, speed.get());
 
       int width = Math.max(mc.field_1772.method_1727(title), mc.field_1772.method_1727(info)) + 24;
       int center = context.method_51421() / 2;
