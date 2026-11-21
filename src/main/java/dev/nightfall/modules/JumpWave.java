@@ -91,6 +91,10 @@ public final class JumpWave extends Module {
          this.wasOnGround = mc.field_1724.method_24828();
       }
 
+      long now = System.nanoTime();
+      long lifetime = (long)(this.duration.get() * 1_000_000.0);
+      this.waves.removeIf(wave -> now - wave.startNanos() >= lifetime);
+
       boolean onGround = mc.field_1724.method_24828();
       double x = mc.field_1724.method_23317();
       double y = mc.field_1724.method_23318();
@@ -122,8 +126,10 @@ public final class JumpWave extends Module {
       int verticalRange = this.heightRange.getInt();
       List<Cell> cells = new ArrayList<>((scanRadius * 2 + 1) * (scanRadius * 2 + 1));
 
+      int scanRadiusSquared = scanRadius * scanRadius;
       for (int dx = -scanRadius; dx <= scanRadius; dx++) {
          for (int dz = -scanRadius; dz <= scanRadius; dz++) {
+            if (dx * dx + dz * dz > scanRadiusSquared) continue;
             class_2338 top = this.findTop(center.method_10069(dx, 0, dz), verticalRange);
             if (top == null) continue;
 
