@@ -19,12 +19,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(class_339.class)
 abstract class ButtonMixin {
-   @Shadow private int field_22760;
-   @Shadow private int field_22761;
-   @Shadow private int field_22758;
-   @Shadow private int field_22759;
-   @Shadow private boolean field_22763;
-   @Shadow private class_2561 field_22754;
+   @Shadow public int field_22760;
+   @Shadow public int field_22761;
+   @Shadow public int field_22758;
+   @Shadow public int field_22759;
+   @Shadow public boolean field_22763;
+   @Shadow public class_2561 field_22754;
    @Shadow public abstract boolean method_49606();
 
    @Unique private float nightfall$hover;
