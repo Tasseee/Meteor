@@ -51,6 +51,7 @@ import dev.nightfall.modules.FavoriteChunk;
 import dev.nightfall.modules.Favorites;
 import dev.nightfall.modules.FirstPersonStyle;
 import dev.nightfall.modules.Fly;
+import dev.nightfall.modules.FreeLook;
 import dev.nightfall.modules.FreecamController;
 import dev.nightfall.modules.FriendManager;
 import dev.nightfall.modules.GUITheme;
@@ -163,6 +164,7 @@ public final class ModuleManager {
       MODULES.add(new WaterWalk());
       MODULES.add(new FreecamController());
       MODULES.add(new NoFall());
+      MODULES.add(new FreeLook());
       MODULES.add(new PlayerEsp());
       MODULES.add(new LogoutSpots());
       MODULES.add(new EntityEsp());
