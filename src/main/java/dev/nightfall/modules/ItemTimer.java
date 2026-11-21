@@ -10,7 +10,6 @@ import net.minecraft.class_1297;
 import net.minecraft.class_1542;
 import net.minecraft.class_327;
 import net.minecraft.class_332;
-import net.minecraft.class_243;
 
 public final class ItemTimer extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 40.0, 5.0, 128.0, 1.0));
@@ -26,13 +25,12 @@ public final class ItemTimer extends Module {
    }
 
    @Override
-   public void renderHud(class_332 ctx) {
+   public void renderHud(net.minecraft.class_332 ctx) {
       if (mc.field_1724 == null || mc.field_1687 == null || !Projection.valid()) return;
 
       class_327 text = mc.field_1772;
       int drawn = 0;
       double[] screen = new double[2];
-      float delta = Projection.tickDelta();
 
       for (class_1297 entity : mc.field_1687.method_18112()) {
          if (!(entity instanceof class_1542 item)) continue;
@@ -46,12 +44,7 @@ public final class ItemTimer extends Module {
 
          int remaining = Math.max(0, despawnTicks.getInt() - age);
          double seconds = remaining / 20.0;
-         if (!Projection.project(
-            item.method_23317(),
-            item.method_23318() + 0.8,
-            item.method_23321(),
-            screen
-         )) continue;
+         if (!Projection.project(item.method_23317(), item.method_23318() + 0.8, item.method_23321(), screen)) continue;
 
          drawn++;
          double fraction = Math.max(0.0, Math.min(1.0, remaining / despawnTicks.get()));
@@ -68,31 +61,27 @@ public final class ItemTimer extends Module {
          float x = (float)screen[0];
          float y = (float)screen[1];
 
-         // Dark backing disc + progress ring.
-         ctx.method_25294(Math.round(x - 15 * s), Math.round(y - 15 * s),
-            Math.round(x + 15 * s), Math.round(y + 15 * s), 0xB80A0A10);
+         ctx.method_25294(Math.round(x - 15 * s), Math.round(y - 15 * s), Math.round(x + 15 * s), Math.round(y + 15 * s), 0xB80A0A10);
          drawCircle(ctx, x, y, 12 * s, 0x35FFFFFF, 1);
          drawArc(ctx, x, y, 12 * s, fraction, rgb | (alpha << 24), 2);
 
-         ctx.method_51433(text, timer, Math.round(x - tw / 2.0f), Math.round(y - 4 * s),
-            rgb | 0xFF000000, true);
+         ctx.method_51433(text, timer, Math.round(x - tw / 2.0f), Math.round(y - 4 * s), rgb | 0xFF000000, true);
 
          if (showName.get()) {
-            String name = item.method_6983().getName().getString();
+            String name = item.method_6983().method_7964().getString();
             if (name.length() > 18) name = name.substring(0, 17) + "…";
             String label = item.method_6983().method_7947() + "x " + name;
             int nw = text.method_1727(label);
-            ctx.method_51433(text, label, Math.round(x - nw / 2.0f), Math.round(y + 13 * s),
-               0xFFC8CDDC, true);
+            ctx.method_51433(text, label, Math.round(x - nw / 2.0f), Math.round(y + 13 * s), 0xFFC8CDDC, true);
          }
       }
    }
 
-   private void drawCircle(class_332 ctx, float cx, float cy, float r, int argb, int thickness) {
+   private void drawCircle(net.minecraft.class_332 ctx, float cx, float cy, float r, int argb, int thickness) {
       drawArc(ctx, cx, cy, r, 1.0, argb, thickness);
    }
 
-   private void drawArc(class_332 ctx, float cx, float cy, float r, double fraction, int argb, int thickness) {
+   private void drawArc(net.minecraft.class_332 ctx, float cx, float cy, float r, double fraction, int argb, int thickness) {
       int segments = 48;
       double end = Math.max(0.0, Math.min(1.0, fraction));
       for (int i = 0; i < segments && i / (double)segments < end; i++) {
@@ -115,7 +104,7 @@ public final class ItemTimer extends Module {
       t = Math.max(0.0, Math.min(1.0, t));
       int r = (int)(((a >> 16) & 255) * (1 - t) + ((b >> 16) & 255) * t);
       int g = (int)(((a >> 8) & 255) * (1 - t) + ((b >> 8) & 255) * t);
-      int bl = (int)((a & 255) * (1 - t) + (b & 255) * t);
+      int bl = (int)((a & 255) * (1 - t) + ((b & 255) & 255) * t);
       return (r << 16) | (g << 8) | bl;
    }
 }
