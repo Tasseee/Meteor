@@ -27,32 +27,38 @@ public abstract class FogRendererMixin {
 
    @ModifyVariable(method = APPLY, at = @At("HEAD"), argsOnly = true, ordinal = 0)
    private float nightfall$envStart(float v) {
-      return fog().isEnabled() ? fog().envStart(v) : v;
+      Fog module = fog();
+      return module != null && module.isEnabled() ? module.envStart(v) : v;
    }
 
    @ModifyVariable(method = APPLY, at = @At("HEAD"), argsOnly = true, ordinal = 1)
    private float nightfall$envEnd(float v) {
-      return fog().isEnabled() ? fog().envEnd(v) : v;
+      Fog module = fog();
+      return module != null && module.isEnabled() ? module.envEnd(v) : v;
    }
 
    @ModifyVariable(method = APPLY, at = @At("HEAD"), argsOnly = true, ordinal = 2)
    private float nightfall$renderStart(float v) {
-      return fog().isEnabled() ? fog().renderStart(v) : v;
+      Fog module = fog();
+      return module != null && module.isEnabled() ? module.renderStart(v) : v;
    }
 
    @ModifyVariable(method = APPLY, at = @At("HEAD"), argsOnly = true, ordinal = 3)
    private float nightfall$renderEnd(float v) {
-      return fog().isEnabled() ? fog().renderEnd(v) : v;
+      Fog module = fog();
+      return module != null && module.isEnabled() ? module.renderEnd(v) : v;
    }
 
    @ModifyVariable(method = APPLY, at = @At("HEAD"), argsOnly = true, ordinal = 4)
    private float nightfall$skyEnd(float v) {
-      return fog().isEnabled() ? fog().skyEnd(v) : v;
+      Fog module = fog();
+      return module != null && module.isEnabled() ? module.skyEnd(v) : v;
    }
 
    @ModifyVariable(method = APPLY, at = @At("HEAD"), argsOnly = true, ordinal = 5)
    private float nightfall$cloudEnd(float v) {
-      return fog().isEnabled() ? fog().skyEnd(v) : v;
+      Fog module = fog();
+      return module != null && module.isEnabled() ? module.skyEnd(v) : v;
    }
 
    private Fog fog() {
