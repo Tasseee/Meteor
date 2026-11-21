@@ -99,7 +99,7 @@ public final class FreeLook extends Module {
          GLFW.glfwGetCursorPos(window, this.cursorX, this.cursorY);
          if (this.mouseInitialized) {
             cameraYaw = cameraYaw + (float)((this.cursorX[0] - this.lastMouseX) * 0.15);
-            cameraPitch = cameraPitch + (float)((this.cursorY[0] - this.lastMouseY) * 0.15);
+            cameraPitch = cameraPitch - (float)((this.cursorY[0] - this.lastMouseY) * 0.15);
             cameraPitch = Math.max(-90.0F, Math.min(90.0F, cameraPitch));
          }
 
