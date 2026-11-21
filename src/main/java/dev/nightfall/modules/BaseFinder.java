@@ -360,6 +360,7 @@ public class BaseFinder extends Module {
          int lightSources = 0;
          int redstoneBlocks = 0;
          int farmBlocks = 0;
+         Set<Integer> farmColumns = new HashSet<>();
          int buddingAmethyst = 0;
          int amethystClusters = 0;
          int geodeShell = 0;
@@ -442,8 +443,31 @@ public class BaseFinder extends Module {
                         || blockName.contains("beetroots")
                         || blockName.contains("melon_stem")
                         || blockName.contains("pumpkin_stem")
-                        || blockName.contains("sugar_cane")) {
+                        || blockName.contains("sugar_cane")
+                        || blockName.contains("bamboo")
+                        || blockName.contains("cactus")
+                        || blockName.contains("kelp")
+                        || blockName.contains("nether_wart")
+                        || blockName.contains("sweet_berry_bush")) {
                         farmBlocks++;
+                     }
+
+                     // Record one planted column per X/Z position. Tall crops such
+                     // as bamboo and sugar cane must count as one farm plant, not
+                     // as many separate plants just because they have several blocks.
+                     if (blockName.contains("bamboo")
+                        || blockName.contains("sugar_cane")
+                        || blockName.contains("cactus")
+                        || blockName.contains("kelp")
+                        || blockName.contains("wheat")
+                        || blockName.contains("carrots")
+                        || blockName.contains("potatoes")
+                        || blockName.contains("beetroots")
+                        || blockName.contains("melon_stem")
+                        || blockName.contains("pumpkin_stem")
+                        || blockName.contains("nether_wart")
+                        || blockName.contains("sweet_berry_bush")) {
+                        farmColumns.add((z << 4) | x);
                      }
                      int localIndex = y * 256 + z * 16 + x;
                      if (state.method_26215()) {
@@ -494,6 +518,9 @@ public class BaseFinder extends Module {
          double lightScore = lightSources >= 4 ? Math.min(5.0, (lightSources - 3) * this.wLightSources.get() * 0.25) : 0.0;
          double redstonePatternScore = redstoneBlocks >= 5 ? Math.min(6.0, (redstoneBlocks - 4) * this.wRedstonePattern.get() * 0.5) : 0.0;
          double farmScore = farmBlocks >= 12 ? Math.min(5.0, (farmBlocks - 11) * this.wFarm.get() * 0.15) : 0.0;
+         int longestFarmLine = this.longestFarmLine(farmColumns);
+         double farmLineScore = longestFarmLine >= 6
+            ? Math.min(5.0, (longestFarmLine - 5) * this.wFarm.get() * 0.5) : 0.0;
          double mobClusterScore = this.detectMobClusters.get() && maxMobCell >= 5
             ? Math.min(5.0, (maxMobCell - 4) * this.wMobCluster.get()) : 0.0;
          boolean geodeSignature = buddingAmethyst > 0 && amethystClusters > 0 && geodeShell >= 8;
@@ -511,7 +538,8 @@ public class BaseFinder extends Module {
          // independent proof of a base.
          double softHints = tunnelScore * 0.15 + rotatedDeepslateScore * 0.15
             + lightScore * 0.15 + redstonePatternScore * 0.10 + farmScore * 0.10
-            + mobClusterScore * 0.15 + sculkScore * 0.10 + amethystScore * 0.10;
+            + mobClusterScore * 0.15 + sculkScore * 0.10 + amethystScore * 0.10
+            + farmLineScore * 0.35;
          double softHintBonus = Math.min(1.5, softHints);
 
          int containerCount = storage + shulker + chest;
@@ -606,6 +634,10 @@ public class BaseFinder extends Module {
          if (lightScore > 0.0) res.reasons.add("Ungewoehnliche Lichtquellen (" + lightSources + ", +" + fmt(lightScore) + ")");
          if (redstonePatternScore > 0.0) res.reasons.add("Redstone-Muster (" + redstoneBlocks + ", +" + fmt(redstonePatternScore) + ")");
          if (farmScore > 0.0) res.reasons.add("Farm-Struktur (" + farmBlocks + ", +" + fmt(farmScore) + ")");
+         if (farmLineScore > 0.0) {
+            res.reasons.add("Gerade Pflanzen-/Farmreihe erkannt (" + longestFarmLine
+               + " Pflanzen-Spalten, z. B. Bambus/Zuckerrohr, +" + fmt(farmLineScore) + ")");
+         }
          if (mobClusterScore > 0.0) res.reasons.add("Mob-Cluster (" + maxMobCell + " in 4x4x4, +" + fmt(mobClusterScore) + ")");
 
          if (softHintBonus > 0.0) {
@@ -780,6 +812,35 @@ public class BaseFinder extends Module {
          + ", Redstone=" + redstone
          + ", Spawner=" + spawner + ")"
          + ", Signalarten=" + signalKinds + "/" + minSignals;
+   }
+
+   /**
+    * Finds the longest straight horizontal row of crop columns in this chunk.
+    * A column is counted once regardless of crop height.
+    */
+   private int longestFarmLine(Set<Integer> columns) {
+      int longest = 0;
+      for (int z = 0; z < 16; z++) {
+         int run = 0;
+         for (int x = 0; x < 16; x++) {
+            if (columns.contains((z << 4) | x)) {
+               longest = Math.max(longest, ++run);
+            } else {
+               run = 0;
+            }
+         }
+      }
+      for (int x = 0; x < 16; x++) {
+         int run = 0;
+         for (int z = 0; z < 16; z++) {
+            if (columns.contains((z << 4) | x)) {
+               longest = Math.max(longest, ++run);
+            } else {
+               run = 0;
+            }
+         }
+      }
+      return longest;
    }
 
    private void rebuildMobClusterCounts(class_638 world) {
