@@ -86,6 +86,7 @@ import dev.nightfall.modules.ScannerHud;
 import dev.nightfall.modules.SeedCracker;
 import dev.nightfall.modules.ShieldBreaker;
 import dev.nightfall.modules.SkyVisuals;
+import dev.nightfall.modules.SkyRibbons;
 import dev.nightfall.modules.SlowSwing;
 import dev.nightfall.modules.SpawnerEsp;
 import dev.nightfall.modules.SpawnerProtect;
@@ -184,6 +185,7 @@ public final class ModuleManager {
       MODULES.add(new Atmosphere());
       MODULES.add(new FakeRain());
       MODULES.add(new SkyVisuals());
+      MODULES.add(new SkyRibbons());
       MODULES.add(new Hats());
       MODULES.add(new FirstPersonStyle());
       MODULES.add(new WeaponAnimations());
