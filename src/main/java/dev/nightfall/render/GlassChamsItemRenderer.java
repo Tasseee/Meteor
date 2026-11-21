@@ -5,7 +5,6 @@ import dev.nightfall.modules.GlassChams;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.class_12249;
-import net.minecraft.class_1297;
 import net.minecraft.class_1542;
 import net.minecraft.class_238;
 import net.minecraft.class_310;
@@ -47,17 +46,21 @@ public final class GlassChamsItemRenderer {
       try {
          matrices.method_22904(-cameraPos.field_1352, -cameraPos.field_1351, -cameraPos.field_1350);
 
-         for (class_1297 entity : mc.field_1687.method_18112()) {
-            if (!(entity instanceof class_1542 item)) continue;
+         double queryRange = Math.sqrt(rangeSquared);
+         for (class_1542 item : mc.field_1687.method_8390(
+            class_1542.class,
+            mc.field_1724.method_5829().method_1014(queryRange),
+            candidate -> candidate.method_5805()
+         )) {
             if (item.method_5858(mc.field_1724) > rangeSquared) continue;
 
-            double x = entity.field_6038 + (entity.method_23317() - entity.field_6038) * tickDelta;
-            double y = entity.field_5971 + (entity.method_23318() - entity.field_5971) * tickDelta;
-            double z = entity.field_5989 + (entity.method_23321() - entity.field_5989) * tickDelta;
-            class_238 current = entity.method_5829();
-            double dx = x - entity.method_23317();
-            double dy = y - entity.method_23318();
-            double dz = z - entity.method_23321();
+            double x = item.field_6038 + (item.method_23317() - item.field_6038) * tickDelta;
+            double y = item.field_5971 + (item.method_23318() - item.field_5971) * tickDelta;
+            double z = item.field_5989 + (item.method_23321() - item.field_5989) * tickDelta;
+            class_238 current = item.method_5829();
+            double dx = x - item.method_23317();
+            double dy = y - item.method_23318();
+            double dz = z - item.method_23321();
 
             double minX = current.field_1323 + dx;
             double minY = current.field_1322 + dy;
