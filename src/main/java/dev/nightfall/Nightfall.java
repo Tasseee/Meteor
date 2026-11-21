@@ -12,6 +12,7 @@ import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.Atmosphere;
 import dev.nightfall.modules.SeedCracker;
 import dev.nightfall.render.HatsRenderer;
+import dev.nightfall.render.KillEffectRenderer;
 import dev.nightfall.render.ChinaHatRenderer;
 import dev.nightfall.render.GhostSkinFeatureRenderer;
 import dev.nightfall.render.GlassChamsFeatureRenderer;
@@ -71,6 +72,7 @@ public class Nightfall implements ClientModInitializer {
       SkyRibbonsRenderer.register();
       HatsRenderer.register();
       ChinaHatRenderer.register();
+      KillEffectRenderer.register();
       FakeLagGhostRenderer.register();
       HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, class_2960.method_60655("nightfall", "fake_lag_status"), (ctx, tickCounter) -> FakeLagHud.render(ctx));
       WorldRenderEvents.AFTER_ENTITIES.register(ModuleManager::renderWorld);
