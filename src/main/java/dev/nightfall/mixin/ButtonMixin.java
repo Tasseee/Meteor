@@ -2,6 +2,7 @@ package dev.nightfall.mixin;
 
 import net.minecraft.class_310;
 import net.minecraft.class_332;
+import net.minecraft.class_339;
 import net.minecraft.class_4264;
 import net.minecraft.class_4185;
 import net.minecraft.class_2561;
@@ -25,7 +26,6 @@ abstract class ButtonMixin {
    @Shadow public int field_22759;
    @Shadow public boolean field_22763;
    @Shadow public class_2561 field_22754;
-   @Shadow public abstract boolean method_49606();
 
    @Unique private float nightfall$hover;
    @Unique private long nightfall$lastFrameNanos;
@@ -39,7 +39,7 @@ abstract class ButtonMixin {
          : Math.min(0.1F, Math.max(0.0F, (now - this.nightfall$lastFrameNanos) / 1_000_000_000.0F));
       this.nightfall$lastFrameNanos = now;
 
-      float target = this.field_22763 && this.method_49606() ? 1.0F : 0.0F;
+      float target = this.field_22763 && ((class_339)(Object)this).method_49606() ? 1.0F : 0.0F;
       float blend = 1.0F - (float)Math.exp(-14.0F * elapsed);
       this.nightfall$hover += (target - this.nightfall$hover) * blend;
 
