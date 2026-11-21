@@ -723,7 +723,7 @@ public final class NightfallGuiScreen extends class_437 {
       if (this.draggingWindow && this.dragPanel != null) {
          int[] dragged = this.panel(this.dragPanel, x1, topY);
          if (left) {
-            dragged[0] = Math.max(8, Math.min(sw - panelW - 8, mx - this.dragX));
+            dragged[0] = Math.max(8, Math.min(sw - windowW - 8, mx - this.dragX));
             dragged[1] = Math.max(55, Math.min(sh - 50, my - this.dragY));
          } else {
             this.draggingWindow = false;
