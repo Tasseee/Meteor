@@ -96,7 +96,7 @@ public final class JumpWaveRenderer {
                } else if (mode.equals("Neon")) {
                   drawTop(matrices, fills, cell.x(), surfaceY + 0.006, cell.z(), 1.0F,
                      red, green, blue, clamp((float)(module.surfaceAlpha() * strength * pulse * 2.8), 0.0F, 0.92F));
-                  drawBorder(matrices, fills, cell.x(), surfaceY + 0.012, cell.z(), 1.0F, 0.035,
+                  drawBorder(matrices, fills, cell.x(), surfaceY + 0.012, cell.z(), 1.0F, 0.035F,
                      red, green, blue, clamp((float)(module.edgeAlpha() * strength), 0.0F, 1.0F));
                } else if (mode.equals("Hologramm")) {
                   drawTop(matrices, fills, cell.x(), surfaceY + 0.008, cell.z(), 1.0F,
@@ -106,13 +106,13 @@ public final class JumpWaveRenderer {
                } else if (mode.equals("Minimal")) {
                   drawTop(matrices, fills, cell.x(), surfaceY + 0.014, cell.z(), 1.0F,
                      red, green, blue, clamp((float)(0.055 * strength), 0.0F, 0.1F));
-                  drawBorder(matrices, fills, cell.x(), surfaceY + 0.018, cell.z(), 1.0F, 0.012,
+                  drawBorder(matrices, fills, cell.x(), surfaceY + 0.018, cell.z(), 1.0F, 0.012F,
                      red, green, blue, clamp((float)(0.58 * strength), 0.0F, 0.65F));
                } else {
                   // Energy: soft surface glow plus a bright moving edge and floating sparks.
                   drawTop(matrices, fills, cell.x(), surfaceY + 0.008, cell.z(), 1.0F,
                      red, green, blue, clamp((float)(module.surfaceAlpha() * strength * pulse * 1.25), 0.0F, 0.65F));
-                  drawBorder(matrices, fills, cell.x(), surfaceY + 0.014, cell.z(), 1.0F, 0.026,
+                  drawBorder(matrices, fills, cell.x(), surfaceY + 0.014, cell.z(), 1.0F, 0.026F,
                      red, green, blue, clamp((float)(module.edgeAlpha() * strength), 0.0F, 1.0F));
                   if (cellIndex % 9 == 0) {
                      double bob = 0.10 + 0.13 * (0.5 + 0.5 * Math.sin(now / 230_000_000.0 + cellIndex));
@@ -130,7 +130,7 @@ public final class JumpWaveRenderer {
                      double ringRel = (distance - (radius - offset)) / Math.max(0.28, halfWidth * 0.20);
                      if (Math.abs(ringRel) < 1.0) {
                         double edge = Math.pow(Math.cos(ringRel * Math.PI * 0.5), 2.0) * fade;
-                        drawBorder(matrices, fills, cell.x(), surfaceY + 0.020 + ring * 0.003, cell.z(), 1.0F, 0.014,
+                        drawBorder(matrices, fills, cell.x(), surfaceY + 0.020 + ring * 0.003, cell.z(), 1.0F, 0.014F,
                            red, green, blue, clamp((float)(edge * 0.72), 0.0F, 0.78F));
                      }
                   }
