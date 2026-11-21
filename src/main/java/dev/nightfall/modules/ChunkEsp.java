@@ -23,7 +23,7 @@ import java.util.Set;
 import net.minecraft.class_332;
 
 public final class ChunkEsp extends Module {
-   private final ModeSetting style = this.add(new ModeSetting("Darstellung", "Ring", "Ring", "Pulse", "Beacon"));
+   private final ModeSetting style = this.add(new ModeSetting("Darstellung", "Ring", "Ring", "Triangle", "Square", "Pulse", "Beacon"));
    private final NumberSetting range = this.add(new NumberSetting("Reichweite (Chunks)", 16.0, 2.0, 48.0, 1.0));
    private final NumberSetting markerSize = this.add(new NumberSetting("Marker-Groesse", 8.0, 4.0, 16.0, 1.0));
    private final NumberSetting opacity = this.add(new NumberSetting("Deckkraft", 0.88, 0.2, 1.0, 0.05));
@@ -140,6 +140,18 @@ public final class ChunkEsp extends Module {
       }
    }
 
+   private static void triangle(class_332 ctx, float cx, float cy, float radius, int color, int thickness) {
+      float topX = cx;
+      float topY = cy - radius;
+      float leftX = cx - radius * 0.8660254F;
+      float leftY = cy + radius * 0.5F;
+      float rightX = cx + radius * 0.8660254F;
+      float rightY = cy + radius * 0.5F;
+      Draw.line(ctx, topX, topY, rightX, rightY, color, thickness, true);
+      Draw.line(ctx, rightX, rightY, leftX, leftY, color, thickness, true);
+      Draw.line(ctx, leftX, leftY, topX, topY, color, thickness, true);
+   }
+
    private void drawMarker(class_332 ctx, Region region, long now, double distance, double maxDistance) {
       double fade = this.fadeDistance.get()
          ? Math.max(0.22, Math.min(1.0, 1.0 - Math.max(0.0, distance / maxDistance - 0.45) / 0.55))
@@ -169,7 +181,16 @@ public final class ChunkEsp extends Module {
          ring(ctx, x, y, waveRadius, alpha(baseColor, this.opacity.get() * fade * (0.18 + pulse * 0.22)), 1);
       }
 
-      ring(ctx, x, y, radius, strong, region.favorite ? 2 : 1);
+      if (this.style.is("Triangle")) {
+         triangle(ctx, x, y, radius + 2.0F, strong, region.favorite ? 2 : 1);
+      } else if (this.style.is("Square")) {
+         Draw.line(ctx, x - radius, y - radius, x + radius, y - radius, strong, region.favorite ? 2 : 1, true);
+         Draw.line(ctx, x + radius, y - radius, x + radius, y + radius, strong, region.favorite ? 2 : 1, true);
+         Draw.line(ctx, x + radius, y + radius, x - radius, y + radius, strong, region.favorite ? 2 : 1, true);
+         Draw.line(ctx, x - radius, y + radius, x - radius, y - radius, strong, region.favorite ? 2 : 1, true);
+      } else {
+         ring(ctx, x, y, radius, strong, region.favorite ? 2 : 1);
+      }
       // A small center pip replaces the old square chunk outline entirely.
       ctx.method_25294(Math.round(x - 1.5F), Math.round(y - 1.5F),
          Math.round(x + 1.5F), Math.round(y + 1.5F), strong);
