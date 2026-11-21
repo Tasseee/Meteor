@@ -34,7 +34,7 @@ public final class WebHit extends Module {
 
       for (int i = 0; i < maxWebs.getInt(); i++) {
          if (!(hit instanceof class_239.class_240 blockHit)) break;
-         if (blockHit.method_17777() != class_240.field_1333) break;
+         if (blockHit.method_17777() != class_240.field_1332) break;
 
          class_2338 pos = blockHit.method_17780();
          if (!mc.field_1687.method_8320(pos).isOf(class_2246.field_10534)) break;
@@ -53,6 +53,6 @@ public final class WebHit extends Module {
 
       if (!skippedWeb || hit == original) return original;
       if (!onlyIfEntity.get()) return hit;
-      return hit.method_17782() == class_240.field_1332 ? hit : original;
+      return hit.method_17782() == class_240.field_1331 ? hit : original;
    }
 }
