@@ -25,6 +25,7 @@ import dev.nightfall.modules.AutoText;
 import dev.nightfall.modules.AutoTotem;
 import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
+import dev.nightfall.modules.BeaconFinder;
 import dev.nightfall.modules.BlockESP;
 import dev.nightfall.modules.OreESP;
 import dev.nightfall.modules.BlockNotifier;
@@ -190,6 +191,7 @@ public final class ModuleManager {
       MODULES.add(new GUITheme());
       MODULES.add(new CustomCrosshair());
       MODULES.add(new SpawnerEsp());
+      MODULES.add(new BeaconFinder());
       MODULES.add(new ChunkEsp());
       MODULES.add(new BlockESP());
       MODULES.add(new OreESP());
