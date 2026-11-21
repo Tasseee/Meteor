@@ -269,22 +269,17 @@ public final class KillEffectRenderer {
       double cy = Math.cos(yaw), sy = Math.sin(yaw);
       double cp = Math.cos(pitch), sp = Math.sin(pitch);
       for (int[] face : CUBE_FACES) {
-         float[][] points = new float[4][3];
          for (int v = 0; v < 4; v++) {
-            double dx = (face[v * 3] == 1 ? size : -size);
-            double dy = (face[v * 3 + 1] == 1 ? size : -size);
-            double dz = (face[v * 3 + 2] == 1 ? size : -size);
-            double py = dy * cp - dz * sp;
-            double pz = dy * sp + dz * cp;
-            double px = dx * cy + pz * sy;
-            double rz = -dx * sy + pz * cy;
-            points[v][0] = (float)(x + px);
-            points[v][1] = (float)(y + py);
-            points[v][2] = (float)(z + rz);
+            double dx = face[v * 3] == 1 ? size : -size;
+            double dy = face[v * 3 + 1] == 1 ? size : -size;
+            double dz = face[v * 3 + 2] == 1 ? size : -size;
+            double pitchedY = dy * cp - dz * sp;
+            double pitchedZ = dy * sp + dz * cp;
+            double px = dx * cy + pitchedZ * sy;
+            double rz = -dx * sy + pitchedZ * cy;
+            out.method_22918(m, (float)(x + px), (float)(y + pitchedY), (float)(z + rz))
+               .method_22915(color[0], color[1], color[2], color[3]);
          }
-         quad(out, m,
-            points[0][0],points[0][1],points[0][2], points[1][0],points[1][1],points[1][2],
-            points[2][0],points[2][1],points[2][2], points[3][0],points[3][1],points[3][2], color);
       }
    }
 
