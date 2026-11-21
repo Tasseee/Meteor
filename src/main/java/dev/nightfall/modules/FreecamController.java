@@ -170,8 +170,6 @@ public final class FreecamController extends Module {
          mc.field_1692 = cam;
       }
       // Keep no-clip enabled for both FreeLook and full Freecam.
-      cam.field_5960 = true;
-
       previousCamX = camX;
       previousCamY = camY;
       previousCamZ = camZ;
@@ -242,8 +240,6 @@ public final class FreecamController extends Module {
       camX += velX;
       camY += velY;
       camZ += velZ;
-
-      cam.field_5960 = true;
       cam.method_5814(camX, camY - eyeOffset, camZ);
 
       if (mc.field_1724.method_73189().method_1025(playerStart) > 1.0E-8) {
