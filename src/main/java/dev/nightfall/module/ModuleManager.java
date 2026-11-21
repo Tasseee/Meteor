@@ -54,6 +54,7 @@ import dev.nightfall.modules.FreecamController;
 import dev.nightfall.modules.FriendManager;
 import dev.nightfall.modules.GUITheme;
 import dev.nightfall.modules.GlowESP;
+import dev.nightfall.modules.GlassChams;
 import dev.nightfall.modules.Hats;
 import dev.nightfall.modules.HitParticles;
 import dev.nightfall.modules.InvSee;
@@ -185,6 +186,7 @@ public final class ModuleManager {
       MODULES.add(new FakeLag());
       MODULES.add(new InvSee());
       MODULES.add(new GlowESP());
+      MODULES.add(new GlassChams());
       MODULES.add(new ItemGlow());
       MODULES.add(new GhostSkin());
       MODULES.add(new GUITheme());
