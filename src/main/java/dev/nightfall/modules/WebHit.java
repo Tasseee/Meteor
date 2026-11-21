@@ -37,12 +37,7 @@ public final class WebHit extends Module {
          class_2338 pos = blockHit.method_17780();
          if (!mc.field_1687.method_8320(pos).isOf(class_2246.field_10534)) break;
 
-         class_243 start = blockHit.method_17784();
-         int guard = 0;
-         while (class_2338.method_10092(start.field_1352, start.field_1351, start.field_1350).equals(pos) && guard++ < 80) {
-            start = start.method_1019(dir.method_1021(0.05));
-         }
-
+         class_243 start = blockHit.method_17784().method_1019(dir.method_1021(0.06));
          if (start.squaredDistanceTo(eye) >= range * range) break;
 
          hit = mc.field_1687.method_17742(new class_3959(
