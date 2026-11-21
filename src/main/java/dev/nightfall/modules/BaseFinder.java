@@ -144,7 +144,7 @@ public class BaseFinder extends Module {
       for (FakePattern pattern : this.fakePatterns) {
          if (pattern != null && pattern.seenChunks != null
             && pattern.seenChunks.contains(location)
-            && (!requireConfirmedPattern || pattern.seenChunks.size() >= 3)) {
+            && (!requireConfirmedPattern || pattern.confirmed || pattern.seenChunks.size() >= 3)) {
             return true;
          }
       }
@@ -634,7 +634,8 @@ public class BaseFinder extends Module {
             && fakeSignalKinds >= 2;
          boolean repeatedFakePattern = chestPositions.size() >= 2
             && this.isRepeatedFakePattern(
-               chestPositions, mayLearnPattern, storage, chest, shulker, hopper, furnace, redstone, spawner, cx, cz
+               chestPositions, mayLearnPattern, storage, chest, shulker, hopper, furnace, redstone, spawner,
+               cx, cz, this.isMoreThan50BlocksAway(cx, cz)
             );
 
          if (repeatedFakePattern) {
@@ -812,7 +813,7 @@ public class BaseFinder extends Module {
    private boolean isRepeatedFakePattern(
       List<String> chestPositions, boolean mayLearnPattern,
       int storage, int chest, int shulker, int hopper, int furnace, int redstone, int spawner,
-      int cx, int cz
+      int cx, int cz, boolean distantMatch
    ) {
       String location = cx + "," + cz;
 
@@ -834,12 +835,28 @@ public class BaseFinder extends Module {
          }
 
          if (pattern.seenChunks == null) pattern.seenChunks = new ArrayList<>();
+         boolean patternChanged = false;
          if (!pattern.seenChunks.contains(location)) {
             pattern.seenChunks.add(location);
-            this.saveFakePatterns();
+            patternChanged = true;
          }
 
-         if (pattern.seenChunks.size() >= 3) {
+         // A matching layout first encountered more than 50 horizontal blocks
+         // from the player is treated as a decoy immediately and permanently.
+         if (distantMatch && !pattern.confirmed) {
+            pattern.confirmed = true;
+            patternChanged = true;
+         }
+
+         // Preserve the older three-occurrence confirmation as a fallback.
+         if (pattern.seenChunks.size() >= 3 && !pattern.confirmed) {
+            pattern.confirmed = true;
+            patternChanged = true;
+         }
+
+         if (patternChanged) this.saveFakePatterns();
+
+         if (pattern.confirmed) {
             for (String seen : pattern.seenChunks) {
                String[] parts = seen.split(",");
                if (parts.length != 2) continue;
@@ -881,6 +898,13 @@ public class BaseFinder extends Module {
       if (this.fakePatterns.size() > 256) this.fakePatterns.remove(0);
       this.saveFakePatterns();
       return false;
+   }
+
+   private boolean isMoreThan50BlocksAway(int cx, int cz) {
+      if (mc.field_1724 == null) return false;
+      long dx = (long)cx * 16L + 8L - mc.field_1724.method_31477();
+      long dz = (long)cz * 16L + 8L - mc.field_1724.method_31479();
+      return dx * dx + dz * dz > 50L * 50L;
    }
 
    private static boolean notMoreThan(int known, int current) {
@@ -1190,6 +1214,7 @@ public class BaseFinder extends Module {
       int furnace;
       int redstone;
       int spawner;
+      boolean confirmed;
       List<String> chestPositions = new ArrayList<>();
       List<String> seenChunks = new ArrayList<>();
    }
