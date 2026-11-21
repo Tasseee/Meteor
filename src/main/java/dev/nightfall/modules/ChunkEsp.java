@@ -23,6 +23,19 @@ import java.util.Set;
 import net.minecraft.class_332;
 
 public final class ChunkEsp extends Module {
+   private static final int RING_SEGMENTS = 20;
+   private static final float[] RING_COS = new float[RING_SEGMENTS];
+   private static final float[] RING_SIN = new float[RING_SEGMENTS];
+
+   static {
+      for (int i = 0; i < RING_SEGMENTS; i++) {
+         double angle = Math.PI * 2.0 * (i + 1) / RING_SEGMENTS;
+         RING_COS[i] = (float)Math.cos(angle);
+         RING_SIN[i] = (float)Math.sin(angle);
+      }
+   }
+
+   private final double[] projectedPoint = new double[2];
    private final ModeSetting style = this.add(new ModeSetting("Darstellung", "Ring", "Ring", "Pulse", "Beacon"));
    private final NumberSetting range = this.add(new NumberSetting("Reichweite (Chunks)", 16.0, 2.0, 48.0, 1.0));
    private final NumberSetting markerSize = this.add(new NumberSetting("Marker-Groesse", 8.0, 4.0, 16.0, 1.0));
@@ -123,19 +136,23 @@ public final class ChunkEsp extends Module {
       return dx * dx + dz * dz;
    }
 
+   private static String formatScore(double score) {
+      if (!Double.isFinite(score)) return "0.0";
+      long tenths = Math.round(score * 10.0);
+      return (tenths / 10L) + "." + Math.abs(tenths % 10L);
+   }
+
    private static int alpha(int color, double factor) {
       int a = (int)Math.max(0.0, Math.min(255.0, 255.0 * factor));
       return Theme.withAlpha(color, a);
    }
 
    private static void ring(class_332 ctx, float cx, float cy, float radius, int color, int thickness) {
-      final int segments = 20;
       float previousX = cx + radius;
       float previousY = cy;
-      for (int i = 1; i <= segments; i++) {
-         double angle = Math.PI * 2.0 * i / segments;
-         float nextX = cx + (float)Math.cos(angle) * radius;
-         float nextY = cy + (float)Math.sin(angle) * radius;
+      for (int i = 0; i < RING_SEGMENTS; i++) {
+         float nextX = cx + RING_COS[i] * radius;
+         float nextY = cy + RING_SIN[i] * radius;
          Draw.line(ctx, previousX, previousY, nextX, nextY, color, thickness, true);
          previousX = nextX;
          previousY = nextY;
@@ -154,12 +171,11 @@ public final class ChunkEsp extends Module {
       double worldX = region.chunkX * 16.0;
       double worldZ = region.chunkZ * 16.0;
       double worldY = Math.floor(mc.field_1724.method_23318()) + 0.12;
-      double[] point = new double[2];
-      boolean onScreen = Projection.project(worldX, worldY, worldZ, point);
-      if (!onScreen && !Projection.projectToEdge(worldX, worldY, worldZ, point)) return;
+      boolean onScreen = Projection.project(worldX, worldY, worldZ, this.projectedPoint);
+      if (!onScreen && !Projection.projectToEdge(worldX, worldY, worldZ, this.projectedPoint)) return;
 
-      float x = (float)point[0];
-      float y = (float)point[1];
+      float x = (float)this.projectedPoint[0];
+      float y = (float)this.projectedPoint[1];
       double phase = now / 1_000_000_000.0 * this.pulseSpeed.get();
       float pulse = (float)(0.5 + 0.5 * Math.sin(phase * Math.PI * 2.0));
       float radius = this.markerSize.get().floatValue() + (float)Math.min(5.0, Math.sqrt(region.count) * 1.4);
@@ -184,7 +200,7 @@ public final class ChunkEsp extends Module {
       String label = (region.favorite && this.showFavorites.get() ? "★ " : "")
          + status + (region.farmLine ? "  FARM-LINE" : "")
          + (region.count > 1 ? "  " + region.count + "x" : "")
-         + (this.showScore.get() ? "  " + String.format(java.util.Locale.ROOT, "%.1f", region.score) : "");
+         + (this.showScore.get() ? "  " + formatScore(region.score) : "");
       int textWidth = mc.field_1772.method_1727(label);
       int panelWidth = textWidth + 12;
       int panelHeight = 14;
