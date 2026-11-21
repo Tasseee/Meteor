@@ -192,7 +192,7 @@ public final class FreecamController extends Module {
 
          float yaw = cam.method_36454() + (float)dx * sensitivity.get().floatValue();
          float pitch = Math.max(-90.0F, Math.min(90.0F,
-            cam.method_36455() - (float)dy * sensitivity.get().floatValue()));
+            cam.method_36455() + (float)dy * sensitivity.get().floatValue()));
          cam.method_36456(yaw);
          cam.method_36457(pitch);
       }
