@@ -1,5 +1,6 @@
 package dev.nightfall.mixin;
 
+import dev.nightfall.modules.FreeLook;
 import dev.nightfall.modules.FreecamController;
 import net.minecraft.class_1297;
 import net.minecraft.class_1937;
@@ -27,7 +28,7 @@ public abstract class CameraMixin {
       ordinal = 0
    )
    private boolean nightfall$renderLocalPlayer(boolean thirdPerson) {
-      return thirdPerson || FreecamController.isActive();
+      return thirdPerson || FreecamController.isActive() || FreeLook.isActive();
    }
 
    @Inject(
@@ -44,6 +45,28 @@ public abstract class CameraMixin {
             FreecamController.interpolatedYaw(tickDelta),
             FreecamController.interpolatedPitch(tickDelta)
          );
+      } else if (FreeLook.isActive()) {
+         float yaw = FreeLook.interpolatedYaw(tickDelta);
+         float pitch = FreeLook.interpolatedPitch(tickDelta);
+         this.method_19325(yaw, pitch);
+
+         double distance = FreeLook.cameraDistance();
+         if (distance > 0.0 && focusedEntity != null) {
+            double yawRad = Math.toRadians(yaw);
+            double pitchRad = Math.toRadians(pitch);
+            double forwardX = -Math.sin(yawRad) * Math.cos(pitchRad);
+            double forwardY = -Math.sin(pitchRad);
+            double forwardZ = Math.cos(yawRad) * Math.cos(pitchRad);
+
+            class_243 eye = focusedEntity.method_33571();
+            // Override the vanilla camera position after collision adjustment.
+            // The view camera has no entity hitbox and clips through solid blocks.
+            this.method_19327(
+               eye.field_1352 - forwardX * distance,
+               eye.field_1351 - forwardY * distance,
+               eye.field_1350 - forwardZ * distance
+            );
+         }
       }
    }
 }
