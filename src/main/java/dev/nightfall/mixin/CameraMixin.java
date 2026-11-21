@@ -22,9 +22,7 @@ public abstract class CameraMixin {
    @Shadow
    public abstract void method_19325(float yaw, float pitch);
 
-   // Force Camera.update down its third-person path while FreeLook is active.
-   // The second boolean parameter (inverseView) is deliberately left untouched;
-   // FreeLook selects front/back view through GameOptions#setPerspective.
+   // Force Camera.update down its third-person path while a detached camera is active.
    @ModifyVariable(
       method = {"method_19321"},
       at = @At("HEAD"),
@@ -33,6 +31,19 @@ public abstract class CameraMixin {
    )
    private boolean nightfall$forceThirdPerson(boolean thirdPerson) {
       return thirdPerson || FreecamController.isActive() || FreeLook.isActive();
+   }
+
+   // Freecam has its own camera entity and must never inherit the player's
+   // front-facing third-person inversion. FreeLook intentionally keeps the
+   // vanilla inverseView argument so its selected perspective still works.
+   @ModifyVariable(
+      method = {"method_19321"},
+      at = @At("HEAD"),
+      argsOnly = true,
+      ordinal = 1
+   )
+   private boolean nightfall$disableFreecamInverseView(boolean inverseView) {
+      return FreecamController.isActive() ? false : inverseView;
    }
 
    @Inject(method = {"method_19318"}, at = {@At("HEAD")}, cancellable = true)
