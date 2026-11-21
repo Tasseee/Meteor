@@ -113,6 +113,8 @@ public final class FreecamController extends Module {
 
    @Override
    protected void onEnable() {
+      FreeLook freeLook = FreeLook.active();
+      if (freeLook != null) freeLook.setEnabled(false);
       enableFreecam();
    }
 
