@@ -13,6 +13,8 @@ import dev.nightfall.modules.Atmosphere;
 import dev.nightfall.modules.SeedCracker;
 import dev.nightfall.render.HatsRenderer;
 import dev.nightfall.render.GhostSkinFeatureRenderer;
+import dev.nightfall.render.GlassChamsFeatureRenderer;
+import dev.nightfall.render.GlassChamsItemRenderer;
 import dev.nightfall.render.ItemGlowRenderer;
 import dev.nightfall.render.FakeLagGhostRenderer;
 import dev.nightfall.render.FakeLagHud;
@@ -58,6 +60,8 @@ public class Nightfall implements ClientModInitializer {
       ModuleUsageStats.startTracking(ModuleManager.all());
       ItemGlowRenderer.init();
       GhostSkinFeatureRenderer.register();
+      GlassChamsFeatureRenderer.register();
+      GlassChamsItemRenderer.register();
       HudElementRegistry.attachElementBefore(VanillaHudElements.HOTBAR, class_2960.method_60655("nightfall", "atmosphere"), (ctx, tickCounter) -> {
          ModuleManager.get(Atmosphere.class).renderAtmosphere(ctx);
       });
