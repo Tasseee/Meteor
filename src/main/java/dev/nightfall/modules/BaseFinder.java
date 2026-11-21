@@ -95,6 +95,12 @@ public class BaseFinder extends Module {
    private int scannedSinceRefill;
    private boolean paused;
    private final Map<Long, Integer> mobClusterMaxByChunk = new HashMap<>();
+   // Render modules call suppression checks for every visible ESP object every
+   // frame. Keep the result as a hash set so rendering never scans all fake
+   // patterns/waypoints repeatedly.
+   private final Set<Long> suppressedChunkCache = new HashSet<>();
+   private final Set<Long> confirmedFakeChunkCache = new HashSet<>();
+   private boolean suppressionCacheDirty = true;
 
    public BaseFinder() {
       super("BaseFinder", "Findet auffaellige Basis-Chunks in geladenen Chunks anhand von dichter Lagerung und mehreren unabhaengigen Technik-Signalen.", Category.BASEFINDER);
@@ -126,30 +132,51 @@ public class BaseFinder extends Module {
    }
 
    private boolean isSuppressedChunk(int cx, int cz, boolean requireConfirmedPattern) {
-      // Explicit FakeBases waypoints suppress their containing chunk immediately.
+      ensureSuppressionCache();
+      long k = key(cx, cz);
+      return requireConfirmedPattern
+         ? this.confirmedFakeChunkCache.contains(k)
+         : this.suppressedChunkCache.contains(k);
+   }
+
+   private void ensureSuppressionCache() {
+      if (!this.suppressionCacheDirty) return;
+
+      this.suppressedChunkCache.clear();
+      this.confirmedFakeChunkCache.clear();
+
+      String currentContext = Storage.server() + "_" + Storage.dim();
+      if (!currentContext.equals(this.ctxKey)) {
+         this.suppressionCacheDirty = false;
+         return;
+      }
+
       for (Waypoint waypoint : WaypointManager.all()) {
          if (waypoint != null
             && FakeBases.CATEGORY.equalsIgnoreCase(waypoint.category)
-            && Storage.dim().equals(waypoint.dim)
-            && Math.floorDiv(waypoint.x, 16) == cx
-            && Math.floorDiv(waypoint.z, 16) == cz) {
-            return true;
+            && Storage.dim().equals(waypoint.dim)) {
+            long k = key(Math.floorDiv(waypoint.x, 16), Math.floorDiv(waypoint.z, 16));
+            this.suppressedChunkCache.add(k);
          }
       }
-
-      String location = cx + "," + cz;
-      String currentContext = Storage.server() + "_" + Storage.dim();
-      if (!currentContext.equals(this.ctxKey)) return false;
 
       for (FakePattern pattern : this.fakePatterns) {
-         if (pattern != null && pattern.seenChunks != null
-            && pattern.seenChunks.contains(location)
-            && (!requireConfirmedPattern || pattern.seenChunks.size() >= 3)) {
-            return true;
+         if (pattern == null || pattern.seenChunks == null) continue;
+         boolean confirmed = pattern.seenChunks.size() >= 3;
+         for (String location : pattern.seenChunks) {
+            if (location == null) continue;
+            String[] parts = location.split(",");
+            if (parts.length != 2) continue;
+            try {
+               long k = key(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+               this.suppressedChunkCache.add(k);
+               if (confirmed) this.confirmedFakeChunkCache.add(k);
+            } catch (NumberFormatException ignored) {
+            }
          }
       }
 
-      return false;
+      this.suppressionCacheDirty = false;
    }
 
    public Collection<ChunkResult> results() {
@@ -230,6 +257,9 @@ public class BaseFinder extends Module {
       this.lastScanned = 0;
       this.lastScanNanos = 0L;
       this.mobClusterMaxByChunk.clear();
+      this.suppressedChunkCache.clear();
+      this.confirmedFakeChunkCache.clear();
+      this.suppressionCacheDirty = true;
    }
 
    public void clearMarks() {
@@ -259,6 +289,7 @@ public class BaseFinder extends Module {
             this.fakePatterns.clear();
             this.lastWorld = w;
             this.ctxKey = Storage.server() + "_" + Storage.dim();
+            this.suppressionCacheDirty = true;
             this.loadFakePatterns();
             this.loadMarks();
          }
@@ -897,6 +928,7 @@ public class BaseFinder extends Module {
          if (pattern.seenChunks == null) pattern.seenChunks = new ArrayList<>();
          if (!pattern.seenChunks.contains(location)) {
             pattern.seenChunks.add(location);
+            this.suppressionCacheDirty = true;
             this.saveFakePatterns();
          }
 
