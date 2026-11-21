@@ -212,7 +212,7 @@ public final class KillEffectRenderer {
          double sideX = -Math.sin(angle) * size * 0.72, sideZ = Math.cos(angle) * size * 0.72;
          float[] tail = rgba(mod.color(frac(Math.sin(seed * 5.3) * 321.9), fx.seed(), now), alpha * 0.08F);
          float[] head = rgba(mod.color(frac(Math.sin(seed * 5.3) * 321.9), fx.seed(), now), alpha * 0.72F);
-         strip(out, m, tx, ty, tz, sideX, 0.0, sideZ, x, y, z, sideX * 0.30, 0.0, sideZ * 0.30, tail, head);
+         strip(out, m, tx, ty, tz, sideX, 0.0, sideZ, x, y, z, sideX * 0.30, 0.0, sideZ * 0.30, tail, tail, head, head);
 
          int rgb = mod.color(frac(Math.sin(seed * 5.3) * 321.9), fx.seed(), now);
          float[] white = rgba(0xFFFFFF, alpha * 0.94F);
