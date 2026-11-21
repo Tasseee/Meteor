@@ -175,7 +175,9 @@ public final class FreecamController extends Module {
       if (mc.field_1692 != cam) {
          mc.field_1692 = cam;
       }
-      // Keep no-clip enabled for both FreeLook and full Freecam.
+      // The camera entity is only a client-side render proxy. It never controls
+      // the real player's collision box, so camera movement remains noclip.
+      cam.method_5743(true);
       previousCamX = camX;
       previousCamY = camY;
       previousCamZ = camZ;
@@ -189,9 +191,9 @@ public final class FreecamController extends Module {
          double dx = Math.max(-250.0, Math.min(250.0, cursorX[0] - lastMouseX));
          double dy = Math.max(-250.0, Math.min(250.0, cursorY[0] - lastMouseY));
 
-         float yaw = cam.method_36454() - (float)dx * sensitivity.get().floatValue();
+         float yaw = cam.method_36454() + (float)dx * sensitivity.get().floatValue();
          float pitch = Math.max(-90.0F, Math.min(90.0F,
-            cam.method_36455() + (float)dy * sensitivity.get().floatValue()));
+            cam.method_36455() - (float)dy * sensitivity.get().floatValue()));
          cam.method_36456(yaw);
          cam.method_36457(pitch);
       }
@@ -200,21 +202,16 @@ public final class FreecamController extends Module {
       lastMouseY = cursorY[0];
       mouseInitialized = true;
 
-      boolean forward = mc.field_1690.field_1894.method_1434();
-      boolean back = mc.field_1690.field_1881.method_1434();
-      boolean left = mc.field_1690.field_1913.method_1434();
-      boolean right = mc.field_1690.field_1849.method_1434();
-      boolean up = mc.field_1690.field_1903.method_1434();
-      boolean down = mc.field_1690.field_1832.method_1434();
-      boolean fast = mc.field_1690.field_1867.method_1434();
-
-      mc.field_1690.field_1894.method_23481(false);
-      mc.field_1690.field_1881.method_23481(false);
-      mc.field_1690.field_1913.method_23481(false);
-      mc.field_1690.field_1849.method_23481(false);
-      mc.field_1690.field_1903.method_23481(false);
-      mc.field_1690.field_1832.method_23481(false);
-      mc.field_1690.field_1867.method_23481(false);
+      // Read movement directly from GLFW instead of mutating Minecraft KeyBinding
+      // states. This prevents a pressed key from being cancelled for a tick and
+      // makes Freecam movement respond immediately like spectator movement.
+      boolean forward = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS;
+      boolean back = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_S) == GLFW.GLFW_PRESS;
+      boolean left = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_A) == GLFW.GLFW_PRESS;
+      boolean right = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_D) == GLFW.GLFW_PRESS;
+      boolean up = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS;
+      boolean down = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS;
+      boolean fast = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS;
 
       class_243 move = class_243.field_1353;
       if (mc.field_1755 == null) {
