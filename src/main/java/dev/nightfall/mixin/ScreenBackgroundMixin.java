@@ -1,5 +1,6 @@
 package dev.nightfall.mixin;
 
+import dev.nightfall.gui.CleanUi;
 import net.minecraft.class_332;
 import net.minecraft.class_437;
 import org.spongepowered.asm.mixin.Mixin;
