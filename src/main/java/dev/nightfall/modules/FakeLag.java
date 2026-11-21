@@ -1,5 +1,6 @@
 package dev.nightfall.modules;
 
+import dev.nightfall.Nightfall;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
@@ -112,7 +113,7 @@ public final class FakeLag extends Module {
          return;
       }
       if (!module.isEnabled() || !module.flushOnAttack.get() || QUEUE.isEmpty()) return;
-      flush();
+      flush("attack");
       ghostHoldUntil = System.currentTimeMillis() + 400L;
    }
 
@@ -137,7 +138,7 @@ public final class FakeLag extends Module {
 
       if (packet instanceof class_2824) {
          if (module.flushOnAttack.get() && !QUEUE.isEmpty()) {
-            flush();
+            flush("attack-packet");
             // Keep the ghost visible briefly at the position just sent before the hit.
             ghostHoldUntil = System.currentTimeMillis() + 400L;
          }
@@ -150,14 +151,27 @@ public final class FakeLag extends Module {
       QUEUE.add(packet);
       ci.cancel();
 
-      if (QUEUE.size() >= module.maxPackets.getInt()) flush();
+      if (QUEUE.size() >= module.maxPackets.getInt()) flush("max-packets");
    }
 
    public static void flush() {
+      flush("manual");
+   }
+
+   /** Logs why a pending movement queue was released; it does not change packet flow. */
+   private static void flush(String reason) {
+      int queued = QUEUE.size();
+      long heldMs = queued > 0 && holdStart > 0L ? Math.max(0L, System.currentTimeMillis() - holdStart) : 0L;
       if (connection == null) {
+         if (queued > 0) {
+            Nightfall.LOGGER.warn("FakeLag: {} Bewegungspakete nach {} ms verworfen (Ausloeser: {}, keine Verbindung).", queued, heldMs, reason);
+         }
          QUEUE.clear();
          holdStart = 0L;
          return;
+      }
+      if (queued > 0) {
+         Nightfall.LOGGER.info("FakeLag: sende {} Bewegungspakete nach {} ms (Ausloeser: {}).", queued, heldMs, reason);
       }
       boolean old = bypass;
       bypass = true;
@@ -186,12 +200,12 @@ public final class FakeLag extends Module {
 
    @Override
    protected void onDisable() {
-      flush();
+      flush("disabled");
    }
 
    @Override
    public void onWorldLeave() {
-      flush();
+      flush("world-leave");
       QUEUE.clear();
       connection = null;
       holdStart = 0L;
@@ -205,8 +219,20 @@ public final class FakeLag extends Module {
 
    @Override
    public void onTick() {
-      if (mc.field_1724 == null || mc.field_1687 == null || (flushOnScreen.get() && mc.field_1755 != null)) {
-         flush();
+      if (mc.field_1724 == null) {
+         flush("no-player");
+         lastHurtTime = 0;
+         lastHealth = Float.NaN;
+         return;
+      }
+      if (mc.field_1687 == null) {
+         flush("no-world");
+         lastHurtTime = 0;
+         lastHealth = Float.NaN;
+         return;
+      }
+      if (flushOnScreen.get() && mc.field_1755 != null) {
+         flush("screen-open");
          lastHurtTime = 0;
          lastHealth = Float.NaN;
          return;
@@ -219,13 +245,13 @@ public final class FakeLag extends Module {
       boolean hurtAnimationStarted = hurtTime > lastHurtTime;
       boolean healthDropped = !Float.isNaN(lastHealth) && health < lastHealth;
       if (flushOnDamage.get() && (hurtAnimationStarted || healthDropped) && !QUEUE.isEmpty()) {
-         flush();
+         flush("damage");
          ghostHoldUntil = System.currentTimeMillis() + 400L;
       }
       lastHurtTime = hurtTime;
       lastHealth = health;
 
-      if (!QUEUE.isEmpty() && System.currentTimeMillis() - holdStart >= maxDelay.getInt()) flush();
+      if (!QUEUE.isEmpty() && System.currentTimeMillis() - holdStart >= maxDelay.getInt()) flush("max-delay");
    }
 
    @Override
