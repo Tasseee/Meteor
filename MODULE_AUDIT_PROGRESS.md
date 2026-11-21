@@ -1,9 +1,17 @@
 # Nightfall module audit progress
 
-Inventory snapshot: `9477a2a7eb519ae9cfd3c6466c3db0d0ad470dc6` (main, 2026-11-17).
-Registered module instances: **102**. Fully reviewed: **32**. UI-/label-only partial reviews: **6**. Pending: **64**.
+Inventory snapshot: `8d8ed3639b25c8fb3fb9936c5e950cb132632dfb` (main, 2026-11-21).
+Registered module instances: **110**. The existing detailed ledger covers the previous 102-entry inventory (32 fully reviewed, 6 partial, 64 pending); the 8-entry increase still needs to be reconciled into those status lists.
 
 This file is the shared progress ledger for the scheduled repository audits. Update it only after a module has been checked against registration, settings/defaults, UI/HUD, lifecycle, listeners/resource cleanup, null/boundary handling, logging, threading, performance, compatibility, tests, and documentation. A label-only review is not a full review.
+
+## Static no-op wiring audit (2026-11-21)
+
+- Registered modules in `ModuleManager.init()`: **110**.
+- Confirmed module with no runtime caller in the current source tree: **1 — `GlowESP`**. Its `shouldGlowLocal` / `colorFor` helpers are only defined in `GlowESP.java`; no mixin or renderer invokes them, so the module's outline settings currently have no effect.
+- Confirmed inert sub-feature (not a whole module): `Item Glow → 3D-Kontur`. `ItemGlowMeshRenderer.render()` intentionally returns without drawing because the previous line-mesh path caused render-backend crashes. The 2D/slot glow features remain active.
+- Modules without their own tick/HUD override were cross-checked against their integration points (renderers, mixins, shared helpers, or inherited ESP renderers). No additional definitely-unwired module was found in this pass.
+- This is a static call-site audit, not a complete in-game test of every registered module. Runtime behavior and server-specific conditions still need testing.
 
 ## Fully reviewed
 - [x] `Waypoints`
