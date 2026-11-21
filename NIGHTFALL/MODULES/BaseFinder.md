@@ -13,7 +13,7 @@ BaseFinder bewertet bereits geladene Chunks im eingestellten Chunk-Radius anhand
 
 Der Client lädt durch diesen Modulcode keine zusätzlichen Chunks. Der Scan-Queue werden nur Chunks hinzugefügt, die der Client bereits geladen hat.
 
-**Hinweis zum Erkennungsverhalten:** Kisten (Chest-Block-Entities) ziehen jetzt mit einem eigenen einstellbaren Gewicht Punkte vom Score ab. Kisten-Chunks können außerdem unabhängig vom Mindestscore in den wiederholten FakePattern-Fingerabdruckvergleich eingehen, sofern mindestens zwei Signaltypen und zwei Fake-Signale vorliegen. Eine Übereinstimmung wird erst ab drei Chunks intern als FakePattern behandelt. Das ist eine heuristische Bewertung und muss im Spiel getestet werden.
+**Hinweis zum Erkennungsverhalten:** Kisten (Chest-Block-Entities) ziehen jetzt mit einem eigenen einstellbaren Gewicht Punkte vom Score ab. Kisten-Chunks können außerdem unabhängig vom Mindestscore in den wiederholten FakePattern-Fingerabdruckvergleich eingehen, sofern mindestens zwei Signaltypen und zwei Fake-Signale vorliegen. Eine Übereinstimmung wird standardmäßig ab drei Chunks als FakePattern bestätigt. Zusätzlich wird ein bereits gelerntes Kisten-Pattern sofort dauerhaft bestätigt, wenn eine passende Kopie beim Scan mehr als 50 horizontale Blöcke vom Spieler entfernt liegt. Danach werden alle bekannten Vorkommen und alle künftigen Chunks mit diesem Pattern als Fake behandelt. Die Bestätigung wird in der server-/dimensionsbezogenen Fake-Pattern-Datei gespeichert. Das ist eine heuristische Bewertung: einzelne zufällig ähnliche Kistenlayouts können falsch eingestuft werden und müssen im Spiel getestet werden.
 
 ## Einstellungen
 
