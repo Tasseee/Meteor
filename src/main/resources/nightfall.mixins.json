@@ -15,7 +15,9 @@
     "FakeLagNetworkMixin",
     "FakeLagAttackMixin",
     "HandledScreenAccessor",
-    "ItemGlowMeshMixin"
+    "ItemGlowMeshMixin",
+    "GameRendererMixin",
+    "FogRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
