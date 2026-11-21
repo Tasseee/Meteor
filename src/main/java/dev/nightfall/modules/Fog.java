@@ -56,9 +56,9 @@ public final class Fog extends Module {
       class_5636 type = submersion();
       if (type == class_5636.field_27886) return value * waterVisibility.get().floatValue();
       if (type == class_5636.field_27885) return value * lavaVisibility.get().floatValue();
-      if (removeEffectFog.get() && (type == class_5636.field_27887
-         || (mc.field_1724 != null && (mc.field_1724.method_6059(net.minecraft.class_1293.field_5921)
-            || mc.field_1724.method_6059(net.minecraft.class_1293.field_4593))))) {
+      // Keep this mapping-safe for 1.21.11. The old imported effect IDs
+      // no longer exist in the current intermediary mappings.
+      if (removeEffectFog.get() && type == class_5636.field_27887) {
          return 100000.0F;
       }
       return value;
