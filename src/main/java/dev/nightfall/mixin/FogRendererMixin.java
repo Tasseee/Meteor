@@ -12,6 +12,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(class_758.class)
 public abstract class FogRendererMixin {
+   // ModuleManager.get() scans the complete module list. Cache the singleton
+   // so the six fog hooks do not repeat that scan on every fog update.
+   private static Fog cachedFog;
+
    private static final String APPLY = "method_71110(Ljava/nio/ByteBuffer;ILorg/joml/Vector4f;FFFFFF)V";
 
    @Inject(method = APPLY, at = @At("HEAD"))
@@ -62,11 +66,15 @@ public abstract class FogRendererMixin {
    }
 
    private Fog enabledFog() {
-      try {
-         Fog f = ModuleManager.get(Fog.class);
-         return f != null && f.isEnabled() ? f : null;
-      } catch (Throwable ignored) {
-         return null;
+      Fog f = cachedFog;
+      if (f == null) {
+         try {
+            f = ModuleManager.get(Fog.class);
+            cachedFog = f;
+         } catch (Throwable ignored) {
+            return null;
+         }
       }
+      return f.isEnabled() ? f : null;
    }
 }
