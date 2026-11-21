@@ -98,14 +98,16 @@ public final class ChunkEsp extends Module {
          double centerZ = 0.0;
          double score = 0.0;
          boolean favorite = false;
+         boolean farmLine = false;
          for (ChunkResult part : group) {
             centerX += part.cx + 0.5;
             centerZ += part.cz + 0.5;
             score = Math.max(score, part.score);
             favorite |= ChunkFavorites.isFavorite(part.cx, part.cz);
+            farmLine |= part.reasons.stream().anyMatch(reason -> reason.startsWith("Gerade Pflanzen-/Farmreihe"));
          }
          regions.add(new Region(centerX / group.size(), centerZ / group.size(), group.size(),
-            score, favorite, seed.status));
+            score, favorite, farmLine, seed.status));
       }
 
       regions.sort(Comparator
@@ -180,7 +182,8 @@ public final class ChunkEsp extends Module {
 
       String status = region.status == ChunkResult.Status.GONE ? "GONE" : "SUS";
       String label = (region.favorite && this.showFavorites.get() ? "★ " : "")
-         + status + (region.count > 1 ? "  " + region.count + "x" : "")
+         + status + (region.farmLine ? "  FARM-LINE" : "")
+         + (region.count > 1 ? "  " + region.count + "x" : "")
          + (this.showScore.get() ? "  " + String.format(java.util.Locale.ROOT, "%.1f", region.score) : "");
       int textWidth = mc.field_1772.method_1727(label);
       int panelWidth = textWidth + 12;
@@ -232,6 +235,6 @@ public final class ChunkEsp extends Module {
       }
    }
 
-   private record Region(double chunkX, double chunkZ, int count, double score, boolean favorite, ChunkResult.Status status) {
+   private record Region(double chunkX, double chunkZ, int count, double score, boolean favorite, boolean farmLine, ChunkResult.Status status) {
    }
 }
