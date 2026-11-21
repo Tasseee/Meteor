@@ -72,6 +72,7 @@ import dev.nightfall.modules.GhostSkin;
 import dev.nightfall.modules.Jesus;
 import dev.nightfall.modules.JumpCircles;
 import dev.nightfall.modules.KillAura;
+import dev.nightfall.modules.KillEffect;
 import dev.nightfall.modules.LongJump;
 import dev.nightfall.modules.LootDropFinder;
 import dev.nightfall.modules.LowHealthWarning;
@@ -184,6 +185,7 @@ public final class ModuleManager {
       MODULES.add(new BlockNotifier());
       MODULES.add(new ParticleTrail());
       MODULES.add(new HitParticles());
+      MODULES.add(new KillEffect());
       MODULES.add(new JumpCircles());
       MODULES.add(new MovementParticles());
       MODULES.add(new TargetMarker());
