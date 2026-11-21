@@ -283,12 +283,6 @@ public final class SkyRibbons extends Module {
       }
    }
 
-   private static int mix(int first, int second, double amount) {
-      int r = (int)Math.round((first >> 16 & 255) + ((second >> 16 & 255) - (first >> 16 & 255)) * amount);
-      int g = (int)Math.round((first >> 8 & 255) + ((second >> 8 & 255) - (first >> 8 & 255)) * amount);
-      int b = (int)Math.round((first & 255) + ((second & 255) - (first & 255)) * amount);
-      return r << 16 | g << 8 | b;
-   }
 
    private static int argb(double alpha, int rgb) {
       int a = (int)Math.max(0, Math.min(255, Math.round(alpha)));
