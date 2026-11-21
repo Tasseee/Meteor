@@ -638,6 +638,15 @@ public class BaseFinder extends Module {
             );
 
          if (repeatedFakePattern) {
+            if (prev == ChunkResult.Status.SUS) {
+               this.recordFalsePositive(
+                  res,
+                  "Bekanntes Fake-Base-Kistenmuster erkannt",
+                  score,
+                  res.reasons,
+                  "Der Chunk wurde zuerst als SUS eingestuft, spaeter aber dem gespeicherten Kistenmuster einer Fake-Base zugeordnet."
+               );
+            }
             res.status = ChunkResult.Status.CLEAN;
             res.reasons.clear();
             this.dirty = true;
@@ -675,17 +684,102 @@ public class BaseFinder extends Module {
                res.reasons.add("Hinweise vorhanden, aber kein bestaetigtes Storage-/Technik-Muster");
             }
          } else {
-            res.status = ChunkResult.Status.GONE;
             if (prev == ChunkResult.Status.SUS) {
+               this.recordFalsePositive(
+                  res,
+                  this.explainFalsePositive(score, storageSignal, signalKinds, this.minSignals.getInt(), containerCount, chest, shulker, hopper, furnace, redstone, spawner),
+                  score,
+                  res.reasons,
+                  this.buildFalsePositiveDetail(score, storageSignal, signalKinds, this.minSignals.getInt(), containerCount, chest, shulker, hopper, furnace, redstone, spawner)
+               );
                this.dirty = true;
                this.marksDirty = true;
             }
+            res.status = ChunkResult.Status.GONE;
          }
 
          if (old == null) {
             this.results.put(k, res);
          }
       }
+   }
+
+   private void recordFalsePositive(
+      ChunkResult res,
+      String reason,
+      double score,
+      List<String> reasons,
+      String detail
+   ) {
+      res.lastFalsePositiveAnalysis = reason + " — " + detail;
+      res.lastFalsePositiveScore = score;
+      res.lastFalsePositiveReasons.clear();
+      res.lastFalsePositiveReasons.addAll(reasons);
+      if (this.chat.get() && mc.field_1724 != null) {
+         mc.field_1724.method_7353(
+            class_2561.method_43470(
+               "[Nightfall] SUS-False-Positive "
+                  + res.cx + "," + res.cz
+                  + " | " + res.lastFalsePositiveAnalysis
+                  + " | Score " + fmt(score)
+                  + " | Ausloeser: " + String.join(", ", reasons)
+            ),
+            false
+         );
+      }
+   }
+
+   private String explainFalsePositive(
+      double score,
+      boolean storageSignal,
+      int signalKinds,
+      int minSignals,
+      int containerCount,
+      int chest,
+      int shulker,
+      int hopper,
+      int furnace,
+      int redstone,
+      int spawner
+   ) {
+      if (!storageSignal) {
+         return "Zu wenig echtes Storage-Signal";
+      }
+      if (signalKinds < minSignals) {
+         return "Zu wenige unabhaengige Signalarten";
+      }
+      if (score < this.threshold.get()) {
+         return "Gesamtscore unter dem SUS-Schwellenwert";
+      }
+      if (containerCount > 0 && chest + shulker + hopper + furnace + redstone + spawner == 0) {
+         return "Nur ein schwaches Umfeldsignal";
+      }
+      return "SUS-Kriterium war bei der Erstbewertung erfuellt, wurde beim Folgescan aber nicht bestaetigt";
+   }
+
+   private String buildFalsePositiveDetail(
+      double score,
+      boolean storageSignal,
+      int signalKinds,
+      int minSignals,
+      int containerCount,
+      int chest,
+      int shulker,
+      int hopper,
+      int furnace,
+      int redstone,
+      int spawner
+   ) {
+      return "Score=" + fmt(score)
+         + ", Threshold=" + fmt(this.threshold.get())
+         + ", Storage=" + containerCount
+         + " (Chest=" + chest
+         + ", Shulker=" + shulker
+         + ", Hopper=" + hopper
+         + ", Furnace=" + furnace
+         + ", Redstone=" + redstone
+         + ", Spawner=" + spawner + ")"
+         + ", Signalarten=" + signalKinds + "/" + minSignals;
    }
 
    private void rebuildMobClusterCounts(class_638 world) {
