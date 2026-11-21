@@ -19,7 +19,7 @@ import org.joml.Matrix4f;
  * so this stays compatible with Nightfall's current 1.21.11 world pipeline.
  */
 public final class PlayerAuraRenderer {
-   private static final int RING_SEGMENTS = 72;
+   private static final int RING_SEGMENTS = 96;
    private static final int ORB_LATITUDE = 7;
    private static final int ORB_LONGITUDE = 12;
 
@@ -78,18 +78,21 @@ public final class PlayerAuraRenderer {
    // Thin, breathing energy shell, with a brighter inner core and animated vertical filaments.
    private static void drawBodyShell(class_4588 out, Matrix4f m, PlayerAura aura,
                                      double x, double y, double z, double time, double scale, double alpha) {
-      int sides = 32;
-      int slices = 10;
+      int sides = 48;
+      int slices = 16;
       double height = 1.95 * scale;
       double pulse = 0.5 + 0.5 * Math.sin(time * 2.2);
-      for (int layer = 0; layer < 2; layer++) {
-         double radius = (layer == 0 ? 0.55 : 0.38) * scale * (1.0 + 0.035 * Math.sin(time * 2.2 + layer));
+      for (int layer = 0; layer < 3; layer++) {
+         double baseRadius = layer == 0 ? 0.58 : layer == 1 ? 0.47 : 0.34;
+         double profile = 0.78 + 0.22 * Math.sin(Math.PI * mid);
+         double radius = baseRadius * scale * profile * (1.0 + 0.035 * Math.sin(time * 2.2 + layer));
          for (int j = 0; j < slices; j++) {
             double y0 = y + height * j / slices;
             double y1 = y + height * (j + 1) / slices;
             double mid = (j + 0.5) / slices;
             double vertical = Math.pow(1.0 - mid, 0.88);
-            float a = (float)((layer == 0 ? 0.10 : 0.12) * vertical * alpha * (0.76 + 0.24 * pulse));
+            float layerOpacity = layer == 0 ? 0.055F : layer == 1 ? 0.075F : 0.09F;
+            float a = (float)(layerOpacity * vertical * alpha * (0.76 + 0.24 * pulse));
             if (a < 0.005F) continue;
             for (int s = 0; s < sides; s++) {
                double a0 = s * Math.PI * 2.0 / sides + time * 0.3;
@@ -107,12 +110,12 @@ public final class PlayerAuraRenderer {
       }
 
       // Fine vertical strands ripple over the translucent cylinder.
-      for (int strand = 0; strand < 18; strand++) {
-         double angle = strand * Math.PI * 2.0 / 18.0 + time * 0.24;
+      for (int strand = 0; strand < 26; strand++) {
+         double angle = strand * Math.PI * 2.0 / 26.0 + time * 0.24;
          double r = 0.555 * scale;
          double x0 = x + Math.cos(angle) * r, z0 = z + Math.sin(angle) * r;
-         for (int i = 0; i < 12; i++) {
-            double t0 = i / 12.0, t1 = (i + 1) / 12.0;
+         for (int i = 0; i < 16; i++) {
+            double t0 = i / 16.0, t1 = (i + 1) / 16.0;
             float a = (float)(alpha * 0.22 * Math.pow(1.0 - t0, 0.8));
             float[] c = rgba(aura.color(t0, time), a);
             double wave = 0.018 * Math.sin(time * 3.0 + t0 * 12.0 + strand);
@@ -164,11 +167,25 @@ public final class PlayerAuraRenderer {
             double p0x = cx + ux * r0x + vx * r0y, p0y = cy + uy * r0x + vy * r0y, p0z = cz + uz * r0x + vz * r0y;
             double p1x = cx + ux * r1x + vx * r1y, p1y = cy + uy * r1x + vy * r1y, p1z = cz + uz * r1x + vz * r1y;
             double thick = band * (0.6 + 0.8 * tail);
+            double haloThick = thick * 2.7;
+            float[] halo = rgba(rgb, opacity * 0.13F);
+            quad(out, m,
+               (float)(p0x - nx * haloThick), (float)(p0y - ny * haloThick), (float)(p0z - nz * haloThick),
+               (float)(p1x - nx * haloThick), (float)(p1y - ny * haloThick), (float)(p1z - nz * haloThick),
+               (float)(p1x + nx * haloThick), (float)(p1y + ny * haloThick), (float)(p1z + nz * haloThick),
+               (float)(p0x + nx * haloThick), (float)(p0y + ny * haloThick), (float)(p0z + nz * haloThick), halo);
             quad(out, m,
                (float)(p0x - nx * thick), (float)(p0y - ny * thick), (float)(p0z - nz * thick),
                (float)(p1x - nx * thick), (float)(p1y - ny * thick), (float)(p1z - nz * thick),
                (float)(p1x + nx * thick), (float)(p1y + ny * thick), (float)(p1z + nz * thick),
                (float)(p0x + nx * thick), (float)(p0y + ny * thick), (float)(p0z + nz * thick), c);
+            double coreThick = thick * 0.16;
+            float[] core = rgba(brighten(rgb, 0.78), opacity * 0.58F);
+            quad(out, m,
+               (float)(p0x - nx * coreThick), (float)(p0y - ny * coreThick), (float)(p0z - nz * coreThick),
+               (float)(p1x - nx * coreThick), (float)(p1y - ny * coreThick), (float)(p1z - nz * coreThick),
+               (float)(p1x + nx * coreThick), (float)(p1y + ny * coreThick), (float)(p1z + nz * coreThick),
+               (float)(p0x + nx * coreThick), (float)(p0y + ny * coreThick), (float)(p0z + nz * coreThick), core);
          }
 
          // A bright, layered comet head rides the band and leaves a short secondary glow.
@@ -187,8 +204,8 @@ public final class PlayerAuraRenderer {
       for (int i = 0; i < count; i++) {
          double baseAngle = i * Math.PI * 2.0 / count;
          double rate = (1.1 + 0.18 * (i % 3)) * speed * (i % 2 == 0 ? 1.0 : -1.0);
-         for (int trail = 7; trail >= 0; trail--) {
-            double lag = trail * 0.10;
+         for (int trail = 10; trail >= 0; trail--) {
+            double lag = trail * 0.075;
             double t = time - lag;
             double angle = baseAngle + t * rate;
             double h = 0.35 + 1.35 * (0.5 + 0.5 * Math.sin(t * 0.9 * speed + i * 1.3));
@@ -196,7 +213,7 @@ public final class PlayerAuraRenderer {
             double ox = x + Math.cos(angle) * radius;
             double oy = y + h * scale;
             double oz = z + Math.sin(angle) * radius;
-            double fade = Math.pow(1.0 - trail / 8.0, 1.55);
+            double fade = Math.pow(1.0 - trail / 11.0, 1.65);
             double size = (0.085 * fade + 0.018) * scale;
             int rgb = aura.color(frac(i * 0.17 + 0.3), time);
             if (trail == 0) rgb = brighten(rgb, 0.62);
@@ -227,14 +244,16 @@ public final class PlayerAuraRenderer {
          double size = (0.03 + 0.03 * h1) * scale;
          int rgb = aura.color(h3, time);
          float[] tail = rgba(rgb, (float)(opacity * 0.18));
-         double previousPhase = Math.max(0.0, phase - 0.045);
+         double previousPhase = Math.max(0.0, phase - 0.085);
          double previousAngle = h1 * Math.PI * 2.0 + previousPhase * 2.2;
          double previousRadius = (0.35 + 0.55 * h2 + 0.12 * Math.sin(previousPhase * 6.0 + k)) * scale;
          double px = x + Math.cos(previousAngle) * previousRadius;
          double pz = z + Math.sin(previousAngle) * previousRadius;
          double py = y + previousPhase * 2.4 * scale;
-         strip(out, m, px, py, pz, size * 0.45, 0.0, size * 0.45,
-            ex, ey, ez, size * 0.12, 0.0, size * 0.12, tail);
+         strip(out, m, px, py, pz, size * 0.72, 0.0, size * 0.72,
+            ex, ey, ez, size * 0.18, 0.0, size * 0.18, rgba(rgb, (float)(opacity * 0.10)));
+         strip(out, m, px, py, pz, size * 0.30, 0.0, size * 0.30,
+            ex, ey, ez, size * 0.07, 0.0, size * 0.07, rgba(brighten(rgb, 0.65), (float)(opacity * 0.42)));
          drawOrb(out, m, ex, ey, ez, size * 1.8, rgb, (float)(opacity * 0.28));
          drawOrb(out, m, ex, ey, ez, size * 0.62, 0xFFFFFF, (float)(opacity * 0.92));
       }
@@ -261,6 +280,11 @@ public final class PlayerAuraRenderer {
             ca * r1 - sa * width, sa * r1 + ca * width,
             ca * r1 + sa * width, sa * r1 - ca * width,
             ca * r0 + sa * width, sa * r0 - ca * width, color);
+         if (i % 3 == 0) {
+            double nodeRadius = (r0 + r1) * 0.5;
+            drawOrb(out, m, x + ca * nodeRadius, ground + 0.045, z + sa * nodeRadius,
+               0.026 * scale, aura.color(i / 24.0, time), (float)(0.68 * pulse * alpha));
+         }
       }
 
       // Counter-rotating hexagram and a small central six-point star.
@@ -304,8 +328,8 @@ public final class PlayerAuraRenderer {
                                     double x, double z, double y, double radius, double width,
                                     double time, float alpha) {
       double inner = radius - width * 0.5, outer = radius + width * 0.5;
-      for (int i = 0; i < 64; i++) {
-         double a0 = i * Math.PI * 2.0 / 64.0, a1 = (i + 1) * Math.PI * 2.0 / 64.0;
+      for (int i = 0; i < RING_SEGMENTS; i++) {
+         double a0 = i * Math.PI * 2.0 / RING_SEGMENTS, a1 = (i + 1) * Math.PI * 2.0 / RING_SEGMENTS;
          int rgb = aura.color(i / 64.0, time);
          float[] c = rgba(rgb, alpha);
          quad(out, m,

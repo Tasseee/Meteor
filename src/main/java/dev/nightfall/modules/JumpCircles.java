@@ -287,6 +287,7 @@ public final class JumpCircles extends Module {
                      // Schockwelle: dünner heller Ring, läuft schnell nach außen und wird dabei schmaler.
                      double shock = baseRadius * ring.scale * (0.5 + 1.8 * (1.0 - Math.pow(1.0 - la, 2.0)));
                      drawBand(matrix, fills, ring.x, ring.y + 0.025, ring.z, shock, 0.03 * (1.0 - la) + 0.003, Theme.lerp(primary, 0xFFFFFF, 0.55F), alpha);
+                     drawImpactRunes(fills, matrix, ring.x, ring.y + 0.034, ring.z, ringRadius, la, primary, alpha);
                   }
                }
 
@@ -334,6 +335,16 @@ public final class JumpCircles extends Module {
                   double z = ring.z + Math.sin(ring.dAngle[i]) * (0.15 + hr);
                   double half = ring.dSize[i] * shrink;
                   int rgb = Theme.lerp(m.blockColor(i, ring.debrisCount, ring.dAngle[i], now), 0xFFFFFF, 0.3F);
+                  double previousT = Math.max(0.0, t - 0.075);
+                  double previousRadius = ring.dSpeed[i] * previousT * (1.0 - 0.25 * previousT);
+                  double previousY = ring.dVy[i] * previousT - 4.9 * previousT * previousT;
+                  if (previousY >= 0.0 && alpha > 0.02F) {
+                     double tx = ring.x + Math.cos(ring.dAngle[i]) * (0.15 + previousRadius);
+                     double tz = ring.z + Math.sin(ring.dAngle[i]) * (0.15 + previousRadius);
+                     double ty = ring.y + 0.05 + previousY;
+                     drawDebrisTrail(fills, matrix, tx, ty, tz, x, ring.y + 0.05 + dy, z,
+                        ring.dAngle[i], half, rgb, alpha * 0.28F);
+                  }
                   drawBlock(fills, matrix, x, ring.y + 0.05 + dy, z, half, ring.dSpin[i] * t, rgb, alpha);
                }
             }
@@ -341,6 +352,48 @@ public final class JumpCircles extends Module {
       } finally {
          matrices.method_22909();
       }
+   }
+
+   /** Feine, mit dem Hauptring mitlaufende Markierungen im Stil eines kalibrierten Runenkreises. */
+   private static void drawImpactRunes(class_4588 out, Matrix4f matrix, double cx, double cy, double cz,
+                                       double radius, double progress, int rgb, float alpha) {
+      double fade = Math.pow(1.0 - progress, 0.9);
+      for (int i = 0; i < 24; i++) {
+         double angle = TWO_PI * i / 24.0 + progress * (i % 2 == 0 ? 0.08 : -0.08);
+         double inner = radius + (i % 3 == 0 ? -0.13 : -0.09);
+         double outer = radius + (i % 3 == 0 ? 0.14 : 0.08);
+         double width = (i % 3 == 0 ? 0.013 : 0.008) * fade;
+         double ca = Math.cos(angle), sa = Math.sin(angle);
+         float r = (rgb >> 16 & 255) / 255.0F;
+         float g = (rgb >> 8 & 255) / 255.0F;
+         float b = (rgb & 255) / 255.0F;
+         float a = alpha * (float)(0.34 * fade);
+         double ix = cx + ca * inner, iz = cz + sa * inner;
+         double ox = cx + ca * outer, oz = cz + sa * outer;
+         double nx = -sa * width, nz = ca * width;
+         vertex(out, matrix, r, g, b, a, (float)(ix - nx), (float)cy, (float)(iz - nz));
+         vertex(out, matrix, r, g, b, a, (float)(ox - nx), (float)cy, (float)(oz - nz));
+         vertex(out, matrix, r, g, b, a, (float)(ox + nx), (float)cy, (float)(oz + nz));
+         vertex(out, matrix, r, g, b, a, (float)(ix + nx), (float)cy, (float)(iz + nz));
+         if (i % 3 == 0) {
+            drawBlock(out, matrix, cx + ca * (outer + 0.035), cy + 0.012, cz + sa * (outer + 0.035),
+               0.018 * fade, angle + Math.PI / 4.0, Theme.lerp(rgb, 0xFFFFFF, 0.55F), a * 0.9F);
+         }
+      }
+   }
+
+   private static void drawDebrisTrail(class_4588 out, Matrix4f matrix,
+                                       double x0, double y0, double z0, double x1, double y1, double z1,
+                                       double angle, double half, int rgb, float alpha) {
+      double sideX = -Math.sin(angle) * Math.max(0.006, half * 0.55);
+      double sideZ = Math.cos(angle) * Math.max(0.006, half * 0.55);
+      float r = (rgb >> 16 & 255) / 255.0F;
+      float g = (rgb >> 8 & 255) / 255.0F;
+      float b = (rgb & 255) / 255.0F;
+      vertex(out, matrix, r, g, b, alpha * 0.12F, (float)(x0 + sideX), (float)y0, (float)(z0 + sideZ));
+      vertex(out, matrix, r, g, b, alpha * 0.12F, (float)(x0 - sideX), (float)y0, (float)(z0 - sideZ));
+      vertex(out, matrix, r, g, b, alpha, (float)(x1 - sideX * 0.20), (float)(y1 - 0.008), (float)(z1 - sideZ * 0.20));
+      vertex(out, matrix, r, g, b, alpha, (float)(x1 + sideX * 0.20), (float)(y1 - 0.008), (float)(z1 + sideZ * 0.20));
    }
 
    /** Flaches Band (Ring) auf dem Boden, beide Windungen, damit es von oben und unten sichtbar ist. */
@@ -385,6 +438,11 @@ public final class JumpCircles extends Module {
       double cs = Math.cos(yaw);
       double sn = Math.sin(yaw);
 
+      double pitch = Math.sin(yaw * 0.71) * 0.52;
+      double roll = Math.cos(yaw * 0.63) * 0.46;
+      double cp = Math.cos(pitch), sp = Math.sin(pitch);
+      double cr = Math.cos(roll), sr = Math.sin(roll);
+
       for (int f = 0; f < 6; f++) {
          int[] face = FACES[f];
          float shade = SHADE[f];
@@ -392,9 +450,13 @@ public final class JumpCircles extends Module {
             double dx = face[v * 3] == 1 ? half : -half;
             double dy = face[v * 3 + 1] == 1 ? half : -half;
             double dz = face[v * 3 + 2] == 1 ? half : -half;
-            float px = (float)(cx + dx * cs - dz * sn);
-            float py = (float)(cy + dy);
-            float pz = (float)(cz + dx * sn + dz * cs);
+            double pitchedY = dy * cp - dz * sp;
+            double pitchedZ = dy * sp + dz * cp;
+            double rolledX = dx * cr - pitchedY * sr;
+            double rolledY = dx * sr + pitchedY * cr;
+            float px = (float)(cx + rolledX * cs - pitchedZ * sn);
+            float py = (float)(cy + rolledY);
+            float pz = (float)(cz + rolledX * sn + pitchedZ * cs);
             vertex(consumer, matrix, red * shade, green * shade, blue * shade, alpha, px, py, pz);
          }
       }

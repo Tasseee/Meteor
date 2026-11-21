@@ -92,6 +92,10 @@ public final class KillEffectRenderer {
       // A very fine second edge adds a luminous outline without changing the original ring shape.
       drawThinRing(out, m, mod, fx, outer + 0.035 * scale, y + 0.012,
          (float)(0.36 * fade), now, scale);
+      drawThinRing(out, m, mod, fx, outer - width * 0.82, y + 0.009,
+         (float)(0.22 * fade), now, scale);
+      drawThinRing(out, m, mod, fx, outer + 0.085 * scale, y + 0.006,
+         (float)(0.12 * fade), now, scale);
    }
 
    private static void drawThinRing(class_4588 out, Matrix4f m, KillEffect mod, KillEffect.Effect fx,
@@ -116,8 +120,8 @@ public final class KillEffectRenderer {
       double height = (1.0 - Math.pow(1.0 - rise, 3.0)) * 9.0 * scale;
       if (height < 0.05) return;
       double fade = Math.min(1.0, progress * 14.0) * Math.pow(1.0 - progress, 1.5);
-      double[] radii = {0.18 * scale, 0.55 * scale};
-      double[] strengths = {0.85, 0.25};
+      double[] radii = {0.18 * scale, 0.55 * scale, 0.82 * scale};
+      double[] strengths = {0.85, 0.25, 0.075};
 
       for (int layer = 0; layer < radii.length; layer++) {
          double radius = radii[layer] * (1.0 - 0.45 * progress);
@@ -142,6 +146,33 @@ public final class KillEffectRenderer {
                   (float)(fx.pos().field_1352 + Math.cos(a0) * radius), (float)y1, (float)(fx.pos().field_1350 + Math.sin(a0) * radius),
                   bottom, bottom, top, top);
             }
+         }
+      }
+
+      // Six fine helices climb through the pillar, each with a tapered luminous filament.
+      double seconds = (now - fx.startNanos()) / 1.0E9;
+      for (int strand = 0; strand < 6; strand++) {
+         double offset = strand * Math.PI * 2.0 / 6.0;
+         for (int segment = 0; segment < 28; segment++) {
+            double t0 = segment / 28.0;
+            double t1 = (segment + 1) / 28.0;
+            double a0 = seconds * 1.65 + offset + t0 * Math.PI * 5.0;
+            double a1 = seconds * 1.65 + offset + t1 * Math.PI * 5.0;
+            double r0 = 0.62 * scale * (1.0 - 0.18 * progress);
+            double r1 = 0.62 * scale * (1.0 - 0.18 * progress);
+            double x0 = fx.pos().field_1352 + Math.cos(a0) * r0;
+            double z0 = fx.pos().field_1350 + Math.sin(a0) * r0;
+            double x1 = fx.pos().field_1352 + Math.cos(a1) * r1;
+            double z1 = fx.pos().field_1350 + Math.sin(a1) * r1;
+            double y0 = fx.pos().field_1351 + height * t0;
+            double y1 = fx.pos().field_1351 + height * t1;
+            double w0 = 0.014 * scale * (1.0 - 0.55 * t0);
+            double w1 = 0.014 * scale * (1.0 - 0.55 * t1);
+            float strandAlpha = (float)(0.30 * fade * Math.pow(1.0 - t0, 0.5));
+            int strandColor = mod.color(t0, fx.seed() + strand * 31L, now);
+            strip(out, m, x0, y0, z0, Math.cos(a0) * w0, 0.0, Math.sin(a0) * w0,
+               x1, y1, z1, Math.cos(a1) * w1, 0.0, Math.sin(a1) * w1,
+               rgba(strandColor, strandAlpha));
          }
       }
    }
@@ -179,13 +210,16 @@ public final class KillEffectRenderer {
          ty = Math.max(ty, fx.pos().field_1351 + 0.02);
          double sideX = -Math.sin(angle) * size * 0.30;
          double sideZ = Math.cos(angle) * size * 0.30;
-         strip(out, m, tx, ty, tz, sideX, 0.0, sideZ, x, y, z, sideX * 0.2, 0.0, sideZ * 0.2,
-            rgba(rgb, alpha * 0.12F));
+         strip(out, m, tx, ty, tz, sideX * 1.8, 0.0, sideZ * 1.8, x, y, z, sideX * 0.45, 0.0, sideZ * 0.45,
+            rgba(rgb, alpha * 0.075F));
+         strip(out, m, tx, ty, tz, sideX * 0.65, 0.0, sideZ * 0.65, x, y, z, sideX * 0.16, 0.0, sideZ * 0.16,
+            rgba(brighten(rgb, 0.60), alpha * 0.30F));
 
-         // Small translucent shell around the original solid spark.
-         drawCube(out, m, x, y, z, size * 1.45, rgba(rgb, alpha * 0.22F));
-         drawCube(out, m, x, y, z, size, rgba(rgb, alpha));
-         drawCube(out, m, x, y, z, size * 0.34, rgba(0xFFFFFF, alpha * 0.82F));
+         // Rotating nested cubes preserve the original spark silhouette while adding depth.
+         double spin = seconds * (7.0 + (k % 5) * 1.7) + seed;
+         drawRotatedCube(out, m, x, y, z, size * 1.55, spin * 0.72, spin * 0.48, rgba(rgb, alpha * 0.18F));
+         drawRotatedCube(out, m, x, y, z, size, spin, spin * 0.63, rgba(rgb, alpha));
+         drawRotatedCube(out, m, x, y, z, size * 0.32, -spin * 1.35, spin, rgba(0xFFFFFF, alpha * 0.86F));
       }
    }
 
@@ -213,10 +247,44 @@ public final class KillEffectRenderer {
             int rgb = mod.color(s, fx.seed(), now);
             rgb = brighten(rgb, 0.35 * (1.0 - s));
             double size = (0.11 - 0.07 * s) * scale;
-            drawCube(out, m, x, y, z, size * 1.45, rgba(rgb, (float)(alpha * 0.16)));
-            drawCube(out, m, x, y, z, size, rgba(rgb, (float)alpha));
-            drawCube(out, m, x, y, z, size * 0.30, rgba(0xFFFFFF, (float)(alpha * 0.72)));
+            double spin = t * 5.0 + offset;
+            drawRotatedCube(out, m, x, y, z, size * 1.5, spin * 0.7, spin * 0.5, rgba(rgb, (float)(alpha * 0.16)));
+            drawRotatedCube(out, m, x, y, z, size, spin, spin * 0.8, rgba(rgb, (float)alpha));
+            drawRotatedCube(out, m, x, y, z, size * 0.30, -spin, spin * 1.2, rgba(0xFFFFFF, (float)(alpha * 0.75)));
          }
+      }
+   }
+
+   private static final int[][] CUBE_FACES = {
+      {0,0,0, 0,0,1, 0,1,1, 0,1,0},
+      {1,0,1, 1,0,0, 1,1,0, 1,1,1},
+      {0,0,0, 1,0,0, 1,0,1, 0,0,1},
+      {0,1,1, 1,1,1, 1,1,0, 0,1,0},
+      {0,0,0, 0,1,0, 1,1,0, 1,0,0},
+      {1,0,1, 1,1,1, 0,1,1, 0,0,1}
+   };
+
+   private static void drawRotatedCube(class_4588 out, Matrix4f m, double x, double y, double z,
+                                       double size, double yaw, double pitch, float[] color) {
+      double cy = Math.cos(yaw), sy = Math.sin(yaw);
+      double cp = Math.cos(pitch), sp = Math.sin(pitch);
+      for (int[] face : CUBE_FACES) {
+         float[][] points = new float[4][3];
+         for (int v = 0; v < 4; v++) {
+            double dx = (face[v * 3] == 1 ? size : -size);
+            double dy = (face[v * 3 + 1] == 1 ? size : -size);
+            double dz = (face[v * 3 + 2] == 1 ? size : -size);
+            double py = dy * cp - dz * sp;
+            double pz = dy * sp + dz * cp;
+            double px = dx * cy + pz * sy;
+            double rz = -dx * sy + pz * cy;
+            points[v][0] = (float)(x + px);
+            points[v][1] = (float)(y + py);
+            points[v][2] = (float)(z + rz);
+         }
+         quad(out, m,
+            points[0][0],points[0][1],points[0][2], points[1][0],points[1][1],points[1][2],
+            points[2][0],points[2][1],points[2][2], points[3][0],points[3][1],points[3][2], color);
       }
    }
 
