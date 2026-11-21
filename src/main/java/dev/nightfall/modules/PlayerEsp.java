@@ -15,14 +15,7 @@ public class PlayerEsp extends EntityScanEsp {
    private class_638 trackedWorld;
 
    public PlayerEsp() {
-      super("PlayerESP", "Markiert andere Spieler und kann sie automatisch mit /invsee öffnen.", 256, 512, 15680580, 1);
-   }
-
-   @Override
-   protected int effectiveThickness() {
-      // Keep PlayerESP's box and tracer strokes fine even with older configs
-      // that may still store the previous 4 px default.
-      return Math.min(2, this.thickness.getInt());
+      super("PlayerESP", "Markiert andere Spieler und kann sie automatisch mit /invsee Ã¶ffnen.", 256, 512, 15680580, 2);
    }
 
    @Override
@@ -31,17 +24,17 @@ public class PlayerEsp extends EntityScanEsp {
       if (!(entity instanceof class_1657)) return name;
 
       var network = mc.method_1562();
-      if (network == null) return name + " §7Ping: N/A";
+      if (network == null) return name + " Â§7Ping: N/A";
 
       for (net.minecraft.class_640 entry : network.method_45732()) {
          if (entry != null && entry.method_2966() != null
             && name.equalsIgnoreCase(entry.method_2966().name())) {
             int ping = Math.max(0, entry.method_2959());
-            return name + " §7" + ping + " ms";
+            return name + " Â§7" + ping + " ms";
          }
       }
 
-      return name + " §7Ping: N/A";
+      return name + " Â§7Ping: N/A";
    }
 
    @Override

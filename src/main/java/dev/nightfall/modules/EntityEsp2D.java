@@ -10,11 +10,7 @@ import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Draw;
 import dev.nightfall.util.Projection;
 import dev.nightfall.util.Theme;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
 import net.minecraft.class_1297;
 import net.minecraft.class_1299;
 import net.minecraft.class_2378;
@@ -23,28 +19,25 @@ import net.minecraft.class_332;
 import net.minecraft.class_7923;
 
 /**
- * Rounded, smoothed 2D screen-space boxes for selected non-player entities.
+ * Rounded 2D screen-space boxes projected directly from selected entity hitboxes.
  * This is separate from the existing 3D EntityESP module.
  */
 public final class EntityEsp2D extends Module {
    private final ListSetting entities = this.add(new ListSetting("Entity-Typen"));
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 96.0, 8.0, 256.0, 8.0));
    private final NumberSetting cornerRadius = this.add(new NumberSetting("Eckenradius", 5.0, 0.0, 12.0, 0.5));
-   private final NumberSetting thickness = this.add(new NumberSetting("Linienstaerke", 1.5, 0.5, 4.0, 0.5));
+   private final NumberSetting thickness = this.add(new NumberSetting("Linienstaerke", 2.0, 1.0, 4.0, 1.0));
    private final NumberSetting fillAlpha = this.add(new NumberSetting("Fuellen (Alpha)", 35.0, 0.0, 120.0, 5.0));
-   private final NumberSetting smoothing = this.add(new NumberSetting("Smoothing", 0.55, 0.0, 0.95, 0.05));
    private final ModeSetting colorMode = this.add(new ModeSetting("Farbschema", "Entity", "Entity", "Eigene"));
    private final ColorSetting boxColor = this.add(new ColorSetting("Box-Farbe", 0x39FFB6));
    private final BoolSetting distanceFade = this.add(new BoolSetting("Distanz-Fade", true));
    private final BoolSetting glowLayer = this.add(new BoolSetting("Soft Glow", true));
    private final ColorSetting glowColor = this.add(new ColorSetting("Neon-Farbe", 0x39FFB6));
-   private final Map<Integer, double[]> boxCache = new HashMap<>();
-   private final Set<Integer> seenEntities = new HashSet<>();
    private final double[] projectedBounds = new double[4];
    private final double[] projected = new double[2];
 
    public EntityEsp2D() {
-      super("EntityESP 2D", "Abgerundete, geglaettete 2D-Boxen fuer ausgewaehlte Entities.", Category.VISUALS);
+      super("EntityESP 2D", "Abgerundete 2D-Boxen, die direkt der Entity-Hitbox folgen.", Category.VISUALS);
       this.entities.add("minecraft:item_frame");
       this.entities.add("minecraft:glow_item_frame");
       this.entities.add("minecraft:armor_stand");
@@ -62,17 +55,12 @@ public final class EntityEsp2D extends Module {
    @Override
    public void renderHud(class_332 ctx) {
       if (mc.field_1724 == null || mc.field_1687 == null || !Projection.valid()) {
-         this.boxCache.clear();
          return;
       }
 
       double maxRange = this.range.get();
       double rangeSquared = maxRange * maxRange;
       float tickDelta = Projection.tickDelta();
-      double smooth = this.smoothing.get();
-      Set<Integer> seen = this.seenEntities;
-      seen.clear();
-
       for (class_1297 entity : mc.field_1687.method_18112()) {
          if (entity == null || entity == mc.field_1724 || !this.accept(entity)) continue;
 
@@ -102,17 +90,7 @@ public final class EntityEsp2D extends Module {
             currentBox.field_1324 + oz
          ), this.projectedBounds)) continue;
 
-         int id = entity.method_5628();
-         seen.add(id);
-         double[] bounds = this.boxCache.get(id);
-         if (bounds == null) {
-            bounds = this.projectedBounds.clone();
-            this.boxCache.put(id, bounds);
-         } else {
-            for (int i = 0; i < 4; i++) {
-               bounds[i] = bounds[i] * smooth + this.projectedBounds[i] * (1.0 - smooth);
-            }
-         }
+         double[] bounds = this.projectedBounds;
 
          double width = bounds[2] - bounds[0];
          double height = bounds[3] - bounds[1];
@@ -147,7 +125,6 @@ public final class EntityEsp2D extends Module {
          EspBase.drawn++;
       }
 
-      this.boxCache.keySet().retainAll(seen);
    }
 
    private boolean accept(class_1297 entity) {
@@ -255,13 +232,4 @@ public final class EntityEsp2D extends Module {
       return 0xFFFFFFFF;
    }
 
-   @Override
-   protected void onDisable() {
-      this.boxCache.clear();
-   }
-
-   @Override
-   public void onWorldLeave() {
-      this.boxCache.clear();
-   }
 }
