@@ -28,7 +28,10 @@ public class StorageEsp extends BlockEntityEsp {
       if (finder != null) {
          int chunkX = be.method_11016().method_10263() >> 4;
          int chunkZ = be.method_11016().method_10260() >> 4;
-         if (finder.isFakeChunk(chunkX, chunkZ)) return false;
+         // StorageESP must also hide decoy chunks that BaseFinder has
+         // already classified as clean from its visible results. Those chunks
+         // may not yet have reached the 3-hit public fake confirmation.
+         if (finder.isSuppressedChunk(chunkX, chunkZ)) return false;
       }
 
       if (be instanceof class_2595) {
