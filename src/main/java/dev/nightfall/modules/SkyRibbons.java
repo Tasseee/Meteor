@@ -7,6 +7,7 @@ import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import java.awt.Color;
+import java.util.Arrays;
 import net.minecraft.class_2338;
 import net.minecraft.class_2680;
 import net.minecraft.class_332;
@@ -57,7 +58,9 @@ public final class SkyRibbons extends Module {
    private double[] topCache;
    private int cacheRadius = -1;
    private int cacheSize;
+   private int cacheScanCursor;
    private long cacheTimeNanos;
+   private long nextCacheRefreshNanos;
    private class_2338 cacheCenter;
    private double groundYS = Double.NaN;
 
@@ -92,7 +95,9 @@ public final class SkyRibbons extends Module {
       this.topCache = null;
       this.cacheRadius = -1;
       this.cacheSize = 0;
+      this.cacheScanCursor = 0;
       this.cacheTimeNanos = 0L;
+      this.nextCacheRefreshNanos = 0L;
       this.cacheCenter = null;
       this.groundYS = Double.NaN;
    }
@@ -152,6 +157,9 @@ public final class SkyRibbons extends Module {
    private void updateGround(long nowNanos, double dt, double eyeX, double eyeZ) {
       int radius = this.groundRadius.getInt();
       int size = radius * 2 + 1;
+      int centerX = (int)Math.floor(eyeX);
+      int centerY = (int)Math.floor(mc.field_1724.method_23318() - 0.5);
+      int centerZ = (int)Math.floor(eyeZ);
       boolean moved = this.cacheCenter == null
          || Math.abs(this.cacheCenter.method_10263() + 0.5 - eyeX) > 1.5
          || Math.abs(this.cacheCenter.method_10260() + 0.5 - eyeZ) > 1.5;
@@ -160,30 +168,35 @@ public final class SkyRibbons extends Module {
          this.topCache = new double[size * size];
          this.cacheRadius = radius;
          this.cacheSize = size;
-         this.cacheTimeNanos = 0L;
+         Arrays.fill(this.topCache, Double.NaN);
          moved = true;
       }
 
-      if (this.cacheTimeNanos == 0L || moved || nowNanos - this.cacheTimeNanos >= 150_000_000L) {
+      int total = size * size;
+      boolean refreshDue = this.cacheScanCursor >= total
+         && this.nextCacheRefreshNanos != 0L && nowNanos >= this.nextCacheRefreshNanos;
+      if (this.cacheTimeNanos == 0L || moved || refreshDue) {
+         this.cacheCenter = new class_2338(centerX, centerY, centerZ);
+         Arrays.fill(this.topCache, Double.NaN);
+         this.cacheScanCursor = 0;
          this.cacheTimeNanos = nowNanos;
-         this.cacheCenter = new class_2338(
-            (int)Math.floor(eyeX),
-            (int)Math.floor(mc.field_1724.method_23318() - 0.5),
-            (int)Math.floor(eyeZ)
-         );
+         this.nextCacheRefreshNanos = nowNanos + 2_000_000_000L;
+      }
 
-         for (int dx = -radius; dx <= radius; dx++) {
-            for (int dz = -radius; dz <= radius; dz++) {
-               int index = (dx + radius) * size + dz + radius;
-               class_2338 top = this.findTop(this.cacheCenter.method_10069(dx, 0, dz));
-               if (top == null) {
-                  this.topCache[index] = Double.NaN;
-               } else {
-                  class_2680 state = mc.field_1687.method_8320(top);
-                  double localTop = state.method_26220(mc.field_1687, top).method_1107().field_1325;
-                  this.topCache[index] = top.method_10264() + localTop;
-               }
-            }
+      // Spread terrain sampling over frames instead of doing up to 1,681 column scans
+      // in one render callback. The completed cache is refreshed every two seconds.
+      int budget = 64;
+      while (this.cacheScanCursor < total && budget-- > 0) {
+         int index = this.cacheScanCursor++;
+         int dx = index / size - radius;
+         int dz = index % size - radius;
+         class_2338 top = this.findTop(this.cacheCenter.method_10069(dx, 0, dz));
+         if (top == null) {
+            this.topCache[index] = Double.NaN;
+         } else {
+            class_2680 state = mc.field_1687.method_8320(top);
+            double localTop = state.method_26220(mc.field_1687, top).method_1107().field_1325;
+            this.topCache[index] = top.method_10264() + localTop;
          }
       }
 
