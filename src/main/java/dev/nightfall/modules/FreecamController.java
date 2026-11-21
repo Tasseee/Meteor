@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.ModuleManager;
 import net.minecraft.class_1299;
 import net.minecraft.class_1531;
 import net.minecraft.class_243;
@@ -92,6 +93,11 @@ public final class FreecamController extends Module {
    private void enableFreecam() {
       class_310 mc = class_310.method_1551();
       if (mc.field_1724 == null || mc.field_1687 == null) return;
+
+      try {
+         ModuleManager.get(FreeLook.class).setEnabled(false);
+      } catch (Throwable ignored) {
+      }
 
       playerStart = mc.field_1724.method_73189();
       savedYaw = mc.field_1724.method_36454();
