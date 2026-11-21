@@ -126,7 +126,7 @@ public final class JumpWaveRenderer {
                // Extra thin concentric passes make the Energy mode read as several rings.
                if (mode.equals("Energy")) {
                   for (int ring = 1; ring <= 2; ring++) {
-                     double offset = ring * halfWidth * 1.05;
+                     double offset = ring * halfWidth * 0.32;
                      double ringRel = (distance - (radius - offset)) / Math.max(0.28, halfWidth * 0.20);
                      if (Math.abs(ringRel) < 1.0) {
                         double edge = Math.pow(Math.cos(ringRel * Math.PI * 0.5), 2.0) * fade;
