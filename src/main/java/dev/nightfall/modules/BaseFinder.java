@@ -23,9 +23,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import net.minecraft.class_2246;
 import net.minecraft.class_2248;
 import net.minecraft.class_2561;
@@ -76,10 +78,12 @@ public class BaseFinder extends Module {
    private static final Gson GSON = new Gson();
    private static final Map<class_2248, String> BLOCK_NAME_CACHE = new HashMap<>();
    private static final Type MARK_LIST = (new TypeToken<List<BaseFinder.Mark>>() {}).getType();
+   private static final Type FAKE_LIST = (new TypeToken<List<BaseFinder.FakePattern>>() {}).getType();
    private final Map<Long, ChunkResult> results = new HashMap<>();
    private final ArrayDeque<Long> queue = new ArrayDeque<>();
    private final List<ChunkResult> top = new ArrayList<>();
    private final List<ChunkResult> marks = new ArrayList<>();
+   private final List<FakePattern> fakePatterns = new ArrayList<>();
    private boolean dirty = true;
    private boolean marksDirty;
    private class_638 lastWorld;
@@ -109,13 +113,22 @@ public class BaseFinder extends Module {
    }
 
    public boolean isFakeChunk(int cx, int cz) {
-      // Explicit FakeBases waypoint: suppress only its containing chunk.
+      // Explicit FakeBases waypoints suppress their containing chunk.
       for (Waypoint waypoint : WaypointManager.all()) {
          if (waypoint != null
             && FakeBases.CATEGORY.equalsIgnoreCase(waypoint.category)
             && Storage.dim().equals(waypoint.dim)
             && Math.floorDiv(waypoint.x, 16) == cx
             && Math.floorDiv(waypoint.z, 16) == cz) {
+            return true;
+         }
+      }
+
+      // Repeated chest layouts are confirmed after three matching chunks.
+      String location = cx + "," + cz;
+      for (FakePattern pattern : this.fakePatterns) {
+         if (pattern != null && pattern.seenChunks != null
+            && pattern.seenChunks.size() >= 3 && pattern.seenChunks.contains(location)) {
             return true;
          }
       }
@@ -176,7 +189,9 @@ public class BaseFinder extends Module {
 
    public void clear() {
       this.saveMarks();
+      this.saveFakePatterns();
       this.clearData();
+      this.fakePatterns.clear();
       this.lastWorld = null;
       this.ctxKey = null;
    }
@@ -217,9 +232,12 @@ public class BaseFinder extends Module {
       if (w != null && mc.field_1724 != null) {
          if (w != this.lastWorld) {
             this.saveMarks();
+            this.saveFakePatterns();
             this.clearData();
+            this.fakePatterns.clear();
             this.lastWorld = w;
             this.ctxKey = Storage.server() + "_" + Storage.dim();
+            this.loadFakePatterns();
             this.loadMarks();
          }
 
@@ -310,6 +328,7 @@ public class BaseFinder extends Module {
       if (ch != null) {
          int storage = 0;
          int chest = 0;
+         List<String> chestPositions = new ArrayList<>();
          int shulker = 0;
          int hopper = 0;
          int furnace = 0;
@@ -330,6 +349,11 @@ public class BaseFinder extends Module {
             if (be instanceof class_2595) {
                chest++;
                dense = true;
+               chestPositions.add(
+                  (be.method_11016().method_10263() & 15) + ","
+                     + be.method_11016().method_10264() + ","
+                     + (be.method_11016().method_10260() & 15)
+               );
             } else if (be instanceof class_3719) {
                storage++;
                dense = true;
@@ -566,7 +590,37 @@ public class BaseFinder extends Module {
             res.reasons.add("Umfeld-Hinweise (gedeckelter Zusatzbonus +" + fmt(softHintBonus) + ")");
          }
 
-         if (score >= this.threshold.get() && storageSignal && signalKinds >= this.minSignals.getInt()) {
+         // Chest layout is the primary fake-base fingerprint. Auxiliary block
+         // signals are required to learn a new fingerprint, but a damaged chunk
+         // can still match an already confirmed chest pattern after those blocks
+         // have been removed.
+         chestPositions.sort(String::compareTo);
+         int fakeSignalKinds = (storage > 0 || chest > 0 || shulker > 0 ? 1 : 0)
+            + (hopper > 0 ? 1 : 0)
+            + (furnace > 0 ? 1 : 0)
+            + (redstone > 0 ? 1 : 0)
+            + (spawner > 0 ? 1 : 0)
+            + (tunnelRuns > 0 ? 1 : 0)
+            + (sculk >= 3 && !geodeSignature ? 1 : 0)
+            + (lightSources >= 4 ? 1 : 0)
+            + (redstoneBlocks >= 5 ? 1 : 0)
+            + (farmBlocks >= 12 ? 1 : 0)
+            + (rotatedDeepslate >= 3 ? 1 : 0)
+            + (amethystScore > 0.0 && !geodeSignature ? 1 : 0);
+         boolean mayLearnPattern = chestPositions.size() >= 2
+            && signalKinds >= this.minSignals.getInt()
+            && fakeSignalKinds >= 2;
+         boolean repeatedFakePattern = chestPositions.size() >= 2
+            && this.isRepeatedFakePattern(
+               chestPositions, mayLearnPattern, storage, chest, shulker, hopper, furnace, redstone, spawner, cx, cz
+            );
+
+         if (repeatedFakePattern) {
+            res.status = ChunkResult.Status.CLEAN;
+            res.reasons.clear();
+            this.dirty = true;
+            this.marksDirty = true;
+         } else if (score >= this.threshold.get() && storageSignal && signalKinds >= this.minSignals.getInt()) {
             res.status = ChunkResult.Status.SUS;
             if (prev != ChunkResult.Status.SUS) {
                res.foundAtMillis = System.currentTimeMillis();
@@ -636,6 +690,188 @@ public class BaseFinder extends Module {
             max = Math.max(max, count);
          }
          this.mobClusterMaxByChunk.put(entry.getKey(), max);
+      }
+   }
+
+   private boolean isRepeatedFakePattern(
+      List<String> chestPositions, boolean mayLearnPattern,
+      int storage, int chest, int shulker, int hopper, int furnace, int redstone, int spawner,
+      int cx, int cz
+   ) {
+      String location = cx + "," + cz;
+
+      for (FakePattern pattern : this.fakePatterns) {
+         if (pattern == null || pattern.version < 4 || pattern.chestPositions == null
+            || !matchesChestPattern(pattern.chestPositions, chestPositions)) {
+            continue;
+         }
+
+         // A damaged copy may lose storage blocks, but it must not contain
+         // extra block-entity signals that were absent from the saved template.
+         if (!notMoreThan(pattern.storage, storage)
+            || !notMoreThan(pattern.shulker, shulker)
+            || !notMoreThan(pattern.hopper, hopper)
+            || !notMoreThan(pattern.furnace, furnace)
+            || !notMoreThan(pattern.redstone, redstone)
+            || !notMoreThan(pattern.spawner, spawner)) {
+            continue;
+         }
+
+         if (pattern.seenChunks == null) pattern.seenChunks = new ArrayList<>();
+         if (!pattern.seenChunks.contains(location)) {
+            pattern.seenChunks.add(location);
+            this.saveFakePatterns();
+         }
+
+         if (pattern.seenChunks.size() >= 3) {
+            for (String seen : pattern.seenChunks) {
+               String[] parts = seen.split(",");
+               if (parts.length != 2) continue;
+               try {
+                  ChunkResult previous = this.results.get(key(Integer.parseInt(parts[0]), Integer.parseInt(parts[1])));
+                  if (previous != null) {
+                     previous.status = ChunkResult.Status.CLEAN;
+                     previous.reasons.clear();
+                  }
+               } catch (NumberFormatException ignored) {
+               }
+            }
+
+            this.dirty = true;
+            this.marksDirty = true;
+            this.saveMarks();
+            return true;
+         }
+         return false;
+      }
+
+      if (!mayLearnPattern) return false;
+
+      FakePattern learned = new FakePattern();
+      learned.version = 4;
+      learned.storage = storage;
+      learned.chest = chest;
+      learned.shulker = shulker;
+      learned.hopper = hopper;
+      learned.furnace = furnace;
+      learned.redstone = redstone;
+      learned.spawner = spawner;
+      learned.chestPositions = new ArrayList<>(chestPositions);
+      learned.seenChunks.add(location);
+      this.fakePatterns.add(learned);
+
+      // Keep the local pattern database bounded on servers with many unrelated
+      // storage layouts.
+      if (this.fakePatterns.size() > 256) this.fakePatterns.remove(0);
+      this.saveFakePatterns();
+      return false;
+   }
+
+   private static boolean notMoreThan(int known, int current) {
+      return known == 0 ? current == 0 : current <= known;
+   }
+
+   private static boolean matchesChestPattern(List<String> knownEncoded, List<String> currentEncoded) {
+      Set<ChestPoint> known = parseChestPoints(knownEncoded);
+      Set<ChestPoint> current = parseChestPoints(currentEncoded);
+      if (known.size() < 2 || current.size() < 2 || current.size() > known.size()) return false;
+
+      // At least half of the original chests must remain (minimum two). This
+      // permits partially destroyed decoys without matching a random single chest.
+      int minimumRemaining = Math.max(2, (int)Math.ceil(known.size() * 0.5));
+      if (current.size() < minimumRemaining) return false;
+
+      for (int rotation = 0; rotation < 4; rotation++) {
+         List<ChestPoint> rotated = new ArrayList<>(current.size());
+         for (ChestPoint point : current) rotated.add(rotate(point, rotation));
+
+         // Try every possible anchor pair. This makes the comparison independent
+         // of the fake base's offset inside the chunk and tolerant of rotations.
+         for (ChestPoint candidateAnchor : rotated) {
+            for (ChestPoint knownAnchor : known) {
+               int dx = knownAnchor.x - candidateAnchor.x;
+               int dy = knownAnchor.y - candidateAnchor.y;
+               int dz = knownAnchor.z - candidateAnchor.z;
+               boolean subset = true;
+
+               for (ChestPoint point : rotated) {
+                  if (!known.contains(new ChestPoint(point.x + dx, point.y + dy, point.z + dz))) {
+                     subset = false;
+                     break;
+                  }
+               }
+               if (subset) return true;
+            }
+         }
+      }
+      return false;
+   }
+
+   private static Set<ChestPoint> parseChestPoints(List<String> encoded) {
+      Set<ChestPoint> points = new HashSet<>();
+      if (encoded == null) return points;
+      for (String value : encoded) {
+         if (value == null) continue;
+         String[] parts = value.split(",");
+         if (parts.length != 3) continue;
+         try {
+            points.add(new ChestPoint(
+               Integer.parseInt(parts[0]),
+               Integer.parseInt(parts[1]),
+               Integer.parseInt(parts[2])
+            ));
+         } catch (NumberFormatException ignored) {
+         }
+      }
+      return points;
+   }
+
+   private static ChestPoint rotate(ChestPoint point, int rotation) {
+      return switch (rotation) {
+         case 1 -> new ChestPoint(point.z, point.y, -point.x);
+         case 2 -> new ChestPoint(-point.x, point.y, -point.z);
+         case 3 -> new ChestPoint(-point.z, point.y, point.x);
+         default -> point;
+      };
+   }
+
+   private Path fakePatternsFile() {
+      return Storage.dir().resolve("fake_patterns_" + this.ctxKey + ".json");
+   }
+
+   private void saveFakePatterns() {
+      if (this.ctxKey != null) {
+         try {
+            writeAtomically(this.fakePatternsFile(), GSON.toJson(this.fakePatterns));
+         } catch (IOException exception) {
+            Nightfall.LOGGER.error("Fake-Base-Fingerprints konnten nicht gespeichert werden", exception);
+         }
+      }
+   }
+
+   private void loadFakePatterns() {
+      this.fakePatterns.clear();
+      Path file = this.fakePatternsFile();
+      if (!Files.exists(file)) return;
+
+      try {
+         List<FakePattern> loaded = (List<FakePattern>)GSON.fromJson(Files.readString(file), FAKE_LIST);
+         if (loaded == null) return;
+
+         int skipped = 0;
+         for (FakePattern pattern : loaded) {
+            if (pattern == null || pattern.seenChunks == null) {
+               skipped++;
+               continue;
+            }
+            if (pattern.chestPositions == null) pattern.chestPositions = new ArrayList<>();
+            this.fakePatterns.add(pattern);
+         }
+         if (skipped > 0) {
+            Nightfall.LOGGER.warn("{} ungueltige Fake-Pattern-Eintraege uebersprungen: {}", skipped, file);
+         }
+      } catch (Exception exception) {
+         Nightfall.LOGGER.error("Fake-Base-Fingerprints defekt: {}", file, exception);
       }
    }
 
@@ -827,6 +1063,22 @@ public class BaseFinder extends Module {
       } catch (AtomicMoveNotSupportedException unsupported) {
          Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
       }
+   }
+
+   private static final class FakePattern {
+      int version;
+      int storage;
+      int chest;
+      int shulker;
+      int hopper;
+      int furnace;
+      int redstone;
+      int spawner;
+      List<String> chestPositions = new ArrayList<>();
+      List<String> seenChunks = new ArrayList<>();
+   }
+
+   private record ChestPoint(int x, int y, int z) {
    }
 
    private static final class Mark {
