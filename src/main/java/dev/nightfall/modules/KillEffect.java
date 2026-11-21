@@ -66,7 +66,7 @@ public final class KillEffect extends Module {
       if (lastTarget != null && now - lastAttackNanos <= 4_000_000_000L) {
          boolean dead = lastTarget.method_6032() <= 0.0F || !lastTarget.method_5805();
          if (dead && (!onlyPlayers.get() || lastTarget instanceof net.minecraft.class_1657)) {
-            class_243 pos = lastTarget.method_19538();
+            class_243 pos = new class_243(lastTarget.method_23317(), lastTarget.method_23318(), lastTarget.method_23321());
             effects.add(new Effect(pos, now, System.nanoTime() ^ lastTarget.method_5667().getLeastSignificantBits()));
             while (effects.size() > maxEffects.getInt()) effects.remove(0);
             lastTarget = null;
