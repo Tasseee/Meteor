@@ -20,6 +20,7 @@ public abstract class EspBase extends Module {
    protected final NumberSetting maxObjects = this.add(new NumberSetting("Max Objekte", 512.0, 4.0, 512.0, 4.0));
    protected final NumberSetting thickness = this.add(new NumberSetting("Linienstaerke", 4.0, 1.0, 4.0, 1.0));
    protected final NumberSetting opacity = this.add(new NumberSetting("Transparenz", 1.0, 0.2, 1.0, 0.05));
+   protected final NumberSetting neonStrength = this.add(new NumberSetting("Neon-Staerke", 24.0, 0.0, 60.0, 4.0));
    protected final BoolSetting smoothing = this.add(new BoolSetting("Linien-Antialiasing", true));
    protected final BoolSetting distanceFade = this.add(new BoolSetting("Distanz-Fade", false));
    protected final NumberSetting fadeStart = this.add(new NumberSetting("Fade ab (Anteil)", 0.9, 0.1, 0.9, 0.05));
@@ -100,7 +101,7 @@ public abstract class EspBase extends Module {
                shown = Draw.box(ctx,
                   box.field_1323 + offsetX, box.field_1322 + offsetY, box.field_1321 + offsetZ,
                   box.field_1320 + offsetX, box.field_1325 + offsetY, box.field_1324 + offsetZ,
-                  col, this.effectiveThickness(), this.style.is("3D"), this.smoothing.get());
+                  col, this.effectiveThickness(), this.style.is("3D"), this.smoothing.get(), this.neonStrength.getInt());
             }
 
             boolean centerOk = Projection.project(cx, cy, cz, this.pt);
@@ -130,7 +131,7 @@ public abstract class EspBase extends Module {
    }
 
    private void drawCleanLabel(class_332 ctx, String label, float centerX, float topY) {
-      String styledLabel = "§f§l" + label;
+      String styledLabel = "Â§fÂ§l" + label;
       int w = mc.field_1772.method_1727(styledLabel);
       int x = Math.round(centerX - w / 2.0F);
       int y = Math.round(topY);

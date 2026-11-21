@@ -3,6 +3,7 @@ package dev.nightfall.modules;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
+import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Draw;
 import dev.nightfall.util.Projection;
@@ -17,6 +18,9 @@ import net.minecraft.class_332;
 public final class BlockESP extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 64.0, 8.0, 64.0, 4.0));
    private final NumberSetting maxBlocks = this.add(new NumberSetting("Max Markierungen", 600.0, 20.0, 600.0, 20.0));
+   private final NumberSetting thickness = this.add(new NumberSetting("Linienstaerke", 2.0, 1.0, 4.0, 1.0));
+   private final NumberSetting neonStrength = this.add(new NumberSetting("Neon-Staerke", 24.0, 0.0, 60.0, 4.0));
+   private final ColorSetting color = this.add(new ColorSetting("Farbe", 0xAA65FF));
    private final BoolSetting diamonds = this.add(new BoolSetting("Diamanterz", true));
    private final BoolSetting ancient = this.add(new BoolSetting("Antiker Schrott", true));
    private final BoolSetting chests = this.add(new BoolSetting("Kisten", true));
@@ -84,7 +88,7 @@ public final class BlockESP extends Module {
    public void renderHud(class_332 ctx) {
       if (Projection.valid()) {
          for (class_238 box : this.found) {
-            Draw.box(ctx, box, -576035329, 1, true);
+            Draw.box(ctx, box, 0xDD000000 | this.color.rgb(), this.thickness.getInt(), true, true, this.neonStrength.getInt());
          }
       }
    }

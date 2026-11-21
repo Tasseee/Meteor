@@ -3,6 +3,7 @@ package dev.nightfall.modules;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
+import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Draw;
 import dev.nightfall.util.Projection;
@@ -16,14 +17,17 @@ import net.minecraft.class_332;
 
 public final class StructureESP extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 48.0, 8.0, 96.0, 8.0));
+   private final NumberSetting thickness = this.add(new NumberSetting("Linienstaerke", 2.0, 1.0, 4.0, 1.0));
+   private final NumberSetting neonStrength = this.add(new NumberSetting("Neon-Staerke", 24.0, 0.0, 60.0, 4.0));
+   private final ColorSetting color = this.add(new ColorSetting("Farbe", 0xF4B942));
    private final BoolSetting spawners = this.add(new BoolSetting("Spawner", true));
    private final BoolSetting portals = this.add(new BoolSetting("Portalrahmen", true));
    private final BoolSetting trial = this.add(new BoolSetting("Trial-Spawner", true));
    private final BoolSetting chests = this.add(new BoolSetting("Kisten", true));
-   private final BoolSetting suspicious = this.add(new BoolSetting("Verdächtige Bloecke", true));
-   private final BoolSetting extraContainers = this.add(new BoolSetting("Weitere Truhen und Fässer", true));
-   private final BoolSetting pots = this.add(new BoolSetting("Dekotöpfe", true));
-   private final BoolSetting beeHomes = this.add(new BoolSetting("Bienenstöcke", true));
+   private final BoolSetting suspicious = this.add(new BoolSetting("VerdÃ¤chtige Bloecke", true));
+   private final BoolSetting extraContainers = this.add(new BoolSetting("Weitere Truhen und FÃ¤sser", true));
+   private final BoolSetting pots = this.add(new BoolSetting("DekotÃ¶pfe", true));
+   private final BoolSetting beeHomes = this.add(new BoolSetting("BienenstÃ¶cke", true));
    private final BoolSetting gateways = this.add(new BoolSetting("End-Gateways", true));
    private final BoolSetting shulkers = this.add(new BoolSetting("Shulkerboxen", true));
    private final BoolSetting vaults = this.add(new BoolSetting("Tresore", true));
@@ -89,7 +93,7 @@ public final class StructureESP extends Module {
    public void renderHud(class_332 ctx) {
       if (Projection.valid()) {
          for (class_238 box : this.positions) {
-            Draw.box(ctx, box, -571164350, 1, true);
+            Draw.box(ctx, box, 0xDD000000 | this.color.rgb(), this.thickness.getInt(), true, true, this.neonStrength.getInt());
          }
       }
    }
