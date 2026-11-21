@@ -632,18 +632,12 @@ public final class NightfallGuiScreen extends class_437 {
       int sw = this.field_22789;
       int sh = this.field_22790;
       if (click && inside(mx, my, 10 + edge, 9 + edge, Math.max(126, Math.min(150, sw / 6)) - 8, 54)) {
-         this.activeTab = "Config";
-         this.tabChangedAt = System.nanoTime();
-         this.scroll = 0;
+         this.selectTab("Config");
          click = false;
       }
       int side = Math.max(126, Math.min(150, sw / 6));
       int x1 = side + 18 + edge;
-      int gap = Math.round(12 * scale);
-      int panelW = Math.min(Math.round(310 * scale), (sw - x1 - 30 - gap - edge) / 2);
-      int x2 = x1 + panelW + gap;
       int topY = 72 + edge;
-      int bottomY = Math.max(220 + edge, sh / 2 + 8);
       int headerH = 54;
 
       if (click && inside(mx, my, 8 + edge, 8 + edge, sw - 16 - edge * 2, headerH)) {
@@ -686,8 +680,7 @@ public final class NightfallGuiScreen extends class_437 {
          ctx.method_51433(mc.field_1772, icon(tab), 23 + edge, ny + 10, Theme.ACCENT, true);
          ctx.method_51433(mc.field_1772, tab, 49 + edge, ny + 10, active ? Theme.TEXT : Theme.TEXT_DIM, true);
          if (click && over) {
-            this.activeTab = tab;
-            this.tabChangedAt = System.nanoTime();
+            this.selectTab(tab);
             click = false;
          }
       }
@@ -698,19 +691,11 @@ public final class NightfallGuiScreen extends class_437 {
       ctx.method_51433(mc.field_1772, "Finni0512", 49 + edge, profileY + 10, Theme.TEXT, true);
       ctx.method_51433(mc.field_1772, "Premium", 49 + edge, profileY + 25, Theme.ACCENT, false);
 
-      if (this.activeTab.equals("Config")) {
-         this.drawAnimatedWindow(ctx, "Config", x1, topY, Math.max(260, sw - x1 - 18), mx, my, click, rightClick, mc, true);
-      } else {
-         String[] visibleTabs = {"Combat", "Visuals", "Player", "HUD"};
-         int[] xs = {x1, x2, x1, x2};
-         int[] ys = {topY, topY, bottomY, bottomY};
-         for (int i = 0; i < visibleTabs.length; i++) {
-            String tab = visibleTabs[i];
-            if (this.opened(tab)) {
-               this.drawAnimatedWindow(ctx, tab, xs[i], ys[i], panelW, mx, my, click, rightClick, mc, tab.equals(this.activeTab));
-            }
-         }
-      }
+      int windowW = Math.max(260, sw - x1 - 18 - edge);
+      int[] activePanel = this.panel(this.activeTab, x1, topY);
+      int windowX = Math.max(x1, Math.min(sw - windowW - 8, activePanel[0]));
+      int windowY = Math.max(64 + edge, Math.min(sh - 80, activePanel[1]));
+      this.drawAnimatedWindow(ctx, this.activeTab, windowX, windowY, windowW, mx, my, click, rightClick, mc, true);
 
 
       if (this.numberSlider != null) {
@@ -786,9 +771,7 @@ public final class NightfallGuiScreen extends class_437 {
          String label = tab.length() > 9 ? tab.substring(0, 8) : tab;
          ctx.method_51433(mc.field_1772, label, 15, ny + Math.max(4, (navStep - 8) / 2), active ? Theme.TEXT : Theme.TEXT_DIM, true);
          if (click && over) {
-            this.activeTab = tab;
-            this.tabChangedAt = System.nanoTime();
-            this.scroll = 0;
+            this.selectTab(tab);
             click = false;
          }
       }
