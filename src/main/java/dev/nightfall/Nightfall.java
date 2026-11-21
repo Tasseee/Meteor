@@ -21,6 +21,8 @@ import dev.nightfall.render.FakeLagGhostRenderer;
 import dev.nightfall.render.FakeLagHud;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import dev.nightfall.render.SkyVisualRenderer;
+import dev.nightfall.render.SkyRibbonsRenderer;
+import dev.nightfall.modules.SkyRibbons;
 import dev.nightfall.scanner.WaypointManager;
 import dev.nightfall.seed.SeedResultListener;
 import dev.nightfall.util.ModuleUsageStats;
@@ -65,8 +67,10 @@ public class Nightfall implements ClientModInitializer {
       GlassChamsItemRenderer.register();
       HudElementRegistry.attachElementBefore(VanillaHudElements.HOTBAR, class_2960.method_60655("nightfall", "atmosphere"), (ctx, tickCounter) -> {
          ModuleManager.get(Atmosphere.class).renderAtmosphere(ctx);
+         ModuleManager.get(SkyRibbons.class).renderSkyAtmosphere(ctx);
       });
       SkyVisualRenderer.register();
+      SkyRibbonsRenderer.register();
       HatsRenderer.register();
       JumpWaveRenderer.register();
       FakeLagGhostRenderer.register();
