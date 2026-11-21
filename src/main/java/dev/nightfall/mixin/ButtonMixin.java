@@ -2,7 +2,7 @@ package dev.nightfall.mixin;
 
 import net.minecraft.class_310;
 import net.minecraft.class_332;
-import net.minecraft.class_339;
+import net.minecraft.class_4264;
 import net.minecraft.class_4185;
 import net.minecraft.class_2561;
 import net.minecraft.class_327;
@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * Einheitlicher Stil fuer normale Buttons. Slider, Checkboxen und andere Widgets
  * behalten ihre jeweilige Vanilla-Darstellung.
  */
-@Mixin(class_339.class)
+@Mixin(class_4264.class)
 abstract class ButtonMixin {
    @Shadow public int field_22760;
    @Shadow public int field_22761;
@@ -30,7 +30,7 @@ abstract class ButtonMixin {
    @Unique private float nightfall$hover;
    @Unique private long nightfall$lastFrameNanos;
 
-   @Inject(method = "method_48579", at = @At("HEAD"), cancellable = true)
+   @Inject(method = "method_48579(Lnet/minecraft/class_332;IIF)V", at = @At("HEAD"), cancellable = true)
    private void nightfall$button(class_332 context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
       if (!((Object)this instanceof class_4185)) return;
 
