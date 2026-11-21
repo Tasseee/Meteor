@@ -12,6 +12,10 @@ public final class ChunkResult {
    public long foundAtMillis;
    public long lastScanTick;
    public final List<String> reasons = new ArrayList<>();
+   /** Diagnostic captured when a previously SUS chunk is reclassified as CLEAN. */
+   public String lastFalsePositiveAnalysis;
+   public double lastFalsePositiveScore;
+   public final List<String> lastFalsePositiveReasons = new ArrayList<>();
 
    public ChunkResult(int cx, int cz) {
       this.cx = cx;
