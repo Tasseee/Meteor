@@ -5,6 +5,8 @@
   "client": [
     "HeldItemRendererMixin",
     "CameraMixin",
+    "EntityMixin",
+    "MouseMixin",
     "GameRendererAccessor",
     "CameraProjectionAccessor",
     "AbstractSignEditScreenMixin",
