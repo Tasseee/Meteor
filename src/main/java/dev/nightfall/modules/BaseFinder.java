@@ -113,7 +113,20 @@ public class BaseFinder extends Module {
    }
 
    public boolean isFakeChunk(int cx, int cz) {
-      // Explicit FakeBases waypoints suppress their containing chunk.
+      return this.isSuppressedChunk(cx, cz, true);
+   }
+
+   /**
+    * Returns true when the chunk is already classified as a fake-base/decoy
+    * location. StorageESP must use this broader classification than the
+    * three-hit confirmation used for the public fake marker.
+    */
+   public boolean isSuppressedChunk(int cx, int cz) {
+      return this.isSuppressedChunk(cx, cz, false);
+   }
+
+   private boolean isSuppressedChunk(int cx, int cz, boolean requireConfirmedPattern) {
+      // Explicit FakeBases waypoints suppress their containing chunk immediately.
       for (Waypoint waypoint : WaypointManager.all()) {
          if (waypoint != null
             && FakeBases.CATEGORY.equalsIgnoreCase(waypoint.category)
@@ -124,17 +137,18 @@ public class BaseFinder extends Module {
          }
       }
 
-      // Repeated chest layouts are confirmed after three matching chunks.
       String location = cx + "," + cz;
       String currentContext = Storage.server() + "_" + Storage.dim();
-      if (currentContext.equals(this.ctxKey)) {
-         for (FakePattern pattern : this.fakePatterns) {
+      if (!currentContext.equals(this.ctxKey)) return false;
+
+      for (FakePattern pattern : this.fakePatterns) {
          if (pattern != null && pattern.seenChunks != null
-            && pattern.seenChunks.size() >= 3 && pattern.seenChunks.contains(location)) {
+            && pattern.seenChunks.contains(location)
+            && (!requireConfirmedPattern || pattern.seenChunks.size() >= 3)) {
             return true;
          }
       }
-      }
+
       return false;
    }
 
