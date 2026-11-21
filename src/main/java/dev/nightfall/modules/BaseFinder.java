@@ -51,7 +51,7 @@ import net.minecraft.class_8887;
 
 public class BaseFinder extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Range (Chunks)", 32.0, 2.0, 48.0, 1.0));
-   private final NumberSetting budgetMs = this.add(new NumberSetting("Budget ms/Tick", 2.5, 0.2, 5.0, 0.1));
+   private final NumberSetting budgetMs = this.add(new NumberSetting("Budget ms/Tick", 0.8, 0.2, 5.0, 0.1));
    private final NumberSetting rescan = this.add(new NumberSetting("Rescan (s)", 8.0, 2.0, 120.0, 1.0));
    private final NumberSetting threshold = this.add(new NumberSetting("Min Score", 8.0, 3.0, 100.0, 1.0));
    private final NumberSetting minSignals = this.add(new NumberSetting("Min. Signaltypen", 2.0, 1.0, 10.0, 1.0));
@@ -295,7 +295,7 @@ public class BaseFinder extends Module {
          }
 
          this.tick++;
-         if (this.detectMobClusters.get() && this.tick % 20L == 0L) {
+         if (this.detectMobClusters.get() && this.tick % 40L == 0L) {
             this.rebuildMobClusterCounts(w);
          } else if (!this.detectMobClusters.get()) {
             this.mobClusterMaxByChunk.clear();
