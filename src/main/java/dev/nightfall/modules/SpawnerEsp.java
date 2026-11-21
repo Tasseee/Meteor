@@ -17,6 +17,7 @@ public class SpawnerEsp extends BlockEntityEsp {
    private final BoolSetting ignoreChunkCorners = this.add(new BoolSetting("Spawner in Chunk-Ecken ignorieren", true));
    private final NumberSetting cornerMargin = this.add(new NumberSetting("Ecken-Abstand", 2.0, 1.0, 4.0, 1.0));
    private final Map<class_2338, Boolean> filterCache = new HashMap<>();
+   private static final Map<class_2248, String> BLOCK_ID_CACHE = new HashMap<>();
    private int filterCacheTimer;
 
    public SpawnerEsp() {
@@ -54,14 +55,18 @@ public class SpawnerEsp extends BlockEntityEsp {
       int cobble = 0;
       int mossy = 0;
       boolean chest = false;
+
+      scan:
       for (int x = -6; x <= 6; x++) {
          for (int y = -4; y <= 4; y++) {
             for (int z = -6; z <= 6; z++) {
-               class_2338 p = center.method_10069(x, y, z);
-               String id = blockId(p);
+               class_2338 pos = center.method_10069(x, y, z);
+               String id = blockId(pos);
                if (id.equals("minecraft:cobblestone")) cobble++;
                else if (id.equals("minecraft:mossy_cobblestone")) mossy++;
                else if (id.equals("minecraft:chest") || id.equals("minecraft:trapped_chest")) chest = true;
+
+               if (chest && cobble + mossy >= 18 && mossy >= 3) break scan;
             }
          }
       }
@@ -73,6 +78,8 @@ public class SpawnerEsp extends BlockEntityEsp {
       int fortress = 0;
       int mineshaft = 0;
       int bastion = 0;
+
+      scan:
       for (int x = -8; x <= 8; x++) {
          for (int y = -5; y <= 5; y++) {
             for (int z = -8; z <= 8; z++) {
@@ -86,6 +93,8 @@ public class SpawnerEsp extends BlockEntityEsp {
                   || id.equals("minecraft:cobweb")) mineshaft++;
                if (id.equals("minecraft:polished_blackstone_bricks") || id.equals("minecraft:blackstone")
                   || id.equals("minecraft:gilded_blackstone")) bastion++;
+
+               if (stronghold >= 20 || fortress >= 12 || mineshaft >= 3 || bastion >= 20) break scan;
             }
          }
       }
@@ -94,7 +103,10 @@ public class SpawnerEsp extends BlockEntityEsp {
 
    private String blockId(class_2338 pos) {
       class_2248 block = mc.field_1687.method_8320(pos).method_26204();
-      return ((class_2378<class_2248>) class_7923.field_41175).method_10221(block).toString();
+      return BLOCK_ID_CACHE.computeIfAbsent(
+         block,
+         value -> ((class_2378<class_2248>)class_7923.field_41175).method_10221(value).toString()
+      );
    }
 
    @Override
