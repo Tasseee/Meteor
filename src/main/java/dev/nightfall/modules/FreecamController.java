@@ -177,7 +177,6 @@ public final class FreecamController extends Module {
       }
       // The camera entity is only a client-side render proxy. It never controls
       // the real player's collision box, so camera movement remains noclip.
-      cam.method_5743(true);
       previousCamX = camX;
       previousCamY = camY;
       previousCamZ = camZ;
