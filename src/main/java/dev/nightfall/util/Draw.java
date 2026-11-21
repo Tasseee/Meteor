@@ -60,6 +60,14 @@ public final class Draw {
    }
 
    public static boolean box(class_332 ctx, double worldMinX, double worldMinY, double worldMinZ, double worldMaxX, double worldMaxY, double worldMaxZ, int argb, int th, boolean threeD, boolean smooth) {
+      return box(ctx, worldMinX, worldMinY, worldMinZ, worldMaxX, worldMaxY, worldMaxZ, argb, th, threeD, smooth, 0);
+   }
+
+   public static boolean box(class_332 ctx, class_238 b, int argb, int th, boolean threeD, boolean smooth, int glowOpacity) {
+      return box(ctx, b.field_1323, b.field_1322, b.field_1321, b.field_1320, b.field_1325, b.field_1324, argb, th, threeD, smooth, glowOpacity);
+   }
+
+   public static boolean box(class_332 ctx, double worldMinX, double worldMinY, double worldMinZ, double worldMaxX, double worldMaxY, double worldMaxZ, int argb, int th, boolean threeD, boolean smooth, int glowOpacity) {
       int any = 0;
       float minX = Float.MAX_VALUE;
       float minY = Float.MAX_VALUE;
@@ -132,7 +140,7 @@ public final class Draw {
          int x1 = Math.max(0, Math.min(Projection.width(), Math.round(maxX)));
          int y1 = Math.max(0, Math.min(Projection.height(), Math.round(maxY)));
          if (x1 > x0 && y1 > y0) {
-            roundedOutline(ctx, x0, y0, x1, y1, argb, th, smooth);
+            roundedOutline(ctx, x0, y0, x1, y1, argb, th, smooth, glowOpacity);
             return true;
          }
          return false;
@@ -150,7 +158,7 @@ public final class Draw {
                double by = (j & 2) == 0 ? worldMinY : worldMaxY;
                double bz = (j & 4) == 0 ? worldMinZ : worldMaxZ;
                if (Projection.projectSegment(ax, ay, az, bx, by, bz, PROJECTED_LINE)) {
-                  line(ctx, PROJECTED_LINE[0], PROJECTED_LINE[1], PROJECTED_LINE[2], PROJECTED_LINE[3], argb, th, smooth);
+                  styledLine(ctx, PROJECTED_LINE[0], PROJECTED_LINE[1], PROJECTED_LINE[2], PROJECTED_LINE[3], argb, th, smooth, glowOpacity);
                   rendered = true;
                }
             }
@@ -159,10 +167,17 @@ public final class Draw {
       return rendered;
    }
 
-   private static void roundedOutline(class_332 ctx, int x0, int y0, int x1, int y1, int argb, int thickness, boolean smooth) {
+   private static void roundedOutline(class_332 ctx, int x0, int y0, int x1, int y1, int argb, int thickness, boolean smooth, int glowOpacity) {
       float radius = Math.min(4.0F, Math.min((x1 - x0) * 0.2F, (y1 - y0) * 0.2F));
       if (radius < 1.5F) {
          int t = Math.max(1, Math.min(thickness, Math.min(x1 - x0, y1 - y0)));
+         int halo = haloColor(argb, glowOpacity);
+         if (glowOpacity > 0) {
+            ctx.method_25294(x0 - 2, y0 - 2, x1 + 2, Math.min(y1 + 2, y0 + t + 2), halo);
+            ctx.method_25294(x0 - 2, Math.max(y0 - 2, y1 - t - 2), x1 + 2, y1 + 2, halo);
+            ctx.method_25294(x0 - 2, y0 - 2, Math.min(x1 + 2, x0 + t + 2), y1 + 2, halo);
+            ctx.method_25294(Math.max(x0 - 2, x1 - t - 2), y0 - 2, x1 + 2, y1 + 2, halo);
+         }
          ctx.method_25294(x0, y0, x1, Math.min(y1, y0 + t), argb);
          ctx.method_25294(x0, Math.max(y0, y1 - t), x1, y1, argb);
          ctx.method_25294(x0, y0, Math.min(x1, x0 + t), y1, argb);
@@ -173,10 +188,10 @@ public final class Draw {
       float right = x1 - radius;
       float top = y0 + radius;
       float bottom = y1 - radius;
-      line(ctx, left, y0, right, y0, argb, thickness, smooth);
-      line(ctx, right, y1, left, y1, argb, thickness, smooth);
-      line(ctx, x0, top, x0, bottom, argb, thickness, smooth);
-      line(ctx, x1, bottom, x1, top, argb, thickness, smooth);
+      styledLine(ctx, left, y0, right, y0, argb, thickness, smooth, glowOpacity);
+      styledLine(ctx, right, y1, left, y1, argb, thickness, smooth, glowOpacity);
+      styledLine(ctx, x0, top, x0, bottom, argb, thickness, smooth, glowOpacity);
+      styledLine(ctx, x1, bottom, x1, top, argb, thickness, smooth, glowOpacity);
       for (int corner = 0; corner < 4; corner++) {
          float cx = corner == 0 || corner == 3 ? left : right;
          float cy = corner < 2 ? top : bottom;
@@ -192,11 +207,23 @@ public final class Draw {
             float angle = (float)Math.toRadians(start + step * 90.0F / 6.0F);
             float nextX = cx + (float)Math.cos(angle) * radius;
             float nextY = cy + (float)Math.sin(angle) * radius;
-            line(ctx, previousX, previousY, nextX, nextY, argb, thickness, smooth);
+            styledLine(ctx, previousX, previousY, nextX, nextY, argb, thickness, smooth, glowOpacity);
             previousX = nextX;
             previousY = nextY;
          }
       }
+   }
+
+   private static void styledLine(class_332 ctx, float x1, float y1, float x2, float y2, int argb, int thickness, boolean smooth, int glowOpacity) {
+      if (glowOpacity > 0) {
+         line(ctx, x1, y1, x2, y2, haloColor(argb, glowOpacity), thickness + 4, false);
+      }
+      line(ctx, x1, y1, x2, y2, argb, thickness, smooth);
+   }
+
+   private static int haloColor(int argb, int glowOpacity) {
+      int alpha = (argb >>> 24) * Math.max(0, Math.min(100, glowOpacity)) / 100;
+      return (argb & 0x00FFFFFF) | (alpha << 24);
    }
 
    public static boolean fillProjectedBounds(class_332 ctx, class_238 b, int argb) {

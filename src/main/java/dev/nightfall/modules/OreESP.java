@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Draw;
 import dev.nightfall.util.Projection;
@@ -19,7 +20,18 @@ import net.minecraft.class_7923;
 
 public final class OreESP extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 48.0, 8.0, 96.0, 4.0));
-   private final NumberSetting maxBlocks = this.add(new NumberSetting("Max Erzblöcke pro Scan", 500.0, 20.0, 1000.0, 20.0));
+   private final NumberSetting neonStrength = this.add(new NumberSetting("Neon-Staerke", 24.0, 0.0, 60.0, 4.0));
+   private final ColorSetting debrisColor = this.add(new ColorSetting("Farbe Antiker Schrott", 0xB56CFF));
+   private final ColorSetting diamondColor = this.add(new ColorSetting("Farbe Diamant", 0x40DFFF));
+   private final ColorSetting emeraldColor = this.add(new ColorSetting("Farbe Smaragd", 0x45E08A));
+   private final ColorSetting goldColor = this.add(new ColorSetting("Farbe Gold", 0xFFD34D));
+   private final ColorSetting ironColor = this.add(new ColorSetting("Farbe Eisen", 0xE1D7C8));
+   private final ColorSetting copperColor = this.add(new ColorSetting("Farbe Kupfer", 0xFF9255));
+   private final ColorSetting lapisColor = this.add(new ColorSetting("Farbe Lapislazuli", 0x568CFF));
+   private final ColorSetting redstoneColor = this.add(new ColorSetting("Farbe Redstone", 0xFF5757));
+   private final ColorSetting coalColor = this.add(new ColorSetting("Farbe Kohle", 0x9AA3AD));
+   private final ColorSetting otherColor = this.add(new ColorSetting("Farbe Weitere Erze", 0xFFFFFF));
+   private final NumberSetting maxBlocks = this.add(new NumberSetting("Max ErzblÃ¶cke pro Scan", 500.0, 20.0, 1000.0, 20.0));
    private final List<OreMarker> found = new ArrayList<>();
    private static final int[][] NEIGHBORS = {
       {1, 0, 0}, {-1, 0, 0},
@@ -29,7 +41,7 @@ public final class OreESP extends Module {
    private int timer;
 
    public OreESP() {
-      super("OreESP", "Umschließt zusammenhängende Erzadern im geladenen Gebiet mit je einer Box; Netherquarz und Nethergold werden ignoriert.", Category.VISUALS);
+      super("OreESP", "UmschlieÃŸt zusammenhÃ¤ngende Erzadern im geladenen Gebiet mit je einer Box; Netherquarz und Nethergold werden ignoriert.", Category.VISUALS);
    }
 
    private String blockId(class_2248 block) {
@@ -46,16 +58,16 @@ public final class OreESP extends Module {
 
    private int oreColor(class_2248 block) {
       String id = this.blockId(block);
-      if (id.equals("minecraft:ancient_debris")) return 0xFFB56CFF;
-      if (id.endsWith("diamond_ore")) return 0xFF40DFFF;
-      if (id.endsWith("emerald_ore")) return 0xFF45E08A;
-      if (id.endsWith("gold_ore")) return 0xFFFFD34D;
-      if (id.endsWith("iron_ore")) return 0xFFE1D7C8;
-      if (id.endsWith("copper_ore")) return 0xFFFF9255;
-      if (id.endsWith("lapis_ore")) return 0xFF568CFF;
-      if (id.endsWith("redstone_ore")) return 0xFFFF5757;
-      if (id.endsWith("coal_ore")) return 0xFF9AA3AD;
-      return 0xFFFFFFFF;
+      if (id.equals("minecraft:ancient_debris")) return 0xFF000000 | this.debrisColor.rgb();
+      if (id.endsWith("diamond_ore")) return 0xFF000000 | this.diamondColor.rgb();
+      if (id.endsWith("emerald_ore")) return 0xFF000000 | this.emeraldColor.rgb();
+      if (id.endsWith("gold_ore")) return 0xFF000000 | this.goldColor.rgb();
+      if (id.endsWith("iron_ore")) return 0xFF000000 | this.ironColor.rgb();
+      if (id.endsWith("copper_ore")) return 0xFF000000 | this.copperColor.rgb();
+      if (id.endsWith("lapis_ore")) return 0xFF000000 | this.lapisColor.rgb();
+      if (id.endsWith("redstone_ore")) return 0xFF000000 | this.redstoneColor.rgb();
+      if (id.endsWith("coal_ore")) return 0xFF000000 | this.coalColor.rgb();
+      return 0xFF000000 | this.otherColor.rgb();
    }
 
    private OreMarker collectVein(class_2338 start, class_2248 ore, Set<class_2338> visited) {
@@ -158,7 +170,7 @@ public final class OreESP extends Module {
    public void renderHud(class_332 ctx) {
       if (Projection.valid()) {
          for (OreMarker marker : this.found) {
-            Draw.box(ctx, marker.box(), marker.color(), 2, true);
+            Draw.box(ctx, marker.box(), marker.color(), 2, true, true, this.neonStrength.getInt());
          }
       }
    }

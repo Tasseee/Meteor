@@ -3,7 +3,9 @@ package dev.nightfall.modules;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
+import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.ListSetting;
+import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Draw;
 import dev.nightfall.util.Projection;
@@ -31,9 +33,14 @@ public final class EntityEsp2D extends Module {
    private final NumberSetting thickness = this.add(new NumberSetting("Linienstaerke", 1.5, 0.5, 4.0, 0.5));
    private final NumberSetting fillAlpha = this.add(new NumberSetting("Fuellen (Alpha)", 35.0, 0.0, 120.0, 5.0));
    private final NumberSetting smoothing = this.add(new NumberSetting("Smoothing", 0.55, 0.0, 0.95, 0.05));
+   private final ModeSetting colorMode = this.add(new ModeSetting("Farbschema", "Entity", "Entity", "Eigene"));
+   private final ColorSetting boxColor = this.add(new ColorSetting("Box-Farbe", 0x39FFB6));
    private final BoolSetting distanceFade = this.add(new BoolSetting("Distanz-Fade", true));
    private final BoolSetting glowLayer = this.add(new BoolSetting("Soft Glow", true));
+   private final ColorSetting glowColor = this.add(new ColorSetting("Neon-Farbe", 0x39FFB6));
    private final Map<Integer, double[]> boxCache = new HashMap<>();
+   private final Set<Integer> seenEntities = new HashSet<>();
+   private final double[] projectedBounds = new double[4];
    private final double[] projected = new double[2];
 
    public EntityEsp2D() {
@@ -63,7 +70,8 @@ public final class EntityEsp2D extends Module {
       double rangeSquared = maxRange * maxRange;
       float tickDelta = Projection.tickDelta();
       double smooth = this.smoothing.get();
-      Set<Integer> seen = new HashSet<>();
+      Set<Integer> seen = this.seenEntities;
+      seen.clear();
 
       for (class_1297 entity : mc.field_1687.method_18112()) {
          if (entity == null || entity == mc.field_1724 || !this.accept(entity)) continue;
@@ -85,23 +93,26 @@ public final class EntityEsp2D extends Module {
          double ox = x - currentX;
          double oy = y - currentY;
          double oz = z - currentZ;
-         double[] bounds = this.projectBounds(new class_238(
+         if (!this.projectBounds(new class_238(
             currentBox.field_1323 + ox,
             currentBox.field_1322 + oy,
             currentBox.field_1321 + oz,
             currentBox.field_1320 + ox,
             currentBox.field_1325 + oy,
             currentBox.field_1324 + oz
-         ));
-         if (bounds == null) continue;
+         ), this.projectedBounds)) continue;
 
          int id = entity.method_5628();
          seen.add(id);
-         double[] previous = this.boxCache.get(id);
-         if (previous != null && smooth > 0.0) {
-            for (int i = 0; i < 4; i++) bounds[i] = previous[i] * smooth + bounds[i] * (1.0 - smooth);
+         double[] bounds = this.boxCache.get(id);
+         if (bounds == null) {
+            bounds = this.projectedBounds.clone();
+            this.boxCache.put(id, bounds);
+         } else {
+            for (int i = 0; i < 4; i++) {
+               bounds[i] = bounds[i] * smooth + this.projectedBounds[i] * (1.0 - smooth);
+            }
          }
-         this.boxCache.put(id, bounds);
 
          double width = bounds[2] - bounds[0];
          double height = bounds[3] - bounds[1];
@@ -110,7 +121,7 @@ public final class EntityEsp2D extends Module {
          double fade = this.distanceFade.get()
             ? Math.max(0.35, Math.min(1.0, 1.2 - Math.sqrt(distanceSquared) / maxRange))
             : 1.0;
-         int rgb = this.colorFor(entity);
+         int rgb = this.colorMode.is("Eigene") ? this.boxColor.rgb() : this.colorFor(entity);
          int alpha = (int)(255.0 * fade);
          int left = (int)Math.floor(bounds[0]);
          int top = (int)Math.floor(bounds[1]);
@@ -124,10 +135,11 @@ public final class EntityEsp2D extends Module {
          }
 
          if (this.glowLayer.get()) {
+            int glowRgb = this.glowColor.rgb();
             this.drawRoundedOutline(ctx, bounds, radius + 2.0, Math.max(3, this.thickness.getInt() + 3),
-               Theme.withAlpha(rgb, (int)(18.0 * fade)));
+               Theme.withAlpha(glowRgb, (int)(18.0 * fade)));
             this.drawRoundedOutline(ctx, bounds, radius + 1.0, Math.max(2, this.thickness.getInt() + 1),
-               Theme.withAlpha(rgb, (int)(42.0 * fade)));
+               Theme.withAlpha(glowRgb, (int)(42.0 * fade)));
          }
          this.drawRoundedOutline(ctx, bounds, radius, Math.max(1, this.thickness.getInt()),
             Theme.withAlpha(rgb, alpha));
@@ -148,7 +160,7 @@ public final class EntityEsp2D extends Module {
       }
    }
 
-   private double[] projectBounds(class_238 box) {
+   private boolean projectBounds(class_238 box, double[] bounds) {
       double minX = Double.MAX_VALUE;
       double minY = Double.MAX_VALUE;
       double maxX = -Double.MAX_VALUE;
@@ -170,15 +182,19 @@ public final class EntityEsp2D extends Module {
 
       if (projectedCorners == 0 || maxX < 0.0 || maxY < 0.0
          || minX > Projection.width() || minY > Projection.height()) {
-         return null;
+         return false;
       }
 
       minX = Math.max(0.0, Math.min(Projection.width(), minX - 1.5));
       minY = Math.max(0.0, Math.min(Projection.height(), minY - 1.5));
       maxX = Math.max(0.0, Math.min(Projection.width(), maxX + 1.5));
       maxY = Math.max(0.0, Math.min(Projection.height(), maxY + 1.5));
-      if (maxX - minX < 1.0 || maxY - minY < 1.0) return null;
-      return new double[]{minX, minY, maxX, maxY};
+      if (maxX - minX < 1.0 || maxY - minY < 1.0) return false;
+      bounds[0] = minX;
+      bounds[1] = minY;
+      bounds[2] = maxX;
+      bounds[3] = maxY;
+      return true;
    }
 
    private void drawRoundedOutline(class_332 ctx, double[] b, double radius, int lineWidth, int argb) {

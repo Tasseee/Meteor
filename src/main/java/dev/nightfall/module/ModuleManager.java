@@ -99,6 +99,7 @@ import dev.nightfall.modules.Step;
 import dev.nightfall.modules.StorageEsp;
 import dev.nightfall.modules.StructureESP;
 import dev.nightfall.modules.TargetMarker;
+import dev.nightfall.modules.TargetBlockOutline;
 import dev.nightfall.modules.TargetStrafe;
 import dev.nightfall.modules.TextHuds;
 import dev.nightfall.modules.TrapCrit;
@@ -181,6 +182,7 @@ public final class ModuleManager {
       MODULES.add(new JumpCircles());
       MODULES.add(new MovementParticles());
       MODULES.add(new TargetMarker());
+      MODULES.add(new TargetBlockOutline());
       MODULES.add(new Atmosphere());
       MODULES.add(new FakeRain());
       MODULES.add(new SkyVisuals());

@@ -36,6 +36,8 @@ public final class FreecamController extends Module {
 
    private final dev.nightfall.module.setting.NumberSetting speed =
       this.add(new dev.nightfall.module.setting.NumberSetting("Geschwindigkeit", 0.6, 0.1, 3.0, 0.05));
+   private final dev.nightfall.module.setting.NumberSetting acceleration =
+      this.add(new dev.nightfall.module.setting.NumberSetting("Beschleunigung", 0.35, 0.1, 1.0, 0.05));
    private final dev.nightfall.module.setting.BoolSetting stopOnDamage =
       this.add(new dev.nightfall.module.setting.BoolSetting("Stopp bei Schaden", true));
    private final dev.nightfall.module.setting.BoolSetting hud =
@@ -234,11 +236,11 @@ public final class FreecamController extends Module {
          ? move.method_1029().method_1021(speedValue)
          : class_243.field_1353;
 
-      // Apply input immediately: no acceleration tail, no delayed start and
-      // no continued drift after the movement key is released.
-      velX = step.field_1352;
-      velY = step.field_1351;
-      velZ = step.field_1350;
+      // Ease toward the requested velocity for smoother starts, turns and stops.
+      double response = acceleration.get();
+      velX += (step.field_1352 - velX) * response;
+      velY += (step.field_1351 - velY) * response;
+      velZ += (step.field_1350 - velZ) * response;
       camX += velX;
       camY += velY;
       camZ += velZ;
