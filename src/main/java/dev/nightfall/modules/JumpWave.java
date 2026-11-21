@@ -43,7 +43,9 @@ public final class JumpWave extends Module {
    private final BoolSetting pulse = this.add(new BoolSetting("Sanft pulsieren", true));
    private final NumberSetting pulseStrength = this.add(new NumberSetting("Puls-Stärke", 0.12, 0.0, 0.35, 0.01));
 
+   private static final int MAX_SCAN_COLUMNS_PER_TICK = 256;
    private final List<Wave> waves = new ArrayList<>();
+   private final List<WaveScan> pendingScans = new ArrayList<>();
    private boolean wasOnGround = true;
    private double trackedFallDistance;
    private Object trackedWorld;
@@ -73,6 +75,7 @@ public final class JumpWave extends Module {
 
    private void resetState() {
       this.waves.clear();
+      this.pendingScans.clear();
       this.trackedFallDistance = 0.0;
    }
 
@@ -94,6 +97,7 @@ public final class JumpWave extends Module {
       long now = System.nanoTime();
       long lifetime = (long)(this.duration.get() * 1_000_000.0);
       this.waves.removeIf(wave -> now - wave.startNanos() >= lifetime);
+      this.pendingScans.removeIf(scan -> !this.waves.contains(scan.wave));
 
       boolean onGround = mc.field_1724.method_24828();
       double x = mc.field_1724.method_23317();
@@ -118,34 +122,61 @@ public final class JumpWave extends Module {
       }
 
       this.wasOnGround = onGround;
+      this.processPendingScans();
    }
 
    private void addWave(double x, double y, double z, double power, boolean impact) {
       class_2338 center = new class_2338((int)Math.floor(x), (int)Math.floor(y), (int)Math.floor(z));
       int scanRadius = (int)Math.ceil(this.radius.get() * 1.7 + this.ringWidth.get());
-      int verticalRange = this.heightRange.getInt();
-      List<Cell> cells = new ArrayList<>((scanRadius * 2 + 1) * (scanRadius * 2 + 1));
+      List<ScanOffset> offsets = buildScanOffsets(scanRadius);
+      Wave wave = new Wave(x, z, System.nanoTime(), power, impact, new ArrayList<>());
+      this.waves.add(wave);
+      this.pendingScans.add(new WaveScan(wave, center, offsets, this.heightRange.getInt()));
 
-      int scanRadiusSquared = scanRadius * scanRadius;
-      for (int dx = -scanRadius; dx <= scanRadius; dx++) {
-         for (int dz = -scanRadius; dz <= scanRadius; dz++) {
-            if (dx * dx + dz * dz > scanRadiusSquared) continue;
-            class_2338 top = this.findTop(center.method_10069(dx, 0, dz), verticalRange);
-            if (top == null) continue;
-
-            class_2680 state = mc.field_1687.method_8320(top);
-            var shape = state.method_26220(mc.field_1687, top);
-            double topY = top.method_10264() + shape.method_1107().field_1325;
-            cells.add(new Cell(top.method_10263(), top.method_10264(), top.method_10260(), topY));
-         }
+      while (this.waves.size() > this.maxWaves.getInt()) {
+         Wave removed = this.waves.remove(0);
+         this.pendingScans.removeIf(scan -> scan.wave == removed);
       }
-
-      if (cells.isEmpty()) return;
-      this.waves.add(new Wave(x, z, System.nanoTime(), power, impact, List.copyOf(cells)));
-      while (this.waves.size() > this.maxWaves.getInt()) this.waves.remove(0);
    }
 
-   private class_2338 findTop(class_2338 column, int verticalRange) {
+   /**
+    * Scan from the center outwards. This lets the visible leading ring have nearby
+    * ground samples almost immediately while the far edge is completed over later ticks.
+    */
+   private static List<ScanOffset> buildScanOffsets(int radius) {
+      int radiusSquared = radius * radius;
+      List<ScanOffset> offsets = new ArrayList<>((int)(Math.PI * radiusSquared));
+      for (int ring = 0; ring <= radius; ring++) {
+         for (int dx = -ring; dx <= ring; dx++) {
+            for (int dz = -ring; dz <= ring; dz++) {
+               if (Math.max(Math.abs(dx), Math.abs(dz)) != ring || dx * dx + dz * dz > radiusSquared) continue;
+               offsets.add(new ScanOffset(dx, dz));
+            }
+         }
+      }
+      return offsets;
+   }
+
+   private void processPendingScans() {
+      int budget = MAX_SCAN_COLUMNS_PER_TICK;
+      for (int scanIndex = 0; scanIndex < this.pendingScans.size() && budget > 0;) {
+         WaveScan scan = this.pendingScans.get(scanIndex);
+         while (scan.cursor < scan.offsets.size() && budget > 0) {
+            ScanOffset offset = scan.offsets.get(scan.cursor++);
+            Cell cell = this.findTop(scan.center.method_10069(offset.dx, 0, offset.dz), scan.verticalRange);
+            if (cell != null) scan.wave.cells().add(cell);
+            budget--;
+         }
+
+         if (scan.cursor >= scan.offsets.size()) {
+            this.pendingScans.remove(scanIndex);
+         } else {
+            scanIndex++;
+         }
+      }
+   }
+
+   private Cell findTop(class_2338 column, int verticalRange) {
       for (int dy = verticalRange; dy >= -verticalRange; dy--) {
          class_2338 pos = column.method_10086(dy);
          class_2680 state = mc.field_1687.method_8320(pos);
@@ -154,10 +185,28 @@ public final class JumpWave extends Module {
 
          class_2338 above = pos.method_10084();
          if (!mc.field_1687.method_8320(above).method_26220(mc.field_1687, above).method_1110()) continue;
-         return pos;
+         double topY = pos.method_10264() + shape.method_1107().field_1325;
+         return new Cell(pos.method_10263(), pos.method_10264(), pos.method_10260(), topY);
       }
       return null;
    }
+
+   private static final class WaveScan {
+      final Wave wave;
+      final class_2338 center;
+      final List<ScanOffset> offsets;
+      final int verticalRange;
+      int cursor;
+
+      WaveScan(Wave wave, class_2338 center, List<ScanOffset> offsets, int verticalRange) {
+         this.wave = wave;
+         this.center = center;
+         this.offsets = offsets;
+         this.verticalRange = verticalRange;
+      }
+   }
+
+   private record ScanOffset(int dx, int dz) {}
 
    public List<Wave> waves() { return this.waves; }
    public String renderMode() { return this.renderMode.get(); }
