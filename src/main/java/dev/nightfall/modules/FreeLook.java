@@ -7,6 +7,7 @@ import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import net.minecraft.class_310;
+import net.minecraft.class_5498;
 
 /**
  * Third-person camera rotation independent from the local player's view.
@@ -37,6 +38,7 @@ public final class FreeLook extends Module {
 
    private double targetDistance = 4.0;
    private double shownDistance = 4.0;
+   private class_5498 previousPerspective;
 
    public FreeLook() {
       super("FreeLook", "Dreht die Third-Person-Kamera unabhängig von der Blickrichtung des Spielers.", Category.VISUALS);
@@ -62,10 +64,6 @@ public final class FreeLook extends Module {
          Math.min(current.maxDistance.get(), current.targetDistance - vertical * current.scrollStep.get())
       );
       return true;
-   }
-
-   public boolean isFrontPerspective() {
-      return perspective.is("Dritte Person vorne");
    }
 
    public boolean isNoClip() {
@@ -103,6 +101,14 @@ public final class FreeLook extends Module {
       FreecamController freecam = ModuleManager.get(FreecamController.class);
       if (freecam.isEnabled()) freecam.setEnabled(false);
 
+      // Save the user's view and explicitly select a third-person perspective.
+      // This also sets Minecraft's inverseView flag, so CameraMixin does not need
+      // to modify the second boolean argument of Camera.update.
+      previousPerspective = mc.field_1690.method_31044();
+      mc.field_1690.method_31043(
+         perspective.is("Dritte Person vorne") ? class_5498.field_26666 : class_5498.field_26665
+      );
+
       cameraYaw = mc.field_1724.method_36454();
       cameraPitch = mc.field_1724.method_36455();
       targetDistance = shownDistance = startDistance.get();
@@ -110,7 +116,11 @@ public final class FreeLook extends Module {
 
    @Override
    protected void onDisable() {
-      // CameraMixin returns to vanilla rotation/perspective automatically.
+      class_310 mc = class_310.method_1551();
+      if (previousPerspective != null) {
+         mc.field_1690.method_31043(previousPerspective);
+         previousPerspective = null;
+      }
    }
 
    @Override
