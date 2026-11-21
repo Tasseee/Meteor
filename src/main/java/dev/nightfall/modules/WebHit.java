@@ -9,6 +9,8 @@ import net.minecraft.class_2246;
 import net.minecraft.class_2338;
 import net.minecraft.class_239;
 import net.minecraft.class_239.class_240;
+import net.minecraft.class_3965;
+import net.minecraft.class_3966;
 import net.minecraft.class_243;
 import net.minecraft.class_3959;
 import net.minecraft.class_3959.class_242;
@@ -26,19 +28,17 @@ public final class WebHit extends Module {
       if (!isEnabled() || mc.field_1687 == null || cam == null) return original;
 
       class_243 eye = cam.method_5836(tickProgress);
-      class_243 dir = cam.method_5720(tickProgress);
+      class_243 dir = cam.method_5720();
       class_243 end = eye.method_1019(dir.method_1021(range));
       class_239 hit = original;
       boolean skipped = false;
 
       for (int i = 0; i < maxWebs.getInt(); i++) {
-         if (!(hit instanceof class_239.class_240 blockHit) || blockHit.method_17777() != class_240.field_1332) break;
-
-         class_2338 pos = blockHit.method_17780();
-         if (!mc.field_1687.method_8320(pos).isOf(class_2246.field_10534)) break;
+         if (!(hit instanceof class_3965 blockHit)) break;
+         if (!mc.field_1687.method_8320(blockHit.method_17780()).method_27852(class_2246.field_10534)) break;
 
          class_243 start = blockHit.method_17784().method_1019(dir.method_1021(0.06));
-         if (start.squaredDistanceTo(eye) >= range * range) break;
+         if (start.method_1021(-1).method_1022(eye) >= range * range) break;
 
          hit = mc.field_1687.method_17742(new class_3959(
             start,
@@ -51,7 +51,7 @@ public final class WebHit extends Module {
       }
 
       if (!skipped) return original;
-      if (onlyIfEntity.get() && hit.method_17782() != class_240.field_1331) return original;
+      if (onlyIfEntity.get() && !(hit instanceof class_3966)) return original;
       return hit;
    }
 }
