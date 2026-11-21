@@ -30,6 +30,7 @@ public abstract class EspBase extends Module {
    protected final BoolSetting distance = this.add(new BoolSetting("Distanz", true));
    protected final ColorSetting color;
    private final double[] pt = new double[2];
+   private BaseFinder cachedBaseFinder;
 
    protected EspBase(String name, String desc, int defRange, int maxRange, int rgb) {
       this(name, desc, defRange, maxRange, rgb, 4);
@@ -65,7 +66,15 @@ public abstract class EspBase extends Module {
 
    protected void drawTarget(class_332 ctx, class_238 box, String label, int rgb, double offsetX, double offsetY, double offsetZ) {
       if (Projection.valid()) {
-         BaseFinder baseFinder = ModuleManager.get(BaseFinder.class);
+         BaseFinder baseFinder = this.cachedBaseFinder;
+         if (baseFinder == null) {
+            try {
+               baseFinder = ModuleManager.get(BaseFinder.class);
+               this.cachedBaseFinder = baseFinder;
+            } catch (Throwable ignored) {
+               baseFinder = null;
+            }
+         }
          if (baseFinder == null
             || !baseFinder.isFakeChunk(
                (int)Math.floor((box.field_1323 + box.field_1320) / 2.0 + offsetX) >> 4,
