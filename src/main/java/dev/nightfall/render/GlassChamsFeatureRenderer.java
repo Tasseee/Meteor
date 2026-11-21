@@ -72,7 +72,7 @@ public final class GlassChamsFeatureRenderer extends class_3887<class_10055, cla
 
       float alpha = module.coverSkin() ? 1.0F : module.fillAlpha() * pulse;
       submit(matrices, queue, state, model, texture, 1.005F, 1.005F, 1.005F,
-         alpha, module.color());
+         alpha, module.color(0.0F));
    }
 
    private void submit(
