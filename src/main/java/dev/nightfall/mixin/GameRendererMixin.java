@@ -21,7 +21,7 @@ public abstract class GameRendererMixin {
       class_239 original = entity.method_5745(maxDistance, tickDelta, includeFluids);
       try {
          WebHit module = ModuleManager.get(WebHit.class);
-         if (module.isEnabled()) return module.adjust(entity, original, tickDelta);
+         if (module.isEnabled()) return module.adjust(entity, original, maxDistance, tickDelta);
       } catch (Throwable ignored) {
       }
       return original;
