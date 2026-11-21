@@ -126,6 +126,8 @@ public final class FreecamController extends Module {
 
       camWorld = mc.field_1687;
       cam = new class_1531(class_1299.field_6131, camWorld);
+      // The detached camera must never collide with blocks or entity hitboxes.
+      cam.field_5960 = true;
 
       camX = mc.field_1724.method_23317();
       camY = mc.field_1724.method_33571().field_1351;
@@ -196,6 +198,8 @@ public final class FreecamController extends Module {
       if (mc.field_1692 != cam) {
          mc.field_1692 = cam;
       }
+      // Keep no-clip enabled for both FreeLook and full Freecam.
+      cam.field_5960 = true;
 
       previousCamX = camX;
       previousCamY = camY;
@@ -279,6 +283,7 @@ public final class FreecamController extends Module {
       camY += velY;
       camZ += velZ;
 
+      cam.field_5960 = true;
       cam.method_5814(camX, camY - eyeOffset, camZ);
 
       if (mc.field_1724.method_73189().method_1025(playerStart) > 1.0E-8) {
