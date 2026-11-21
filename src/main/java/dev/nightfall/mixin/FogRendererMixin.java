@@ -57,7 +57,8 @@ public abstract class FogRendererMixin {
 
    @ModifyVariable(method = APPLY, at = @At("HEAD"), argsOnly = true, ordinal = 5)
    private float nightfall$cloudEnd(float v) {
-      return fog().isEnabled() ? fog().skyEnd(v) : v;
+      Fog f = enabledFog();
+      return f != null ? f.skyEnd(v) : v;
    }
 
    private Fog enabledFog() {
