@@ -22,25 +22,17 @@ public abstract class CameraMixin {
    @Shadow
    public abstract void method_19325(float yaw, float pitch);
 
+   // Force Camera.update down its third-person path while FreeLook is active.
+   // The second boolean parameter (inverseView) is deliberately left untouched;
+   // FreeLook selects front/back view through GameOptions#setPerspective.
    @ModifyVariable(
       method = {"method_19321"},
       at = @At("HEAD"),
       argsOnly = true,
       ordinal = 0
    )
-   private boolean nightfall$renderLocalPlayer(boolean thirdPerson) {
+   private boolean nightfall$forceThirdPerson(boolean thirdPerson) {
       return thirdPerson || FreecamController.isActive() || FreeLook.isActive();
-   }
-
-   @ModifyVariable(
-      method = {"method_19321"},
-      at = @At("HEAD"),
-      argsOnly = true,
-      ordinal = 1
-   )
-   private boolean nightfall$frontPerspective(boolean inverseView) {
-      FreeLook freeLook = FreeLook.active();
-      return inverseView || (freeLook != null && freeLook.isFrontPerspective());
    }
 
    @Inject(method = {"method_19318"}, at = {@At("HEAD")}, cancellable = true)
@@ -81,16 +73,7 @@ public abstract class CameraMixin {
 
       FreeLook freeLook = FreeLook.active();
       if (freeLook != null) {
-         float yaw = freeLook.getCameraYaw();
-         float pitch = freeLook.getCameraPitch();
-
-         // In front perspective, the camera sits in front of the player and must face back toward them.
-         if (freeLook.isFrontPerspective()) {
-            yaw += 180.0F;
-            pitch = -pitch;
-         }
-
-         this.method_19325(yaw, pitch);
+         this.method_19325(freeLook.getCameraYaw(), freeLook.getCameraPitch());
       }
    }
 }
