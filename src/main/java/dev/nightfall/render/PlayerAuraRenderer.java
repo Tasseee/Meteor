@@ -243,7 +243,6 @@ public final class PlayerAuraRenderer {
          double ey = y + height;
          double size = (0.03 + 0.03 * h1) * scale;
          int rgb = aura.color(h3, time);
-         float[] tail = rgba(rgb, (float)(opacity * 0.18));
          double previousPhase = Math.max(0.0, phase - 0.085);
          double previousAngle = h1 * Math.PI * 2.0 + previousPhase * 2.2;
          double previousRadius = (0.35 + 0.55 * h2 + 0.12 * Math.sin(previousPhase * 6.0 + k)) * scale;
@@ -365,20 +364,20 @@ public final class PlayerAuraRenderer {
    private static void drawOrb(class_4588 out, Matrix4f m, double x, double y, double z,
                                double radius, int rgb, float alpha) {
       if (alpha < 0.01F || radius < 0.002) return;
+      float edgeAlpha = alpha * 0.68F;
+      float highlightAlpha = alpha * 0.92F;
       for (int lat = 0; lat < ORB_LATITUDE; lat++) {
          double p0 = -Math.PI / 2.0 + Math.PI * lat / ORB_LATITUDE;
          double p1 = -Math.PI / 2.0 + Math.PI * (lat + 1) / ORB_LATITUDE;
          for (int lon = 0; lon < ORB_LONGITUDE; lon++) {
             double a0 = lon * Math.PI * 2.0 / ORB_LONGITUDE;
             double a1 = (lon + 1) * Math.PI * 2.0 / ORB_LONGITUDE;
-            float[] edge = rgba(rgb, alpha * 0.68F);
-            float[] highlight = rgba(0xFFFFFF, alpha * 0.92F);
-            quad(out, m,
+            quadOrbRgb(out, m,
                (float)(x + Math.cos(p0) * Math.cos(a0) * radius), (float)(y + Math.sin(p0) * radius), (float)(z + Math.cos(p0) * Math.sin(a0) * radius),
                (float)(x + Math.cos(p0) * Math.cos(a1) * radius), (float)(y + Math.sin(p0) * radius), (float)(z + Math.cos(p0) * Math.sin(a1) * radius),
                (float)(x + Math.cos(p1) * Math.cos(a1) * radius), (float)(y + Math.sin(p1) * radius), (float)(z + Math.cos(p1) * Math.sin(a1) * radius),
                (float)(x + Math.cos(p1) * Math.cos(a0) * radius), (float)(y + Math.sin(p1) * radius), (float)(z + Math.cos(p1) * Math.sin(a0) * radius),
-               edge, edge, highlight, edge);
+               rgb, edgeAlpha, highlightAlpha);
          }
       }
    }
@@ -401,6 +400,25 @@ public final class PlayerAuraRenderer {
          (float)(x0 - nx0), (float)(y0 - ny0), (float)(z0 - nz0),
          (float)(x1 - nx1), (float)(y1 - ny1), (float)(z1 - nz1),
          (float)(x1 + nx1), (float)(y1 + ny1), (float)(z1 + nz1), color);
+   }
+
+   private static void quadOrbRgb(class_4588 out, Matrix4f m,
+      float x0, float y0, float z0, float x1, float y1, float z1,
+      float x2, float y2, float z2, float x3, float y3, float z3,
+      int rgb, float edgeAlpha, float highlightAlpha) {
+      vertexRgb(out, m, x0, y0, z0, rgb, edgeAlpha);
+      vertexRgb(out, m, x1, y1, z1, rgb, edgeAlpha);
+      vertexRgb(out, m, x2, y2, z2, 0xFFFFFF, highlightAlpha);
+      vertexRgb(out, m, x3, y3, z3, rgb, edgeAlpha);
+   }
+
+   private static void vertexRgb(class_4588 out, Matrix4f m, float x, float y, float z, int rgb, float alpha) {
+      out.method_22918(m, x, y, z).method_22915(
+         (rgb >> 16 & 255) / 255.0F,
+         (rgb >> 8 & 255) / 255.0F,
+         (rgb & 255) / 255.0F,
+         clamp(alpha, 0.0F, 1.0F)
+      );
    }
 
    private static void quad(class_4588 out, Matrix4f m,
