@@ -1,5 +1,6 @@
 package dev.nightfall.modules;
 
+import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.BoolSetting;
 import net.minecraft.class_2586;
 import net.minecraft.class_2595;
@@ -23,6 +24,13 @@ public class StorageEsp extends BlockEntityEsp {
 
    @Override
    protected boolean accept(class_2586 be) {
+      BaseFinder finder = ModuleManager.get(BaseFinder.class);
+      if (finder != null) {
+         int chunkX = be.method_11016().method_10263() >> 4;
+         int chunkZ = be.method_11016().method_10260() >> 4;
+         if (finder.isFakeChunk(chunkX, chunkZ)) return false;
+      }
+
       if (be instanceof class_2595) {
          return this.chests.get();
       } else if (be instanceof class_3719) {
