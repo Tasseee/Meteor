@@ -9,6 +9,7 @@ import dev.nightfall.util.Projection;
 import net.minecraft.class_238;
 import net.minecraft.class_332;
 import net.minecraft.class_3965;
+import net.minecraft.class_2338;
 
 /** Draws a configurable neon outline around the block under the crosshair. */
 public final class TargetBlockOutline extends Module {
@@ -27,7 +28,16 @@ public final class TargetBlockOutline extends Module {
          return;
       }
 
-      class_238 blockBox = new class_238(hit.method_17777());
+      class_2338 blockPos = hit.method_17777();
+      class_2338 supportPos = blockPos.method_10074();
+
+      // Only outline blocks that have a real collision shape directly below them.
+      // This prevents floating blocks from being highlighted.
+      if (mc.field_1687.method_8320(supportPos).method_26220(mc.field_1687, supportPos).method_1110()) {
+         return;
+      }
+
+      class_238 blockBox = new class_238(blockPos);
       Draw.box(context, blockBox, 0xFF000000 | color.rgb(), thickness.getInt(), true, true, neonStrength.getInt());
    }
 }
