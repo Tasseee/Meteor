@@ -195,6 +195,7 @@ public final class HitParticles extends Module {
    }
 
    private void spawnVanillaParticles(class_1309 entity) {
+      if (mc.field_1713 == null) return;
       class_2394 particle = switch (this.style.get()) {
          case "Herzen" -> class_2398.field_11201;
          case "Flamme" -> class_2398.field_11240;
@@ -334,12 +335,28 @@ public final class HitParticles extends Module {
       for (int i = 0; i < segments; i++) {
          double a0 = TWO_PI * i / segments;
          double a1 = TWO_PI * (i + 1) / segments;
-         float[] p0 = point(cx, cy, cz, ux, uy, uz, vx, vy, vz, inner, Math.cos(a0), Math.sin(a0));
-         float[] p1 = point(cx, cy, cz, ux, uy, uz, vx, vy, vz, outer, Math.cos(a0), Math.sin(a0));
-         float[] p2 = point(cx, cy, cz, ux, uy, uz, vx, vy, vz, outer, Math.cos(a1), Math.sin(a1));
-         float[] p3 = point(cx, cy, cz, ux, uy, uz, vx, vy, vz, inner, Math.cos(a1), Math.sin(a1));
-         emitQuad(out, matrix, red, green, blue, alpha, p0, p1, p2, p3);
-         emitQuad(out, matrix, red, green, blue, alpha, p3, p2, p1, p0);
+         double c0 = Math.cos(a0), s0 = Math.sin(a0);
+         double c1 = Math.cos(a1), s1 = Math.sin(a1);
+         float i0x = (float)(cx + (ux * c0 + vx * s0) * inner);
+         float i0y = (float)(cy + (uy * c0 + vy * s0) * inner);
+         float i0z = (float)(cz + (uz * c0 + vz * s0) * inner);
+         float o0x = (float)(cx + (ux * c0 + vx * s0) * outer);
+         float o0y = (float)(cy + (uy * c0 + vy * s0) * outer);
+         float o0z = (float)(cz + (uz * c0 + vz * s0) * outer);
+         float i1x = (float)(cx + (ux * c1 + vx * s1) * inner);
+         float i1y = (float)(cy + (uy * c1 + vy * s1) * inner);
+         float i1z = (float)(cz + (uz * c1 + vz * s1) * inner);
+         float o1x = (float)(cx + (ux * c1 + vx * s1) * outer);
+         float o1y = (float)(cy + (uy * c1 + vy * s1) * outer);
+         float o1z = (float)(cz + (uz * c1 + vz * s1) * outer);
+         vertex(out, matrix, red, green, blue, alpha, i0x, i0y, i0z);
+         vertex(out, matrix, red, green, blue, alpha, o0x, o0y, o0z);
+         vertex(out, matrix, red, green, blue, alpha, o1x, o1y, o1z);
+         vertex(out, matrix, red, green, blue, alpha, i1x, i1y, i1z);
+         vertex(out, matrix, red, green, blue, alpha, i1x, i1y, i1z);
+         vertex(out, matrix, red, green, blue, alpha, o1x, o1y, o1z);
+         vertex(out, matrix, red, green, blue, alpha, o0x, o0y, o0z);
+         vertex(out, matrix, red, green, blue, alpha, i0x, i0y, i0z);
       }
    }
 
@@ -356,21 +373,26 @@ public final class HitParticles extends Module {
       double rx = ct * ux + st * vx;
       double ry = ct * uy + st * vy;
       double rz = ct * uz + st * vz;
-      float[] a = {(float)(cx + rx * start - tx * halfWidth), (float)(cy + ry * start - ty * halfWidth), (float)(cz + rz * start - tz * halfWidth)};
-      float[] b = {(float)(cx + rx * end - tx * halfWidth * 0.2), (float)(cy + ry * end - ty * halfWidth * 0.2), (float)(cz + rz * end - tz * halfWidth * 0.2)};
-      float[] c = {(float)(cx + rx * end + tx * halfWidth * 0.2), (float)(cy + ry * end + ty * halfWidth * 0.2), (float)(cz + rz * end + tz * halfWidth * 0.2)};
-      float[] d = {(float)(cx + rx * start + tx * halfWidth), (float)(cy + ry * start + ty * halfWidth), (float)(cz + rz * start + tz * halfWidth)};
-      emitQuad(out, matrix, red, green, blue, alpha, a, b, c, d);
-      emitQuad(out, matrix, red, green, blue, alpha, d, c, b, a);
-   }
-
-   private static float[] point(double cx, double cy, double cz, double ux, double uy, double uz,
-                                double vx, double vy, double vz, double radius, double c, double s) {
-      return new float[] {
-         (float)(cx + (ux * c + vx * s) * radius),
-         (float)(cy + (uy * c + vy * s) * radius),
-         (float)(cz + (uz * c + vz * s) * radius)
-      };
+      float ax = (float)(cx + rx * start - tx * halfWidth);
+      float ay = (float)(cy + ry * start - ty * halfWidth);
+      float az = (float)(cz + rz * start - tz * halfWidth);
+      float bx = (float)(cx + rx * end - tx * halfWidth * 0.2);
+      float by = (float)(cy + ry * end - ty * halfWidth * 0.2);
+      float bz = (float)(cz + rz * end - tz * halfWidth * 0.2);
+      float cx2 = (float)(cx + rx * end + tx * halfWidth * 0.2);
+      float cy2 = (float)(cy + ry * end + ty * halfWidth * 0.2);
+      float cz2 = (float)(cz + rz * end + tz * halfWidth * 0.2);
+      float dx = (float)(cx + rx * start + tx * halfWidth);
+      float dy = (float)(cy + ry * start + ty * halfWidth);
+      float dz = (float)(cz + rz * start + tz * halfWidth);
+      vertex(out, matrix, red, green, blue, alpha, ax, ay, az);
+      vertex(out, matrix, red, green, blue, alpha, bx, by, bz);
+      vertex(out, matrix, red, green, blue, alpha, cx2, cy2, cz2);
+      vertex(out, matrix, red, green, blue, alpha, dx, dy, dz);
+      vertex(out, matrix, red, green, blue, alpha, dx, dy, dz);
+      vertex(out, matrix, red, green, blue, alpha, cx2, cy2, cz2);
+      vertex(out, matrix, red, green, blue, alpha, bx, by, bz);
+      vertex(out, matrix, red, green, blue, alpha, ax, ay, az);
    }
 
    private static void emitQuad(class_4588 out, Matrix4f matrix, float red, float green, float blue,
