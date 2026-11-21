@@ -86,6 +86,7 @@ import dev.nightfall.modules.NotificationsHud;
 import dev.nightfall.modules.ObiTrapBot;
 import dev.nightfall.modules.ParticleTrail;
 import dev.nightfall.modules.PlayerEsp;
+import dev.nightfall.modules.PlayerAura;
 import dev.nightfall.modules.LogoutSpots;
 import dev.nightfall.modules.SafeWalk;
 import dev.nightfall.modules.ScannerHud;
@@ -189,6 +190,7 @@ public final class ModuleManager {
       MODULES.add(new JumpCircles());
       MODULES.add(new MovementParticles());
       MODULES.add(new TargetMarker());
+      MODULES.add(new PlayerAura());
       MODULES.add(new Atmosphere());
       MODULES.add(new FakeRain());
       MODULES.add(new SkyVisuals());
