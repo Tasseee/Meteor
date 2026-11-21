@@ -48,6 +48,7 @@ import dev.nightfall.modules.FakeStats;
 import dev.nightfall.modules.FakeRain;
 import dev.nightfall.modules.FakeLag;
 import dev.nightfall.modules.FavoriteChunk;
+import dev.nightfall.modules.Favorites;
 import dev.nightfall.modules.FirstPersonStyle;
 import dev.nightfall.modules.Fly;
 import dev.nightfall.modules.FreecamController;
@@ -190,6 +191,7 @@ public final class ModuleManager {
       MODULES.add(new GlowESP());
       MODULES.add(new ItemGlow());
       MODULES.add(new ItemTimer());
+      MODULES.add(new Favorites());
       MODULES.add(new Fog());
       MODULES.add(new WebHit());
       MODULES.add(new GhostSkin());
