@@ -18,7 +18,6 @@
     "FakeLagAttackMixin",
     "HandledScreenAccessor",
     "ItemGlowMeshMixin",
-    "GameRendererMixin",
     "FogRendererMixin"
   ],
   "injectors": {
