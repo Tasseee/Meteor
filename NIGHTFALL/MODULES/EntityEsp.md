@@ -1,56 +1,53 @@
-# EntityEsp
+# EntityESP
 
-- **Status:** Positivlisten-Filter im Code gespeichert; Build-/In-Game-Test offen
+- **Status:** 2D-HUD-ESP umgesetzt; Build-/In-Game-Test offen
 - **Java-Klasse:** `EntityEsp`
 - **Anzeigename:** `EntityESP`
 - **Kategorie:** `VISUALS`
-- **Code-Commit:** ffdb6229d8a254c3d3c847d7c175d12a357f81f3
-- **Gemeinsame Renderlogik:** `EntityScanEsp` / `EspBase`
+- **Renderlogik:** eigene 2D-Projektion mit geglaetteten Boxen
 
 ## Zweck und Verhalten
 
-EntityESP zeigt nur diese Entity-Gruppen:
+EntityESP ist jetzt das einzige allgemeine Entity-ESP-Modul. Die fruehere 3D-Variante wurde durch die 2D-Version ersetzt. Geladene, ausgewaehlte Entities erhalten abgerundete Bildschirm-Boxen mit optionaler Fuellung, Soft Glow und Distanz-Fade.
 
-- Wölfe (auch gezähmte Hunde) und Katzen
+Standardmaessig ausgewaehlt sind:
+
+- Item Frames und Glow Item Frames
+- Armor Stands
+- Wölfe, Katzen und Armadillos
 - Villager
 - Eisen- und Schneegolems
-- Armor Stands
-- Item Frames und Glow Item Frames
-- Enderperlen
-- Armadillos
-- Boote und Rafts (einschließlich Chest-Varianten)
+- Enderperlen, Wind Charges und Splash Potions
 
-Andere Entity-Typen werden vom Filter ausgeschlossen. Die Anzeige verwendet weiterhin die gemeinsame Reichweiten-, Sichtbarkeits-, Objektlimit- und HUD-Renderlogik aus `EntityScanEsp` / `EspBase`.
+Die Entity-Typen koennen ueber die Einstellung **Entity-Typen** angepasst werden.
 
 ## Einstellungen
 
 | Einstellung | Standard |
 |---|---:|
-| Health (geerbt) | an |
-| Nur sichtbare (geerbt) | aus |
-| Reichweite (korrigierter Default) | 128 |
-| Max Objekte | 512 |
-| Box | 3D |
-| Name / Distanz | an |
-| Tracer | aus |
+| Entity-Typen | obige Auswahl |
+| Reichweite | 96 |
+| Eckenradius | 5 |
+| Linienstärke | 1,5 |
+| Fuellen (Alpha) | 35 |
+| Smoothing | 0,55 |
+| Distanz-Fade | an |
+| Soft Glow | an |
+| **Namen anzeigen** | **an** |
 
-Die frühere freie Entity-Type-Auswahl wurde entfernt, damit die Positivliste verbindlich bleibt.
+Mit **Namen anzeigen** lassen sich die Entity-Namen oberhalb der jeweiligen 2D-Box ein- oder ausblenden.
 
-## Technische Prüfung
+## Technische Hinweise
 
-- **Klassifizierung:** Registry-ID des Entity-Typs wird gegen eine feste Positivliste geprüft. Boot- und Raft-Varianten werden über ihre IDs erkannt.
-- **Renderpfad:** geladene Entities werden jedes HUD-Frame durchlaufen; Positionen/Boxen werden mit TickDelta interpoliert.
-- **Sortierung:** Renderbuffer wird nach Distanz sortiert, wenn die Anzahl über Max Objects liegt.
-- **Fehlerbehandlung:** fehlende Registry-IDs oder Registry-Laufzeitfehler führen dazu, dass die Entity nicht akzeptiert wird.
-- **Performance:** kein zusätzlicher Welt-Scan; die bestehende Render-Schleife wird weiterverwendet. Messung steht aus.
+- Positionen und Bounding-Boxen werden mit dem aktuellen Render-Tick interpoliert und anschliessend in den HUD-Raum projiziert.
+- Die Boxpositionen werden pro Entity-ID geglaettet und beim Deaktivieren oder Weltwechsel geleert.
+- Es wird ausschliesslich der HUD-Renderpfad verwendet; kein eigener 3D-Linien-Vertexpfad.
+- Das alte separate 3D-EntityESP und die doppelte Modulregistrierung sind entfernt.
 
 ## Offene Tests
 
-- [ ] Wolf/Hund, Katze und Villager
-- [ ] Eisen- und Schneegolem
-- [ ] Armor Stand / Item Frame / Glow Item Frame
-- [ ] Ender Pearl und Armadillo
-- [ ] Boot / Chest Boat / Raft
-- [ ] Andere Mobs und Entity-Typen bleiben ausgeblendet
-- [ ] Reichweite, Sichtbarkeit und Max-Objekte-Limit
+- [ ] Alle voreingestellten Entity-Typen
+- [ ] Eigene Entity-Typen ueber die Auswahl
+- [ ] Namen ein-/ausblenden
+- [ ] Reichweite, Smoothing, Fuellung, Glow und Distanz-Fade
 - [ ] Build und In-Game-Test
