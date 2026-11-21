@@ -7,7 +7,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.class_12249;
 import net.minecraft.class_1297;
 import net.minecraft.class_1542;
-import net.minecraft.class_1657;
 import net.minecraft.class_238;
 import net.minecraft.class_310;
 import net.minecraft.class_4588;
@@ -41,8 +40,8 @@ public final class GlassChamsItemRenderer {
       var cameraPos = camera.method_71156();
       class_4587 matrices = context.matrices();
       class_4588 consumer = context.consumers().method_73477(class_12249.method_76019());
-      float tickDelta = Math.max(0.0F, Math.min(1.0F, mc.method_60646().method_60637(false)));
-      double rangeSquared = 200.0 * 200.0;
+      float tickDelta = 1.0F;
+      double rangeSquared = module.rangeSquared();
 
       matrices.method_22903();
       try {
