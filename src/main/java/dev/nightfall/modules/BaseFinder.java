@@ -126,11 +126,14 @@ public class BaseFinder extends Module {
 
       // Repeated chest layouts are confirmed after three matching chunks.
       String location = cx + "," + cz;
-      for (FakePattern pattern : this.fakePatterns) {
+      String currentContext = Storage.server() + "_" + Storage.dim();
+      if (currentContext.equals(this.ctxKey)) {
+         for (FakePattern pattern : this.fakePatterns) {
          if (pattern != null && pattern.seenChunks != null
             && pattern.seenChunks.size() >= 3 && pattern.seenChunks.contains(location)) {
             return true;
          }
+      }
       }
       return false;
    }
@@ -223,7 +226,12 @@ public class BaseFinder extends Module {
 
    @Override
    protected void onDisable() {
-      this.clear();
+      // Keep the confirmed fake-base signatures in memory so StorageESP can
+      // continue filtering them even when the scanner itself is toggled off.
+      this.saveMarks();
+      this.saveFakePatterns();
+      this.clearData();
+      this.lastWorld = null;
    }
 
    @Override
