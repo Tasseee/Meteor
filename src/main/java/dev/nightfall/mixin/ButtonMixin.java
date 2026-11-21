@@ -1,5 +1,6 @@
 package dev.nightfall.mixin;
 
+import dev.nightfall.gui.CleanUi;
 import net.minecraft.class_332;
 import net.minecraft.class_339;
 import net.minecraft.class_4264;
