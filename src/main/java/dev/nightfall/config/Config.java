@@ -56,7 +56,7 @@ public final class Config {
    public static void save() {
       try {
          JsonObject root = new JsonObject();
-         root.addProperty("version", "0.5.15");
+         root.addProperty("version", Nightfall.VERSION);
          root.addProperty("guiKey", guiKey);
          root.addProperty("hudKey", hudKey);
          root.addProperty("mapKey", mapKey);
