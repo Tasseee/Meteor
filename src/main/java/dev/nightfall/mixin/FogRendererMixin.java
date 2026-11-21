@@ -19,35 +19,40 @@ public abstract class FogRendererMixin {
       float envStart, float envEnd, float rdStart, float rdEnd, float skyEnd, float cloudEnd,
       CallbackInfo ci) {
       try {
-         Fog f = ModuleManager.get(Fog.class);
-         if (f.isEnabled()) f.modifyColor(color);
+         Fog f = enabledFog();
+         if (f != null) f.modifyColor(color);
       } catch (Throwable ignored) {
       }
    }
 
    @ModifyVariable(method = APPLY, at = @At("HEAD"), argsOnly = true, ordinal = 0)
    private float nightfall$envStart(float v) {
-      return fog().isEnabled() ? fog().envStart(v) : v;
+      Fog f = enabledFog();
+      return f != null ? f.envStart(v) : v;
    }
 
    @ModifyVariable(method = APPLY, at = @At("HEAD"), argsOnly = true, ordinal = 1)
    private float nightfall$envEnd(float v) {
-      return fog().isEnabled() ? fog().envEnd(v) : v;
+      Fog f = enabledFog();
+      return f != null ? f.envEnd(v) : v;
    }
 
    @ModifyVariable(method = APPLY, at = @At("HEAD"), argsOnly = true, ordinal = 2)
    private float nightfall$renderStart(float v) {
-      return fog().isEnabled() ? fog().renderStart(v) : v;
+      Fog f = enabledFog();
+      return f != null ? f.renderStart(v) : v;
    }
 
    @ModifyVariable(method = APPLY, at = @At("HEAD"), argsOnly = true, ordinal = 3)
    private float nightfall$renderEnd(float v) {
-      return fog().isEnabled() ? fog().renderEnd(v) : v;
+      Fog f = enabledFog();
+      return f != null ? f.renderEnd(v) : v;
    }
 
    @ModifyVariable(method = APPLY, at = @At("HEAD"), argsOnly = true, ordinal = 4)
    private float nightfall$skyEnd(float v) {
-      return fog().isEnabled() ? fog().skyEnd(v) : v;
+      Fog f = enabledFog();
+      return f != null ? f.skyEnd(v) : v;
    }
 
    @ModifyVariable(method = APPLY, at = @At("HEAD"), argsOnly = true, ordinal = 5)
@@ -55,9 +60,10 @@ public abstract class FogRendererMixin {
       return fog().isEnabled() ? fog().skyEnd(v) : v;
    }
 
-   private Fog fog() {
+   private Fog enabledFog() {
       try {
-         return ModuleManager.get(Fog.class);
+         Fog f = ModuleManager.get(Fog.class);
+         return f != null && f.isEnabled() ? f : null;
       } catch (Throwable ignored) {
          return null;
       }
