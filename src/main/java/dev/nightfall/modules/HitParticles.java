@@ -337,26 +337,26 @@ public final class HitParticles extends Module {
          double a1 = TWO_PI * (i + 1) / segments;
          double c0 = Math.cos(a0), s0 = Math.sin(a0);
          double c1 = Math.cos(a1), s1 = Math.sin(a1);
-         float i0x = (float)(cx + (ux * c0 + vx * s0) * inner);
-         float i0y = (float)(cy + (uy * c0 + vy * s0) * inner);
-         float i0z = (float)(cz + (uz * c0 + vz * s0) * inner);
-         float o0x = (float)(cx + (ux * c0 + vx * s0) * outer);
-         float o0y = (float)(cy + (uy * c0 + vy * s0) * outer);
-         float o0z = (float)(cz + (uz * c0 + vz * s0) * outer);
-         float i1x = (float)(cx + (ux * c1 + vx * s1) * inner);
-         float i1y = (float)(cy + (uy * c1 + vy * s1) * inner);
-         float i1z = (float)(cz + (uz * c1 + vz * s1) * inner);
-         float o1x = (float)(cx + (ux * c1 + vx * s1) * outer);
-         float o1y = (float)(cy + (uy * c1 + vy * s1) * outer);
-         float o1z = (float)(cz + (uz * c1 + vz * s1) * outer);
-         vertex(out, matrix, red, green, blue, alpha, i0x, i0y, i0z);
-         vertex(out, matrix, red, green, blue, alpha, o0x, o0y, o0z);
-         vertex(out, matrix, red, green, blue, alpha, o1x, o1y, o1z);
-         vertex(out, matrix, red, green, blue, alpha, i1x, i1y, i1z);
-         vertex(out, matrix, red, green, blue, alpha, i1x, i1y, i1z);
-         vertex(out, matrix, red, green, blue, alpha, o1x, o1y, o1z);
-         vertex(out, matrix, red, green, blue, alpha, o0x, o0y, o0z);
-         vertex(out, matrix, red, green, blue, alpha, i0x, i0y, i0z);
+         float ix0 = (float)(cx + (ux * c0 + vx * s0) * inner);
+         float iy0 = (float)(cy + (uy * c0 + vy * s0) * inner);
+         float iz0 = (float)(cz + (uz * c0 + vz * s0) * inner);
+         float ox0 = (float)(cx + (ux * c0 + vx * s0) * outer);
+         float oy0 = (float)(cy + (uy * c0 + vy * s0) * outer);
+         float oz0 = (float)(cz + (uz * c0 + vz * s0) * outer);
+         float ix1 = (float)(cx + (ux * c1 + vx * s1) * inner);
+         float iy1 = (float)(cy + (uy * c1 + vy * s1) * inner);
+         float iz1 = (float)(cz + (uz * c1 + vz * s1) * inner);
+         float ox1 = (float)(cx + (ux * c1 + vx * s1) * outer);
+         float oy1 = (float)(cy + (uy * c1 + vy * s1) * outer);
+         float oz1 = (float)(cz + (uz * c1 + vz * s1) * outer);
+         vertex(out, matrix, red, green, blue, alpha, ix0, iy0, iz0);
+         vertex(out, matrix, red, green, blue, alpha, ox0, oy0, oz0);
+         vertex(out, matrix, red, green, blue, alpha, ox1, oy1, oz1);
+         vertex(out, matrix, red, green, blue, alpha, ix1, iy1, iz1);
+         vertex(out, matrix, red, green, blue, alpha, ix1, iy1, iz1);
+         vertex(out, matrix, red, green, blue, alpha, ox1, oy1, oz1);
+         vertex(out, matrix, red, green, blue, alpha, ox0, oy0, oz0);
+         vertex(out, matrix, red, green, blue, alpha, ix0, iy0, iz0);
       }
    }
 
@@ -393,14 +393,6 @@ public final class HitParticles extends Module {
       vertex(out, matrix, red, green, blue, alpha, cx2, cy2, cz2);
       vertex(out, matrix, red, green, blue, alpha, bx, by, bz);
       vertex(out, matrix, red, green, blue, alpha, ax, ay, az);
-   }
-
-   private static void emitQuad(class_4588 out, Matrix4f matrix, float red, float green, float blue,
-                                float alpha, float[] a, float[] b, float[] c, float[] d) {
-      vertex(out, matrix, red, green, blue, alpha, a[0], a[1], a[2]);
-      vertex(out, matrix, red, green, blue, alpha, b[0], b[1], b[2]);
-      vertex(out, matrix, red, green, blue, alpha, c[0], c[1], c[2]);
-      vertex(out, matrix, red, green, blue, alpha, d[0], d[1], d[2]);
    }
 
    private static void drawBlock(class_4588 out, Matrix4f matrix, double cx, double cy, double cz,
