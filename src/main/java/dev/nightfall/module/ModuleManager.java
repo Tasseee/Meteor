@@ -62,6 +62,7 @@ import dev.nightfall.modules.ItemGlow;
 import dev.nightfall.modules.GhostSkin;
 import dev.nightfall.modules.Jesus;
 import dev.nightfall.modules.JumpCircles;
+import dev.nightfall.modules.JumpWave;
 import dev.nightfall.modules.KillAura;
 import dev.nightfall.modules.LongJump;
 import dev.nightfall.modules.LootDropFinder;
@@ -173,6 +174,7 @@ public final class ModuleManager {
       MODULES.add(new ParticleTrail());
       MODULES.add(new HitParticles());
       MODULES.add(new JumpCircles());
+      MODULES.add(new JumpWave());
       MODULES.add(new MovementParticles());
       MODULES.add(new TargetMarker());
       MODULES.add(new Atmosphere());
