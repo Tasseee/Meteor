@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.mixin.injection.ModifyArgs;
+import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
@@ -23,9 +23,7 @@ public abstract class CameraMixin {
    @Shadow
    public abstract void method_19325(float var1, float var2);
 
-   // Apply FreeLook rotation at the point where vanilla sets the camera rotation.
-   // This must happen before clipToSpace and the third-person position are calculated,
-   // otherwise the camera turns in place instead of orbiting around the player.
+   // Apply FreeLook rotation before vanilla calculates the third-person camera position.
    @ModifyArgs(
       method = {"method_19321"},
       at = @At(
