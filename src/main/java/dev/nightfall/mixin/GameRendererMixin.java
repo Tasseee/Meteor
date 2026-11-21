@@ -11,11 +11,14 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(net.minecraft.class_757.class)
 public abstract class GameRendererMixin {
    @Redirect(
-      method = "method_56153",
+      // In Minecraft 1.21.11 the old findCrosshairTarget method was folded
+      // into updateCrosshairTarget (method_3190).
+      method = "method_3190",
       at = @At(
          value = "INVOKE",
          target = "Lnet/minecraft/class_1297;method_5745(DFZ)Lnet/minecraft/class_239;"
-      )
+      ),
+      require = 0
    )
    private class_239 nightfall$webHitRaycast(class_1297 entity, double maxDistance, float tickDelta, boolean includeFluids) {
       class_239 original = entity.method_5745(maxDistance, tickDelta, includeFluids);
