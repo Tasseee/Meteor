@@ -18,7 +18,7 @@ public abstract class EspBase extends Module {
    public static int drawn;
    protected final NumberSetting range;
    protected final NumberSetting maxObjects = this.add(new NumberSetting("Max Objekte", 512.0, 4.0, 512.0, 4.0));
-   protected final NumberSetting thickness = this.add(new NumberSetting("Linienstaerke", 4.0, 1.0, 4.0, 1.0));
+   protected final NumberSetting thickness = this.add(new NumberSetting("Linienstaerke", 2.0, 1.0, 4.0, 1.0));
    protected final NumberSetting opacity = this.add(new NumberSetting("Transparenz", 1.0, 0.2, 1.0, 0.05));
    protected final NumberSetting neonStrength = this.add(new NumberSetting("Neon-Staerke", 24.0, 0.0, 60.0, 4.0));
    protected final BoolSetting smoothing = this.add(new BoolSetting("Linien-Antialiasing", true));
@@ -34,7 +34,7 @@ public abstract class EspBase extends Module {
    private BaseFinder cachedBaseFinder;
 
    protected EspBase(String name, String desc, int defRange, int maxRange, int rgb) {
-      this(name, desc, defRange, maxRange, rgb, 4);
+      this(name, desc, defRange, maxRange, rgb, 2);
    }
 
    protected EspBase(String name, String desc, int defRange, int maxRange, int rgb, int defaultThickness) {
