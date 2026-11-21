@@ -70,33 +70,29 @@ public final class PlayerAura extends Module {
          return java.awt.Color.HSBtoRGB(hue, 0.68F, 1.0F) & 0xFFFFFF;
       }
 
-      int[] inner;
-      int[] outer;
+      int innerRgb;
+      int outerRgb;
       if (palette.is("Eigene")) {
-         inner = channels(customInner.rgb());
-         outer = channels(customOuter.rgb());
+         innerRgb = customInner.rgb();
+         outerRgb = customOuter.rgb();
       } else if (palette.is("Gold")) {
-         inner = new int[]{255, 160, 30}; outer = new int[]{255, 235, 150};
+         innerRgb = 0xFFA01E; outerRgb = 0xFFEB96;
       } else if (palette.is("Ozean")) {
-         inner = new int[]{60, 140, 255}; outer = new int[]{120, 245, 240};
+         innerRgb = 0x3C8CFF; outerRgb = 0x78F5F0;
       } else if (palette.is("Rot")) {
-         inner = new int[]{255, 40, 50}; outer = new int[]{255, 160, 110};
+         innerRgb = 0xFF2832; outerRgb = 0xFFA06E;
       } else if (palette.is("Mint")) {
-         inner = new int[]{70, 220, 160}; outer = new int[]{190, 255, 130};
+         innerRgb = 0x46DCA0; outerRgb = 0xBEFF82;
       } else if (palette.is("Eisblau")) {
-         inner = new int[]{150, 200, 255}; outer = new int[]{240, 248, 255};
+         innerRgb = 0x96C8FF; outerRgb = 0xF0F8FF;
       } else {
-         inner = new int[]{140, 90, 255}; outer = new int[]{255, 120, 220};
+         innerRgb = 0x8C5AFF; outerRgb = 0xFF78DC;
       }
 
-      int r = mix(inner[0], outer[0], p);
-      int g = mix(inner[1], outer[1], p);
-      int b = mix(inner[2], outer[2], p);
+      int r = mix(innerRgb >> 16 & 255, outerRgb >> 16 & 255, p);
+      int g = mix(innerRgb >> 8 & 255, outerRgb >> 8 & 255, p);
+      int b = mix(innerRgb & 255, outerRgb & 255, p);
       return r << 16 | g << 8 | b;
-   }
-
-   private static int[] channels(int rgb) {
-      return new int[]{rgb >> 16 & 255, rgb >> 8 & 255, rgb & 255};
    }
 
    private static int mix(int a, int b, double t) {
