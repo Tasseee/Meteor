@@ -35,7 +35,7 @@ public final class WebHit extends Module {
 
       for (int i = 0; i < maxWebs.getInt(); i++) {
          if (!(hit instanceof class_3965 blockHit)) break;
-         if (!mc.field_1687.method_8320(blockHit.method_17780()).method_27852(class_2246.field_10534)) break;
+         if (!mc.field_1687.method_8320(blockHit.method_17777()).method_27852(class_2246.field_10534)) break;
 
          class_243 start = blockHit.method_17784().method_1019(dir.method_1021(0.06));
          if (start.method_1021(-1).method_1022(eye) >= range * range) break;
