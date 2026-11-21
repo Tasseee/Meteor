@@ -24,7 +24,7 @@ public final class ChinaHatRenderer {
    private static void render(WorldRenderContext context) {
       class_310 mc = class_310.method_1551();
       if (mc.field_1687 == null || mc.field_1724 == null || context.matrices() == null || context.consumers() == null) return;
-      if (!mc.field_1690.method_31044().method_31034()) return;
+      if (mc.field_1690.method_31044().method_31034()) return;
 
       ChinaHat hat;
       try { hat = ModuleManager.get(ChinaHat.class); }
