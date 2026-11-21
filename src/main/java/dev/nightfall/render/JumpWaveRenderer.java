@@ -170,8 +170,6 @@ public final class JumpWaveRenderer {
 
    private static void drawBorder(class_4587 matrices, class_4588 consumer, int x, double y, int z, float size, float width,
                                   float red, float green, float blue, float alpha) {
-      drawTop(matrices, consumer, x, y, z, size, red, green, blue, alpha * 0.15F);
-      drawTop(matrices, consumer, x, y, z, size, red, green, blue, alpha);
       drawStrip(matrices, consumer, x, y, z, size, width, red, green, blue, alpha);
    }
 
