@@ -40,7 +40,6 @@ public final class JumpWave extends Module {
    private final NumberSetting rainbowSpeed = this.add(new NumberSetting("Rainbow-Tempo", 0.6, 0.1, 3.0, 0.05));
    private final NumberSetting surfaceAlpha = this.add(new NumberSetting("Flächen-Deckkraft", 0.22, 0.03, 0.8, 0.01));
    private final NumberSetting edgeAlpha = this.add(new NumberSetting("Kanten-Deckkraft", 0.95, 0.0, 1.0, 0.01));
-   private final NumberSetting tint = this.add(new NumberSetting("Block-Einfärbung", 0.50, 0.0, 1.0, 0.05));
    private final BoolSetting pulse = this.add(new BoolSetting("Sanft pulsieren", true));
    private final NumberSetting pulseStrength = this.add(new NumberSetting("Puls-Stärke", 0.12, 0.0, 0.35, 0.01));
 
@@ -163,7 +162,6 @@ public final class JumpWave extends Module {
    public double lift() { return this.lift.get(); }
    public double surfaceAlpha() { return this.surfaceAlpha.get(); }
    public double edgeAlpha() { return this.edgeAlpha.get(); }
-   public double tint() { return this.tint.get(); }
    public boolean pulse() { return this.pulse.get(); }
    public double pulseStrength() { return this.pulseStrength.get(); }
    public double rainbowSpeed() { return this.rainbowSpeed.get(); }
