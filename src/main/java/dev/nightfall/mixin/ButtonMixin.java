@@ -18,14 +18,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * Einheitlicher Stil fuer normale Buttons. Slider, Checkboxen und andere Widgets
  * behalten ihre jeweilige Vanilla-Darstellung.
  */
-@Mixin(class_4264.class)
+@Mixin(class_339.class)
 abstract class ButtonMixin {
-   @Shadow public int field_22760;
-   @Shadow public int field_22761;
-   @Shadow public int field_22758;
-   @Shadow public int field_22759;
+   @Shadow private int field_22760;
+   @Shadow private int field_22761;
+   @Shadow protected int field_22758;
+   @Shadow protected int field_22759;
    @Shadow public boolean field_22763;
-   @Shadow public class_2561 field_22754;
+   @Shadow protected class_2561 field_22754;
 
    @Unique private float nightfall$hover;
    @Unique private long nightfall$lastFrameNanos;
