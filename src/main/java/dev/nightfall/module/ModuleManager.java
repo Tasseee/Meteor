@@ -32,6 +32,7 @@ import dev.nightfall.modules.OreESP;
 import dev.nightfall.modules.BlockNotifier;
 import dev.nightfall.modules.BoatFly;
 import dev.nightfall.modules.ChunkEsp;
+import dev.nightfall.modules.ChinaHat;
 import dev.nightfall.modules.CombatStatusHud;
 import dev.nightfall.modules.CooldownHud;
 import dev.nightfall.modules.Coordinates;
@@ -192,6 +193,7 @@ public final class ModuleManager {
       MODULES.add(new SkyRibbons());
       MODULES.add(new JumpWave());
       MODULES.add(new Hats());
+      MODULES.add(new ChinaHat());
       MODULES.add(new FirstPersonStyle());
       MODULES.add(new WeaponAnimations());
       MODULES.add(new SlowSwing());
