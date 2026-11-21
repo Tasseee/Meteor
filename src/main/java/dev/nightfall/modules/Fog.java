@@ -46,6 +46,7 @@ public final class Fog extends Module {
    }
 
    public float envStart(float value) {
+      if (waterVisibility.get() == 1.0 && lavaVisibility.get() == 1.0) return value;
       class_5636 type = submersion();
       if (type == class_5636.field_27886) return value * waterVisibility.get().floatValue();
       if (type == class_5636.field_27885) return value * lavaVisibility.get().floatValue();
@@ -53,6 +54,7 @@ public final class Fog extends Module {
    }
 
    public float envEnd(float value) {
+      if (waterVisibility.get() == 1.0 && lavaVisibility.get() == 1.0 && !removeEffectFog.get()) return value;
       class_5636 type = submersion();
       if (type == class_5636.field_27886) return value * waterVisibility.get().floatValue();
       if (type == class_5636.field_27885) return value * lavaVisibility.get().floatValue();
@@ -88,6 +90,10 @@ public final class Fog extends Module {
    }
 
    private class_5636 submersion() {
+      // FogRenderer is constructed while Minecraft is still initializing.
+      // During that phase the renderer (and therefore its camera) can be null.
+      if (mc == null || mc.field_1773 == null) return class_5636.field_27888;
+
       class_4184 camera = mc.field_1773.method_19418();
       return camera != null ? camera.method_19334() : class_5636.field_27888;
    }
