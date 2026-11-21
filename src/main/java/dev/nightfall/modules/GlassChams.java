@@ -40,6 +40,7 @@ public final class GlassChams extends Module {
    public boolean showInvisible() { return this.showInvisible.get(); }
    public boolean coverSkin() { return this.coverSkin.get(); }
    public float fillAlpha() { return this.fillAlpha.get().floatValue(); }
+   public double rangeSquared() { return this.range.get() * this.range.get(); }
    public int glowLayers() { return this.glowLayers.getInt(); }
    public float glowSpread() { return this.glowSpread.get().floatValue(); }
    public float glowAlpha() { return this.glowAlpha.get().floatValue(); }
