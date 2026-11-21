@@ -84,7 +84,7 @@ public final class PlayerAuraRenderer {
       double pulse = 0.5 + 0.5 * Math.sin(time * 2.2);
       for (int layer = 0; layer < 3; layer++) {
          double baseRadius = layer == 0 ? 0.58 : layer == 1 ? 0.47 : 0.34;
-         double profile = 0.78 + 0.22 * Math.sin(Math.PI * mid);
+         double profile = 0.78 + 0.22 * Math.sin(Math.PI * ((j + 0.5) / slices));
          double radius = baseRadius * scale * profile * (1.0 + 0.035 * Math.sin(time * 2.2 + layer));
          for (int j = 0; j < slices; j++) {
             double y0 = y + height * j / slices;
