@@ -15,6 +15,7 @@ import net.minecraft.class_4184;
 public abstract class BlockEntityEsp extends EspBase {
    private final List<class_2338> cache = new ArrayList<>();
    private final List<class_238> boxes = new ArrayList<>();
+   private final List<String> names = new ArrayList<>();
    private int timer;
 
    protected BlockEntityEsp(String n, String d, int r, int mr, int rgb) {
@@ -29,94 +30,106 @@ public abstract class BlockEntityEsp extends EspBase {
       return true;
    }
 
-   @Override
-   protected void onDisable() {
+   private void clearCache() {
       this.cache.clear();
       this.boxes.clear();
+      this.names.clear();
+   }
+
+   @Override
+   protected void onDisable() {
+      this.clearCache();
    }
 
    @Override
    public void onWorldLeave() {
-      this.cache.clear();
-      this.boxes.clear();
+      this.clearCache();
       this.timer = 0;
    }
 
    @Override
    public void onTick() {
-      if (mc.field_1687 != null && mc.field_1724 != null) {
-         if (this.timer-- <= 0) {
-            this.timer = 10;
-            this.cache.clear();
-            this.boxes.clear();
-            int r = this.range.getInt();
-            class_4184 camera = mc.field_1773.method_19418();
-            class_243 origin = camera != null && camera.method_19332() ? camera.method_71156() : mc.field_1724.method_33571();
-            double px = origin.field_1352;
-            double py = origin.field_1351;
-            double pz = origin.field_1350;
-            int pcx = (int)Math.floor(px) >> 4;
-            int pcz = (int)Math.floor(pz) >> 4;
-            int cr = (r >> 4) + 1;
-            double r2 = (double)r * r;
+      if (mc.field_1687 == null || mc.field_1724 == null) {
+         this.clearCache();
+         this.timer = 0;
+         return;
+      }
 
-            for (int dz = -cr; dz <= cr; dz++) {
-               for (int dx = -cr; dx <= cr; dx++) {
-                  class_2818 ch = mc.field_1687.method_2935().method_21730(pcx + dx, pcz + dz);
-                  if (ch != null && this.acceptChunk(ch)) {
-                     for (class_2586 be : ch.method_12214().values()) {
-                        if (this.accept(be)) {
-                           class_2338 bp = be.method_11016();
-                           if (!(bp.method_40081(px, py, pz) > r2)) {
-                              this.cache.add(bp.method_10062());
-                              this.boxes.add(new class_238(bp));
-                           }
+      if (this.timer-- <= 0) {
+         this.timer = 10;
+         this.clearCache();
+         int r = this.range.getInt();
+         class_4184 camera = mc.field_1773.method_19418();
+         class_243 origin = camera != null && camera.method_19332() ? camera.method_71156() : mc.field_1724.method_33571();
+         double px = origin.field_1352;
+         double py = origin.field_1351;
+         double pz = origin.field_1350;
+         int pcx = (int)Math.floor(px) >> 4;
+         int pcz = (int)Math.floor(pz) >> 4;
+         int cr = (r >> 4) + 1;
+         double r2 = (double)r * r;
+
+         for (int dz = -cr; dz <= cr; dz++) {
+            for (int dx = -cr; dx <= cr; dx++) {
+               class_2818 ch = mc.field_1687.method_2935().method_21730(pcx + dx, pcz + dz);
+               if (ch != null && this.acceptChunk(ch)) {
+                  for (class_2586 be : ch.method_12214().values()) {
+                     if (this.accept(be)) {
+                        class_2338 bp = be.method_11016();
+                        if (!(bp.method_40081(px, py, pz) > r2)) {
+                           this.cache.add(bp.method_10062());
+                           this.boxes.add(new class_238(bp));
+                           this.names.add(this.nameOf(be));
                         }
                      }
                   }
                }
             }
+         }
 
-            List<Integer> order = new ArrayList<>(this.cache.size());
+         List<Integer> order = new ArrayList<>(this.cache.size());
+         for (int i = 0; i < this.cache.size(); i++) {
+            order.add(i);
+         }
 
-            for (int i = 0; i < this.cache.size(); i++) {
-               order.add(i);
+         order.sort(Comparator.comparingDouble(ix -> this.cache.get(ix).method_40081(px, py, pz)));
+         if (!order.isEmpty()) {
+            List<class_2338> sortedPositions = new ArrayList<>(this.cache.size());
+            List<class_238> sortedBoxes = new ArrayList<>(this.boxes.size());
+            List<String> sortedNames = new ArrayList<>(this.names.size());
+
+            for (int i : order) {
+               sortedPositions.add(this.cache.get(i));
+               sortedBoxes.add(this.boxes.get(i));
+               sortedNames.add(this.names.get(i));
             }
 
-            order.sort(Comparator.comparingDouble(ix -> this.cache.get(ix).method_40081(px, py, pz)));
-            if (!order.isEmpty()) {
-               List<class_2338> sortedPositions = new ArrayList<>(this.cache.size());
-               List<class_238> sortedBoxes = new ArrayList<>(this.boxes.size());
-
-               for (int i : order) {
-                  sortedPositions.add(this.cache.get(i));
-                  sortedBoxes.add(this.boxes.get(i));
-               }
-
-               this.cache.clear();
-               this.cache.addAll(sortedPositions);
-               this.boxes.clear();
-               this.boxes.addAll(sortedBoxes);
-            }
+            this.cache.clear();
+            this.cache.addAll(sortedPositions);
+            this.boxes.clear();
+            this.boxes.addAll(sortedBoxes);
+            this.names.clear();
+            this.names.addAll(sortedNames);
          }
       }
    }
 
    @Override
    public void renderHud(class_332 ctx) {
-      if (mc.field_1687 != null && mc.field_1724 != null && Projection.valid()) {
-         int n = this.cache.size();
-         int shown = 0;
+      if (mc.field_1687 == null || mc.field_1724 == null || !Projection.valid()) return;
 
-         for (int i = 0; i < n && shown < this.maxObjects.getInt() && !this.capReached(); i++) {
-            class_2338 bp = this.cache.get(i);
-            class_2586 be = mc.field_1687.method_8321(bp);
-            if (be != null && this.accept(be)) {
-               double d = Math.sqrt(bp.method_40081(Projection.eyeX(), Projection.eyeY(), Projection.eyeZ()));
-               this.drawTarget(ctx, this.boxes.get(i), this.label(this.nameOf(be), d), this.color.rgb());
-               shown++;
-            }
-         }
+      int n = this.cache.size();
+      int shown = 0;
+      double eyeX = Projection.eyeX();
+      double eyeY = Projection.eyeY();
+      double eyeZ = Projection.eyeZ();
+
+      for (int i = 0; i < n && shown < this.maxObjects.getInt() && !this.capReached(); i++) {
+         class_2338 bp = this.cache.get(i);
+         double distanceSquared = bp.method_40081(eyeX, eyeY, eyeZ);
+         double distance = Math.sqrt(distanceSquared);
+         this.drawTarget(ctx, this.boxes.get(i), this.label(this.names.get(i), distance), this.color.rgb());
+         shown++;
       }
    }
 }
