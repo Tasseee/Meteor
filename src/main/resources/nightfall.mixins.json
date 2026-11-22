@@ -18,8 +18,7 @@
     "ItemGlowMeshMixin",
     "GameRendererMixin",
     "FogRendererMixin",
-    "ScreenBackgroundMixin",
-    "ButtonMixin"
+    "ScreenBackgroundMixin"
   ],
   "injectors": {
     "defaultRequire": 1
