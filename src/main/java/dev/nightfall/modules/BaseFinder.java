@@ -146,8 +146,9 @@ public class BaseFinder extends Module {
       for (FakePattern pattern : this.fakePatterns) {
          if (pattern != null && pattern.seenChunks != null
             && pattern.seenChunks.contains(location)
-            && (!requireConfirmedPattern || pattern.confirmed
-               || (!pattern.scoreFingerprint && pattern.seenChunks.size() >= 3))) {
+            && (pattern.scoreFingerprint
+               ? pattern.confirmed
+               : (!requireConfirmedPattern || pattern.confirmed || pattern.seenChunks.size() >= 3))) {
             return true;
          }
       }
@@ -661,6 +662,11 @@ public class BaseFinder extends Module {
                      ? "Mehrere Chunks besitzen denselben angezeigten SUS-Score und dieselbe Storage-/Technik-Signatur. Das wiederholte Muster wurde als FakeBase bestaetigt."
                      : "Der Chunk wurde zuerst als SUS eingestuft, spaeter aber dem gespeicherten Kistenmuster einer Fake-Base zugeordnet."
                );
+            } else if (repeatedSusScorePattern) {
+               res.lastFalsePositiveAnalysis = "Wiederholtes identisches SUS-Score-/Signal-Muster erkannt";
+               res.lastFalsePositiveScore = score;
+               res.lastFalsePositiveReasons.clear();
+               res.lastFalsePositiveReasons.addAll(res.reasons);
             }
             res.status = ChunkResult.Status.CLEAN;
             res.reasons.clear();
@@ -730,7 +736,7 @@ public class BaseFinder extends Module {
       res.lastFalsePositiveScore = score;
       res.lastFalsePositiveReasons.clear();
       res.lastFalsePositiveReasons.addAll(reasons);
-      if (this.chat.get() && mc.field_1724 != null) {
+      if (newlyConfirmed && this.chat.get() && mc.field_1724 != null) {
          mc.field_1724.method_7353(
             class_2561.method_43470(
                "[Nightfall] SUS-False-Positive "
@@ -973,9 +979,11 @@ public class BaseFinder extends Module {
          changed = true;
       }
 
+      boolean newlyConfirmed = false;
       if (!matching.confirmed && matching.seenChunks.size() >= this.minRepeatedSusScores.getInt()) {
          matching.confirmed = true;
          changed = true;
+         newlyConfirmed = true;
       }
 
       if (changed) this.saveFakePatterns();
