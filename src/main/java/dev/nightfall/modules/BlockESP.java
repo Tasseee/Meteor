@@ -5,6 +5,7 @@ import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.ModeSetting;
+import dev.nightfall.module.setting.ListSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Draw;
 import dev.nightfall.util.Projection;
@@ -14,6 +15,7 @@ import net.minecraft.class_2246;
 import net.minecraft.class_2248;
 import net.minecraft.class_2338;
 import net.minecraft.class_238;
+import net.minecraft.class_7923;
 import net.minecraft.class_332;
 
 public final class BlockESP extends Module {
@@ -24,6 +26,7 @@ public final class BlockESP extends Module {
    ));
    private final NumberSetting outline = this.add(new NumberSetting("Outline-Stärke", 2.0, 1.0, 5.0, 1.0));
    private final ColorSetting color = this.add(new ColorSetting("Farbe", 0x62D8FF));
+   private final ListSetting blockIds = this.add(new ListSetting("Eigene Block-IDs"));
    private final BoolSetting diamonds = this.add(new BoolSetting("Diamanterz", true));
    private final BoolSetting ancient = this.add(new BoolSetting("Antiker Schrott", true));
    private final BoolSetting chests = this.add(new BoolSetting("Kisten", true));
@@ -39,6 +42,10 @@ public final class BlockESP extends Module {
    }
 
    private boolean selected(class_2248 b) {
+      if (!this.blockIds.get().isEmpty()) {
+         String id = class_7923.field_41175.method_10221(b).toString();
+         return this.blockIds.has(id);
+      }
       return this.diamonds.get() && (b == class_2246.field_10442 || b == class_2246.field_29029)
          || this.ancient.get() && b == class_2246.field_22109
          || this.chests.get() && (b == class_2246.field_10034 || b == class_2246.field_10380 || b == class_2246.field_16328)
