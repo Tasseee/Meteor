@@ -11,7 +11,6 @@ import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.Atmosphere;
 import dev.nightfall.modules.SeedCracker;
-import dev.nightfall.render.HatsRenderer;
 import dev.nightfall.render.KillEffectRenderer;
 import dev.nightfall.render.ChinaHatRenderer;
 import dev.nightfall.render.PlayerAuraRenderer;
@@ -71,7 +70,6 @@ public class Nightfall implements ClientModInitializer {
       });
       SkyVisualRenderer.register();
       SkyRibbonsRenderer.register();
-      HatsRenderer.register();
       ChinaHatRenderer.register();
       PlayerAuraRenderer.register();
       KillEffectRenderer.register();
