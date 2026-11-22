@@ -22,7 +22,8 @@
     "ScreenBackgroundMixin",
     "FakeNamePlayerListMixin",
     "FakeNamePlayerRendererMixin",
-    "FreeLookMouseMixin"
+    "FreeLookMouseMixin",
+    "PrivatScoreboardMixin"
   ],
   "injectors": {
     "defaultRequire": 1
