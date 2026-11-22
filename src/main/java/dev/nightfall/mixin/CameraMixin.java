@@ -52,20 +52,9 @@ public abstract class CameraMixin {
 
          double distance = FreeLook.cameraDistance();
          if (distance > 0.0 && focusedEntity != null) {
-            double yawRad = Math.toRadians(yaw);
-            double pitchRad = Math.toRadians(pitch);
-            double forwardX = -Math.sin(yawRad) * Math.cos(pitchRad);
-            double forwardY = -Math.sin(pitchRad);
-            double forwardZ = Math.cos(yawRad) * Math.cos(pitchRad);
-
             class_243 eye = focusedEntity.method_33571();
-            // Override the vanilla camera position after collision adjustment.
-            // The view camera has no entity hitbox and clips through solid blocks.
-            this.method_19327(
-               eye.field_1352 - forwardX * distance,
-               eye.field_1351 - forwardY * distance,
-               eye.field_1350 - forwardZ * distance
-            );
+            class_243 position = FreeLook.cameraPosition(eye, yaw, pitch);
+            this.method_19327(position.field_1352, position.field_1351, position.field_1350);
          }
       }
    }
