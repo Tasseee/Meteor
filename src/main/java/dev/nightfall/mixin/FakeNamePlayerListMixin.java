@@ -23,8 +23,7 @@ public abstract class FakeNamePlayerListMixin {
       if (mc.field_1724 == null || entry == null || entry.method_2966() == null) return;
       if (!entry.method_2966().id().equals(mc.field_1724.method_5667())) return;
 
-      String replacement = FakeName.activeName();
-      if (replacement.isBlank()) return;
+      if (!FakeName.hasVisualOverride()) return;
 
       class_2561 current = cir.getReturnValue();
       class_2561 changed = FakeName.replaceName(current, entry.method_2966().name());
