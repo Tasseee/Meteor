@@ -1,6 +1,7 @@
 package dev.nightfall.mixin;
 
 import dev.nightfall.modules.FakeLag;
+import dev.nightfall.modules.KillEffect;
 import net.minecraft.class_1297;
 import net.minecraft.class_1657;
 import net.minecraft.class_636;
@@ -14,5 +15,6 @@ abstract class FakeLagAttackMixin {
    @Inject(method = "method_2918", at = @At("HEAD"))
    private void nightfall$flushBeforeAttack(class_1657 player, class_1297 target, CallbackInfo ci) {
       FakeLag.beforeAttack();
+      KillEffect.recordAttack(target);
    }
 }
