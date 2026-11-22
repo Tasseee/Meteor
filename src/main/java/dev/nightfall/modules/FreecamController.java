@@ -42,6 +42,10 @@ public final class FreecamController extends Module {
       this.add(new dev.nightfall.module.setting.BoolSetting("Freecam-Anzeige", true));
    private final dev.nightfall.module.setting.NumberSetting sensitivity =
       this.add(new dev.nightfall.module.setting.NumberSetting("Kamera-Sensitivitaet", 0.15, 0.03, 0.5, 0.01));
+   private final dev.nightfall.module.setting.BoolSetting invertMouseX =
+      this.add(new dev.nightfall.module.setting.BoolSetting("Maus X-Achse umkehren", false));
+   private final dev.nightfall.module.setting.BoolSetting invertMouseY =
+      this.add(new dev.nightfall.module.setting.BoolSetting("Maus Y-Achse umkehren", false));
 
    public FreecamController() {
       super("Freecam", "Loest die Kamera vom Spielerkoerper und bewegt sie frei durch die Welt.", Category.MOVEMENT);
@@ -190,9 +194,12 @@ public final class FreecamController extends Module {
          double dx = Math.max(-250.0, Math.min(250.0, cursorX[0] - lastMouseX));
          double dy = Math.max(-250.0, Math.min(250.0, cursorY[0] - lastMouseY));
 
-         float yaw = cam.method_36454() + (float)dx * sensitivity.get().floatValue();
+         float horizontal = (float)(invertMouseX.get() ? -dx : dx);
+         float vertical = (float)(invertMouseY.get() ? -dy : dy);
+         float mouseSensitivity = sensitivity.get().floatValue();
+         float yaw = cam.method_36454() + horizontal * mouseSensitivity;
          float pitch = Math.max(-90.0F, Math.min(90.0F,
-            cam.method_36455() + (float)dy * sensitivity.get().floatValue()));
+            cam.method_36455() + vertical * mouseSensitivity));
          cam.method_36456(yaw);
          cam.method_36457(pitch);
       }
