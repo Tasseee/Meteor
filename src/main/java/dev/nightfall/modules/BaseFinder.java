@@ -1171,9 +1171,10 @@ public class BaseFinder extends Module {
    }
 
    private void saveFakePatterns() {
-      if (this.ctxKey != null) {
+      if (this.ctxKey != null && this.fakePatternsDirty) {
          try {
             writeAtomically(this.fakePatternsFile(), GSON.toJson(this.fakePatterns));
+            this.fakePatternsDirty = false;
          } catch (IOException exception) {
             Nightfall.LOGGER.error("Fake-Base-Fingerprints konnten nicht gespeichert werden", exception);
          }
@@ -1182,6 +1183,8 @@ public class BaseFinder extends Module {
 
    private void loadFakePatterns() {
       this.fakePatterns.clear();
+      this.fakePatternsDirty = false;
+      this.clearFakePatternIndexes();
       Path file = this.fakePatternsFile();
       if (!Files.exists(file)) return;
 
@@ -1198,6 +1201,7 @@ public class BaseFinder extends Module {
             if (pattern.chestPositions == null) pattern.chestPositions = new ArrayList<>();
             this.fakePatterns.add(pattern);
          }
+         this.rebuildFakePatternIndexes();
          if (skipped > 0) {
             Nightfall.LOGGER.warn("{} ungueltige Fake-Pattern-Eintraege uebersprungen: {}", skipped, file);
          }
@@ -1412,6 +1416,11 @@ public class BaseFinder extends Module {
       List<String> chestPositions = new ArrayList<>();
       List<String> seenChunks = new ArrayList<>();
    }
+
+   private record ScorePatternKey(
+      int scoreTenths, int storage, int chest, int shulker, int hopper,
+      int furnace, int redstone, int spawner
+   ) { }
 
    private record ScorePatternKey(
       int scoreTenths, int storage, int chest, int shulker, int hopper,
