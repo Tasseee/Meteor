@@ -7,6 +7,7 @@ import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Projection;
+import dev.nightfall.util.LootRarity;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -19,6 +20,7 @@ import net.minecraft.class_1306;
 import net.minecraft.class_1542;
 import net.minecraft.class_1657;
 import net.minecraft.class_1799;
+import net.minecraft.class_7923;
 import net.minecraft.class_243;
 import net.minecraft.class_4184;
 import net.minecraft.class_4587;
@@ -70,19 +72,21 @@ public final class DropGlow extends Module {
    private final BoolSetting handOthers = this.add(new BoolSetting("Auch andere Spieler", false));
    private final NumberSetting handSize = this.add(new NumberSetting("Hand-Größe", 1.0, 0.5, 2.0, 0.05));
    private final NumberSetting handFirstPersonOpacity = this.add(new NumberSetting("Deckkraft 1. Person", 0.7, 0.1, 1.0, 0.05));
-   private final ModeSetting colorMode = this.add(new ModeSetting("Farbmodus", "Item-Typ", "Item-Typ", "Verlauf", "Einfarbig", "Regenbogen"));
+   private final ModeSetting colorMode = this.add(new ModeSetting("Farbmodus", "Item-Typ", "Item-Typ", "Fortnite-Loot", "Verlauf", "Einfarbig", "Regenbogen"));
    private final ColorSetting color = this.add(new ColorSetting("Farbe", 0x39FF14));
    private final ColorSetting color2 = this.add(new ColorSetting("Farbe 2", 0x2DE2FF));
 
    private static final class Entry {
       final class_1542 entity;
       final int nameHash;
+      final String itemId;
       final boolean valuable;
       final double distSq;
 
-      Entry(class_1542 entity, int nameHash, boolean valuable, double distSq) {
+      Entry(class_1542 entity, int nameHash, String itemId, boolean valuable, double distSq) {
          this.entity = entity;
          this.nameHash = nameHash;
+         this.itemId = itemId;
          this.valuable = valuable;
          this.distSq = distSq;
       }
@@ -154,12 +158,14 @@ public final class DropGlow extends Module {
          if (distSq > rangeSq) {
             continue;
          }
-         String name = item.method_6983().method_7964().getString();
+         class_1799 stack = item.method_6983();
+         String name = stack.method_7964().getString();
+         String itemId = class_7923.field_41178.method_10221(stack.method_7909()).toString();
          boolean valuable = isValuable(name);
          if (only && !valuable) {
             continue;
          }
-         found.add(new Entry(item, name.hashCode(), valuable, distSq));
+         found.add(new Entry(item, name.hashCode(), itemId, valuable, distSq));
       }
 
       found.sort(Comparator.comparingDouble(e -> e.distSq));
@@ -253,8 +259,12 @@ public final class DropGlow extends Module {
       }
    }
 
-   private int baseColor(int nameHash, double time, double phase) {
+   private int baseColor(int nameHash, String itemId, double time, double phase) {
       String mode = this.colorMode.get();
+      if ("Fortnite-Loot".equals(mode)) {
+         int rarityColor = LootRarity.color(itemId);
+         return rarityColor >= 0 ? rarityColor : this.color.rgb();
+      }
       if ("Regenbogen".equals(mode)) {
          return Color.HSBtoRGB((float)((time * 0.15 + phase * 0.3) % 1.0), 0.85F, 1.0F) & 0xFFFFFF;
       }
@@ -277,7 +287,7 @@ public final class DropGlow extends Module {
       double phase = e.method_5628() * 0.37;
       double pulseF = this.pulse.get() ? 0.85 + 0.15 * Math.sin(time * 3.0 + phase) : 1.0;
 
-      int rgb = this.baseColor(entry.nameHash, time, phase);
+      int rgb = this.baseColor(entry.nameHash, entry.itemId, time, phase);
       double warn = 0.0;
       if (this.despawnWarning.get()) {
          int remaining = DESPAWN_TICKS - e.method_6985();
@@ -480,17 +490,18 @@ public final class DropGlow extends Module {
          }
 
          String name = stack.method_7964().getString();
-         this.drawHeld(ax, ay, az, name.hashCode(), isValuable(name), time, hand, alphaMul);
+         String itemId = class_7923.field_41178.method_10221(stack.method_7909()).toString();
+         this.drawHeld(ax, ay, az, name.hashCode(), itemId, isValuable(name), time, hand, alphaMul);
       }
    }
 
    /** Glow um ein gehaltenes Item: weiche Hülle, kreisender Kometenring und Funken. */
-   private void drawHeld(double x, double y, double z, int nameHash, boolean valuable, double time, int hand, double alphaMul) {
+   private void drawHeld(double x, double y, double z, int nameHash, String itemId, boolean valuable, double time, int hand, double alphaMul) {
       boolean boosted = valuable && this.highlightValuable.get();
       double s = this.handSize.get() * (boosted ? 1.25 : 1.0);
       double phase = (nameHash & 0xFF) * 0.11 + hand * 1.3;
       double pulseF = this.pulse.get() ? 0.85 + 0.15 * Math.sin(time * 3.0 + phase) : 1.0;
-      int rgb = this.baseColor(nameHash, time, phase);
+      int rgb = this.baseColor(nameHash, itemId, time, phase);
       double a = this.brightness.get() * pulseF * alphaMul * (boosted ? 1.0 : 0.85);
 
       if (this.hull.get()) {
