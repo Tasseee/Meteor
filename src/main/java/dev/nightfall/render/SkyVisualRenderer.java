@@ -131,33 +131,33 @@ public final class SkyVisualRenderer {
       double v;
 
       switch (faceIndex) {
-         case 0 -> { // -X: bottom-left
+         case 0 -> { // -X: bottom-middle
             column = 1; row = 1;
             u = (1.0 - z) * 0.5;
             v = (1.0 - y) * 0.5;
          }
-         case 1 -> { // +X: bottom-right
-            column = 2; row = 1;
+         case 1 -> { // +X: top-right
+            column = 2; row = 0;
             u = (1.0 + z) * 0.5;
             v = (1.0 - y) * 0.5;
          }
-         case 2 -> { // -Y: top-left
-            column = 0; row = 0;
+         case 2 -> { // -Y: bottom-left
+            column = 0; row = 1;
             u = (1.0 + x) * 0.5;
             v = (1.0 + z) * 0.5;
          }
-         case 3 -> { // +Y: top-middle
-            column = 1; row = 0;
+         case 3 -> { // +Y: top-left
+            column = 0; row = 0;
             u = (1.0 + x) * 0.5;
             v = (1.0 - z) * 0.5;
          }
-         case 4 -> { // -Z: bottom-middle
-            column = 1; row = 1;
+         case 4 -> { // -Z: top-middle
+            column = 1; row = 0;
             u = (1.0 + x) * 0.5;
             v = (1.0 - y) * 0.5;
          }
-         case 5 -> { // +Z: top-right
-            column = 2; row = 0;
+         case 5 -> { // +Z: bottom-right
+            column = 2; row = 1;
             u = (1.0 - x) * 0.5;
             v = (1.0 - y) * 0.5;
          }
