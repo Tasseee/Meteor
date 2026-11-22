@@ -20,7 +20,8 @@
     "FogRendererMixin",
     "ScreenBackgroundMixin",
     "FakeNamePlayerListMixin",
-    "FakeNamePlayerRendererMixin"
+    "FakeNamePlayerRendererMixin",
+    "FreeLookMouseMixin"
   ],
   "injectors": {
     "defaultRequire": 1
