@@ -12,10 +12,10 @@ public final class FakeStats extends HudModule {
    private static final int H = 160;
 
    private static final String[] LABELS = {
-      "Geld", "Gems", "Stars", "Kills", "Tode", "Ping", "Keyall", "Spielzeit"
+      "Geld", "Gems", "Stars", "Kills", "Tode", "Clan", "Ping", "Keyall", "Spielzeit"
    };
    private static final String[] VALUES = {
-      "104,18M", "550", "898", "886", "1,138", "46ms", "21m 4s", "60d 5h"
+      "104,18M", "550", "898", "886", "1,138", "???", "46ms", "21m 4s", "60d 5h"
    };
    private static final int[] VALUE_COLORS = {
       0xFFE066, 0xFF55FF, 0xFFC825, 0xFFAA00, 0xFF5555,
