@@ -82,7 +82,8 @@ public final class SkyVisualRenderer {
       matrices.method_22904(-camera.field_1352, -camera.field_1351, -camera.field_1350);
       try {
          Matrix4f matrix = matrices.method_23760().method_23761();
-         for (double[][] face : FACES) {
+         for (int faceIndex = 0; faceIndex < FACES.length; faceIndex++) {
+            double[][] face = FACES[faceIndex];
             for (double[] corner : face) {
                double x = corner[0];
                double y = corner[1];
@@ -93,7 +94,9 @@ public final class SkyVisualRenderer {
                double ry = x * sin + y * cos;
                double rz = z;
 
-               float[] uv = atlasUv(rx, ry, rz);
+               // The face index decides its atlas tile. Using the corner's dominant axis
+               // is ambiguous at cube corners (|x| == |y| == |z|) and broke most sky faces.
+               float[] uv = atlasUv(faceIndex, x, y, z);
                float nx = (float)-rx * 0.57735026F;
                float ny = (float)-ry * 0.57735026F;
                float nz = (float)-rz * 0.57735026F;
@@ -120,49 +123,45 @@ public final class SkyVisualRenderer {
     * Converts a cube direction to the conventional 3x2 OptiFine sky atlas:
     * top row = +Y, -Z, +X; bottom row = -Y, -X, +Z.
     */
-   private static float[] atlasUv(double x, double y, double z) {
-      double ax = Math.abs(x);
-      double ay = Math.abs(y);
-      double az = Math.abs(z);
+   /** Maps each cube face to its fixed tile in the 3x2 sky atlas. */
+   private static float[] atlasUv(int faceIndex, double x, double y, double z) {
       int column;
       int row;
       double u;
       double v;
 
-      if (ax >= ay && ax >= az) {
-         if (x < 0.0) {
-            column = 0;
-            row = 1;
-            u = (1.0 - z / ax) * 0.5;
-            v = (1.0 - y / ax) * 0.5;
-         } else {
-            column = 2;
-            row = 1;
-            u = (1.0 + z / ax) * 0.5;
-            v = (1.0 - y / ax) * 0.5;
+      switch (faceIndex) {
+         case 0 -> { // -X: bottom-left
+            column = 1; row = 1;
+            u = (1.0 - z) * 0.5;
+            v = (1.0 - y) * 0.5;
          }
-      } else if (ay >= az) {
-         if (y > 0.0) {
-            column = 1;
-            row = 0;
-            u = (1.0 + x / ay) * 0.5;
-            v = (1.0 - z / ay) * 0.5;
-         } else {
-            column = 0;
-            row = 0;
-            u = (1.0 + x / ay) * 0.5;
-            v = (1.0 + z / ay) * 0.5;
+         case 1 -> { // +X: bottom-right
+            column = 2; row = 1;
+            u = (1.0 + z) * 0.5;
+            v = (1.0 - y) * 0.5;
          }
-      } else if (z < 0.0) {
-         column = 1;
-         row = 1;
-         u = (1.0 + x / az) * 0.5;
-         v = (1.0 - y / az) * 0.5;
-      } else {
-         column = 2;
-         row = 0;
-         u = (1.0 - x / az) * 0.5;
-         v = (1.0 - y / az) * 0.5;
+         case 2 -> { // -Y: top-left
+            column = 0; row = 0;
+            u = (1.0 + x) * 0.5;
+            v = (1.0 + z) * 0.5;
+         }
+         case 3 -> { // +Y: top-middle
+            column = 1; row = 0;
+            u = (1.0 + x) * 0.5;
+            v = (1.0 - z) * 0.5;
+         }
+         case 4 -> { // -Z: bottom-middle
+            column = 1; row = 1;
+            u = (1.0 + x) * 0.5;
+            v = (1.0 - y) * 0.5;
+         }
+         case 5 -> { // +Z: top-right
+            column = 2; row = 0;
+            u = (1.0 - x) * 0.5;
+            v = (1.0 - y) * 0.5;
+         }
+         default -> throw new IllegalArgumentException("Unknown sky cube face: " + faceIndex);
       }
 
       u = Math.max(UV_INSET, Math.min(1.0 - UV_INSET, u));
