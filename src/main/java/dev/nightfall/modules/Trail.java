@@ -192,7 +192,7 @@ public final class Trail extends Module {
          double dx=headX-prev.x(),dz=headZ-prev.z(),len=Math.sqrt(dx*dx+dz*dz);
          if(len>1E-5) {
             double tx=dx/len,tz=dz/len; int c=color(0,time);
-            quad(prev.x(),prev.y()+.04,prev.z(),c,(float)brightness.get(),headX,headY+.04,headZ,c,(float)brightness.get(),headX,headY+.04+h,headZ,c,(float)brightness.get(),prev.x(),prev.y()+.04+h,prev.z(),c,(float)brightness.get());
+            quad(prev.x(),prev.y()+.04,prev.z(),c,brightness.get().floatValue(),headX,headY+.04,headZ,c,brightness.get().floatValue(),headX,headY+.04+h,headZ,c,brightness.get().floatValue(),prev.x(),prev.y()+.04+h,prev.z(),c,brightness.get().floatValue());
          }
       }
    }
