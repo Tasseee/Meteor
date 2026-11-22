@@ -246,6 +246,9 @@ public final class NightfallGuiScreen extends class_437 {
    }
 
    private static String keyText(int key) {
+      // GLFW reports physical key positions; map the German QWERTZ letters explicitly.
+      if (key == 89) return "z";
+      if (key == 90) return "y";
       if (key >= 65 && key <= 90) {
          return String.valueOf((char)(97 + key - 65));
       } else if (key >= 48 && key <= 57) {
@@ -267,6 +270,8 @@ public final class NightfallGuiScreen extends class_437 {
    }
 
    private static String keyLabel(int key) {
+      if (key == 89) return "Z";
+      if (key == 90) return "Y";
       if (key < 0) {
          return "UNBOUND";
       } else if (key >= 65 && key <= 90) {
