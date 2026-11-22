@@ -100,6 +100,10 @@ public class BaseFinder extends Module {
    // patterns/waypoints repeatedly.
    private final Set<Long> suppressedChunkCache = new HashSet<>();
    private final Set<Long> confirmedFakeChunkCache = new HashSet<>();
+   // Repeated identical SUS scores can be a strong clue for copied/decoy bases.
+   // Keep this only as a secondary fingerprint; a matching chest layout is still
+   // required before a chunk is classified as a fake base.
+   private final Map<String, List<ScoreFingerprintObservation>> repeatedScoreFingerprints = new HashMap<>();
    private boolean suppressionCacheDirty = true;
 
    public BaseFinder() {
@@ -700,7 +704,22 @@ public class BaseFinder extends Module {
                chestPositions, mayLearnPattern, storage, chest, shulker, hopper, furnace, redstone, spawner, cx, cz
             );
 
-         if (repeatedFakePattern) {
+         // If several different chunks produce the same SUS score and the same
+         // storage/technical counts, treat that as a fake-base candidate. Do not
+         // trust the score alone: the chest layout must also match a previous
+         // observation. This catches copied decoys even when the normal pattern
+         // database has not learned them yet.
+         boolean repeatedScoreFake = !repeatedFakePattern
+            && chestPositions.size() >= 2
+            && score >= this.threshold.get()
+            && storageSignal
+            && signalKinds >= this.minSignals.getInt()
+            && this.isRepeatedScoreFakeCandidate(
+               score, storage, chest, shulker, hopper, furnace, redstone, spawner,
+               chestPositions, cx, cz
+            );
+
+         if (repeatedScoreFake) {
             if (prev == ChunkResult.Status.SUS) {
                this.recordFalsePositive(
                   res,
@@ -899,6 +918,71 @@ public class BaseFinder extends Module {
          }
          this.mobClusterMaxByChunk.put(entry.getKey(), max);
       }
+   }
+
+   private boolean isRepeatedScoreFakeCandidate(
+      double score,
+      int storage,
+      int chest,
+      int shulker,
+      int hopper,
+      int furnace,
+      int redstone,
+      int spawner,
+      List<String> chestPositions,
+      int cx,
+      int cz
+   ) {
+      // Scores are compared at one decimal place because tiny floating-point or
+      // weighting changes should not split an otherwise identical fingerprint.
+      String fingerprint = Math.round(score * 10.0)
+         + ":" + storage + ":" + chest + ":" + shulker + ":" + hopper
+         + ":" + furnace + ":" + redstone + ":" + spawner;
+
+      List<ScoreFingerprintObservation> observations =
+         this.repeatedScoreFingerprints.computeIfAbsent(fingerprint, ignored -> new ArrayList<>());
+
+      long locationKey = key(cx, cz);
+      for (ScoreFingerprintObservation observation : observations) {
+         if (observation.locationKey == locationKey) return false;
+      }
+
+      ScoreFingerprintObservation current =
+         new ScoreFingerprintObservation(locationKey, cx, cz, new ArrayList<>(chestPositions));
+
+      // Compare against earlier chunks with the exact same score/count fingerprint.
+      for (ScoreFingerprintObservation previous : observations) {
+         if (matchesChestPattern(previous.chestPositions, chestPositions)) {
+            for (ScoreFingerprintObservation matched : observations) {
+               ChunkResult previousResult = this.results.get(matched.locationKey);
+               if (previousResult != null) {
+                  previousResult.status = ChunkResult.Status.CLEAN;
+                  previousResult.reasons.clear();
+               }
+            }
+
+            observations.add(current);
+            if (observations.size() > 16) {
+               observations.subList(0, observations.size() - 16).clear();
+            }
+
+            this.dirty = true;
+            this.marksDirty = true;
+            return true;
+         }
+      }
+
+      observations.add(current);
+      if (observations.size() > 16) {
+         observations.subList(0, observations.size() - 16).clear();
+      }
+      if (this.repeatedScoreFingerprints.size() > 128) {
+         String oldestKey = this.repeatedScoreFingerprints.keySet().iterator().next();
+         if (!oldestKey.equals(fingerprint)) {
+            this.repeatedScoreFingerprints.remove(oldestKey);
+         }
+      }
+      return false;
    }
 
    private boolean isRepeatedFakePattern(
@@ -1272,6 +1356,14 @@ public class BaseFinder extends Module {
       } catch (AtomicMoveNotSupportedException unsupported) {
          Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
       }
+   }
+
+   private record ScoreFingerprintObservation(
+      long locationKey,
+      int cx,
+      int cz,
+      List<String> chestPositions
+   ) {
    }
 
    private static final class FakePattern {
