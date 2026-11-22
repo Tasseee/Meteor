@@ -1,6 +1,7 @@
 package dev.nightfall.mixin;
 
 import dev.nightfall.modules.FakeName;
+import net.minecraft.class_10017;
 import net.minecraft.class_10055;
 import net.minecraft.class_1007;
 import net.minecraft.class_11659;
@@ -48,7 +49,13 @@ public abstract class FakeNamePlayerRendererMixin {
       String replacement = FakeName.activeName();
       if (replacement.isBlank()) return;
 
-      // Replace only the local account-name text node; rank/team siblings keep their own styles.
-      state.field_53525 = FakeName.replaceName(state.field_53525, mc.field_1724.method_5477().getString());
+      // Both fields participate in the render-state name pipeline in 1.21.11.
+      // Keep each text component's style and any prefix/suffix siblings intact.
+      String accountName = mc.field_1724.method_5477().getString();
+      state.field_53525 = FakeName.replaceName(state.field_53525, accountName);
+      class_10017 baseState = (class_10017)(Object)state;
+      if (baseState.field_53337 != null) {
+         baseState.field_53337 = FakeName.replaceName(baseState.field_53337, accountName);
+      }
    }
 }
