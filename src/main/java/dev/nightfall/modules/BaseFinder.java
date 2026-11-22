@@ -1422,11 +1422,6 @@ public class BaseFinder extends Module {
       int furnace, int redstone, int spawner
    ) { }
 
-   private record ScorePatternKey(
-      int scoreTenths, int storage, int chest, int shulker, int hopper,
-      int furnace, int redstone, int spawner
-   ) { }
-
    private record ChestPoint(int x, int y, int z) {
    }
 
