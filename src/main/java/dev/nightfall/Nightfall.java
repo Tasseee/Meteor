@@ -13,6 +13,13 @@ import dev.nightfall.modules.Atmosphere;
 import dev.nightfall.modules.SeedCracker;
 import dev.nightfall.render.HatsRenderer;
 import dev.nightfall.render.GhostSkinFeatureRenderer;
+import dev.nightfall.render.GlassChamsFeatureRenderer;
+import dev.nightfall.render.GlassChamsItemRenderer;
+import dev.nightfall.render.JumpWaveRenderer;
+import dev.nightfall.render.KillEffectRenderer;
+import dev.nightfall.render.ChinaHatRenderer;
+import dev.nightfall.render.PlayerAuraRenderer;
+import dev.nightfall.render.SkyRibbonsRenderer;
 import dev.nightfall.render.ItemGlowRenderer;
 import dev.nightfall.render.FakeLagGhostRenderer;
 import dev.nightfall.render.FakeLagHud;
@@ -45,7 +52,7 @@ import org.slf4j.LoggerFactory;
 
 public class Nightfall implements ClientModInitializer {
    public static final String NAME = "Nightfall";
-   public static final String VERSION = "0.5.20";
+   public static final String VERSION = "0.5.21";
    public static final Logger LOGGER = LoggerFactory.getLogger("nightfall");
    private boolean prevGui;
    private boolean prevHud;
@@ -58,10 +65,17 @@ public class Nightfall implements ClientModInitializer {
       ModuleUsageStats.startTracking(ModuleManager.all());
       ItemGlowRenderer.init();
       GhostSkinFeatureRenderer.register();
+      GlassChamsFeatureRenderer.register();
+      GlassChamsItemRenderer.register();
       HudElementRegistry.attachElementBefore(VanillaHudElements.HOTBAR, class_2960.method_60655("nightfall", "atmosphere"), (ctx, tickCounter) -> {
          ModuleManager.get(Atmosphere.class).renderAtmosphere(ctx);
       });
       SkyVisualRenderer.register();
+      SkyRibbonsRenderer.register();
+      ChinaHatRenderer.register();
+      PlayerAuraRenderer.register();
+      KillEffectRenderer.register();
+      JumpWaveRenderer.register();
       HatsRenderer.register();
       FakeLagGhostRenderer.register();
       HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, class_2960.method_60655("nightfall", "fake_lag_status"), (ctx, tickCounter) -> FakeLagHud.render(ctx));
