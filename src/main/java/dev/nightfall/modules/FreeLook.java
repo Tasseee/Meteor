@@ -9,6 +9,7 @@ import net.minecraft.class_239;
 import net.minecraft.class_243;
 import net.minecraft.class_3959;
 import net.minecraft.class_3965;
+import org.lwjgl.glfw.GLFW;
 
 public final class FreeLook extends Module {
    private static boolean active;
