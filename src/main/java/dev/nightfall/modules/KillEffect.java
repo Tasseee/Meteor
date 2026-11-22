@@ -28,8 +28,7 @@ public final class KillEffect extends Module {
    private final ColorSetting customOuter = this.add(new ColorSetting("Eigene Farbe Ende", 0xFFEB96));
 
    private final List<Effect> effects = new ArrayList<>();
-   private class_1309 lastTarget;
-   private long lastAttackNanos;
+   private final List<PendingKill> pendingKills = new ArrayList<>();
 
    public KillEffect() {
       super("KillEffect", "Spektakuläre Schockwelle, Lichtsäule, Funken und Seelen beim eigenen Kill.", Category.VISUALS);
@@ -41,8 +40,7 @@ public final class KillEffect extends Module {
 
    private void reset() {
       effects.clear();
-      lastTarget = null;
-      lastAttackNanos = 0L;
+      pendingKills.clear();
    }
 
    @Override
@@ -56,23 +54,37 @@ public final class KillEffect extends Module {
          return;
       }
 
-      // Remember the crosshair target only while the local attack input is being pressed.
-      class_1297 crosshair = mc.field_1692;
-      if (mc.field_1690.field_1881.method_1434() && crosshair instanceof class_1309 living && living != mc.field_1724) {
-         lastTarget = living;
-         lastAttackNanos = now;
-      }
-
-      if (lastTarget != null && now - lastAttackNanos <= 4_000_000_000L) {
-         boolean dead = lastTarget.method_6032() <= 0.0F || !lastTarget.method_5805();
-         if (dead && (!onlyPlayers.get() || lastTarget instanceof net.minecraft.class_1657)) {
-            class_243 pos = new class_243(lastTarget.method_23317(), lastTarget.method_23318(), lastTarget.method_23321());
-            effects.add(new Effect(pos, now, System.nanoTime() ^ lastTarget.method_5667().getLeastSignificantBits()));
-            while (effects.size() > maxEffects.getInt()) effects.remove(0);
-            lastTarget = null;
+      // Track actual attack calls instead of the crosshair: the crosshair often
+      // stops pointing at a target on the same tick that the lethal hit lands.
+      Iterator<PendingKill> iterator = pendingKills.iterator();
+      while (iterator.hasNext()) {
+         PendingKill pending = iterator.next();
+         class_1309 target = pending.target();
+         boolean dead = target.method_6032() <= 0.0F || !target.method_5805();
+         if (dead) {
+            if (!onlyPlayers.get() || target instanceof net.minecraft.class_1657) {
+               effects.add(new Effect(pending.pos(), now,
+                  System.nanoTime() ^ target.method_5667().getLeastSignificantBits()));
+               while (effects.size() > maxEffects.getInt()) effects.remove(0);
+            }
+            iterator.remove();
+         } else if (now - pending.attackNanos() > 4_000_000_000L) {
+            iterator.remove();
          }
-      } else if (now - lastAttackNanos > 4_000_000_000L) {
-         lastTarget = null;
+      }
+   }
+
+   /** Called from the interaction-manager attack hook, including KillAura attacks. */
+   public static void recordAttack(class_1297 entity) {
+      if (!(entity instanceof class_1309 living) || !living.method_5805() || living.method_6032() <= 0.0F) return;
+      try {
+         KillEffect module = ModuleManager.get(KillEffect.class);
+         if (!module.isEnabled()) return;
+         class_243 pos = new class_243(living.method_23317(), living.method_23318(), living.method_23321());
+         long now = System.nanoTime();
+         module.pendingKills.removeIf(p -> p.target() == living);
+         module.pendingKills.add(new PendingKill(living, pos, now));
+      } catch (Throwable ignored) {
       }
    }
 
@@ -106,5 +118,6 @@ public final class KillEffect extends Module {
    private static int[] channels(int rgb) { return new int[]{rgb >> 16 & 255, rgb >> 8 & 255, rgb & 255}; }
    private static int mix(int a, int b, double t) { return (int)Math.round(a + (b - a) * t); }
 
+   private record PendingKill(class_1309 target, class_243 pos, long attackNanos) {}
    public record Effect(class_243 pos, long startNanos, long seed) {}
 }
