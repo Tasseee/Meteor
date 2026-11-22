@@ -16,6 +16,22 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(class_1007.class)
 public abstract class FakeNamePlayerRendererMixin {
    @Inject(
+      method = "method_74935(Lnet/minecraft/class_11890;D)Z",
+      at = @At("RETURN"),
+      cancellable = true
+   )
+   private void nightfall$showFakeNameplateForLocalPlayer(
+      net.minecraft.class_11890 player,
+      double squaredDistance,
+      org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> cir
+   ) {
+      class_310 mc = class_310.method_1551();
+      if (player == mc.field_1724 && !FakeName.activeName().isBlank()) {
+         cir.setReturnValue(true);
+      }
+   }
+
+   @Inject(
       method = "method_4213(Lnet/minecraft/class_10055;Lnet/minecraft/class_4587;Lnet/minecraft/class_11659;Lnet/minecraft/class_12075;)V",
       at = @At("HEAD")
    )
@@ -32,10 +48,7 @@ public abstract class FakeNamePlayerRendererMixin {
       String replacement = FakeName.activeName();
       if (replacement.isBlank()) return;
 
-      state.field_53525 = FakeName.replaceName(state.field_53525, mc.field_1724.method_5477().method_10851().toString());
-      // The account name is a plain player-name string; use it to replace only that text node.
-      if (state.field_53525 != null) {
-         state.field_53525 = FakeName.replaceName(state.field_53525, mc.field_1724.method_5477().getString());
-      }
+      // Replace only the local account-name text node; rank/team siblings keep their own styles.
+      state.field_53525 = FakeName.replaceName(state.field_53525, mc.field_1724.method_5477().getString());
    }
 }
