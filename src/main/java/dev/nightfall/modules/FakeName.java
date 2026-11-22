@@ -43,7 +43,8 @@ public final class FakeName extends Module {
       return module != null && module.isEnabled()
          && (!module.fakeName.get().isBlank()
             || !module.rankPrefix.get().isBlank()
-            || !module.clanTag.get().isBlank());
+            || !module.clanTag.get().isBlank()
+            || module.customNameColor.get());
    }
 
    /** Returns the configured replacement name, or an empty string when none is configured. */
