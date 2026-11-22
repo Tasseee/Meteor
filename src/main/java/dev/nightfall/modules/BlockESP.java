@@ -29,6 +29,7 @@ public final class BlockESP extends Module {
    ));
    private final NumberSetting outline = this.add(new NumberSetting("Outline-Stärke", 2.0, 1.0, 5.0, 1.0));
    private final ColorSetting color = this.add(new ColorSetting("Farbe", 0x62D8FF));
+   private final BoolSetting customSelection = this.add(new BoolSetting("Eigene Blockauswahl verwenden", false));
    private final ListSetting blockIds = this.add(new ListSetting("Eigene Block-IDs"));
    private final BoolSetting diamonds = this.add(new BoolSetting("Diamanterz", true));
    private final BoolSetting ancient = this.add(new BoolSetting("Antiker Schrott", true));
@@ -72,15 +73,17 @@ public final class BlockESP extends Module {
    }
 
    public void toggleBlock(String id) {
+      this.customSelection.set(true);
       if (!this.blockIds.remove(id)) this.blockIds.add(id);
    }
 
    public void clearBlockSelection() {
+      this.customSelection.set(true);
       this.blockIds.get().clear();
    }
 
    private boolean selected(class_2248 b) {
-      if (!this.blockIds.get().isEmpty()) {
+      if (this.customSelection.get()) {
          String id = class_7923.field_41175.method_10221(b).toString();
          return this.blockIds.has(id);
       }
