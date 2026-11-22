@@ -27,7 +27,7 @@ public abstract class FakeNamePlayerRendererMixin {
       org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> cir
    ) {
       class_310 mc = class_310.method_1551();
-      if (player == mc.field_1724 && !FakeName.activeName().isBlank()) {
+      if (player == mc.field_1724 && FakeName.hasVisualOverride()) {
          cir.setReturnValue(true);
       }
    }
@@ -46,8 +46,7 @@ public abstract class FakeNamePlayerRendererMixin {
       class_310 mc = class_310.method_1551();
       if (mc.field_1724 == null || state == null || state.field_53528 != mc.field_1724.method_5628()) return;
 
-      String replacement = FakeName.activeName();
-      if (replacement.isBlank()) return;
+      if (!FakeName.hasVisualOverride()) return;
 
       // Both fields participate in the render-state name pipeline in 1.21.11.
       // Keep each text component's style and any prefix/suffix siblings intact.
