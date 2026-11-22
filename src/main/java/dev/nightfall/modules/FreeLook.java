@@ -29,6 +29,7 @@ public final class FreeLook extends Module {
 
    public FreeLook() {
       super("FreeLook", "Mit der Maus umsehen, ohne die Blickrichtung des Spielers zu aendern.", Category.VISUALS);
+      this.setKey(GLFW.GLFW_KEY_LEFT_ALT);
    }
 
    public static boolean isActive() {
