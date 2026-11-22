@@ -2,12 +2,11 @@ package dev.nightfall.render;
 
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.PlayerAura;
+import dev.nightfall.util.Projection;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.class_12249;
-import net.minecraft.class_2338;
 import net.minecraft.class_243;
-import net.minecraft.class_2680;
 import net.minecraft.class_310;
 import net.minecraft.class_4184;
 import net.minecraft.class_4587;
@@ -15,452 +14,645 @@ import net.minecraft.class_4588;
 import org.joml.Matrix4f;
 
 /**
- * Detailed PlayerAura renderer. All elements are built from filled mesh quads,
- * so this stays compatible with Nightfall's current 1.21.11 world pipeline.
+ * PlayerAura-Renderer (neu).
+ *
+ * Warum die alte Version ruckelte: Sie las die Spielerposition nur 20-mal pro Sekunde (Tick-Position),
+ * die Kamera wird aber pro Frame interpoliert. Hier wird die Position wie bei Minecrafts Entity-Rendering
+ * pro Frame zwischen letzter und aktueller Tick-Position interpoliert (lastRender -> aktuell).
+ * Dazu kommt ein weicher Bodenwert, eine geglättete Bewegungsgeschwindigkeit (Flammen lehnen sich zurück)
+ * und keine Objekt-Allokationen pro Quad mehr.
  */
 public final class PlayerAuraRenderer {
-   private static final int RING_SEGMENTS = 96;
-   private static final int ORB_LATITUDE = 7;
-   private static final int ORB_LONGITUDE = 12;
+   private static final double TWO_PI = Math.PI * 2.0;
 
-   private PlayerAuraRenderer() {}
+   // ---- Frame-zu-Frame-Zustand
+   private static boolean started;
+   private static long lastFrameNanos;
+   private static long lastTickCount;
+   private static float lastHud = -1.0F;
+   private static double ownDelta;
+   private static double lastX;
+   private static double lastZ;
+   private static double velX;
+   private static double velZ;
+   private static double groundSmooth;
+   private static boolean groundInit;
+
+   // ---- Frame-Parameter (nur Render-Thread)
+   private static class_4588 out;
+   private static Matrix4f mat;
+   private static PlayerAura aura;
+   private static double time;
+   private static double spd;
+   private static double scl;
+   private static double alp;
+   private static double boost;
+   private static double px;
+   private static double py;
+   private static double pz;
+   private static double gy;
+   private static double leanX;
+   private static double leanZ;
+   private static int segs;
+   private static int bladeSegs;
+   private static int orbLat;
+   private static int orbLon;
+   private static boolean halo;
+
+   // ---- wiederverwendeter Quad-Puffer (keine Allokation pro Quad)
+   private static final double[] QX = new double[4];
+   private static final double[] QY = new double[4];
+   private static final double[] QZ = new double[4];
+   private static final int[] QC = new int[4];
+   private static final float[] QA = new float[4];
+   private static final double[] BX = new double[16];
+   private static final double[] BY = new double[16];
+   private static final double[] BZ = new double[16];
+   private static final double[] BW = new double[16];
+
+   private PlayerAuraRenderer() {
+   }
 
    public static void register() {
       WorldRenderEvents.AFTER_ENTITIES.register(PlayerAuraRenderer::render);
    }
 
+   // ================================================================== Einstieg
+
    private static void render(WorldRenderContext context) {
       class_310 mc = class_310.method_1551();
-      if (mc.field_1687 == null || mc.field_1724 == null || context.matrices() == null || context.consumers() == null) return;
+      if (mc.field_1687 == null || mc.field_1724 == null || context.matrices() == null || context.consumers() == null) {
+         started = false;
+         return;
+      }
 
-      PlayerAura aura;
-      try { aura = ModuleManager.get(PlayerAura.class); }
-      catch (Throwable ignored) { return; }
-      if (!aura.isEnabled()) return;
+      PlayerAura module;
+      try {
+         module = ModuleManager.get(PlayerAura.class);
+      } catch (Throwable ignored) {
+         return;
+      }
+      if (!module.isEnabled()) {
+         started = false;
+         groundInit = false;
+         return;
+      }
 
       boolean firstPerson = mc.field_1690.method_31044().method_31034();
-      if (firstPerson && !aura.firstPerson()) return;
+      if (firstPerson && !module.firstPerson()) {
+         return;
+      }
 
       long now = System.nanoTime();
-      double elapsed = Math.max(0.0, (now - aura.activatedAtNanos()) / 1.0E9);
+      // Vor frameDelta() lesen: frameDelta aktualisiert lastFrameNanos auf diesen Frame.
+      double dtSeconds = started
+         ? Math.max(0.0005, Math.min(0.25, (now - lastFrameNanos) / 1.0E9))
+         : 1.0 / 60.0;
+      double delta = frameDelta(module, now);
+
+      // Interpolierte Spielerposition (wie Minecrafts Entity-Rendering).
+      var player = mc.field_1724;
+      double cx = player.method_23317();
+      double cy = player.method_23318();
+      double cz = player.method_23321();
+      double ix = player.field_6038 + (cx - player.field_6038) * delta;
+      double iy = player.field_5971 + (cy - player.field_5971) * delta;
+      double iz = player.field_5989 + (cz - player.field_5989) * delta;
+
+      // Geglättete Geschwindigkeit (Blöcke/Sekunde) für die Neigung der Flammen.
+      if (started) {
+         double rawX = (ix - lastX) / dtSeconds;
+         double rawZ = (iz - lastZ) / dtSeconds;
+         if (Math.abs(rawX) > 40.0 || Math.abs(rawZ) > 40.0) {
+            rawX = 0.0;
+            rawZ = 0.0;
+         }
+         double k = 1.0 - Math.exp(-dtSeconds * 9.0);
+         velX += (rawX - velX) * k;
+         velZ += (rawZ - velZ) * k;
+      } else {
+         velX = 0.0;
+         velZ = 0.0;
+      }
+      lastX = ix;
+      lastZ = iz;
+
+      // Weicher Bodenwert (Sigil bleibt beim Springen am Boden, Treppen ruckeln nicht).
+      double groundTarget = module.groundValid() ? module.groundTarget() : iy;
+      if (!groundInit) {
+         groundSmooth = groundTarget;
+         groundInit = true;
+      } else {
+         groundSmooth += (groundTarget - groundSmooth) * (1.0 - Math.exp(-dtSeconds * 18.0));
+      }
+
+      // Einblend-Animation
+      double elapsed = Math.max(0.0, (now - module.activatedAtNanos()) / 1.0E9);
       double appear = clamp(elapsed / 0.9, 0.0, 1.0);
       double ease = 1.0 + 2.70158 * Math.pow(appear - 1.0, 3.0) + 1.70158 * Math.pow(appear - 1.0, 2.0);
-      double scale = aura.scale() * ease;
-      double alpha = aura.intensity() * Math.min(1.0, appear * 3.0) * (firstPerson ? 0.45 : 1.0);
-      if (alpha < 0.01 || scale < 0.01) return;
+      double scale = module.scale() * ease;
+      double alpha = module.intensity() * Math.min(1.0, appear * 3.0) * (firstPerson ? module.firstPersonOpacity() : 1.0);
+      if (alpha < 0.01 || scale < 0.01) {
+         return;
+      }
 
-      // Position is read once per frame; the world-render callback itself runs between game ticks.
-      double px = mc.field_1724.method_23317();
-      double py = mc.field_1724.method_23318();
-      double pz = mc.field_1724.method_23321();
-      double time = (now % 3_600_000_000_000L) / 1.0E9;
-      double speed = aura.speed();
+      module.refreshPalette();
+      int quality = module.qualityLevel();
+      segs = quality == 0 ? 20 : quality == 1 ? 32 : 48;
+      bladeSegs = quality == 0 ? 5 : quality == 1 ? 7 : 9;
+      orbLat = quality == 0 ? 3 : quality == 1 ? 4 : 5;
+      orbLon = quality == 0 ? 5 : quality == 1 ? 7 : 9;
+      halo = quality > 0;
+
+      aura = module;
+      time = (now % 3_600_000_000_000L) / 1.0E9;
+      spd = module.speed();
+      scl = scale;
+      alp = alpha;
+      boost = module.power();
+      px = ix;
+      py = iy;
+      pz = iz;
+      gy = groundSmooth + 0.03;
+      double leanScale = module.lean() * 0.16;
+      leanX = -velX * leanScale;
+      leanZ = -velZ * leanScale;
+      double leanLen = Math.sqrt(leanX * leanX + leanZ * leanZ);
+      if (leanLen > 1.0) {
+         leanX /= leanLen;
+         leanZ /= leanLen;
+      }
 
       class_4184 camera = mc.field_1773.method_19418();
-      if (camera == null) return;
+      if (camera == null) {
+         return;
+      }
       class_243 cameraPos = camera.method_71156();
       class_4587 matrices = context.matrices();
-      class_4588 out = context.consumers().method_73477(class_12249.method_76019());
+      out = context.consumers().method_73477(class_12249.method_76019());
       matrices.method_22903();
       matrices.method_22904(-cameraPos.field_1352, -cameraPos.field_1351, -cameraPos.field_1350);
       try {
-         Matrix4f matrix = matrices.method_23760().method_23761();
-         if (aura.shellEnabled()) drawBodyShell(out, matrix, aura, px, py, pz, time, scale, alpha);
-         if (aura.ringsEnabled()) drawEnergyRings(out, matrix, aura, px, py, pz, time, scale, alpha, speed);
-         if (aura.orbCount() > 0) drawOrbitingOrbs(out, matrix, aura, px, py, pz, time, scale, alpha, speed);
-         if (aura.emberCount() > 0) drawEmbers(out, matrix, aura, px, py, pz, time, scale, alpha, speed);
-         if (aura.sigilEnabled()) drawGroundSigil(out, matrix, aura, mc, px, py, pz, time, scale, alpha, speed);
+         mat = matrices.method_23760().method_23761();
+         if (module.groundGlowEnabled()) drawGroundGlow();
+         if (module.sigilEnabled()) drawSigil();
+         if (module.pulseEnabled()) drawPulse();
+         if (module.pillarEnabled()) drawPillar();
+         if (module.flameCount() > 0) drawBlades();
+         if (module.ringCount() > 0) drawEnergyRings();
+         if (module.orbCount() > 0) drawOrbs();
+         if (module.sparkCount() > 0) drawSparks();
       } finally {
          matrices.method_22909();
+         out = null;
+         aura = null;
       }
    }
 
-   // Thin, breathing energy shell, with a brighter inner core and animated vertical filaments.
-   private static void drawBodyShell(class_4588 out, Matrix4f m, PlayerAura aura,
-                                     double x, double y, double z, double time, double scale, double alpha) {
-      int sides = 48;
-      int slices = 16;
-      double height = 1.95 * scale;
-      double pulse = 0.5 + 0.5 * Math.sin(time * 2.2);
-      for (int layer = 0; layer < 3; layer++) {
-         double baseRadius = layer == 0 ? 0.58 : layer == 1 ? 0.47 : 0.34;
-         for (int j = 0; j < slices; j++) {
-            double profile = 0.78 + 0.22 * Math.sin(Math.PI * ((j + 0.5) / slices));
-            double radius = baseRadius * scale * profile * (1.0 + 0.035 * Math.sin(time * 2.2 + layer));
-            double y0 = y + height * j / slices;
-            double y1 = y + height * (j + 1) / slices;
-            double mid = (j + 0.5) / slices;
-            double vertical = Math.pow(1.0 - mid, 0.88);
-            float layerOpacity = layer == 0 ? 0.055F : layer == 1 ? 0.075F : 0.09F;
-            float a = (float)(layerOpacity * vertical * alpha * (0.76 + 0.24 * pulse));
-            if (a < 0.005F) continue;
-            for (int s = 0; s < sides; s++) {
-               double a0 = s * Math.PI * 2.0 / sides + time * 0.3;
-               double a1 = (s + 1) * Math.PI * 2.0 / sides + time * 0.3;
-               float[] c0 = rgba(aura.color(mid, time), a);
-               float[] c1 = rgba(aura.color(mid + 0.1, time), a * 0.55F);
-               quad(out, m,
-                  (float)(x + Math.cos(a0) * radius), (float)y0, (float)(z + Math.sin(a0) * radius),
-                  (float)(x + Math.cos(a1) * radius), (float)y0, (float)(z + Math.sin(a1) * radius),
-                  (float)(x + Math.cos(a1) * radius), (float)y1, (float)(z + Math.sin(a1) * radius),
-                  (float)(x + Math.cos(a0) * radius), (float)y1, (float)(z + Math.sin(a0) * radius),
-                  c0, c0, c1, c1);
+   /**
+    * Tick-Fortschritt dieses Frames (0..1). Minecrafts Wert für den aktuellen Frame ist erst nach dem HUD
+    * verfügbar; Projection.tickDelta() ist der exakte Wert des Vorframes. Wir rechnen ihn mit der
+    * vergangenen Zeit und den inzwischen gelaufenen Ticks auf diesen Frame weiter.
+    */
+   private static double frameDelta(PlayerAura module, long now) {
+      float hud = Projection.tickDelta();
+      long ticks = module.tickCount();
+      double d;
+      if (!started) {
+         d = hud;
+      } else {
+         double dt = (now - lastFrameNanos) / 5.0E7;
+         long ran = ticks - lastTickCount;
+         d = (hud != lastHud ? hud : ownDelta) + dt - ran;
+      }
+      d = clamp(d, 0.0, 1.0);
+      ownDelta = d;
+      lastHud = hud;
+      lastFrameNanos = now;
+      lastTickCount = ticks;
+      started = true;
+      return d;
+   }
+
+   // ================================================================== Flammenzungen
+
+   private static void drawBlades() {
+      int n = aura.flameCount();
+      double height = aura.flameHeight() * scl;
+      for (int pass = 0; pass < 2; pass++) {
+         int count = pass == 0 ? n : n / 2;
+         double heightScale = pass == 0 ? 1.0 : 0.62;
+         double radiusScale = pass == 0 ? 1.0 : 0.6;
+         double spin = (pass == 0 ? 0.55 : -0.9) * spd;
+         for (int b = 0; b < count; b++) {
+            double h1 = frac(Math.sin(b * 12.9898 + pass * 78.233) * 43758.5453);
+            double h2 = frac(Math.sin(b * 4.1414 + pass * 9.17) * 9999.77);
+            double ang = TWO_PI * b / count + time * spin + h1 * 0.4;
+            double rx = Math.cos(ang);
+            double rz = Math.sin(ang);
+            double tx = -rz;
+            double tz = rx;
+            double baseR = (0.38 + 0.20 * h2) * scl * radiusScale;
+            double bladeH = height * heightScale * (0.62 + 0.38 * h1) * (0.92 + 0.08 * Math.sin(time * (5.0 + 3.0 * h2) * spd + b));
+            double halfW = (0.27 * scl) * (0.7 + 0.5 * h2) * (pass == 0 ? 1.0 : 0.8);
+
+            for (int k = 0; k <= bladeSegs; k++) {
+               double u = (double)k / bladeSegs;
+               double r = baseR * (1.0 - 0.5 * u);
+               double sway = Math.sin(time * 3.1 * spd + b * 1.9 + u * 5.5) * 0.11 * scl * u;
+               BX[k] = px + rx * r + tx * sway + leanX * u * u * bladeH * 0.5;
+               BY[k] = py + 0.05 + bladeH * u;
+               BZ[k] = pz + rz * r + tz * sway + leanZ * u * u * bladeH * 0.5;
+               BW[k] = halfW * Math.pow(1.0 - u, 0.75) * (1.0 + 0.25 * Math.sin(time * 6.0 + b + u * 8.0));
+            }
+
+            for (int layer = 0; layer < 3; layer++) {
+               if (layer == 0 && !halo) continue;
+               double widthMul = layer == 0 ? 1.9 : layer == 1 ? 1.0 : 0.30;
+               double alphaMul = layer == 0 ? 0.40 : 1.0;
+               for (int k = 0; k < bladeSegs; k++) {
+                  double u0 = (double)k / bladeSegs;
+                  double u1 = (double)(k + 1) / bladeSegs;
+                  int c0 = bladeColor(layer, u0, h2);
+                  int c1 = bladeColor(layer, u1, h2);
+                  double a0 = alphaMul * Math.pow(1.0 - u0, 0.85) * alp;
+                  double a1 = alphaMul * Math.pow(Math.max(0.0, 1.0 - u1), 0.85) * alp;
+                  set(0, BX[k] - tx * BW[k] * widthMul, BY[k], BZ[k] - tz * BW[k] * widthMul, c0, a0);
+                  set(1, BX[k] + tx * BW[k] * widthMul, BY[k], BZ[k] + tz * BW[k] * widthMul, c0, a0);
+                  set(2, BX[k + 1] + tx * BW[k + 1] * widthMul, BY[k + 1], BZ[k + 1] + tz * BW[k + 1] * widthMul, c1, a1);
+                  set(3, BX[k + 1] - tx * BW[k + 1] * widthMul, BY[k + 1], BZ[k + 1] - tz * BW[k + 1] * widthMul, c1, a1);
+                  emit(true);
+               }
             }
          }
       }
+   }
 
-      // Fine vertical strands ripple over the translucent cylinder.
-      for (int strand = 0; strand < 26; strand++) {
-         double angle = strand * Math.PI * 2.0 / 26.0 + time * 0.24;
-         double r = 0.555 * scale;
-         double x0 = x + Math.cos(angle) * r, z0 = z + Math.sin(angle) * r;
-         for (int i = 0; i < 16; i++) {
-            double t0 = i / 16.0, t1 = (i + 1) / 16.0;
-            float a = (float)(alpha * 0.22 * Math.pow(1.0 - t0, 0.8));
-            float[] c = rgba(aura.color(t0, time), a);
-            double wave = 0.018 * Math.sin(time * 3.0 + t0 * 12.0 + strand);
-            double x1 = x0 + Math.cos(angle) * wave, z1 = z0 + Math.sin(angle) * wave;
-            verticalStrip(out, m, x0, y + height * t0, z0, x1, y + height * t1, z1, 0.012 * scale, c);
+   private static int bladeColor(int layer, double u, double h2) {
+      int base = aura.color(0.1 + 0.8 * u + h2 * 0.1, time);
+      if (layer == 2) return brighten(base, 0.55 + 0.4 * boost);
+      if (layer == 1) return brighten(base, 0.10 * boost);
+      return base;
+   }
+
+   // ================================================================== Leuchtsäule
+
+   private static void drawPillar() {
+      double height = aura.flameHeight() * scl * 0.95;
+      double flicker = 0.88 + 0.12 * Math.sin(time * 7.0 * spd);
+      double[] radii = {0.66, 0.50, 0.34};
+      double[] layerAlpha = {0.50, 0.62, 0.78};
+      for (int layer = 0; layer < 3; layer++) {
+         double r = radii[layer] * scl * (1.0 + 0.03 * Math.sin(time * 3.0 * spd + layer));
+         double rot = time * 0.4 * spd * (layer % 2 == 0 ? 1.0 : -1.0);
+         int bottom = aura.color(layer * 0.1, time);
+         int top = aura.color(1.0, time);
+         for (int s = 0; s < segs; s++) {
+            double a0 = TWO_PI * s / segs + rot;
+            double a1 = TWO_PI * (s + 1) / segs + rot;
+            double c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+            double topR = r * 0.5;
+            double lx = leanX * height * 0.5;
+            double lz = leanZ * height * 0.5;
+            set(0, px + c0 * r, py + 0.02, pz + s0 * r, bottom, alp * layerAlpha[layer] * flicker);
+            set(1, px + c1 * r, py + 0.02, pz + s1 * r, bottom, alp * layerAlpha[layer] * flicker);
+            set(2, px + c1 * topR + lx, py + height, pz + s1 * topR + lz, top, 0.0);
+            set(3, px + c0 * topR + lx, py + height, pz + s0 * topR + lz, top, 0.0);
+            emit(true);
          }
       }
    }
 
-   // Three counter-rotating tilted energy bands, each with a comet head and a long fading tail.
-   private static void drawEnergyRings(class_4588 out, Matrix4f m, PlayerAura aura,
-                                       double x, double y, double z, double time, double scale, double alpha, double speed) {
-      double[] heights = {0.30, 0.95, 1.60};
-      double[] radii = {0.95, 1.10, 0.90};
-      double[] tilts = {0.35, 0.50, 0.30};
-      double[] dirs = {1.0, -1.0, 1.0};
-      for (int ring = 0; ring < 3; ring++) {
+   // ================================================================== Bodenglanz
+
+   private static void drawGroundGlow() {
+      double radius = 1.5 * scl;
+      int bands = 5;
+      double y = gy + 0.03;
+      double pulse = 0.88 + 0.12 * Math.sin(time * 3.2 * spd);
+      for (int band = 0; band < bands; band++) {
+         double f0 = (double)band / bands;
+         double f1 = (double)(band + 1) / bands;
+         double a0 = Math.pow(1.0 - f0, 1.7) * 0.9 * alp * pulse;
+         double a1 = Math.pow(1.0 - f1, 1.7) * 0.9 * alp * pulse;
+         int col0 = brighten(aura.color(f0, time), 0.35 * boost + 0.1 * (1.0 - f0));
+         int col1 = aura.color(f1, time);
+         double r0 = f0 * radius;
+         double r1 = f1 * radius;
+         for (int s = 0; s < segs; s++) {
+            double ang0 = TWO_PI * s / segs;
+            double ang1 = TWO_PI * (s + 1) / segs;
+            set(0, px + Math.cos(ang0) * r0, y, pz + Math.sin(ang0) * r0, col0, a0);
+            set(1, px + Math.cos(ang0) * r1, y, pz + Math.sin(ang0) * r1, col1, a1);
+            set(2, px + Math.cos(ang1) * r1, y, pz + Math.sin(ang1) * r1, col1, a1);
+            set(3, px + Math.cos(ang1) * r0, y, pz + Math.sin(ang1) * r0, col0, a0);
+            emit(true);
+         }
+      }
+   }
+
+   // ================================================================== Bodensiegel
+
+   private static void drawSigil() {
+      double y = gy + 0.06;
+      double pulse = 0.8 + 0.2 * Math.sin(time * 2.0 * spd);
+      double a = 0.95 * alp * pulse;
+      flatRing(y, 1.28 * scl, 0.07 * scl, a, 0.0);
+      flatRing(y + 0.004, 1.52 * scl, 0.04 * scl, a * 0.9, 0.5);
+      flatRing(y + 0.008, 0.82 * scl, 0.03 * scl, a * 0.8, 0.25);
+
+      for (int i = 0; i < 24; i++) {
+         double angle = i * TWO_PI / 24.0 + time * 0.25 * spd;
+         double r0 = 1.34 * scl;
+         double r1 = (i % 3 == 0 ? 1.47 : 1.43) * scl;
+         double ca = Math.cos(angle);
+         double sa = Math.sin(angle);
+         flatSegment(px + ca * r0, pz + sa * r0, px + ca * r1, pz + sa * r1, (i % 3 == 0 ? 0.03 : 0.018) * scl, y + 0.012,
+            aura.color(i / 24.0, time), a * 0.85);
+      }
+
+      for (int triangle = 0; triangle < 2; triangle++) {
+         double rotation = time * 0.5 * spd * (triangle == 0 ? 1.0 : -1.0) + triangle * Math.PI / 3.0;
+         double radius = 1.22 * scl;
+         for (int edge = 0; edge < 3; edge++) {
+            double a0 = rotation + edge * TWO_PI / 3.0;
+            double a1 = rotation + (edge + 1) * TWO_PI / 3.0;
+            flatSegment(px + Math.cos(a0) * radius, pz + Math.sin(a0) * radius,
+               px + Math.cos(a1) * radius, pz + Math.sin(a1) * radius,
+               0.032 * scl, y + 0.016, aura.color(triangle * 0.5 + edge / 6.0, time), a * 0.9);
+         }
+      }
+
+      for (int i = 0; i < 6; i++) {
+         double angle = i * Math.PI / 3.0 - time * 0.7 * spd;
+         flatSegment(px + Math.cos(angle) * 0.17 * scl, pz + Math.sin(angle) * 0.17 * scl,
+            px + Math.cos(angle) * 0.42 * scl, pz + Math.sin(angle) * 0.42 * scl,
+            0.02 * scl, y + 0.02, 0xFFFFFF, a * 0.7);
+      }
+      flatRing(y + 0.024, 0.12 * scl, 0.03 * scl, a, 0.0);
+   }
+
+   private static void flatRing(double y, double radius, double width, double alpha, double colorOffset) {
+      double inner = radius - width * 0.5;
+      double outer = radius + width * 0.5;
+      for (int s = 0; s < segs; s++) {
+         double a0 = TWO_PI * s / segs;
+         double a1 = TWO_PI * (s + 1) / segs;
+         int c0 = aura.color(0.5 + 0.5 * Math.sin(a0 * 2.0 + time * 0.6 + colorOffset * TWO_PI), time);
+         int c1 = aura.color(0.5 + 0.5 * Math.sin(a1 * 2.0 + time * 0.6 + colorOffset * TWO_PI), time);
+         set(0, px + Math.cos(a0) * inner, y, pz + Math.sin(a0) * inner, c0, alpha);
+         set(1, px + Math.cos(a0) * outer, y, pz + Math.sin(a0) * outer, c0, alpha);
+         set(2, px + Math.cos(a1) * outer, y, pz + Math.sin(a1) * outer, c1, alpha);
+         set(3, px + Math.cos(a1) * inner, y, pz + Math.sin(a1) * inner, c1, alpha);
+         emit(true);
+      }
+   }
+
+   private static void flatSegment(double x0, double z0, double x1, double z1, double width, double y, int rgb, double alpha) {
+      double dx = x1 - x0;
+      double dz = z1 - z0;
+      double length = Math.sqrt(dx * dx + dz * dz);
+      if (length < 1.0E-5) return;
+      double nx = -dz / length * width;
+      double nz = dx / length * width;
+      set(0, x0 - nx, y, z0 - nz, rgb, alpha);
+      set(1, x1 - nx, y, z1 - nz, rgb, alpha);
+      set(2, x1 + nx, y, z1 + nz, rgb, alpha);
+      set(3, x0 + nx, y, z0 + nz, rgb, alpha);
+      emit(true);
+   }
+
+   // ================================================================== Druckwelle
+
+   private static void drawPulse() {
+      double period = 2.3 / spd;
+      double phase = frac(time / period);
+      double radius = (0.5 + phase * 2.8) * scl;
+      double width = (0.14 * (1.0 - phase) + 0.02) * scl;
+      double a = Math.pow(1.0 - phase, 1.3) * alp;
+      double y = gy + 0.05;
+      int rgb = brighten(aura.color(phase, time), 0.3 * boost);
+      double inner = Math.max(0.01, radius - width);
+      double outer = radius + width;
+      double wall = 0.45 * scl * (1.0 - phase);
+      for (int s = 0; s < segs * 2; s++) {
+         double a0 = TWO_PI * s / (segs * 2);
+         double a1 = TWO_PI * (s + 1) / (segs * 2);
+         double c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+         set(0, px + c0 * inner, y, pz + s0 * inner, rgb, a);
+         set(1, px + c0 * outer, y, pz + s0 * outer, rgb, a);
+         set(2, px + c1 * outer, y, pz + s1 * outer, rgb, a);
+         set(3, px + c1 * inner, y, pz + s1 * inner, rgb, a);
+         emit(true);
+         // senkrechte Kante der Welle: unten kräftig, oben transparent
+         set(0, px + c0 * radius, y, pz + s0 * radius, rgb, a * 0.85);
+         set(1, px + c1 * radius, y, pz + s1 * radius, rgb, a * 0.85);
+         set(2, px + c1 * radius, y + wall, pz + s1 * radius, rgb, 0.0);
+         set(3, px + c0 * radius, y + wall, pz + s0 * radius, rgb, 0.0);
+         emit(true);
+      }
+   }
+
+   // ================================================================== Energieringe
+
+   private static void drawEnergyRings() {
+      double[] heights = {0.30, 0.95, 1.60, 2.15};
+      double[] radii = {0.95, 1.10, 0.90, 0.75};
+      double[] tilts = {0.35, 0.50, 0.30, 0.45};
+      double[] dirs = {1.0, -1.0, 1.0, -1.0};
+      int ringCount = Math.min(4, aura.ringCount());
+      int segments = Math.min(96, segs * 2);
+
+      for (int ring = 0; ring < ringCount; ring++) {
          double bob = 0.06 * Math.sin(time * 1.3 + ring * 2.0);
-         double cx = x, cy = y + heights[ring] * scale + bob, cz = z;
-         double radius = radii[ring] * scale;
-         double tilt = tilts[ring] + 0.12 * Math.sin(time * 0.9 * speed + ring);
-         double phi = time * 0.6 * speed * dirs[ring] + ring * 2.1;
+         double cx = px + leanX * heights[ring] * 0.5;
+         double cy = py + heights[ring] * scl + bob;
+         double cz = pz + leanZ * heights[ring] * 0.5;
+         double radius = radii[ring] * scl;
+         double tilt = tilts[ring] + 0.12 * Math.sin(time * 0.9 * spd + ring);
+         double phi = time * 0.6 * spd * dirs[ring] + ring * 2.1;
          double nx = Math.sin(tilt) * Math.cos(phi);
          double ny = Math.cos(tilt);
          double nz = Math.sin(tilt) * Math.sin(phi);
          double hx = Math.abs(ny) < 0.99 ? 0.0 : 1.0;
          double hy = Math.abs(ny) < 0.99 ? 1.0 : 0.0;
          double hz = 0.0;
-         double ux = ny * hz - nz * hy, uy = nz * hx - nx * hz, uz = nx * hy - ny * hx;
+         double ux = ny * hz - nz * hy;
+         double uy = nz * hx - nx * hz;
+         double uz = nx * hy - ny * hx;
          double ul = Math.sqrt(ux * ux + uy * uy + uz * uz);
-         ux /= ul; uy /= ul; uz /= ul;
-         double vx = ny * uz - nz * uy, vy = nz * ux - nx * uz, vz = nx * uy - ny * ux;
+         ux /= ul;
+         uy /= ul;
+         uz /= ul;
+         double vx = ny * uz - nz * uy;
+         double vy = nz * ux - nx * uz;
+         double vz = nx * uy - ny * ux;
 
-         double head = time * 1.8 * speed * dirs[ring] + ring * 1.3;
-         double band = 0.045 * scale;
-         int segments = 72;
+         double head = time * 1.8 * spd * dirs[ring] + ring * 1.3;
+         double band = 0.07 * scl;
          for (int i = 0; i < segments; i++) {
-            double a0 = i * Math.PI * 2.0 / segments;
-            double a1 = (i + 1) * Math.PI * 2.0 / segments;
+            double a0 = i * TWO_PI / segments;
+            double a1 = (i + 1) * TWO_PI / segments;
             double amid = (a0 + a1) * 0.5;
-            double behind = frac(dirs[ring] * (head - amid) / (Math.PI * 2.0));
-            double tail = Math.pow(1.0 - behind, 2.2);
-            float opacity = (float)((0.12 + 0.88 * tail) * alpha);
+            double behind = frac(dirs[ring] * (head - amid) / TWO_PI);
+            double tail = Math.pow(1.0 - behind, 1.6);
+            double a = (0.25 + 0.75 * tail) * alp;
             int rgb = aura.color(tail, time);
-            if (tail > 0.85) rgb = brighten(rgb, (tail - 0.85) / 0.15 * 0.55);
-            float[] c = rgba(rgb, opacity);
+            if (tail > 0.8) rgb = brighten(rgb, (tail - 0.8) / 0.2 * (0.35 + 0.4 * boost));
+
             double r0x = Math.cos(a0) * radius, r0y = Math.sin(a0) * radius;
             double r1x = Math.cos(a1) * radius, r1y = Math.sin(a1) * radius;
             double p0x = cx + ux * r0x + vx * r0y, p0y = cy + uy * r0x + vy * r0y, p0z = cz + uz * r0x + vz * r0y;
             double p1x = cx + ux * r1x + vx * r1y, p1y = cy + uy * r1x + vy * r1y, p1z = cz + uz * r1x + vz * r1y;
             double thick = band * (0.6 + 0.8 * tail);
-            double haloThick = thick * 2.7;
-            float[] halo = rgba(rgb, opacity * 0.13F);
-            quad(out, m,
-               (float)(p0x - nx * haloThick), (float)(p0y - ny * haloThick), (float)(p0z - nz * haloThick),
-               (float)(p1x - nx * haloThick), (float)(p1y - ny * haloThick), (float)(p1z - nz * haloThick),
-               (float)(p1x + nx * haloThick), (float)(p1y + ny * haloThick), (float)(p1z + nz * haloThick),
-               (float)(p0x + nx * haloThick), (float)(p0y + ny * haloThick), (float)(p0z + nz * haloThick), halo);
-            quad(out, m,
-               (float)(p0x - nx * thick), (float)(p0y - ny * thick), (float)(p0z - nz * thick),
-               (float)(p1x - nx * thick), (float)(p1y - ny * thick), (float)(p1z - nz * thick),
-               (float)(p1x + nx * thick), (float)(p1y + ny * thick), (float)(p1z + nz * thick),
-               (float)(p0x + nx * thick), (float)(p0y + ny * thick), (float)(p0z + nz * thick), c);
-            double coreThick = thick * 0.16;
-            float[] core = rgba(brighten(rgb, 0.78), opacity * 0.58F);
-            quad(out, m,
-               (float)(p0x - nx * coreThick), (float)(p0y - ny * coreThick), (float)(p0z - nz * coreThick),
-               (float)(p1x - nx * coreThick), (float)(p1y - ny * coreThick), (float)(p1z - nz * coreThick),
-               (float)(p1x + nx * coreThick), (float)(p1y + ny * coreThick), (float)(p1z + nz * coreThick),
-               (float)(p0x + nx * coreThick), (float)(p0y + ny * coreThick), (float)(p0z + nz * coreThick), core);
+
+            if (halo) {
+               bandQuad(p0x, p0y, p0z, p1x, p1y, p1z, nx, ny, nz, thick * 2.4, rgb, a * 0.28);
+            }
+            bandQuad(p0x, p0y, p0z, p1x, p1y, p1z, nx, ny, nz, thick, rgb, a * 0.95);
+            bandQuad(p0x, p0y, p0z, p1x, p1y, p1z, nx, ny, nz, thick * 0.22, brighten(rgb, 0.6 + 0.35 * boost), a);
          }
 
-         // A bright, layered comet head rides the band and leaves a short secondary glow.
-         double headAngle = head;
-         double headX = cx + ux * Math.cos(headAngle) * radius + vx * Math.sin(headAngle) * radius;
-         double headY = cy + uy * Math.cos(headAngle) * radius + vy * Math.sin(headAngle) * radius;
-         double headZ = cz + uz * Math.cos(headAngle) * radius + vz * Math.sin(headAngle) * radius;
-         drawOrb(out, m, headX, headY, headZ, 0.105 * scale, aura.color(1.0, time), (float)(0.95 * alpha));
+         double hxp = cx + ux * Math.cos(head) * radius + vx * Math.sin(head) * radius;
+         double hyp = cy + uy * Math.cos(head) * radius + vy * Math.sin(head) * radius;
+         double hzp = cz + uz * Math.cos(head) * radius + vz * Math.sin(head) * radius;
+         orb(hxp, hyp, hzp, 0.115 * scl, aura.color(1.0, time), alp);
       }
    }
 
-   // Orbiting lights have spherical layered cores and individually fading trail beads.
-   private static void drawOrbitingOrbs(class_4588 out, Matrix4f m, PlayerAura aura,
-                                        double x, double y, double z, double time, double scale, double alpha, double speed) {
+   private static void bandQuad(double p0x, double p0y, double p0z, double p1x, double p1y, double p1z,
+                                double nx, double ny, double nz, double thick, int rgb, double alpha) {
+      set(0, p0x - nx * thick, p0y - ny * thick, p0z - nz * thick, rgb, alpha);
+      set(1, p1x - nx * thick, p1y - ny * thick, p1z - nz * thick, rgb, alpha);
+      set(2, p1x + nx * thick, p1y + ny * thick, p1z + nz * thick, rgb, alpha);
+      set(3, p0x + nx * thick, p0y + ny * thick, p0z + nz * thick, rgb, alpha);
+      emit(true);
+   }
+
+   // ================================================================== Lichtkugeln
+
+   private static void drawOrbs() {
       int count = aura.orbCount();
       for (int i = 0; i < count; i++) {
-         double baseAngle = i * Math.PI * 2.0 / count;
-         double rate = (1.1 + 0.18 * (i % 3)) * speed * (i % 2 == 0 ? 1.0 : -1.0);
-         for (int trail = 10; trail >= 0; trail--) {
-            double lag = trail * 0.075;
-            double t = time - lag;
+         double baseAngle = i * TWO_PI / count;
+         double rate = (1.1 + 0.18 * (i % 3)) * spd * (i % 2 == 0 ? 1.0 : -1.0);
+         for (int trail = 3; trail >= 0; trail--) {
+            double t = time - trail * 0.06;
             double angle = baseAngle + t * rate;
-            double h = 0.35 + 1.35 * (0.5 + 0.5 * Math.sin(t * 0.9 * speed + i * 1.3));
-            double radius = (1.0 + 0.15 * Math.sin(t * 1.4 * speed + i)) * scale;
-            double ox = x + Math.cos(angle) * radius;
-            double oy = y + h * scale;
-            double oz = z + Math.sin(angle) * radius;
-            double fade = Math.pow(1.0 - trail / 11.0, 1.65);
-            double size = (0.085 * fade + 0.018) * scale;
+            double h = 0.35 + 1.35 * (0.5 + 0.5 * Math.sin(t * 0.9 * spd + i * 1.3));
+            double radius = (1.0 + 0.15 * Math.sin(t * 1.4 * spd + i)) * scl;
+            double ox = px + Math.cos(angle) * radius + leanX * h * 0.5;
+            double oy = py + h * scl;
+            double oz = pz + Math.sin(angle) * radius + leanZ * h * 0.5;
+            double fade = Math.pow(1.0 - trail / 4.0, 1.4);
+            double size = (0.10 * fade + 0.03) * scl;
             int rgb = aura.color(frac(i * 0.17 + 0.3), time);
-            if (trail == 0) rgb = brighten(rgb, 0.62);
-            drawOrb(out, m, ox, oy, oz, size * 1.9, rgb, (float)(fade * alpha * 0.22));
-            drawOrb(out, m, ox, oy, oz, size, rgb, (float)(fade * alpha * (trail == 0 ? 1.0 : 0.45)));
+            if (trail == 0) {
+               orb(ox, oy, oz, size, brighten(rgb, 0.4 * boost), alp);
+            } else {
+               sphere(ox, oy, oz, size * 1.1, rgb, fade * alp * 0.55);
+            }
          }
       }
    }
 
-   // Stable deterministic embers spiral upward, pulse, and leave tapered luminous streaks.
-   private static void drawEmbers(class_4588 out, Matrix4f m, PlayerAura aura,
-                                  double x, double y, double z, double time, double scale, double alpha, double speed) {
-      for (int k = 0; k < aura.emberCount(); k++) {
+   /** Leuchtkugel: weiche Hülle, farbiger Körper, weißer Kern. */
+   private static void orb(double x, double y, double z, double radius, int rgb, double alpha) {
+      if (halo) sphere(x, y, z, radius * 2.1, rgb, alpha * 0.22);
+      sphere(x, y, z, radius * 1.15, rgb, alpha * 0.85);
+      sphere(x, y, z, radius * 0.55, 0xFFFFFF, alpha);
+   }
+
+   private static void sphere(double x, double y, double z, double radius, int rgb, double alpha) {
+      if (alpha < 0.01 || radius < 0.002) return;
+      for (int lat = 0; lat < orbLat; lat++) {
+         double p0 = -Math.PI / 2.0 + Math.PI * lat / orbLat;
+         double p1 = -Math.PI / 2.0 + Math.PI * (lat + 1) / orbLat;
+         double cp0 = Math.cos(p0), sp0 = Math.sin(p0), cp1 = Math.cos(p1), sp1 = Math.sin(p1);
+         for (int lon = 0; lon < orbLon; lon++) {
+            double a0 = TWO_PI * lon / orbLon;
+            double a1 = TWO_PI * (lon + 1) / orbLon;
+            set(0, x + cp0 * Math.cos(a0) * radius, y + sp0 * radius, z + cp0 * Math.sin(a0) * radius, rgb, alpha);
+            set(1, x + cp0 * Math.cos(a1) * radius, y + sp0 * radius, z + cp0 * Math.sin(a1) * radius, rgb, alpha);
+            set(2, x + cp1 * Math.cos(a1) * radius, y + sp1 * radius, z + cp1 * Math.sin(a1) * radius, rgb, alpha);
+            set(3, x + cp1 * Math.cos(a0) * radius, y + sp1 * radius, z + cp1 * Math.sin(a0) * radius, rgb, alpha);
+            emit(false);
+         }
+      }
+   }
+
+   // ================================================================== Funken
+
+   private static void drawSparks() {
+      int count = aura.sparkCount();
+      for (int k = 0; k < count; k++) {
          double seed = k * 7.13;
          double h1 = frac(Math.sin(seed) * 43758.5453);
          double h2 = frac(Math.sin(seed * 1.7) * 12345.678);
          double h3 = frac(Math.sin(seed * 3.1) * 999.1);
-         double phase = frac(time * 0.35 * speed * (0.7 + 0.6 * h3) + h2);
-         double angle = h1 * Math.PI * 2.0 + phase * 2.2;
-         double radius = (0.35 + 0.55 * h2 + 0.12 * Math.sin(phase * 6.0 + k)) * scale;
-         double height = phase * 2.4 * scale;
-         double pulse = Math.sin(phase * Math.PI);
-         double opacity = pulse * pulse * alpha;
-         if (opacity < 0.02) continue;
-         double ex = x + Math.cos(angle) * radius;
-         double ez = z + Math.sin(angle) * radius;
-         double ey = y + height;
-         double size = (0.03 + 0.03 * h1) * scale;
-         int rgb = aura.color(h3, time);
-         double previousPhase = Math.max(0.0, phase - 0.085);
-         double previousAngle = h1 * Math.PI * 2.0 + previousPhase * 2.2;
-         double previousRadius = (0.35 + 0.55 * h2 + 0.12 * Math.sin(previousPhase * 6.0 + k)) * scale;
-         double px = x + Math.cos(previousAngle) * previousRadius;
-         double pz = z + Math.sin(previousAngle) * previousRadius;
-         double py = y + previousPhase * 2.4 * scale;
-         strip(out, m, px, py, pz, size * 0.72, 0.0, size * 0.72,
-            ex, ey, ez, size * 0.18, 0.0, size * 0.18, rgba(rgb, (float)(opacity * 0.10)));
-         strip(out, m, px, py, pz, size * 0.30, 0.0, size * 0.30,
-            ex, ey, ez, size * 0.07, 0.0, size * 0.07, rgba(brighten(rgb, 0.65), (float)(opacity * 0.42)));
-         drawOrb(out, m, ex, ey, ez, size * 1.8, rgb, (float)(opacity * 0.28));
-         drawOrb(out, m, ex, ey, ez, size * 0.62, 0xFFFFFF, (float)(opacity * 0.92));
-      }
-   }
+         double phase = frac(time * 0.42 * spd * (0.7 + 0.6 * h3) + h2);
+         double angle = h1 * TWO_PI + phase * 2.6;
+         double radius = (0.30 + 0.6 * h2 + 0.1 * Math.sin(phase * 6.0 + k)) * scl;
+         double height = phase * 2.6 * scl;
+         double a = Math.pow(Math.sin(phase * Math.PI), 1.2) * alp;
+         if (a < 0.02) continue;
 
-   // Ground sigil stays on the ground even while the player jumps.
-   private static void drawGroundSigil(class_4588 out, Matrix4f m, PlayerAura aura, class_310 mc,
-                                       double x, double y, double z, double time, double scale, double alpha, double speed) {
-      double ground = groundY(mc, x, y, z) + 0.035;
-      double pulse = 0.75 + 0.25 * Math.sin(time * 2.0);
-      drawFlatRing(out, m, aura, x, z, ground, 1.30 * scale, 0.05 * scale, time, (float)(0.80 * pulse * alpha));
-      drawFlatRing(out, m, aura, x, z, ground + 0.006, 1.48 * scale, 0.03 * scale, time, (float)(0.68 * pulse * alpha));
-      drawFlatRing(out, m, aura, x, z, ground + 0.012, 0.84 * scale, 0.018 * scale, time, (float)(0.40 * pulse * alpha));
-
-      // Twenty-four calibrated tick marks around the two outer rings.
-      for (int i = 0; i < 24; i++) {
-         double angle = i * Math.PI * 2.0 / 24.0 + time * 0.25 * speed;
-         double r0 = 1.34 * scale, r1 = (i % 3 == 0 ? 1.47 : 1.43) * scale;
-         double width = (i % 3 == 0 ? 0.026 : 0.016) * scale;
-         double ca = Math.cos(angle), sa = Math.sin(angle);
-         float[] color = rgba(aura.color(i / 24.0, time), (float)(0.62 * pulse * alpha));
-         flatQuad(out, m, x, z, ground + 0.018,
-            ca * r0 - sa * width, sa * r0 + ca * width,
-            ca * r1 - sa * width, sa * r1 + ca * width,
-            ca * r1 + sa * width, sa * r1 - ca * width,
-            ca * r0 + sa * width, sa * r0 - ca * width, color);
-         if (i % 3 == 0) {
-            double nodeRadius = (r0 + r1) * 0.5;
-            drawOrb(out, m, x + ca * nodeRadius, ground + 0.045, z + sa * nodeRadius,
-               0.026 * scale, aura.color(i / 24.0, time), (float)(0.68 * pulse * alpha));
-         }
-      }
-
-      // Counter-rotating hexagram and a small central six-point star.
-      for (int triangle = 0; triangle < 2; triangle++) {
-         double rotation = time * 0.5 * speed * (triangle == 0 ? 1.0 : -1.0) + triangle * Math.PI / 3.0;
-         double radius = 1.22 * scale;
-         for (int edge = 0; edge < 3; edge++) {
-            double a0 = rotation + edge * Math.PI * 2.0 / 3.0;
-            double a1 = rotation + (edge + 1) * Math.PI * 2.0 / 3.0;
-            drawGroundSegment(out, m, x, z, ground + 0.024,
-               Math.cos(a0) * radius, Math.sin(a0) * radius,
-               Math.cos(a1) * radius, Math.sin(a1) * radius,
-               0.027 * scale, rgba(aura.color(triangle * 0.5 + edge / 6.0, time), (float)(0.72 * pulse * alpha)));
-         }
-      }
-
-      for (int i = 0; i < 6; i++) {
-         double angle = i * Math.PI / 3.0 - time * 0.7 * speed;
-         double r0 = 0.17 * scale, r1 = 0.42 * scale;
-         drawGroundSegment(out, m, x, z, ground + 0.03,
-            Math.cos(angle) * r0, Math.sin(angle) * r0,
-            Math.cos(angle) * r1, Math.sin(angle) * r1,
-            0.018 * scale, rgba(0xFFFFFF, (float)(0.50 * pulse * alpha)));
-      }
-      drawFlatRing(out, m, aura, x, z, ground + 0.034, 0.12 * scale, 0.025 * scale, time, (float)(0.88 * pulse * alpha));
-   }
-
-   private static double groundY(class_310 mc, double x, double y, double z) {
-      class_2338 base = new class_2338((int)Math.floor(x), (int)Math.floor(y - 0.2), (int)Math.floor(z));
-      for (int dy = 0; dy >= -4; dy--) {
-         class_2338 pos = base.method_10086(dy);
-         class_2680 state = mc.field_1687.method_8320(pos);
-         var shape = state.method_26220(mc.field_1687, pos);
-         if (shape.method_1110()) continue;
-         return pos.method_10264() + shape.method_1107().field_1325;
-      }
-      return y;
-   }
-
-   private static void drawFlatRing(class_4588 out, Matrix4f m, PlayerAura aura,
-                                    double x, double z, double y, double radius, double width,
-                                    double time, float alpha) {
-      double inner = radius - width * 0.5, outer = radius + width * 0.5;
-      for (int i = 0; i < RING_SEGMENTS; i++) {
-         double a0 = i * Math.PI * 2.0 / RING_SEGMENTS, a1 = (i + 1) * Math.PI * 2.0 / RING_SEGMENTS;
-         int rgb = aura.color(i / 64.0, time);
-         float[] c = rgba(rgb, alpha);
-         quad(out, m,
-            (float)(x + Math.cos(a0) * inner), (float)y, (float)(z + Math.sin(a0) * inner),
-            (float)(x + Math.cos(a0) * outer), (float)y, (float)(z + Math.sin(a0) * outer),
-            (float)(x + Math.cos(a1) * outer), (float)y, (float)(z + Math.sin(a1) * outer),
-            (float)(x + Math.cos(a1) * inner), (float)y, (float)(z + Math.sin(a1) * inner), c);
-      }
-   }
-
-   private static void drawGroundSegment(class_4588 out, Matrix4f m, double x, double z, double y,
-                                         double x0, double z0, double x1, double z1, double width, float[] color) {
-      double dx = x1 - x0, dz = z1 - z0;
-      double length = Math.sqrt(dx * dx + dz * dz);
-      if (length < 1.0E-5) return;
-      double nx = -dz / length * width, nz = dx / length * width;
-      flatQuad(out, m, x, z, y,
-         x0 - nx, z0 - nz, x1 - nx, z1 - nz,
-         x1 + nx, z1 + nz, x0 + nx, z0 + nz, color);
-   }
-
-   private static void flatQuad(class_4588 out, Matrix4f m, double cx, double cz, double y,
-                                double x0, double z0, double x1, double z1,
-                                double x2, double z2, double x3, double z3, float[] color) {
-      quad(out, m,
-         (float)(cx + x0), (float)y, (float)(cz + z0),
-         (float)(cx + x1), (float)y, (float)(cz + z1),
-         (float)(cx + x2), (float)y, (float)(cz + z2),
-         (float)(cx + x3), (float)y, (float)(cz + z3), color);
-   }
-
-   // Spherical UV mesh with a soft outer shell and a bright center.
-   private static void drawOrb(class_4588 out, Matrix4f m, double x, double y, double z,
-                               double radius, int rgb, float alpha) {
-      if (alpha < 0.01F || radius < 0.002) return;
-      float edgeAlpha = alpha * 0.68F;
-      float highlightAlpha = alpha * 0.92F;
-      for (int lat = 0; lat < ORB_LATITUDE; lat++) {
-         double p0 = -Math.PI / 2.0 + Math.PI * lat / ORB_LATITUDE;
-         double p1 = -Math.PI / 2.0 + Math.PI * (lat + 1) / ORB_LATITUDE;
-         for (int lon = 0; lon < ORB_LONGITUDE; lon++) {
-            double a0 = lon * Math.PI * 2.0 / ORB_LONGITUDE;
-            double a1 = (lon + 1) * Math.PI * 2.0 / ORB_LONGITUDE;
-            quadOrbRgb(out, m,
-               (float)(x + Math.cos(p0) * Math.cos(a0) * radius), (float)(y + Math.sin(p0) * radius), (float)(z + Math.cos(p0) * Math.sin(a0) * radius),
-               (float)(x + Math.cos(p0) * Math.cos(a1) * radius), (float)(y + Math.sin(p0) * radius), (float)(z + Math.cos(p0) * Math.sin(a1) * radius),
-               (float)(x + Math.cos(p1) * Math.cos(a1) * radius), (float)(y + Math.sin(p1) * radius), (float)(z + Math.cos(p1) * Math.sin(a1) * radius),
-               (float)(x + Math.cos(p1) * Math.cos(a0) * radius), (float)(y + Math.sin(p1) * radius), (float)(z + Math.cos(p1) * Math.sin(a0) * radius),
-               rgb, edgeAlpha, highlightAlpha);
+         double ex = px + Math.cos(angle) * radius + leanX * phase * height * 0.5;
+         double ey = py + height;
+         double ez = pz + Math.sin(angle) * radius + leanZ * phase * height * 0.5;
+         double len = (0.22 + 0.18 * h1) * scl;
+         double hw = (0.022 + 0.02 * h3) * scl;
+         int tailRgb = aura.color(h3, time);
+         int headRgb = brighten(tailRgb, 0.7);
+         for (int plane = 0; plane < 2; plane++) {
+            double dx = plane == 0 ? hw : 0.0;
+            double dz = plane == 0 ? 0.0 : hw;
+            set(0, ex - dx, ey - len, ez - dz, tailRgb, 0.0);
+            set(1, ex + dx, ey - len, ez + dz, tailRgb, 0.0);
+            set(2, ex + dx, ey, ez + dz, headRgb, a);
+            set(3, ex - dx, ey, ez - dz, headRgb, a);
+            emit(true);
          }
       }
    }
 
-   private static void verticalStrip(class_4588 out, Matrix4f m,
-                                     double x0, double y0, double z0, double x1, double y1, double z1,
-                                     double width, float[] color) {
-      quad(out, m,
-         (float)(x0 - width), (float)y0, (float)z0,
-         (float)(x0 + width), (float)y0, (float)z0,
-         (float)(x1 + width), (float)y1, (float)z1,
-         (float)(x1 - width), (float)y1, (float)z1, color);
+   // ================================================================== Quad-Helfer (ohne Allokation)
+
+   private static void set(int i, double x, double y, double z, int rgb, double alpha) {
+      QX[i] = x;
+      QY[i] = y;
+      QZ[i] = z;
+      QC[i] = rgb;
+      QA[i] = (float)clamp(alpha, 0.0, 1.0);
    }
 
-   private static void strip(class_4588 out, Matrix4f m,
-      double x0, double y0, double z0, double nx0, double ny0, double nz0,
-      double x1, double y1, double z1, double nx1, double ny1, double nz1, float[] color) {
-      quad(out, m,
-         (float)(x0 + nx0), (float)(y0 + ny0), (float)(z0 + nz0),
-         (float)(x0 - nx0), (float)(y0 - ny0), (float)(z0 - nz0),
-         (float)(x1 - nx1), (float)(y1 - ny1), (float)(z1 - nz1),
-         (float)(x1 + nx1), (float)(y1 + ny1), (float)(z1 + nz1), color);
+   private static void emit(boolean bothSides) {
+      for (int i = 0; i < 4; i++) put(i);
+      if (bothSides) {
+         for (int i = 3; i >= 0; i--) put(i);
+      }
    }
 
-   private static void quadOrbRgb(class_4588 out, Matrix4f m,
-      float x0, float y0, float z0, float x1, float y1, float z1,
-      float x2, float y2, float z2, float x3, float y3, float z3,
-      int rgb, float edgeAlpha, float highlightAlpha) {
-      vertexRgb(out, m, x0, y0, z0, rgb, edgeAlpha);
-      vertexRgb(out, m, x1, y1, z1, rgb, edgeAlpha);
-      vertexRgb(out, m, x2, y2, z2, 0xFFFFFF, highlightAlpha);
-      vertexRgb(out, m, x3, y3, z3, rgb, edgeAlpha);
-   }
-
-   private static void vertexRgb(class_4588 out, Matrix4f m, float x, float y, float z, int rgb, float alpha) {
-      out.method_22918(m, x, y, z).method_22915(
-         (rgb >> 16 & 255) / 255.0F,
-         (rgb >> 8 & 255) / 255.0F,
-         (rgb & 255) / 255.0F,
-         clamp(alpha, 0.0F, 1.0F)
+   private static void put(int i) {
+      int c = QC[i];
+      out.method_22918(mat, (float)QX[i], (float)QY[i], (float)QZ[i]).method_22915(
+         (c >> 16 & 255) / 255.0F, (c >> 8 & 255) / 255.0F, (c & 255) / 255.0F, QA[i]
       );
    }
 
-   private static void quad(class_4588 out, Matrix4f m,
-      float x0, float y0, float z0, float x1, float y1, float z1,
-      float x2, float y2, float z2, float x3, float y3, float z3, float[] color) {
-      vertex(out, m, x0, y0, z0, color);
-      vertex(out, m, x1, y1, z1, color);
-      vertex(out, m, x2, y2, z2, color);
-      vertex(out, m, x3, y3, z3, color);
-   }
-
-   private static void quad(class_4588 out, Matrix4f m,
-      float x0, float y0, float z0, float x1, float y1, float z1,
-      float x2, float y2, float z2, float x3, float y3, float z3,
-      float[] c0, float[] c1, float[] c2, float[] c3) {
-      vertex(out, m, x0, y0, z0, c0);
-      vertex(out, m, x1, y1, z1, c1);
-      vertex(out, m, x2, y2, z2, c2);
-      vertex(out, m, x3, y3, z3, c3);
-   }
-
-   private static void vertex(class_4588 out, Matrix4f m, float x, float y, float z, float[] color) {
-      out.method_22918(m, x, y, z).method_22915(color[0], color[1], color[2], color[3]);
-   }
-
-   private static float[] rgba(int rgb, float alpha) {
-      return new float[]{
-         (rgb >> 16 & 255) / 255.0F, (rgb >> 8 & 255) / 255.0F,
-         (rgb & 255) / 255.0F, clamp(alpha, 0.0F, 1.0F)
-      };
-   }
-
    private static int brighten(int rgb, double amount) {
-      int r = rgb >> 16 & 255, g = rgb >> 8 & 255, b = rgb & 255;
-      return mix(r, 255, amount) << 16 | mix(g, 255, amount) << 8 | mix(b, 255, amount);
+      double t = clamp(amount, 0.0, 1.0);
+      int r = (int)Math.round((rgb >> 16 & 255) + (255 - (rgb >> 16 & 255)) * t);
+      int g = (int)Math.round((rgb >> 8 & 255) + (255 - (rgb >> 8 & 255)) * t);
+      int b = (int)Math.round((rgb & 255) + (255 - (rgb & 255)) * t);
+      return r << 16 | g << 8 | b;
    }
 
-   private static int mix(int a, int b, double t) {
-      return (int)Math.round(a + (b - a) * clamp(t, 0.0, 1.0));
+   private static double frac(double value) {
+      return value - Math.floor(value);
    }
 
-   private static double frac(double value) { return value - Math.floor(value); }
-   private static double clamp(double value, double min, double max) { return Math.max(min, Math.min(max, value)); }
-   private static float clamp(float value, float min, float max) { return Math.max(min, Math.min(max, value)); }
+   private static double clamp(double value, double min, double max) {
+      return Math.max(min, Math.min(max, value));
+   }
 }
