@@ -1,11 +1,8 @@
 package dev.nightfall.modules;
 
 import dev.nightfall.module.HudModule;
-import net.minecraft.class_124;
 import net.minecraft.class_1799;
-import net.minecraft.class_2378;
 import net.minecraft.class_2561;
-import net.minecraft.class_2960;
 import net.minecraft.class_327;
 import net.minecraft.class_332;
 import net.minecraft.class_310;
@@ -24,10 +21,9 @@ public final class FakeStats extends HudModule {
       0xFFE066, 0xFF55FF, 0xFFC825, 0xFFAA00, 0xFF5555,
       0x55FFFF, 0x55FF55, 0x55FF55
    };
-   private static final String[] ICONS = {
-      "minecraft:emerald", "minecraft:redstone", "minecraft:nether_star",
-      "minecraft:iron_sword", "minecraft:skeleton_skull",
-      "minecraft:compass", "minecraft:tripwire_hook", "minecraft:clock"
+   private static final int[] ICON_COLORS = {
+      0xFF55FF55, 0xFFFF5555, 0xFFFFD700, 0xFFFFAA00,
+      0xFFAA0000, 0xFF55FFFF, 0xFF55FF55, 0xFFAAAAAA
    };
 
    public FakeStats() {
@@ -44,41 +40,20 @@ public final class FakeStats extends HudModule {
       return 0xFF000000 | (rgb & 0xFFFFFF);
    }
 
-   private static void drawScaled(class_332 ctx, class_327 tr, class_2561 text,
-                                  float x, float y, float scale, int color, int outline) {
-      var m = ctx.method_51448();
-      m.pushMatrix();
-      m.translate(x, y);
-      m.scale(scale, scale);
-      if (outline != 0) {
-         int[][] d = {{-1, 0}, {1, 0}, {0, -1}, {0, 1},
-                      {-1, -1}, {1, 1}, {-1, 1}, {1, -1}};
-         for (int[] o : d) {
-            ctx.method_51433(tr, text, o[0], o[1], argb(outline), false);
-         }
-      }
-      ctx.method_51433(tr, text, 0, 0, argb(color), false);
-      m.popMatrix();
+   private static void drawText(class_332 ctx, class_327 tr, String text,
+                                int x, int y, int color, boolean shadow) {
+      ctx.method_51433(tr, text, x, y, argb(color), shadow);
    }
 
    private static void drawCentered(class_332 ctx, class_327 tr, String s,
-                                    float cx, float y, float scale, int color, int outline) {
-      class_2561 text = class_2561.method_43470(s).formatted(class_124.field_1076);
-      float w = tr.method_1727(text) * scale;
-      drawScaled(ctx, tr, text, cx - w / 2f, y, scale, color, outline);
+                                    int cx, int y, float scale, int color, int outline) {
+      int w = tr.method_1727(s);
+      drawText(ctx, tr, s, cx - w / 2, y, color, true);
    }
 
-   private static void drawItemIcon(class_332 ctx, String id, float x, float y, float scale) {
-      try {
-         class_1799 stack = new class_1799(class_2378.field_11142.get(class_2960.method_60654(id)));
-         var m = ctx.method_51448();
-         m.pushMatrix();
-         m.translate(x, y);
-         m.scale(scale, scale);
-         ctx.method_51431(stack, 0, 0);
-         m.popMatrix();
-      } catch (Exception ignored) {
-      }
+   private static void drawItemIcon(class_332 ctx, int color, int x, int y) {
+      ctx.method_25294(x + 2, y + 2, x + 10, y + 10, color);
+      ctx.method_25294(x + 1, y + 3, x + 11, y + 9, color);
    }
 
    private static void drawCrown(class_332 ctx, int cx, int top, int height) {
@@ -124,27 +99,20 @@ public final class FakeStats extends HudModule {
       int i = 0;
       for (; i < LABELS.length; i++) {
          float ly = y + 46 + i * 9;
-         drawItemIcon(ctx, ICONS[i], x + 6, ly - 1, 0.56f);
+         drawItemIcon(ctx, ICON_COLORS[i], x + 5, (int) ly - 1);
 
          int lx = x + 17;
-         ctx.method_51433(tr, class_2561.method_43470(LABELS[i]), lx, (int) ly,
-               argb(0xFFFFFF), true);
-         int vx = lx + tr.method_1727(class_2561.method_43470(LABELS[i])) + 4;
-         ctx.method_51433(tr, class_2561.method_43470(VALUES[i]), vx, (int) ly,
-               argb(VALUE_COLORS[i]), true);
+         drawText(ctx, tr, LABELS[i], lx, (int) ly, 0xFFFFFF, true);
+         int vx = lx + tr.method_1727(LABELS[i]) + 4;
+         drawText(ctx, tr, VALUES[i], vx, (int) ly, VALUE_COLORS[i], true);
       }
 
-      ctx.method_51433(tr, class_2561.method_43470("HUGOSMP.NET"), x + 8, y + 131,
-            argb(0xFF3030), true);
-      ctx.method_51433(tr, class_2561.method_43470("10410/13750"), x + 8, y + 141,
-            argb(0x55FF55), true);
+      drawText(ctx, tr, "HUGOSMP.NET", x + 8, y + 131, 0xFF3030, true);
+      drawText(ctx, tr, "10410/13750", x + 8, y + 141, 0x55FF55, true);
 
-      String[] bottom = {
-         "minecraft:gold_nugget", "minecraft:diamond",
-         "minecraft:diamond_pickaxe", "minecraft:gold_nugget"
-      };
+      int[] bottom = {0xFFFFD700, 0xFF55FFFF, 0xFFAAAAAA, 0xFFFFD700};
       for (int b = 0; b < bottom.length; b++) {
-         drawItemIcon(ctx, bottom[b], x + W - 50 + b * 11, y + H - 14, 0.6f);
+         drawItemIcon(ctx, bottom[b], x + W - 50 + b * 11, y + H - 14);
       }
    }
 }
