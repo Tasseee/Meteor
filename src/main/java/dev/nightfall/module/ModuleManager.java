@@ -60,7 +60,6 @@ import dev.nightfall.modules.FriendManager;
 import dev.nightfall.modules.GUITheme;
 import dev.nightfall.modules.GlowESP;
 import dev.nightfall.modules.GlassChams;
-import dev.nightfall.modules.Hats;
 import dev.nightfall.modules.HitParticles;
 import dev.nightfall.modules.InvSee;
 import dev.nightfall.modules.ItemEsp;
@@ -196,7 +195,6 @@ public final class ModuleManager {
       MODULES.add(new SkyVisuals());
       MODULES.add(new SkyRibbons());
       MODULES.add(new JumpWave());
-      MODULES.add(new Hats());
       MODULES.add(new ChinaHat());
       MODULES.add(new FirstPersonStyle());
       MODULES.add(new WeaponAnimations());
