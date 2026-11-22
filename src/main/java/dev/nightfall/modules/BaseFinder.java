@@ -298,10 +298,11 @@ public class BaseFinder extends Module {
                this.rebuildLists();
             }
 
-            if (this.marksDirty && this.tick % 600L == 0L) {
-               this.saveMarks();
-            }
          }
+
+         // Batch synchronous JSON writes rather than writing for every matched chunk.
+         if (this.marksDirty && this.tick % 100L == 0L) this.saveMarks();
+         if (this.fakePatternsDirty && this.tick % 100L == 0L) this.saveFakePatterns();
       }
    }
 
