@@ -9,7 +9,6 @@ import net.minecraft.class_239;
 import net.minecraft.class_243;
 import net.minecraft.class_3959;
 import net.minecraft.class_3965;
-import org.lwjgl.glfw.GLFW;
 
 public final class FreeLook extends Module {
    private static boolean active;
@@ -19,11 +18,6 @@ public final class FreeLook extends Module {
    private static float previousCameraPitch;
    private float playerYaw;
    private float playerPitch;
-   private double lastMouseX;
-   private double lastMouseY;
-   private boolean mouseInitialized;
-   private final double[] cursorX = new double[1];
-   private final double[] cursorY = new double[1];
    private final NumberSetting cameraDistance = this.add(new NumberSetting("Kamera-Distanz", 6.0, 2.0, 24.0, 1.0));
    private final BoolSetting ignoreCollision = this.add(new BoolSetting("Kamerakollision ignorieren", true));
 
@@ -116,7 +110,7 @@ public final class FreeLook extends Module {
          cameraPitch = this.playerPitch;
          previousCameraYaw = cameraYaw;
          previousCameraPitch = cameraPitch;
-         this.mouseInitialized = false;
+
          active = true;
          return true;
       } else {
@@ -129,24 +123,20 @@ public final class FreeLook extends Module {
       this.activateIfReady();
    }
 
+   public static void updateMouse(double deltaX, double deltaY) {
+      if (!active) return;
+      previousCameraYaw = cameraYaw;
+      previousCameraPitch = cameraPitch;
+      cameraYaw += (float)(deltaX * 0.15);
+      cameraPitch -= (float)(deltaY * 0.15);
+      cameraPitch = Math.max(-90.0F, Math.min(90.0F, cameraPitch));
+   }
+
    @Override
    public void onTick() {
       if (!active) {
          this.activateIfReady();
-      } else if (mc.field_1724 != null && mc.field_1687 != null && mc.method_22683() != null) {
-         previousCameraYaw = cameraYaw;
-         previousCameraPitch = cameraPitch;
-         long window = mc.method_22683().method_4490();
-         GLFW.glfwGetCursorPos(window, this.cursorX, this.cursorY);
-         if (this.mouseInitialized) {
-            cameraYaw = cameraYaw + (float)((this.cursorX[0] - this.lastMouseX) * 0.15);
-            cameraPitch = cameraPitch - (float)((this.cursorY[0] - this.lastMouseY) * 0.15);
-            cameraPitch = Math.max(-90.0F, Math.min(90.0F, cameraPitch));
-         }
-
-         this.lastMouseX = this.cursorX[0];
-         this.lastMouseY = this.cursorY[0];
-         this.mouseInitialized = true;
+      } else if (mc.field_1724 != null && mc.field_1687 != null) {
          mc.field_1724.method_36456(this.playerYaw);
          mc.field_1724.method_36457(this.playerPitch);
       }
@@ -155,7 +145,7 @@ public final class FreeLook extends Module {
    @Override
    public void onWorldLeave() {
       active = false;
-      this.mouseInitialized = false;
+
    }
 
    @Override
@@ -167,6 +157,5 @@ public final class FreeLook extends Module {
          mc.field_1724.method_36457(this.playerPitch);
       }
 
-      this.mouseInitialized = false;
    }
 }
