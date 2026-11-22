@@ -111,6 +111,7 @@ import dev.nightfall.modules.TextHuds;
 import dev.nightfall.modules.TrapCrit;
 import dev.nightfall.modules.TrapperBot;
 import dev.nightfall.modules.TriggerBot;
+import dev.nightfall.modules.Trail;
 import dev.nightfall.modules.WaterWalk;
 import dev.nightfall.modules.Watermark;
 import dev.nightfall.modules.WaypointHud;
@@ -185,6 +186,7 @@ public final class ModuleManager {
       MODULES.add(new StorageEsp());
       MODULES.add(new BlockNotifier());
       MODULES.add(new ParticleTrail());
+      MODULES.add(new Trail());
       MODULES.add(new HitParticles());
       MODULES.add(new KillEffect());
       MODULES.add(new JumpCircles());
