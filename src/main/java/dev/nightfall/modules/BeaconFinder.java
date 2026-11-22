@@ -2,7 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.setting.BoolSetting;
 import net.minecraft.class_2586;
-import net.minecraft.class_2587;
+import net.minecraft.class_2580;
 
 /**
  * Finds beacon block entities in currently loaded chunks and marks them
@@ -20,7 +20,7 @@ public final class BeaconFinder extends BlockEntityEsp {
 
    @Override
    protected boolean accept(class_2586 blockEntity) {
-      return blockEntity instanceof class_2587;
+      return blockEntity instanceof class_2580;
    }
 
    @Override
