@@ -55,6 +55,7 @@ import dev.nightfall.modules.FakeBases;
 import dev.nightfall.modules.FakeStats;
 import dev.nightfall.modules.FakeRain;
 import dev.nightfall.modules.FakeLag;
+import dev.nightfall.modules.FakeName;
 import dev.nightfall.modules.FavoriteChunk;
 import dev.nightfall.modules.Favorites;
 import dev.nightfall.modules.FirstPersonStyle;
@@ -205,6 +206,7 @@ public final class ModuleManager {
       MODULES.add(new WeaponAnimations());
       MODULES.add(new SlowSwing());
       MODULES.add(new FakeLag());
+      MODULES.add(new FakeName());
       MODULES.add(new InvSee());
       MODULES.add(new GlowESP());
       MODULES.add(new ItemGlow());
