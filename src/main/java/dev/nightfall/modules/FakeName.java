@@ -63,7 +63,8 @@ public final class FakeName extends Module {
          && (!module.fakeName.get().isBlank()
             || !module.rankPrefix.get().isBlank()
             || !module.clanTag.get().isBlank()
-            || module.customNameColor.get());
+            || module.customNameColor.get()
+            || !module.rank.is("PREMIUM"));
    }
 
    public static String activeName() {
@@ -84,8 +85,7 @@ public final class FakeName extends Module {
    /**
     * Replaces the local name and the existing HugoSMP rank directly before it.
     * The server rank (e.g. PREMIUM) is removed instead of being left beside
-    * the configured fake rank. No brackets are added so the result matches
-    * the normal HugoSMP tab-list format: "RANG Name".
+    * the configured fake rank. No brackets are added.
     */
    public static class_2561 replaceName(class_2561 original, String accountName) {
       FakeName module = activeModule();
@@ -159,7 +159,6 @@ public final class FakeName extends Module {
    private static void appendNameAndRest(
       class_5250 out, String value, class_2583 baseStyle, FakeName module
    ) {
-      int nameEnd = value.length();
       String clan = module.clanTag.get().trim();
 
       if (!clan.isEmpty()) {
@@ -173,7 +172,7 @@ public final class FakeName extends Module {
       class_2583 finalNameStyle = module.customNameColor.get()
          ? baseStyle.method_36139(module.nameColor.rgb())
          : baseStyle;
-      append(out, value.substring(0, nameEnd), finalNameStyle);
+      append(out, value, finalNameStyle);
    }
 
    private static class_2583 baseStyle(class_2561 text) {
