@@ -21,6 +21,8 @@ public final class FreeLook extends Module {
    private float playerPitch;
    private final NumberSetting cameraDistance = this.add(new NumberSetting("Kamera-Distanz", 6.0, 2.0, 24.0, 1.0));
    private final BoolSetting ignoreCollision = this.add(new BoolSetting("Kamerakollision ignorieren", true));
+   private final BoolSetting invertMouseX = this.add(new BoolSetting("Maus X-Achse umkehren", false));
+   private final BoolSetting invertMouseY = this.add(new BoolSetting("Maus Y-Achse umkehren", false));
 
    public FreeLook() {
       super("FreeLook", "Mit der Maus umsehen, ohne die Blickrichtung des Spielers zu aendern.", Category.VISUALS);
@@ -128,8 +130,16 @@ public final class FreeLook extends Module {
       if (!active) return;
       previousCameraYaw = cameraYaw;
       previousCameraPitch = cameraPitch;
-      cameraYaw += (float)(deltaX * 0.15);
-      cameraPitch -= (float)(deltaY * 0.15);
+      FreeLook module;
+      try {
+         module = ModuleManager.get(FreeLook.class);
+      } catch (Throwable ignored) {
+         return;
+      }
+      double horizontal = module.invertMouseX.get() ? -deltaX : deltaX;
+      double vertical = module.invertMouseY.get() ? -deltaY : deltaY;
+      cameraYaw += (float)(horizontal * 0.15);
+      cameraPitch -= (float)(vertical * 0.15);
       cameraPitch = Math.max(-90.0F, Math.min(90.0F, cameraPitch));
    }
 
