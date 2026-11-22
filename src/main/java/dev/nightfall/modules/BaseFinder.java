@@ -971,23 +971,10 @@ public class BaseFinder extends Module {
       // Match the one-decimal value displayed by BaseFinder, not raw float bits.
       int scoreTenths = (int)Math.round(score * 10.0);
       String location = cx + "," + cz;
-      FakePattern matching = null;
-
-      for (FakePattern pattern : this.fakePatterns) {
-         if (pattern == null || !pattern.scoreFingerprint
-            || pattern.scoreTenths != scoreTenths
-            || pattern.storage != storage
-            || pattern.chest != chest
-            || pattern.shulker != shulker
-            || pattern.hopper != hopper
-            || pattern.furnace != furnace
-            || pattern.redstone != redstone
-            || pattern.spawner != spawner) {
-            continue;
-         }
-         matching = pattern;
-         break;
-      }
+      ScorePatternKey signature = new ScorePatternKey(
+         scoreTenths, storage, chest, shulker, hopper, furnace, redstone, spawner
+      );
+      FakePattern matching = this.scorePatternIndex.get(signature);
 
       if (matching == null) {
          FakePattern learned = new FakePattern();
