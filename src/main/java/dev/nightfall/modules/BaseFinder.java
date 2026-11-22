@@ -405,6 +405,35 @@ public class BaseFinder extends Module {
             }
          }
 
+         // Check known layouts before allocating section buffers and scanning every block.
+         boolean knownFakeBase = chestPositions.size() >= 2
+            && this.isRepeatedFakePattern(
+               chestPositions, false, storage, chest, shulker, hopper, furnace, redstone, spawner,
+               cx, cz, this.isMoreThan50BlocksAway(cx, cz)
+            );
+         if (knownFakeBase) {
+            ChunkResult known = this.results.get(k);
+            if (known == null) {
+               known = new ChunkResult(cx, cz);
+               this.results.put(k, known);
+            }
+            if (known.status == ChunkResult.Status.SUS) {
+               this.recordFalsePositive(
+                  known,
+                  "Bekanntes Fake-Base-Kistenmuster vor Vollscan erkannt",
+                  known.score,
+                  known.reasons,
+                  "Gespeicherter Kisten-Fingerprint bereits anhand der Block-Entities erkannt; Vollscan uebersprungen."
+               );
+            }
+            known.status = ChunkResult.Status.CLEAN;
+            known.lastScanTick = this.tick;
+            known.reasons.clear();
+            this.dirty = true;
+            this.marksDirty = true;
+            return;
+         }
+
          class_2826[] sections = ch.method_12006();
          byte[] air = new byte[sections.length * 4096];
          for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
