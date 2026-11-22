@@ -19,6 +19,7 @@ import net.minecraft.class_4184;
 import net.minecraft.class_4587;
 import net.minecraft.class_4588;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 /** Geometrischer Retro-Neon-Trail mit Lichtwand und blockigen Nachbildern. */
 public final class Trail extends Module {
@@ -149,6 +150,7 @@ public final class Trail extends Module {
       double time=(now%3_600_000_000_000L)/1E9;
       class_4184 camera=mc.field_1773.method_19418();
       if(camera==null) return;
+      if(!shouldRenderInFirstPerson(camera)) return;
       class_243 pos=camera.method_71156();
       class_4587 matrices=context.matrices();
       vertices=context.consumers().method_73477(class_12249.method_76019());
@@ -158,6 +160,26 @@ public final class Trail extends Module {
          if(ghosts)t.drawPhantoms(now,time);
          if(wall)t.drawWall(now,time);
       } finally { matrices.method_22909(); vertices=null; }
+   }
+
+   /**
+    * In der Ich-Perspektive den Trail nur rendern, wenn die Kamera in die
+    * hintere Hälfte relativ zur Blickrichtung des Spielers zeigt.
+    * Die Positionsaufnahme läuft vorher weiter, damit der Trail beim Umdrehen
+    * bereits vollständig vorhanden ist.
+    */
+   private static boolean shouldRenderInFirstPerson(class_4184 camera) {
+      if(!mc.field_1690.method_31044().method_31034()) return true;
+
+      double yaw=Math.toRadians(mc.field_1724.method_36454());
+      double playerForwardX=-Math.sin(yaw);
+      double playerForwardZ=Math.cos(yaw);
+      Vector3f viewForward=new Vector3f(0.0F,0.0F,-1.0F).rotate(camera.method_23767());
+      double horizontalLength=Math.sqrt(viewForward.x*viewForward.x+viewForward.z*viewForward.z);
+      if(horizontalLength<1.0E-5) return false;
+
+      double dot=(viewForward.x*playerForwardX+viewForward.z*playerForwardZ)/horizontalLength;
+      return dot<0.0;
    }
 
    private void drawWall(long now,double time) {
