@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** Replaces only the local player's rendered tab-list name. */
 @Mixin(class_355.class)
-public abstract class PrivatPlayerListMixin {
+public abstract class FakeNamePlayerListMixin {
    @Inject(
       method = "method_1918(Lnet/minecraft/class_640;)Lnet/minecraft/class_2561;",
       at = @At("RETURN"),
