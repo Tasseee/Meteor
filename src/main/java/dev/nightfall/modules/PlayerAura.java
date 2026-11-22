@@ -21,8 +21,6 @@ public final class PlayerAura extends Module {
    private final NumberSetting intensity = this.add(new NumberSetting("Helligkeit", 1.0, 0.2, 1.0, 0.01));
    private final NumberSetting power = this.add(new NumberSetting("Kraft (Leuchtkern)", 0.7, 0.0, 1.0, 0.05));
    private final ModeSetting quality = this.add(new ModeSetting("Qualität", "Mittel", "Niedrig", "Mittel", "Hoch"));
-   private final BoolSetting firstPerson = this.add(new BoolSetting("In erster Person", true));
-   private final NumberSetting firstPersonOpacity = this.add(new NumberSetting("Deckkraft 1. Person", 0.35, 0.05, 1.0, 0.05));
 
    // --- Elemente
    private final NumberSetting flames = this.add(new NumberSetting("Flammen", 22.0, 0.0, 32.0, 1.0));
@@ -112,8 +110,6 @@ public final class PlayerAura extends Module {
    public double power() { return this.power.get(); }
    /** 0 = Niedrig, 1 = Mittel, 2 = Hoch */
    public int qualityLevel() { return this.quality.is("Niedrig") ? 0 : this.quality.is("Hoch") ? 2 : 1; }
-   public boolean firstPerson() { return this.firstPerson.get(); }
-   public double firstPersonOpacity() { return this.firstPersonOpacity.get(); }
    public int flameCount() { return this.flames.getInt(); }
    public double flameHeight() { return this.flameHeight.get(); }
    public double lean() { return this.lean.get(); }
