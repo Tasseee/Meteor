@@ -52,7 +52,7 @@ import net.minecraft.class_8887;
 public class BaseFinder extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Range (Chunks)", 32.0, 2.0, 48.0, 1.0));
    private final NumberSetting budgetMs = this.add(new NumberSetting("Budget ms/Tick", 2.5, 0.2, 5.0, 0.1));
-   private final NumberSetting rescan = this.add(new NumberSetting("Rescan (s)", 8.0, 2.0, 120.0, 1.0));
+   private final NumberSetting rescan = this.add(new NumberSetting("Rescan (s)", 12.0, 2.0, 120.0, 1.0));
    private final NumberSetting threshold = this.add(new NumberSetting("Min Score", 8.0, 3.0, 100.0, 1.0));
    private final NumberSetting minSignals = this.add(new NumberSetting("Min. Signaltypen", 2.0, 1.0, 10.0, 1.0));
    private final BoolSetting detectRepeatedSusScores = this.add(new BoolSetting("Gleiche SUS-Scores auf FakeBase pruefen", true));
@@ -86,6 +86,10 @@ public class BaseFinder extends Module {
    private final List<ChunkResult> top = new ArrayList<>();
    private final List<ChunkResult> marks = new ArrayList<>();
    private final List<FakePattern> fakePatterns = new ArrayList<>();
+   private final Set<String> suppressedFakeLocations = new HashSet<>();
+   private final Set<String> confirmedFakeLocations = new HashSet<>();
+   private final Map<ScorePatternKey, FakePattern> scorePatternIndex = new HashMap<>();
+   private boolean fakePatternsDirty;
    private boolean dirty = true;
    private boolean marksDirty;
    private class_638 lastWorld;
@@ -139,21 +143,13 @@ public class BaseFinder extends Module {
          }
       }
 
-      String location = cx + "," + cz;
       String currentContext = Storage.server() + "_" + Storage.dim();
       if (!currentContext.equals(this.ctxKey)) return false;
 
-      for (FakePattern pattern : this.fakePatterns) {
-         if (pattern != null && pattern.seenChunks != null
-            && pattern.seenChunks.contains(location)
-            && (pattern.scoreFingerprint
-               ? pattern.confirmed
-               : (!requireConfirmedPattern || pattern.confirmed || pattern.seenChunks.size() >= 3))) {
-            return true;
-         }
-      }
-
-      return false;
+      String location = cx + "," + cz;
+      return requireConfirmedPattern
+         ? this.confirmedFakeLocations.contains(location)
+         : this.suppressedFakeLocations.contains(location);
    }
 
    public Collection<ChunkResult> results() {
