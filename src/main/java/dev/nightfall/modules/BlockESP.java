@@ -22,7 +22,7 @@ import net.minecraft.class_1799;
 import net.minecraft.class_332;
 
 public final class BlockESP extends Module {
-   private final NumberSetting range = this.add(new NumberSetting("Reichweite", 64.0, 8.0, 200.0, 4.0));
+   private final NumberSetting range = this.add(new NumberSetting("Reichweite", 12.0, 6.0, 200.0, 1.0));
    private final NumberSetting maxBlocks = this.add(new NumberSetting("Max Markierungen", 600.0, 20.0, 1200.0, 20.0));
    private final ModeSetting style = this.add(new ModeSetting(
       "Rahmen-Stil", "Block-Outline", "Ecken", "Voll", "Leuchten", "Block-Outline"
@@ -119,6 +119,10 @@ public final class BlockESP extends Module {
                   for (int x = sx; x <= ex && this.found.size() < cap; x++) {
                      for (int z = sz; z <= ez && this.found.size() < cap; z++) {
                         for (int y = minY; y <= maxY && this.found.size() < cap; y++) {
+                           int dx = x - p.method_10263();
+                           int dy = y - p.method_10264();
+                           int dz = z - p.method_10260();
+                           if (dx * dx + dy * dy + dz * dz > r * r) continue;
                            class_2338 bp = new class_2338(x, y, z);
                            if (this.selected(mc.field_1687.method_8320(bp).method_26204())) {
                               this.found.add(new class_238(bp));
