@@ -51,7 +51,7 @@ public final class KillEffect extends Module {
       effects.removeIf(effect -> now - effect.startNanos() >= lifetime);
 
       if (mc.field_1724 == null || mc.field_1687 == null) {
-         lastTarget = null;
+         pendingKills.clear();
          return;
       }
 
