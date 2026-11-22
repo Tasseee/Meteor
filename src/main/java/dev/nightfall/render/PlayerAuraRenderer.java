@@ -105,7 +105,8 @@ public final class PlayerAuraRenderer {
 
       long now = System.nanoTime();
       // Vor frameDelta() lesen: frameDelta aktualisiert lastFrameNanos auf diesen Frame.
-      double dtSeconds = started
+      boolean hadPreviousFrame = started;
+      double dtSeconds = hadPreviousFrame
          ? Math.max(0.0005, Math.min(0.25, (now - lastFrameNanos) / 1.0E9))
          : 1.0 / 60.0;
       double delta = frameDelta(module, now);
@@ -120,7 +121,7 @@ public final class PlayerAuraRenderer {
       double iz = player.field_5989 + (cz - player.field_5989) * delta;
 
       // Geglättete Geschwindigkeit (Blöcke/Sekunde) für die Neigung der Flammen.
-      if (started) {
+      if (hadPreviousFrame) {
          double rawX = (ix - lastX) / dtSeconds;
          double rawZ = (iz - lastZ) / dtSeconds;
          if (Math.abs(rawX) > 40.0 || Math.abs(rawZ) > 40.0) {
