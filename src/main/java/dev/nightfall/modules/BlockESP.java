@@ -10,12 +10,15 @@ import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Draw;
 import dev.nightfall.util.Projection;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.class_2246;
 import net.minecraft.class_2248;
 import net.minecraft.class_2338;
 import net.minecraft.class_238;
 import net.minecraft.class_7923;
+import net.minecraft.class_1799;
 import net.minecraft.class_332;
 
 public final class BlockESP extends Module {
@@ -35,10 +38,45 @@ public final class BlockESP extends Module {
    private final BoolSetting gold = this.add(new BoolSetting("Golderz", false));
    private final BoolSetting emerald = this.add(new BoolSetting("Smaragderz", false));
    private final List<class_238> found = new ArrayList<>();
+   private final List<String> allBlockIds = new ArrayList<>();
+   private final Map<String, class_2248> blockById = new HashMap<>();
    private int timer;
 
    public BlockESP() {
       super("BlockESP", "Waehlt Blocktypen einzeln aus und markiert sie im geladenen Gebiet.", Category.VISUALS);
+   }
+
+   private void ensureBlockList() {
+      if (!this.allBlockIds.isEmpty()) return;
+      for (class_2248 block : class_7923.field_41175) {
+         if (new class_1799(block).method_7960()) continue;
+         String id = class_7923.field_41175.method_10221(block).toString();
+         this.blockById.put(id, block);
+         this.allBlockIds.add(id);
+      }
+      this.allBlockIds.sort(String::compareTo);
+   }
+
+   public List<String> allBlockIds() {
+      this.ensureBlockList();
+      return this.allBlockIds;
+   }
+
+   public class_2248 blockFor(String id) {
+      this.ensureBlockList();
+      return this.blockById.get(id);
+   }
+
+   public boolean isBlockSelected(String id) {
+      return this.blockIds.has(id);
+   }
+
+   public void toggleBlock(String id) {
+      if (!this.blockIds.remove(id)) this.blockIds.add(id);
+   }
+
+   public void clearBlockSelection() {
+      this.blockIds.get().clear();
    }
 
    private boolean selected(class_2248 b) {
