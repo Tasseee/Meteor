@@ -736,7 +736,7 @@ public class BaseFinder extends Module {
       res.lastFalsePositiveScore = score;
       res.lastFalsePositiveReasons.clear();
       res.lastFalsePositiveReasons.addAll(reasons);
-      if (newlyConfirmed && this.chat.get() && mc.field_1724 != null) {
+      if (this.chat.get() && mc.field_1724 != null) {
          mc.field_1724.method_7353(
             class_2561.method_43470(
                "[Nightfall] SUS-False-Positive "
@@ -1014,7 +1014,7 @@ public class BaseFinder extends Module {
       this.dirty = true;
       this.marksDirty = true;
       this.saveMarks();
-      if (this.chat.get() && mc.field_1724 != null) {
+      if (newlyConfirmed && this.chat.get() && mc.field_1724 != null) {
          mc.field_1724.method_7353(
             class_2561.method_43470(
                "[Nightfall] FakeBase-Muster: " + matching.seenChunks.size()
