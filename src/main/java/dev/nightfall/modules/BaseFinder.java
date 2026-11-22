@@ -55,6 +55,8 @@ public class BaseFinder extends Module {
    private final NumberSetting rescan = this.add(new NumberSetting("Rescan (s)", 8.0, 2.0, 120.0, 1.0));
    private final NumberSetting threshold = this.add(new NumberSetting("Min Score", 8.0, 3.0, 100.0, 1.0));
    private final NumberSetting minSignals = this.add(new NumberSetting("Min. Signaltypen", 2.0, 1.0, 10.0, 1.0));
+   private final BoolSetting detectRepeatedSusScores = this.add(new BoolSetting("Gleiche SUS-Scores auf FakeBase pruefen", true));
+   private final NumberSetting minRepeatedSusScores = this.add(new NumberSetting("Min. gleiche SUS-Chunks", 4.0, 3.0, 12.0, 1.0));
    private final NumberSetting wStorage = this.add(new NumberSetting("Gewicht Storage", 1.0, 0.1, 5.0, 0.1));
    private final NumberSetting wChestPenalty = this.add(new NumberSetting("Gewicht Kisten-Abzug", 0.25, 0.0, 5.0, 0.1));
    private final NumberSetting wHopper = this.add(new NumberSetting("Gewicht Hopper", 1.5, 0.1, 5.0, 0.1));
@@ -144,7 +146,8 @@ public class BaseFinder extends Module {
       for (FakePattern pattern : this.fakePatterns) {
          if (pattern != null && pattern.seenChunks != null
             && pattern.seenChunks.contains(location)
-            && (!requireConfirmedPattern || pattern.confirmed || pattern.seenChunks.size() >= 3)) {
+            && (!requireConfirmedPattern || pattern.confirmed
+               || (!pattern.scoreFingerprint && pattern.seenChunks.size() >= 3))) {
             return true;
          }
       }
@@ -637,15 +640,26 @@ public class BaseFinder extends Module {
                chestPositions, mayLearnPattern, storage, chest, shulker, hopper, furnace, redstone, spawner,
                cx, cz, this.isMoreThan50BlocksAway(cx, cz)
             );
+         boolean susQualified = score >= this.threshold.get()
+            && storageSignal && signalKinds >= this.minSignals.getInt();
+         boolean repeatedSusScorePattern = !repeatedFakePattern
+            && this.isRepeatedFakeScorePattern(
+               score, storage, chest, shulker, hopper, furnace, redstone, spawner,
+               cx, cz, susQualified
+            );
 
-         if (repeatedFakePattern) {
+         if (repeatedFakePattern || repeatedSusScorePattern) {
             if (prev == ChunkResult.Status.SUS) {
                this.recordFalsePositive(
                   res,
-                  "Bekanntes Fake-Base-Kistenmuster erkannt",
+                  repeatedSusScorePattern
+                     ? "Wiederholtes identisches SUS-Score-/Signal-Muster erkannt"
+                     : "Bekanntes Fake-Base-Kistenmuster erkannt",
                   score,
                   res.reasons,
-                  "Der Chunk wurde zuerst als SUS eingestuft, spaeter aber dem gespeicherten Kistenmuster einer Fake-Base zugeordnet."
+                  repeatedSusScorePattern
+                     ? "Mehrere Chunks besitzen denselben angezeigten SUS-Score und dieselbe Storage-/Technik-Signatur. Das wiederholte Muster wurde als FakeBase bestaetigt."
+                     : "Der Chunk wurde zuerst als SUS eingestuft, spaeter aber dem gespeicherten Kistenmuster einer Fake-Base zugeordnet."
                );
             }
             res.status = ChunkResult.Status.CLEAN;
@@ -898,6 +912,111 @@ public class BaseFinder extends Module {
       if (this.fakePatterns.size() > 256) this.fakePatterns.remove(0);
       this.saveFakePatterns();
       return false;
+   }
+
+   /**
+    * A repeated displayed SUS score is only a trigger for a stricter check.
+    * The storage/automation block-entity counts must also match exactly across
+    * several distinct chunks, so a score collision alone never marks a fake base.
+    */
+   private boolean isRepeatedFakeScorePattern(
+      double score,
+      int storage, int chest, int shulker, int hopper, int furnace, int redstone, int spawner,
+      int cx, int cz, boolean eligible
+   ) {
+      if (!this.detectRepeatedSusScores.get() || !eligible) return false;
+
+      // Match the one-decimal value displayed by BaseFinder, not raw float bits.
+      int scoreTenths = (int)Math.round(score * 10.0);
+      String location = cx + "," + cz;
+      FakePattern matching = null;
+
+      for (FakePattern pattern : this.fakePatterns) {
+         if (pattern == null || !pattern.scoreFingerprint
+            || pattern.scoreTenths != scoreTenths
+            || pattern.storage != storage
+            || pattern.chest != chest
+            || pattern.shulker != shulker
+            || pattern.hopper != hopper
+            || pattern.furnace != furnace
+            || pattern.redstone != redstone
+            || pattern.spawner != spawner) {
+            continue;
+         }
+         matching = pattern;
+         break;
+      }
+
+      if (matching == null) {
+         FakePattern learned = new FakePattern();
+         learned.version = 5;
+         learned.scoreFingerprint = true;
+         learned.scoreTenths = scoreTenths;
+         learned.storage = storage;
+         learned.chest = chest;
+         learned.shulker = shulker;
+         learned.hopper = hopper;
+         learned.furnace = furnace;
+         learned.redstone = redstone;
+         learned.spawner = spawner;
+         learned.seenChunks.add(location);
+         this.fakePatterns.add(learned);
+         if (this.fakePatterns.size() > 256) this.fakePatterns.remove(0);
+         this.saveFakePatterns();
+         return false;
+      }
+
+      boolean changed = false;
+      if (matching.seenChunks == null) matching.seenChunks = new ArrayList<>();
+      if (!matching.seenChunks.contains(location)) {
+         matching.seenChunks.add(location);
+         changed = true;
+      }
+
+      if (!matching.confirmed && matching.seenChunks.size() >= this.minRepeatedSusScores.getInt()) {
+         matching.confirmed = true;
+         changed = true;
+      }
+
+      if (changed) this.saveFakePatterns();
+      if (!matching.confirmed) return false;
+
+      // Remove prior copies from the SUS list but preserve the confirmed
+      // signature so future chunks with the same fingerprint are filtered too.
+      for (String seen : matching.seenChunks) {
+         String[] parts = seen.split(",");
+         if (parts.length != 2) continue;
+         try {
+            ChunkResult previous = this.results.get(key(Integer.parseInt(parts[0]), Integer.parseInt(parts[1])));
+            if (previous != null) {
+               if (previous.status == ChunkResult.Status.SUS) {
+                  previous.lastFalsePositiveAnalysis =
+                     "Wiederholtes identisches SUS-Score-/Signal-Muster erkannt";
+                  previous.lastFalsePositiveScore = previous.score;
+                  previous.lastFalsePositiveReasons.clear();
+                  previous.lastFalsePositiveReasons.addAll(previous.reasons);
+               }
+               previous.status = ChunkResult.Status.CLEAN;
+               previous.reasons.clear();
+            }
+         } catch (NumberFormatException ignored) {
+         }
+      }
+
+      this.dirty = true;
+      this.marksDirty = true;
+      this.saveMarks();
+      if (this.chat.get() && mc.field_1724 != null) {
+         mc.field_1724.method_7353(
+            class_2561.method_43470(
+               "[Nightfall] FakeBase-Muster: " + matching.seenChunks.size()
+                  + " SUS-Chunks mit identischem Score " + fmt(score)
+                  + " und gleicher Storage-/Technik-Signatur erkannt."
+            ),
+            false
+         );
+      }
+      return true;
    }
 
    private boolean isMoreThan50BlocksAway(int cx, int cz) {
@@ -1215,6 +1334,8 @@ public class BaseFinder extends Module {
       int redstone;
       int spawner;
       boolean confirmed;
+      boolean scoreFingerprint;
+      int scoreTenths;
       List<String> chestPositions = new ArrayList<>();
       List<String> seenChunks = new ArrayList<>();
    }
