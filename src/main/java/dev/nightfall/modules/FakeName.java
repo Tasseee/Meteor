@@ -50,7 +50,7 @@ public final class FakeName extends Module {
 
    public int getRankDefaultColor() {
       return switch (this.rank.get()) {
-         case "MOD" -> 0xFFFF5555;
+         case "MOD" -> 0xFFFFFF55;
          case "MEDIA" -> 0xFFAA00FF;
          case "FAMOUS" -> 0xFFFF55FF;
          default -> 0xFFFFAA00;
