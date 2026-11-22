@@ -209,6 +209,8 @@ public class BaseFinder extends Module {
       this.saveFakePatterns();
       this.clearData();
       this.fakePatterns.clear();
+      this.clearFakePatternIndexes();
+      this.fakePatternsDirty = false;
       this.lastWorld = null;
       this.ctxKey = null;
    }
@@ -257,6 +259,8 @@ public class BaseFinder extends Module {
             this.saveFakePatterns();
             this.clearData();
             this.fakePatterns.clear();
+            this.clearFakePatternIndexes();
+            this.fakePatternsDirty = false;
             this.lastWorld = w;
             this.ctxKey = Storage.server() + "_" + Storage.dim();
             this.loadFakePatterns();
@@ -264,7 +268,7 @@ public class BaseFinder extends Module {
          }
 
          this.tick++;
-         if (this.detectMobClusters.get() && this.tick % 20L == 0L) {
+         if (this.detectMobClusters.get() && this.tick % 40L == 0L) {
             this.rebuildMobClusterCounts(w);
          } else if (!this.detectMobClusters.get()) {
             this.mobClusterMaxByChunk.clear();
