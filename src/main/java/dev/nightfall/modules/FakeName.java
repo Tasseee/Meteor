@@ -13,12 +13,11 @@ import net.minecraft.class_5250;
 import net.minecraft.class_7417;
 import net.minecraft.class_8828;
 
-/**
- * Client-only nameplate customization. It never changes the authenticated
- * profile, UUID, permissions, rank, clan membership, or network identity.
- */
 public final class FakeName extends Module {
-   private final StringSetting fakeName = this.add(new StringSetting("Fake Name", "", 32));
+   private final StringSetting fakeName = this.add(new StringSetting("Name", "", 32));
+   private final ModeSetting rank = this.add(new ModeSetting(
+      "Rang", "PREMIUM", "MOD", "MEDIA", "FAMOUS", "PREMIUM"
+   ));
    private final StringSetting rankPrefix = this.add(new StringSetting("HugoSMP Rang-Prefix", "", 24));
    private final StringSetting clanTag = this.add(new StringSetting("HugoSMP Clan-Tag", "", 16));
    private final ModeSetting clanFormat = this.add(new ModeSetting(
@@ -30,14 +29,33 @@ public final class FakeName extends Module {
    private final BoolSetting customNameColor = this.add(new BoolSetting("Eigene Namensfarbe verwenden", false));
 
    public FakeName() {
-      super("FakeName", "Lokaler Name mit frei anpassbarem Rang, Clan-Tag und Farben (nur deine Ansicht).", Category.VISUALS);
+      super("FakeName", "Lokaler Name mit HugoSMP-Rang, Clan-Tag und Farben (nur deine Ansicht).", Category.VISUALS);
    }
 
    public String value() {
       return this.fakeName.get();
    }
 
-   /** True while any local nameplate customization is configured and the module is enabled. */
+   public String getRankPrefix() {
+      String custom = this.rankPrefix.get();
+      if (custom != null && !custom.isBlank()) return custom.trim();
+      return switch (this.rank.get()) {
+         case "MOD" -> "MOD";
+         case "MEDIA" -> "MEDIA";
+         case "FAMOUS" -> "FAMOUS";
+         default -> "PREMIUM";
+      };
+   }
+
+   public int getRankDefaultColor() {
+      return switch (this.rank.get()) {
+         case "MOD" -> 0xFFFF5555;
+         case "MEDIA" -> 0xFF55FFFF;
+         case "FAMOUS" -> 0xFFAA55FF;
+         default -> 0xFFFFAA00;
+      };
+   }
+
    public static boolean hasVisualOverride() {
       FakeName module = activeModule();
       return module != null && module.isEnabled()
@@ -47,7 +65,6 @@ public final class FakeName extends Module {
             || module.customNameColor.get());
    }
 
-   /** Returns the configured replacement name, or an empty string when none is configured. */
    public static String activeName() {
       FakeName module = activeModule();
       if (module == null || !module.isEnabled()) return "";
@@ -63,11 +80,6 @@ public final class FakeName extends Module {
       }
    }
 
-   /**
-    * Replaces only the local account-name token. Original sibling components
-    * (including server-provided prefixes/suffixes) are kept, while the inserted
-    * rank, clan and name parts receive independent RGB styles.
-    */
    public static class_2561 replaceName(class_2561 original, String accountName) {
       FakeName module = activeModule();
       if (original == null || module == null || !module.isEnabled()
@@ -109,16 +121,19 @@ public final class FakeName extends Module {
       class_5250 out = class_2561.method_43470("").method_10862(baseStyle);
       int copiedUntil = 0;
       boolean replaced = false;
+
       while (found >= 0) {
          int end = found + accountName.length();
          boolean leftBoundary = found == 0 || !isNameCharacter(raw.charAt(found - 1));
          boolean rightBoundary = end == raw.length() || !isNameCharacter(raw.charAt(end));
+
          if (leftBoundary && rightBoundary) {
             replaced = true;
             append(out, raw.substring(copiedUntil, found), baseStyle);
             appendDecoratedName(out, replacement, baseStyle, module);
             copiedUntil = end;
          }
+
          from = end;
          found = raw.indexOf(accountName, Math.max(from, found + 1));
       }
@@ -131,9 +146,12 @@ public final class FakeName extends Module {
    private static void appendDecoratedName(
       class_5250 out, String name, class_2583 baseStyle, FakeName module
    ) {
-      String rank = module.rankPrefix.get().trim();
+      String rank = module.getRankPrefix();
       if (!rank.isEmpty()) {
-         append(out, rank + " ", baseStyle.method_36139(module.rankColor.rgb()).method_10982(true));
+         int color = module.rankPrefix.get().isBlank()
+            ? module.getRankDefaultColor()
+            : module.rankColor.rgb();
+         append(out, "[" + rank + "] ", baseStyle.method_36139(color).method_10982(true));
       }
 
       String clan = module.clanTag.get().trim();
