@@ -865,10 +865,12 @@ public class BaseFinder extends Module {
       int cx, int cz, boolean distantMatch
    ) {
       String location = cx + "," + cz;
+      Set<ChestPoint> currentChestPoints = parseChestPoints(chestPositions);
+      boolean foundExisting = false;
 
       for (FakePattern pattern : this.fakePatterns) {
-         if (pattern == null || pattern.version < 4 || pattern.chestPositions == null
-            || !matchesChestPattern(pattern.chestPositions, chestPositions)) {
+         if (pattern == null || pattern.version < 4 || pattern.scoreFingerprint
+            || pattern.chestPositions == null || !matchesChestPattern(pattern, currentChestPoints)) {
             continue;
          }
 
@@ -883,6 +885,7 @@ public class BaseFinder extends Module {
             continue;
          }
 
+         foundExisting = true;
          if (pattern.seenChunks == null) pattern.seenChunks = new ArrayList<>();
          boolean patternChanged = false;
          if (!pattern.seenChunks.contains(location)) {
@@ -890,20 +893,15 @@ public class BaseFinder extends Module {
             patternChanged = true;
          }
 
-         // A matching layout first encountered more than 50 horizontal blocks
-         // from the player is treated as a decoy immediately and permanently.
-         if (distantMatch && !pattern.confirmed) {
+         // A distant matching layout confirms the decoy immediately; nearby copies
+         // use the three-occurrence fallback. Both paths retain the known fingerprint.
+         if ((distantMatch || pattern.seenChunks.size() >= 3) && !pattern.confirmed) {
             pattern.confirmed = true;
             patternChanged = true;
          }
 
-         // Preserve the older three-occurrence confirmation as a fallback.
-         if (pattern.seenChunks.size() >= 3 && !pattern.confirmed) {
-            pattern.confirmed = true;
-            patternChanged = true;
-         }
-
-         if (patternChanged) this.saveFakePatterns();
+         this.indexFakePatternLocations(pattern);
+         if (patternChanged) this.fakePatternsDirty = true;
 
          if (pattern.confirmed) {
             for (String seen : pattern.seenChunks) {
@@ -912,22 +910,27 @@ public class BaseFinder extends Module {
                try {
                   ChunkResult previous = this.results.get(key(Integer.parseInt(parts[0]), Integer.parseInt(parts[1])));
                   if (previous != null) {
+                     if (previous.status == ChunkResult.Status.SUS) {
+                        previous.lastFalsePositiveAnalysis = "Bekanntes Fake-Base-Kistenmuster erkannt";
+                        previous.lastFalsePositiveScore = previous.score;
+                        previous.lastFalsePositiveReasons.clear();
+                        previous.lastFalsePositiveReasons.addAll(previous.reasons);
+                     }
                      previous.status = ChunkResult.Status.CLEAN;
                      previous.reasons.clear();
                   }
                } catch (NumberFormatException ignored) {
                }
             }
-
             this.dirty = true;
             this.marksDirty = true;
-            this.saveMarks();
             return true;
          }
-         return false;
       }
 
-      if (!mayLearnPattern) return false;
+      // A known but not-yet-confirmed template keeps collecting occurrences;
+      // do not learn a duplicate template for the same layout.
+      if (foundExisting || !mayLearnPattern) return false;
 
       FakePattern learned = new FakePattern();
       learned.version = 4;
@@ -939,13 +942,17 @@ public class BaseFinder extends Module {
       learned.redstone = redstone;
       learned.spawner = spawner;
       learned.chestPositions = new ArrayList<>(chestPositions);
+      learned.parsedChestPoints = new HashSet<>(currentChestPoints);
       learned.seenChunks.add(location);
       this.fakePatterns.add(learned);
+      this.indexFakePatternLocations(learned);
 
-      // Keep the local pattern database bounded on servers with many unrelated
-      // storage layouts.
-      if (this.fakePatterns.size() > 256) this.fakePatterns.remove(0);
-      this.saveFakePatterns();
+      // Keep the local pattern database bounded. Rebuild indexes only on eviction.
+      if (this.fakePatterns.size() > 256) {
+         this.fakePatterns.remove(0);
+         this.rebuildFakePatternIndexes();
+      }
+      this.fakePatternsDirty = true;
       return false;
    }
 
