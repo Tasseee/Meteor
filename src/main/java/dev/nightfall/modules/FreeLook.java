@@ -3,7 +3,12 @@ package dev.nightfall.modules;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.ModuleManager;
+import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
+import net.minecraft.class_239;
+import net.minecraft.class_243;
+import net.minecraft.class_3959;
+import net.minecraft.class_3965;
 import org.lwjgl.glfw.GLFW;
 
 public final class FreeLook extends Module {
@@ -19,7 +24,8 @@ public final class FreeLook extends Module {
    private boolean mouseInitialized;
    private final double[] cursorX = new double[1];
    private final double[] cursorY = new double[1];
-   private final NumberSetting cameraDistance = this.add(new NumberSetting("Kamera-Reichweite", 4.0, 0.0, 50.0, 0.25));
+   private final NumberSetting cameraDistance = this.add(new NumberSetting("Kamera-Distanz", 6.0, 2.0, 24.0, 1.0));
+   private final BoolSetting ignoreCollision = this.add(new BoolSetting("Kamerakollision ignorieren", true));
 
    public FreeLook() {
       super("FreeLook", "Mit der Maus umsehen, ohne die Blickrichtung des Spielers zu aendern.", Category.VISUALS);
@@ -54,6 +60,40 @@ public final class FreeLook extends Module {
       } catch (Throwable ignored) {
          return 4.0;
       }
+   }
+
+   public static class_243 cameraPosition(class_243 eye, float yaw, float pitch) {
+      if (eye == null || mc.field_1724 == null || mc.field_1687 == null) return eye;
+      double distance = cameraDistance();
+      double yawRad = Math.toRadians(yaw);
+      double pitchRad = Math.toRadians(pitch);
+      double cp = Math.cos(pitchRad);
+      class_243 target = eye.method_1031(
+         Math.sin(yawRad) * cp * distance,
+         Math.sin(pitchRad) * distance,
+         -Math.cos(yawRad) * cp * distance
+      );
+
+      FreeLook module;
+      try { module = ModuleManager.get(FreeLook.class); }
+      catch (Throwable ignored) { return target; }
+      if (module.ignoreCollision.get()) return target;
+
+      class_3965 hit = mc.field_1687.method_17742(new class_3959(
+         eye, target, class_3959.class_3960.field_17558,
+         class_3959.class_242.field_1348, mc.field_1724
+      ));
+      if (hit.method_17783() != class_239.class_240.field_1332) return target;
+
+      class_243 hitPos = hit.method_17784();
+      double length = eye.method_1022(target);
+      if (length < 1.0E-6) return hitPos;
+      double factor = Math.max(0.0, (eye.method_1022(hitPos) - 0.2) / length);
+      return new class_243(
+         eye.field_1352 + (target.field_1352 - eye.field_1352) * factor,
+         eye.field_1351 + (target.field_1351 - eye.field_1351) * factor,
+         eye.field_1350 + (target.field_1350 - eye.field_1350) * factor
+      );
    }
 
    private boolean activateIfReady() {
