@@ -98,8 +98,8 @@ public final class PlayerAuraRenderer {
          return;
       }
 
-      boolean firstPerson = mc.field_1690.method_31044().method_31034();
-      if (firstPerson && !module.firstPerson()) {
+      // Do not render any part of PlayerAura in the first-person camera.
+      if (mc.field_1690.method_31044().method_31034()) {
          return;
       }
 
@@ -152,7 +152,7 @@ public final class PlayerAuraRenderer {
       double appear = clamp(elapsed / 0.9, 0.0, 1.0);
       double ease = 1.0 + 2.70158 * Math.pow(appear - 1.0, 3.0) + 1.70158 * Math.pow(appear - 1.0, 2.0);
       double scale = module.scale() * ease;
-      double alpha = module.intensity() * Math.min(1.0, appear * 3.0) * (firstPerson ? module.firstPersonOpacity() : 1.0);
+      double alpha = module.intensity() * Math.min(1.0, appear * 3.0);
       if (alpha < 0.01 || scale < 0.01) {
          return;
       }
