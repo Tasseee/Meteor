@@ -15,18 +15,18 @@ public final class FakeStats extends HudModule {
    private static final int H = 160;
 
    private static final String[] LABELS = {
-      "Geld", "Gems", "Stars", "Kills", "Tode", "Clan", "Ping", "Keyall", "Spielzeit"
+      "Geld", "Gems", "Stars", "Kills", "Tode", "Ping", "Keyall", "Spielzeit"
    };
    private static final String[] VALUES = {
-      "104,18M", "550", "898", "886", "1,138", "G2LDN", "46ms", "21m 4s", "60d 5h"
+      "104,18M", "550", "898", "886", "1,138", "46ms", "21m 4s", "60d 5h"
    };
    private static final int[] VALUE_COLORS = {
       0xFFE066, 0xFF55FF, 0xFFC825, 0xFFAA00, 0xFF5555,
-      0xFFD700, 0xFF55FF, 0x55FFFF, 0x55FF55
+      0x55FFFF, 0x55FF55, 0x55FF55
    };
    private static final String[] ICONS = {
       "minecraft:emerald", "minecraft:redstone", "minecraft:nether_star",
-      "minecraft:iron_sword", "minecraft:skeleton_skull", "minecraft:shield",
+      "minecraft:iron_sword", "minecraft:skeleton_skull",
       "minecraft:compass", "minecraft:tripwire_hook", "minecraft:clock"
    };
 
