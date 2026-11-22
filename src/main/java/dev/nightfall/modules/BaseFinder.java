@@ -886,6 +886,12 @@ public class BaseFinder extends Module {
             continue;
          }
 
+         int knownSignalCount = pattern.storage + pattern.chest + pattern.shulker
+            + pattern.hopper + pattern.furnace + pattern.redstone + pattern.spawner;
+         int currentSignalCount = storage + chest + shulker + hopper + furnace + redstone + spawner;
+         int minimumSignalsRemaining = Math.max(2, (int)Math.ceil(knownSignalCount * 0.5));
+         if (currentSignalCount < minimumSignalsRemaining) continue;
+
          foundExisting = true;
          if (pattern.seenChunks == null) pattern.seenChunks = new ArrayList<>();
          boolean patternChanged = false;
@@ -901,8 +907,10 @@ public class BaseFinder extends Module {
             patternChanged = true;
          }
 
-         this.indexFakePatternLocations(pattern);
-         if (patternChanged) this.fakePatternsDirty = true;
+         if (patternChanged) {
+            this.fakePatternsDirty = true;
+            this.indexFakePatternLocations(pattern);
+         }
 
          if (pattern.confirmed) {
             for (String seen : pattern.seenChunks) {
@@ -1110,7 +1118,7 @@ public class BaseFinder extends Module {
 
       // At least half of the original chests must remain (minimum two). This
       // permits partially destroyed decoys without matching a random single chest.
-      int minimumRemaining = Math.max(2, (int)Math.ceil(known.size() * 0.5));
+      int minimumRemaining = Math.max(2, (int)Math.ceil(known.size() * 0.6));
       if (current.size() < minimumRemaining) return false;
 
       for (int rotation = 0; rotation < 4; rotation++) {
@@ -1306,7 +1314,7 @@ public class BaseFinder extends Module {
    }
 
    public void saveMarks() {
-      if (this.ctxKey != null) {
+      if (this.ctxKey != null && this.marksDirty) {
          try {
             List<BaseFinder.Mark> out = new ArrayList<>();
 
