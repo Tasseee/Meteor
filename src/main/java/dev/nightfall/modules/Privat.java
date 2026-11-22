@@ -31,7 +31,7 @@ public final class Privat extends HudModule {
    private final BoolSetting customNameColor = this.add(new BoolSetting("Eigene Namensfarbe verwenden", false));
 
    public Privat() {
-      super("Privat", "FakeName und HugoSMP-Stats als ein lokales Privat-Modul.");
+      super("Privat", "Privat und HugoSMP-Stats als ein lokales Privat-Modul.");
       this.scalable = true;
    }
 
@@ -72,7 +72,7 @@ public final class Privat extends HudModule {
    }
 
    public static String activeName() {
-      FakeName module = activeModule();
+      Privat module = activeModule();
       if (module == null || !module.isEnabled()) return "";
       String value = module.fakeName.get();
       return value == null ? "" : value.trim();
@@ -92,7 +92,7 @@ public final class Privat extends HudModule {
     * the configured fake rank. No brackets are added.
     */
    public static class_2561 replaceName(class_2561 original, String accountName) {
-      FakeName module = activeModule();
+      Privat module = activeModule();
       if (original == null || module == null || !module.isEnabled()
          || accountName == null || accountName.isBlank() || !hasVisualOverride()) {
          return original;
@@ -136,7 +136,7 @@ public final class Privat extends HudModule {
    }
 
    private static class_2561 rebuildText(
-      class_2561 original, String replacementText, class_2583 baseStyle, FakeName module
+      class_2561 original, String replacementText, class_2583 baseStyle, Privat module
    ) {
       class_5250 out = class_2561.method_43470("").method_10862(original.method_10866());
 
@@ -161,7 +161,7 @@ public final class Privat extends HudModule {
    }
 
    private static void appendNameAndRest(
-      class_5250 out, String value, class_2583 baseStyle, FakeName module
+      class_5250 out, String value, class_2583 baseStyle, Privat module
    ) {
       String clan = module.clanTag.get().trim();
 
@@ -184,7 +184,7 @@ public final class Privat extends HudModule {
    }
 
    private static class_2561 replaceInTree(
-      class_2561 text, String accountName, String replacement, FakeName module
+      class_2561 text, String accountName, String replacement, Privat module
    ) {
       class_5250 result = text.method_27662().method_10862(text.method_10866());
       class_7417 content = text.method_10851();
@@ -203,7 +203,7 @@ public final class Privat extends HudModule {
    }
 
    private static class_5250 replaceLiteral(
-      String raw, String accountName, String replacement, class_2583 baseStyle, FakeName module
+      String raw, String accountName, String replacement, class_2583 baseStyle, Privat module
    ) {
       int from = 0;
       int found = raw.indexOf(accountName, from);
@@ -234,7 +234,7 @@ public final class Privat extends HudModule {
    }
 
    private static void appendDecoratedName(
-      class_5250 out, String name, class_2583 baseStyle, FakeName module
+      class_5250 out, String name, class_2583 baseStyle, Privat module
    ) {
       String rank = module.getRankPrefix();
       if (!rank.isEmpty()) {
