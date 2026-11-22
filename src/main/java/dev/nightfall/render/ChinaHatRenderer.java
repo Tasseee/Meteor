@@ -59,19 +59,22 @@ public final class ChinaHatRenderer {
             float z0 = (float)(pz + Math.sin(a0) * radius);
             float x1 = (float)(px + Math.cos(a1) * radius);
             float z1 = (float)(pz + Math.sin(a1) * radius);
-            vertex(fills, matrix, x0, (float)py, z0, red * dark, green * dark, blue * dark, 0.96F);
+
+            // Wind the cone faces upward and outward so they remain visible from above.
             vertex(fills, matrix, x1, (float)py, z1, red * dark, green * dark, blue * dark, 0.96F);
-            vertex(fills, matrix, (float)px, (float)(py + height), (float)pz, red, green, blue, 0.96F);
+            vertex(fills, matrix, x0, (float)py, z0, red * dark, green * dark, blue * dark, 0.96F);
             vertex(fills, matrix, (float)px, (float)(py + height), (float)pz, red, green, blue, 0.96F);
 
             float bx0 = (float)(px + Math.cos(a0) * brim);
             float bz0 = (float)(pz + Math.sin(a0) * brim);
             float bx1 = (float)(px + Math.cos(a1) * brim);
             float bz1 = (float)(pz + Math.sin(a1) * brim);
+
+            // Reverse the annulus winding as well: its top face points toward the sky.
             vertex(fills, matrix, bx0, (float)py, bz0, red, green, blue, 0.78F);
-            vertex(fills, matrix, bx1, (float)py, bz1, red, green, blue, 0.78F);
-            vertex(fills, matrix, x1, (float)py, z1, red, green, blue, 0.78F);
             vertex(fills, matrix, x0, (float)py, z0, red, green, blue, 0.78F);
+            vertex(fills, matrix, x1, (float)py, z1, red, green, blue, 0.78F);
+            vertex(fills, matrix, bx1, (float)py, bz1, red, green, blue, 0.78F);
          }
       } finally {
          matrices.method_22909();
