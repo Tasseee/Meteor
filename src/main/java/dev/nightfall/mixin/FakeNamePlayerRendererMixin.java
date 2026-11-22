@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Applies the local name to the player's 3D nameplate (F5 and FreeLook render path). */
 @Mixin(class_1007.class)
-public abstract class PrivatPlayerRendererMixin {
+public abstract class FakeNamePlayerRendererMixin {
    @Inject(
       method = "method_74935(Lnet/minecraft/class_11890;D)Z",
       at = @At("RETURN"),
