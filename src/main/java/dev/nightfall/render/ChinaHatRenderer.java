@@ -63,7 +63,13 @@ public final class ChinaHatRenderer {
             float x1 = (float)(px + Math.cos(a1) * radius);
             float z1 = (float)(pz + Math.sin(a1) * radius);
 
-            // Wind the cone faces upward and outward so they remain visible from above.
+            // Original outside-facing side: keep the original silhouette and shading.
+            vertex(fills, matrix, x0, (float)py, z0, red * dark, green * dark, blue * dark, 0.96F);
+            vertex(fills, matrix, x1, (float)py, z1, red * dark, green * dark, blue * dark, 0.96F);
+            vertex(fills, matrix, (float)px, (float)(py + height), (float)pz, red, green, blue, 0.96F);
+            vertex(fills, matrix, (float)px, (float)(py + height), (float)pz, red, green, blue, 0.96F);
+
+            // Same face in reverse winding: also visible when looking down from above.
             vertex(fills, matrix, x1, (float)py, z1, red * dark, green * dark, blue * dark, 0.96F);
             vertex(fills, matrix, x0, (float)py, z0, red * dark, green * dark, blue * dark, 0.96F);
             vertex(fills, matrix, (float)px, (float)(py + height), (float)pz, red, green, blue, 0.96F);
@@ -74,7 +80,13 @@ public final class ChinaHatRenderer {
             float bx1 = (float)(px + Math.cos(a1) * brim);
             float bz1 = (float)(pz + Math.sin(a1) * brim);
 
-            // Reverse the annulus winding as well: its top face points toward the sky.
+            // Original outer-side winding, with the same translucent brim as before.
+            vertex(fills, matrix, bx0, (float)py, bz0, red, green, blue, 0.78F);
+            vertex(fills, matrix, bx1, (float)py, bz1, red, green, blue, 0.78F);
+            vertex(fills, matrix, x1, (float)py, z1, red, green, blue, 0.78F);
+            vertex(fills, matrix, x0, (float)py, z0, red, green, blue, 0.78F);
+
+            // Reverse winding for the top side, so overhead views see the same brim.
             vertex(fills, matrix, bx0, (float)py, bz0, red, green, blue, 0.78F);
             vertex(fills, matrix, x0, (float)py, z0, red, green, blue, 0.78F);
             vertex(fills, matrix, x1, (float)py, z1, red, green, blue, 0.78F);
