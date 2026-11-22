@@ -41,6 +41,7 @@ import dev.nightfall.modules.CrystalTest;
 import dev.nightfall.modules.CustomCrosshair;
 import dev.nightfall.modules.DebugHud;
 import dev.nightfall.modules.DroppedItemNotifier;
+import dev.nightfall.modules.DropGlow;
 import dev.nightfall.modules.ElytraFly;
 import dev.nightfall.modules.EntityEsp;
 import dev.nightfall.modules.EntityEsp2D;
@@ -180,6 +181,7 @@ public final class ModuleManager {
       MODULES.add(new EntityEsp2D());
       MODULES.add(new ItemEsp());
       MODULES.add(new DroppedItemNotifier());
+      MODULES.add(new DropGlow());
       MODULES.add(new SpotifyLyricsHud());
       MODULES.add(new WorldLyrics());
       MODULES.add(new LootDropFinder());
