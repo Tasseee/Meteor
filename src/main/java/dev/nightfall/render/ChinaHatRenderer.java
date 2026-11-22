@@ -35,7 +35,7 @@ public final class ChinaHatRenderer {
       if (camera == null) return;
       class_243 cameraPos = camera.method_71156();
       // Interpolate the player position for this render frame instead of using tick-only coordinates.
-      float tickDelta = mc.method_60646().method_60637(false);
+      float tickDelta = mc.method_61966().method_60637(false);
       class_243 playerPos = mc.field_1724.method_30950(tickDelta);
       double px = playerPos.field_1352;
       double py = playerPos.field_1351 + mc.field_1724.method_17682() + 0.035;
