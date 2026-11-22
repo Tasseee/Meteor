@@ -52,7 +52,16 @@ public abstract class CameraMixin {
 
          double distance = FreeLook.cameraDistance();
          if (distance > 0.0 && focusedEntity != null) {
-            class_243 eye = focusedEntity.method_33571();
+            // Camera.update already receives tickDelta; derive the eye point from the
+            // interpolated entity position so the FreeLook camera does not jump at 20 TPS.
+            class_243 currentEye = focusedEntity.method_33571();
+            class_243 renderPos = focusedEntity.method_30950(tickDelta);
+            double eyeOffsetY = currentEye.field_1351 - focusedEntity.method_23318();
+            class_243 eye = new class_243(
+               renderPos.field_1352,
+               renderPos.field_1351 + eyeOffsetY,
+               renderPos.field_1350
+            );
             class_243 position = FreeLook.cameraPosition(eye, yaw, pitch);
             this.method_19327(position.field_1352, position.field_1351, position.field_1350);
          }
