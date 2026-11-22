@@ -85,6 +85,7 @@ import dev.nightfall.modules.NoFall;
 import dev.nightfall.modules.NotificationsHud;
 import dev.nightfall.modules.ObiTrapBot;
 import dev.nightfall.modules.ParticleTrail;
+import dev.nightfall.modules.PearlStasisFinder;
 import dev.nightfall.modules.PlayerEsp;
 import dev.nightfall.modules.PlayerAura;
 import dev.nightfall.modules.LogoutSpots;
@@ -188,6 +189,7 @@ public final class ModuleManager {
       MODULES.add(new BlockNotifier());
       MODULES.add(new ParticleTrail());
       MODULES.add(new Trail());
+      MODULES.add(new PearlStasisFinder());
       MODULES.add(new HitParticles());
       MODULES.add(new KillEffect());
       MODULES.add(new JumpCircles());
