@@ -335,41 +335,7 @@ public final class Privat extends HudModule {
 
    @Override
    protected void draw(class_332 ctx) {
-      class_310 mc = class_310.method_1551();
-      class_327 tr = mc.field_1772;
-      int x = 0, y = 0, by = y + 30;
-
-      ctx.method_25294(x, by, x + W, y + H, 0xFF6B3F14);
-      ctx.method_25294(x + 1, by + 1, x + W - 1, y + H - 1, 0xFFC98B2E);
-      ctx.method_25294(x + 2, by + 2, x + W - 2, y + H - 2, 0xFF8A5A1E);
-      ctx.method_25294(x + 3, by + 3, x + W - 3, y + H - 3, 0xF01E140C);
-
-      int acc = 0xFFF5B82E;
-      ctx.method_25294(x, by, x + 4, by + 4, acc);
-      ctx.method_25294(x + W - 4, by, x + W, by + 4, acc);
-      ctx.method_25294(x, y + H - 4, x + 4, y + H, acc);
-      ctx.method_25294(x + W - 4, y + H - 4, x + W, y + H, acc);
-      ctx.method_25294(x + 4, by - 3, x + 22, by + 1, 0xFFC98B2E);
-      ctx.method_25294(x + W - 22, by - 3, x + W - 4, by + 1, 0xFFC98B2E);
-
-      int cx = x + W / 2;
-      drawCrown(ctx, cx - 26, y + 2, 7);
-      drawCrown(ctx, cx, y - 2, 9);
-      drawCrown(ctx, cx + 26, y + 2, 7);
-      drawCentered(ctx, tr, "HUGO", cx, y + 8, 0xFF2020);
-      drawCentered(ctx, tr, "SMP", cx, y + 29, 0xFF8A55E0);
-
-      for (int i = 0; i < LABELS.length; i++) {
-         int ly = y + 46 + i * 9;
-         drawItemIcon(ctx, ICON_COLORS[i], x + 5, ly - 1);
-         int lx = x + 17;
-         drawText(ctx, tr, LABELS[i], lx, ly, 0xFFFFFF, true);
-         int vx = lx + tr.method_1727(LABELS[i]) + 4;
-         drawText(ctx, tr, VALUES[i], vx, ly, VALUE_COLORS[i], true);
-      }
-      drawText(ctx, tr, "HUGOSMP.NET", x + 8, y + 131, 0xFF3030, true);
-      drawText(ctx, tr, "10410/13750", x + 8, y + 141, 0x55FF55, true);
-      int[] bottom = {0xFFFFD700, 0xFF55FFFF, 0xFFAAAAAA, 0xFFFFD700};
-      for (int b = 0; b < bottom.length; b++) drawItemIcon(ctx, bottom[b], x + W - 50 + b * 11, y + H - 14);
+      // Privat no longer renders a separate fake-stats panel.
+      // The real server scoreboard remains visible; its numeric values are masked by PrivatScoreboardMixin.
    }
 }
