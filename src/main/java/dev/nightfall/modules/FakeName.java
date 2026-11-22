@@ -14,7 +14,7 @@ public final class FakeName extends Module {
    );
 
    public FakeName() {
-      super("Fake Name", "Ersetzt lokal den eigenen Namen durch einen HugoSMP-Rang und Namen.");
+      super("Fake Name", "Ersetzt lokal den eigenen Namen durch einen HugoSMP-Rang und Namen.", Category.PLAYER);
    }
 
    public String getNameValue() {
