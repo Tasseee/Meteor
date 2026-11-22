@@ -1,9 +1,9 @@
 # BaseFinder
 
-- **Status:** Code geprüft; Persistenzkorrekturen gespeichert; Build-/In-Game-Test offen
+- **Status:** Score-Fingerprint-Prüfung ergänzt; Build-/In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `BaseFinder`
 - **Kategorie:** `BASEFINDER`
-- **Aktueller Quellcode-SHA:** `d41cbfc6fe3a3a8b368739cf43aab3383f38fa19`
+- **Aktueller Quellcode-SHA:** `7e87df41a66fcad33ab54c7b26f1a45415cd5109`
 - **Datenklassen:** `ChunkResult`, interne `Mark`- und `FakePattern`-Datensätze
 - **Speicher-Hilfsklasse:** `Storage`
 
@@ -24,6 +24,8 @@ Der Client lädt durch diesen Modulcode keine zusätzlichen Chunks. Der Scan-Que
 | Rescan (s) | 8 | 2–120 Sekunden |
 | Min Score | 6 | 3–100 |
 | Min. Signaltypen | 2 | 1–10 |
+| Gleiche SUS-Scores auf FakeBase pruefen | an | Boolesch; aktiviert den wiederholten Score-Fingerprintvergleich |
+| Min. gleiche SUS-Chunks | 4 | 3–12; erforderliche Anzahl unterschiedlicher Chunks mit gleicher Score- und Signalsignatur |
 | Gewicht Storage | 1,0 | 0,1–5,0 |
 | Gewicht Kisten-Abzug | 1,5 | 0–5; wird pro erkannter Kiste vom Score abgezogen |
 | Gewicht Hopper | 1,5 | 0,1–5,0 |
@@ -65,7 +67,8 @@ Der Client lädt durch diesen Modulcode keine zusätzlichen Chunks. Der Scan-Que
 - Fake-Pattern-Übereinstimmungen werden bei der Ergebnislistenbildung aus `suspects()` und `marks()` ausgeschlossen.
 - Kisten (Chest-Block-Entities) werden getrennt von Fässern gezählt und mit `Gewicht Kisten-Abzug` negativ bewertet; Fässer behalten das positive Storage-Gewicht.
 - Kisten-Chunks können bei mindestens zwei Signaltypen und zwei Fake-Signalen auch unterhalb des Score-Schwellwerts Fingerprints bilden. Fingerprints vergleichen die Kistenanzahl zusätzlich; ab drei ähnlichen Chunks werden diese intern als FakePattern behandelt.
-- FakePattern-Datensätze verwenden Version 3; ältere Fingerprints werden nicht mit dem neuen Schema verglichen und können bei Bedarf neu angelernt werden.
+- **Neue Score-Fingerprint-Prüfung:** Bei SUS-qualifizierten Chunks wird der auf eine Nachkommastelle gerundete Score mit der exakten Zusammensetzung aus Fässern, Kisten, Shulkern, Hoppern, Öfen, Redstone-Block-Entities und Spawnern verglichen. Ein gleicher Score allein reicht nicht. Standardmäßig werden vier unterschiedliche Chunks mit derselben Score-/Signalsignatur benötigt; erst dann werden die betroffenen Treffer als FakeBase eingestuft und gespeichert. Unbestätigte Score-Muster werden weder aus BaseFinder-Listen noch aus StorageESP herausgefiltert. Künftige Treffer eines bestätigten Musters werden ebenfalls ignoriert.
+- FakePattern-Datensätze verwenden Version 4 für Kistenlayouts und Version 5 für Score-Fingerprints; ältere Datensätze behalten ihre bisherigen Felder und werden nicht als Score-Fingerprint behandelt.
 
 ### Persistenz
 
