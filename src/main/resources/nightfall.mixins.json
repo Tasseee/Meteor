@@ -18,7 +18,9 @@
     "ItemGlowMeshMixin",
     "GameRendererMixin",
     "FogRendererMixin",
-    "ScreenBackgroundMixin"
+    "ScreenBackgroundMixin",
+    "FakeNamePlayerListMixin",
+    "FakeNamePlayerRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
