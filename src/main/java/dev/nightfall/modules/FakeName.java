@@ -3,6 +3,7 @@ package dev.nightfall.modules;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.ModuleManager;
+import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.module.setting.StringSetting;
@@ -26,6 +27,7 @@ public final class FakeName extends Module {
    private final ColorSetting rankColor = this.add(new ColorSetting("Rang-Farbe", 0xFFFFFF));
    private final ColorSetting clanColor = this.add(new ColorSetting("Clan-Farbe", 0x5AE6FF));
    private final ColorSetting nameColor = this.add(new ColorSetting("Name-Farbe", 0xFFFFFF));
+   private final BoolSetting customNameColor = this.add(new BoolSetting("Eigene Namensfarbe verwenden", false));
 
    public FakeName() {
       super("FakeName", "Lokaler Name mit frei anpassbarem Rang, Clan-Tag und Farben (nur deine Ansicht).", Category.VISUALS);
@@ -105,11 +107,13 @@ public final class FakeName extends Module {
 
       class_5250 out = class_2561.method_43470("").method_10862(baseStyle);
       int copiedUntil = 0;
+      boolean replaced = false;
       while (found >= 0) {
          int end = found + accountName.length();
          boolean leftBoundary = found == 0 || !isNameCharacter(raw.charAt(found - 1));
          boolean rightBoundary = end == raw.length() || !isNameCharacter(raw.charAt(end));
          if (leftBoundary && rightBoundary) {
+            replaced = true;
             append(out, raw.substring(copiedUntil, found), baseStyle);
             appendDecoratedName(out, replacement, baseStyle, module);
             copiedUntil = end;
@@ -118,6 +122,7 @@ public final class FakeName extends Module {
          found = raw.indexOf(accountName, Math.max(from, found + 1));
       }
 
+      if (!replaced) return null;
       append(out, raw.substring(copiedUntil), baseStyle);
       return out;
    }
@@ -139,12 +144,10 @@ public final class FakeName extends Module {
          append(out, formattedClan + " ", baseStyle.method_36139(module.clanColor.rgb()).method_10982(true));
       }
 
-      String replacement = module.fakeName.get().trim();
-      if (!replacement.isEmpty()) {
-         append(out, name, baseStyle.method_36139(module.nameColor.rgb()));
-      } else {
-         append(out, name, baseStyle);
-      }
+      class_2583 finalNameStyle = module.customNameColor.get()
+         ? baseStyle.method_36139(module.nameColor.rgb())
+         : baseStyle;
+      append(out, name, finalNameStyle);
    }
 
    private static void append(class_5250 parent, String value, class_2583 style) {
