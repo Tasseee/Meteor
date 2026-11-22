@@ -990,8 +990,12 @@ public class BaseFinder extends Module {
          learned.spawner = spawner;
          learned.seenChunks.add(location);
          this.fakePatterns.add(learned);
-         if (this.fakePatterns.size() > 256) this.fakePatterns.remove(0);
-         this.saveFakePatterns();
+         this.scorePatternIndex.put(signature, learned);
+         if (this.fakePatterns.size() > 256) {
+            this.fakePatterns.remove(0);
+            this.rebuildFakePatternIndexes();
+         }
+         this.fakePatternsDirty = true;
          return false;
       }
 
@@ -1009,7 +1013,8 @@ public class BaseFinder extends Module {
          newlyConfirmed = true;
       }
 
-      if (changed) this.saveFakePatterns();
+      if (changed) this.fakePatternsDirty = true;
+      if (matching.confirmed) this.indexFakePatternLocations(matching);
       if (!matching.confirmed) return false;
 
       // Remove prior copies from the SUS list but preserve the confirmed
@@ -1036,7 +1041,6 @@ public class BaseFinder extends Module {
 
       this.dirty = true;
       this.marksDirty = true;
-      this.saveMarks();
       if (newlyConfirmed && this.chat.get() && mc.field_1724 != null) {
          mc.field_1724.method_7353(
             class_2561.method_43470(
@@ -1050,6 +1054,41 @@ public class BaseFinder extends Module {
       return true;
    }
 
+   private void indexFakePatternLocations(FakePattern pattern) {
+      if (pattern == null || pattern.seenChunks == null) return;
+      if (pattern.scoreFingerprint) {
+         if (!pattern.confirmed) return;
+         this.suppressedFakeLocations.addAll(pattern.seenChunks);
+         this.confirmedFakeLocations.addAll(pattern.seenChunks);
+         return;
+      }
+      this.suppressedFakeLocations.addAll(pattern.seenChunks);
+      if (pattern.confirmed || pattern.seenChunks.size() >= 3) {
+         this.confirmedFakeLocations.addAll(pattern.seenChunks);
+      }
+   }
+
+   private void clearFakePatternIndexes() {
+      this.suppressedFakeLocations.clear();
+      this.confirmedFakeLocations.clear();
+      this.scorePatternIndex.clear();
+   }
+
+   private void rebuildFakePatternIndexes() {
+      this.clearFakePatternIndexes();
+      for (FakePattern pattern : this.fakePatterns) {
+         if (pattern == null) continue;
+         if (pattern.scoreFingerprint) {
+            ScorePatternKey signature = new ScorePatternKey(
+               pattern.scoreTenths, pattern.storage, pattern.chest, pattern.shulker,
+               pattern.hopper, pattern.furnace, pattern.redstone, pattern.spawner
+            );
+            this.scorePatternIndex.putIfAbsent(signature, pattern);
+         }
+         this.indexFakePatternLocations(pattern);
+      }
+   }
+
    private boolean isMoreThan50BlocksAway(int cx, int cz) {
       if (mc.field_1724 == null) return false;
       long dx = (long)cx * 16L + 8L - mc.field_1724.method_31477();
@@ -1061,9 +1100,11 @@ public class BaseFinder extends Module {
       return known == 0 ? current == 0 : current <= known;
    }
 
-   private static boolean matchesChestPattern(List<String> knownEncoded, List<String> currentEncoded) {
-      Set<ChestPoint> known = parseChestPoints(knownEncoded);
-      Set<ChestPoint> current = parseChestPoints(currentEncoded);
+   private static boolean matchesChestPattern(FakePattern pattern, Set<ChestPoint> current) {
+      if (pattern.parsedChestPoints == null) {
+         pattern.parsedChestPoints = parseChestPoints(pattern.chestPositions);
+      }
+      Set<ChestPoint> known = pattern.parsedChestPoints;
       if (known.size() < 2 || current.size() < 2 || current.size() > known.size()) return false;
 
       // At least half of the original chests must remain (minimum two). This
@@ -1367,9 +1408,15 @@ public class BaseFinder extends Module {
       boolean confirmed;
       boolean scoreFingerprint;
       int scoreTenths;
+      transient Set<ChestPoint> parsedChestPoints;
       List<String> chestPositions = new ArrayList<>();
       List<String> seenChunks = new ArrayList<>();
    }
+
+   private record ScorePatternKey(
+      int scoreTenths, int storage, int chest, int shulker, int hopper,
+      int furnace, int redstone, int spawner
+   ) { }
 
    private record ChestPoint(int x, int y, int z) {
    }
