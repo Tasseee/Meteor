@@ -22,7 +22,6 @@ import dev.nightfall.render.FakeLagGhostRenderer;
 import dev.nightfall.render.FakeLagHud;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import dev.nightfall.render.SkyVisualRenderer;
-import dev.nightfall.render.SkyRibbonsRenderer;
 import dev.nightfall.scanner.WaypointManager;
 import dev.nightfall.seed.SeedResultListener;
 import dev.nightfall.util.ModuleUsageStats;
@@ -69,7 +68,6 @@ public class Nightfall implements ClientModInitializer {
          ModuleManager.get(Atmosphere.class).renderAtmosphere(ctx);
       });
       SkyVisualRenderer.register();
-      SkyRibbonsRenderer.register();
       ChinaHatRenderer.register();
       PlayerAuraRenderer.register();
       KillEffectRenderer.register();
