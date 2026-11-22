@@ -723,10 +723,10 @@ public class BaseFinder extends Module {
             if (prev == ChunkResult.Status.SUS) {
                this.recordFalsePositive(
                   res,
-                  "Bekanntes Fake-Base-Kistenmuster erkannt",
+                  "Wiederholtes SUS-Score-/Kistenmuster erkannt",
                   score,
                   res.reasons,
-                  "Der Chunk wurde zuerst als SUS eingestuft, spaeter aber dem gespeicherten Kistenmuster einer Fake-Base zugeordnet."
+                  "Mehrere verschiedene Chunks hatten denselben SUS-Score und dieselben Storage-/Technikwerte; das Kistenlayout passt ebenfalls zum wiederholten Muster."
                );
             }
             res.status = ChunkResult.Status.CLEAN;
@@ -956,7 +956,7 @@ public class BaseFinder extends Module {
       if (observations.size() >= 2) {
          // Compare against earlier chunks with the exact same score/count fingerprint.
          for (ScoreFingerprintObservation previous : observations) {
-         if (matchesChestPattern(previous.chestPositions, chestPositions)) {
+            if (matchesChestPattern(previous.chestPositions, chestPositions)) {
             for (ScoreFingerprintObservation matched : observations) {
                ChunkResult previousResult = this.results.get(matched.locationKey);
                if (previousResult != null) {
