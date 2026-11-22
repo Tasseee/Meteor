@@ -1174,7 +1174,9 @@ public final class NightfallGuiScreen extends class_437 {
          String valuexx = list.get().size() + " · bearbeiten";
          ctx.method_51433(mc.field_1772, list.getName(), x + 5, y + 7, Theme.TEXT_DIM, false);
          ctx.method_51433(mc.field_1772, valuexx, x + w - 8 - mc.field_1772.method_1727(valuexx), y + 7, Theme.ACCENT, false);
-         if (click && over) {
+         if (click && over && list.getName().equals("Eigene Block-IDs")) {
+            mc.method_1507(new BlockPickerScreen(this));
+         } else if (click && over) {
             this.editingList = list;
             this.messageDraft = "";
             this.searchFocused = false;
