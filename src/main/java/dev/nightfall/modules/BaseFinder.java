@@ -950,8 +950,12 @@ public class BaseFinder extends Module {
       ScoreFingerprintObservation current =
          new ScoreFingerprintObservation(locationKey, cx, cz, new ArrayList<>(chestPositions));
 
-      // Compare against earlier chunks with the exact same score/count fingerprint.
-      for (ScoreFingerprintObservation previous : observations) {
+      // Require at least two earlier occurrences: the current chunk is the
+      // third matching score/count observation. This prevents normal repeated
+      // bases from being classified as fake after only one coincidence.
+      if (observations.size() >= 2) {
+         // Compare against earlier chunks with the exact same score/count fingerprint.
+         for (ScoreFingerprintObservation previous : observations) {
          if (matchesChestPattern(previous.chestPositions, chestPositions)) {
             for (ScoreFingerprintObservation matched : observations) {
                ChunkResult previousResult = this.results.get(matched.locationKey);
@@ -969,6 +973,7 @@ public class BaseFinder extends Module {
             this.dirty = true;
             this.marksDirty = true;
             return true;
+         }
          }
       }
 
