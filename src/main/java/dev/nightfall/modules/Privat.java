@@ -176,7 +176,9 @@ public final class Privat extends HudModule {
    ) {
       class_2583 finalNameStyle = module.customNameColor.get()
          ? baseStyle.method_36139(module.nameColor.rgb())
-         : baseStyle;
+         : baseStyle.method_36139(
+            module.rankPrefix.get().isBlank() ? module.getRankDefaultColor() : module.rankColor.rgb()
+         );
       append(out, value, finalNameStyle);
 
       String clan = module.clanTag.get().trim();
@@ -256,7 +258,9 @@ public final class Privat extends HudModule {
 
       class_2583 finalNameStyle = module.customNameColor.get()
          ? baseStyle.method_36139(module.nameColor.rgb())
-         : baseStyle;
+         : baseStyle.method_36139(
+            module.rankPrefix.get().isBlank() ? module.getRankDefaultColor() : module.rankColor.rgb()
+         );
       append(out, name, finalNameStyle);
 
       String clan = module.clanTag.get().trim();
