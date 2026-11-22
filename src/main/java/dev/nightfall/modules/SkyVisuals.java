@@ -2,27 +2,23 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
-import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.module.setting.NumberSetting;
 
 public final class SkyVisuals extends Module {
-   private final ModeSetting style = this.add(new ModeSetting("Himmel", "Weltraum", "Weltraum", "Nordlicht", "Planet"));
-   private final ColorSetting color = this.add(new ColorSetting("Hauptfarbe", 5627374));
-   private final NumberSetting distance = this.add(new NumberSetting("Abstand", 112.0, 64.0, 180.0, 8.0));
-   private final NumberSetting intensity = this.add(new NumberSetting("Intensität", 1.0, 0.2, 2.0, 0.05));
-   private final NumberSetting scale = this.add(new NumberSetting("Planetengröße", 1.0, 0.5, 2.0, 0.05));
+   private final ModeSetting style = this.add(new ModeSetting(
+      "Himmel", "Nebula", "Nebula", "Aurora", "Synthwave", "Eclipse", "Planet"
+   ));
+   private final NumberSetting distance = this.add(new NumberSetting("Abstand", 112.0, 48.0, 180.0, 4.0));
+   private final NumberSetting intensity = this.add(new NumberSetting("Intensität", 1.0, 0.1, 1.0, 0.05));
+   private final NumberSetting rotation = this.add(new NumberSetting("Rotation", 1.0, 0.0, 4.0, 0.1));
 
    public SkyVisuals() {
-      super("SkyVisuals", "Animierte 3D-Sterne, Aurora-Bänder und Planetenkörper im Weltraum-Himmel.", Category.VISUALS);
+      super("SkyVisuals", "Textur-Himmel mit fünf detailreichen Skybox-Stilen: Nebula, Aurora, Synthwave, Eclipse und Planet.", Category.VISUALS);
    }
 
    public String style() {
       return this.style.get();
-   }
-
-   public int color() {
-      return this.color.rgb();
    }
 
    public double distance() {
@@ -33,7 +29,7 @@ public final class SkyVisuals extends Module {
       return this.intensity.get().floatValue();
    }
 
-   public float planetScale() {
-      return this.scale.get().floatValue();
+   public float rotation() {
+      return this.rotation.get().floatValue();
    }
 }
