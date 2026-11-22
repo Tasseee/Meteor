@@ -16,7 +16,7 @@ import net.minecraft.class_8828;
 public final class FakeName extends Module {
    private final StringSetting fakeName = this.add(new StringSetting("Name", "", 32));
    private final ModeSetting rank = this.add(new ModeSetting(
-      "Rang", "PREMIUM", "MOD", "MEDIA", "FAMOUS", "PREMIUM"
+      "Rang", "PREMIUM", "MOD", "MEDIA", "FAMOUS"
    ));
    private final StringSetting rankPrefix = this.add(new StringSetting("HugoSMP Rang-Prefix", "", 24));
    private final StringSetting clanTag = this.add(new StringSetting("HugoSMP Clan-Tag", "", 16));
@@ -39,6 +39,7 @@ public final class FakeName extends Module {
    public String getRankPrefix() {
       String custom = this.rankPrefix.get();
       if (custom != null && !custom.isBlank()) return custom.trim();
+
       return switch (this.rank.get()) {
          case "MOD" -> "MOD";
          case "MEDIA" -> "MEDIA";
@@ -50,8 +51,8 @@ public final class FakeName extends Module {
    public int getRankDefaultColor() {
       return switch (this.rank.get()) {
          case "MOD" -> 0xFFFF5555;
-         case "MEDIA" -> 0xFF55FFFF;
-         case "FAMOUS" -> 0xFFAA55FF;
+         case "MEDIA" -> 0xFFAA00FF;
+         case "FAMOUS" -> 0xFFFF55FF;
          default -> 0xFFFFAA00;
       };
    }
@@ -80,6 +81,12 @@ public final class FakeName extends Module {
       }
    }
 
+   /**
+    * Replaces the local name and the existing HugoSMP rank directly before it.
+    * The server rank (e.g. PREMIUM) is removed instead of being left beside
+    * the configured fake rank. No brackets are added so the result matches
+    * the normal HugoSMP tab-list format: "RANG Name".
+    */
    public static class_2561 replaceName(class_2561 original, String accountName) {
       FakeName module = activeModule();
       if (original == null || module == null || !module.isEnabled()
@@ -89,7 +96,88 @@ public final class FakeName extends Module {
 
       String replacement = module.fakeName.get().trim();
       if (replacement.isBlank()) replacement = accountName;
-      return replaceInTree(original, accountName, replacement, module);
+
+      String plain = original.getString();
+      int nameIndex = plain.indexOf(accountName);
+      if (nameIndex < 0) {
+         return replaceInTree(original, accountName, replacement, module);
+      }
+
+      String prefix = plain.substring(0, nameIndex);
+      String cleanedPrefix = removeExistingHugoRank(prefix);
+      String rank = module.getRankPrefix();
+
+      String desiredPrefix = cleanedPrefix;
+      if (!rank.isBlank()) desiredPrefix += rank + " ";
+
+      String rebuilt = desiredPrefix + replacement + plain.substring(nameIndex + accountName.length());
+      return rebuildText(original, rebuilt, baseStyle(original), module);
+   }
+
+   private static String removeExistingHugoRank(String prefix) {
+      String trimmed = prefix.stripTrailing();
+      String[] ranks = {
+         "PREMIUM", "MOD", "MEDIA", "FAMOUS", "ADMIN", "OWNER", "HELPER",
+         "SUPPORT", "BUILDER", "YOUTUBER", "TIKTOKER", "VIP"
+      };
+
+      for (String rank : ranks) {
+         if (trimmed.equals(rank)) return "";
+         if (trimmed.endsWith(rank)) {
+            String before = trimmed.substring(0, trimmed.length() - rank.length()).stripTrailing();
+            return before.isEmpty() ? "" : before + " ";
+         }
+      }
+      return prefix;
+   }
+
+   private static class_2561 rebuildText(
+      class_2561 original, String replacementText, class_2583 baseStyle, FakeName module
+   ) {
+      class_5250 out = class_2561.method_43470("").method_10862(original.method_10866());
+
+      String rank = module.getRankPrefix();
+      int rankStart = replacementText.indexOf(rank);
+      int nameStart = rankStart >= 0 ? rankStart + rank.length() : -1;
+
+      if (!rank.isBlank() && rankStart >= 0) {
+         append(out, replacementText.substring(0, rankStart), baseStyle);
+         append(out, rank, baseStyle.method_36139(
+            module.rankPrefix.get().isBlank() ? module.getRankDefaultColor() : module.rankColor.rgb()
+         ).method_10982(true));
+         if (nameStart < replacementText.length() && replacementText.charAt(nameStart) == ' ') {
+            append(out, " ", baseStyle);
+            nameStart++;
+         }
+         appendNameAndRest(out, replacementText.substring(nameStart), baseStyle, module);
+      } else {
+         appendNameAndRest(out, replacementText, baseStyle, module);
+      }
+      return out;
+   }
+
+   private static void appendNameAndRest(
+      class_5250 out, String value, class_2583 baseStyle, FakeName module
+   ) {
+      int nameEnd = value.length();
+      String clan = module.clanTag.get().trim();
+
+      if (!clan.isEmpty()) {
+         String formattedClan = module.clanFormat.is("[]") ? "[" + clan + "]"
+            : module.clanFormat.is("<>") ? "<" + clan + ">"
+            : module.clanFormat.is("()") ? "(" + clan + ")"
+            : clan;
+         append(out, formattedClan + " ", baseStyle.method_36139(module.clanColor.rgb()).method_10982(true));
+      }
+
+      class_2583 finalNameStyle = module.customNameColor.get()
+         ? baseStyle.method_36139(module.nameColor.rgb())
+         : baseStyle;
+      append(out, value.substring(0, nameEnd), finalNameStyle);
+   }
+
+   private static class_2583 baseStyle(class_2561 text) {
+      return text.method_10866();
    }
 
    private static class_2561 replaceInTree(
@@ -121,7 +209,6 @@ public final class FakeName extends Module {
       class_5250 out = class_2561.method_43470("").method_10862(baseStyle);
       int copiedUntil = 0;
       boolean replaced = false;
-
       while (found >= 0) {
          int end = found + accountName.length();
          boolean leftBoundary = found == 0 || !isNameCharacter(raw.charAt(found - 1));
@@ -151,7 +238,7 @@ public final class FakeName extends Module {
          int color = module.rankPrefix.get().isBlank()
             ? module.getRankDefaultColor()
             : module.rankColor.rgb();
-         append(out, "[" + rank + "] ", baseStyle.method_36139(color).method_10982(true));
+         append(out, rank + " ", baseStyle.method_36139(color).method_10982(true));
       }
 
       String clan = module.clanTag.get().trim();
