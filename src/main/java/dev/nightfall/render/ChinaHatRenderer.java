@@ -34,9 +34,12 @@ public final class ChinaHatRenderer {
       class_4184 camera = mc.field_1773.method_19418();
       if (camera == null) return;
       class_243 cameraPos = camera.method_71156();
-      double px = mc.field_1724.method_23317();
-      double py = mc.field_1724.method_23318() + mc.field_1724.method_17682() + 0.035;
-      double pz = mc.field_1724.method_23321();
+      // Interpolate the player position for this render frame instead of using tick-only coordinates.
+      float tickDelta = mc.method_60646().method_60637(false);
+      class_243 playerPos = mc.field_1724.method_30950(tickDelta);
+      double px = playerPos.field_1352;
+      double py = playerPos.field_1351 + mc.field_1724.method_17682() + 0.035;
+      double pz = playerPos.field_1350;
       double radius = hat.radius();
       double brim = radius * hat.brimWidth();
       double height = hat.height();
