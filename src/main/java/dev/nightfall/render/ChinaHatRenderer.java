@@ -67,6 +67,7 @@ public final class ChinaHatRenderer {
             vertex(fills, matrix, x1, (float)py, z1, red * dark, green * dark, blue * dark, 0.96F);
             vertex(fills, matrix, x0, (float)py, z0, red * dark, green * dark, blue * dark, 0.96F);
             vertex(fills, matrix, (float)px, (float)(py + height), (float)pz, red, green, blue, 0.96F);
+            vertex(fills, matrix, (float)px, (float)(py + height), (float)pz, red, green, blue, 0.96F);
 
             float bx0 = (float)(px + Math.cos(a0) * brim);
             float bz0 = (float)(pz + Math.sin(a0) * brim);
