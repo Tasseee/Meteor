@@ -151,6 +151,13 @@ public final class ChunkMemory extends Module {
          return;
       }
 
+      BackgroundFreecam backgroundCamera = ModuleManager.get(BackgroundFreecam.class);
+      if (this.useBackgroundFreecam.get() && !backgroundCamera.isEnabled()) {
+         backgroundCamera.setEnabled(true);
+      } else if (!this.useBackgroundFreecam.get() && backgroundCamera.isEnabled()) {
+         backgroundCamera.setEnabled(false);
+      }
+
       String context = Storage.server() + "_" + Storage.dim();
       if (world != cacheWorld || !context.equals(cacheContext)) {
          clearSessionCache();
