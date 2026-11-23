@@ -4,7 +4,9 @@ import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
+import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.util.Draw;
+import dev.nightfall.util.Esp2DRenderer;
 import dev.nightfall.util.Projection;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +18,7 @@ import net.minecraft.class_332;
 
 public final class StructureESP extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 48.0, 8.0, 96.0, 8.0));
+   private final ModeSetting display = this.add(new ModeSetting("Darstellung", "3D", "3D", "2D", "Aus"));
    private final BoolSetting spawners = this.add(new BoolSetting("Spawner", true));
    private final BoolSetting portals = this.add(new BoolSetting("Portalrahmen", true));
    private final BoolSetting trial = this.add(new BoolSetting("Trial-Spawner", true));
@@ -87,9 +90,13 @@ public final class StructureESP extends Module {
 
    @Override
    public void renderHud(class_332 ctx) {
-      if (Projection.valid()) {
+      if (Projection.valid() && !this.display.is("Aus")) {
          for (class_238 box : this.positions) {
-            Draw.box(ctx, box, -571164350, 1, true);
+            if (this.display.is("2D")) {
+               Esp2DRenderer.draw(ctx, box, -571164350, 1, 35, true);
+            } else {
+               Draw.box(ctx, box, -571164350, 1, true);
+            }
          }
       }
    }
