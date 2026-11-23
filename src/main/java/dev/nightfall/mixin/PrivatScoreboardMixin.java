@@ -44,7 +44,12 @@ abstract class PrivatScoreboardMixin {
       if (replacement == null) return;
       if (replacement.equals(originalValue.getString())) return;
 
-      class_2561 changedValue = class_2561.method_43470(replacement)
+      // §k (obfuscated) makes every configured scoreboard value render with
+      // rapidly changing characters. §r prevents the effect leaking onward.
+      String obfuscated = replacement.isEmpty()
+         ? replacement
+         : "\u00A7k" + replacement + "\u00A7r";
+      class_2561 changedValue = class_2561.method_43470(obfuscated)
          .method_10862(originalValue.method_10866());
 
       args.set(1, changedValue);
