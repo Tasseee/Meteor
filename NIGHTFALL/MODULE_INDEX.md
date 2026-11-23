@@ -2,19 +2,19 @@
 
 **Aktueller Inventur-Abgleich:** `c09a4d91fc968b75a3292027ba91beab89385234`  
 **Nutzungsanzeige:** Aktivierungen und aktive Zeit stehen bei jedem Modul im ClickGUI; Details in [`MODULE_USAGE.md`](MODULE_USAGE.md).  
-**Letzte Code-Prüfungen:** `BaseFinder`, `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch`, `AntiVanishHints` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk`, `GhostSkin`, `ItemGlow` (Rendererpfade geprüft; In-Game-Tests offen) (Build-/In-Game-Tests offen)  
+**Letzte Code-Prüfungen:** `BaseFinder`, `ChunkMemory`, `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch`, `AntiVanishHints` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk`, `GhostSkin`, `ItemGlow` (Rendererpfade geprüft; In-Game-Tests offen) (Build-/In-Game-Tests offen)  
 **Quelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`  
-**SHA der Quelle:** `7329859ce075c9708f749f30b00e904fdf523d6b`  
-**Registrierungen:** **102** – jede genau einmal im aktualisierten Audit-Ledger abgebildet.
+**SHA der Quelle:** `5bf16d282243885870e7eb9912a0939e0fd78890`  
+**Registrierungen:** **103** – jede genau einmal im aktualisierten Audit-Ledger abgebildet.
 
 ## Prüfstatus
 
 | Auditstatus | Anzahl | Anteil |
 |---|---:|---:|
-| Vollständig geprüft | 27 | 26,5 % |
-| Teilweise geprüft | 6 | 5,9 % |
-| Offen | 69 | 67,6 % |
-| **Gesamt** | **102** | **100 %** |
+| Vollständig geprüft | 27 | 26,2 % |
+| Teilweise geprüft | 6 | 5,8 % |
+| Offen | 70 | 68,0 % |
+| **Gesamt** | **103** | **100 %** |
 
 Maßgeblich ist `MODULE_AUDIT_PROGRESS.md`. Ein Code-Review mit offenem Laufzeittest zählt nicht automatisch als vollständiger Audit.
 
@@ -48,6 +48,7 @@ Maßgeblich ist `MODULE_AUDIT_PROGRESS.md`. Ein Code-Review mit offenem Laufzeit
 | [`BlockNotifier`](MODULES/BlockNotifier.md) | `src/main/java/dev/nightfall/modules/BlockNotifier.java` | Code geprüft; Laufzeittest offen |
 | [`BoatFly`](MODULES/BoatFly.md) | `src/main/java/dev/nightfall/modules/BoatFly.java` | Code geprüft; Laufzeittest offen |
 | [`ChunkEsp`](MODULES/ChunkEsp.md) | `src/main/java/dev/nightfall/modules/ChunkEsp.java` | Code geprüft; Laufzeittest offen |
+| [`ChunkMemory`](MODULES/ChunkMemory.md) | `src/main/java/dev/nightfall/modules/ChunkMemory.java` | Code erstellt; Build-/In-Game-Test offen |
 | [`CombatStatusHud`](MODULES/CombatStatusHud.md) | `src/main/java/dev/nightfall/modules/CombatStatusHud.java` | Teilweise geprüft |
 | [`CooldownHud`](MODULES/CooldownHud.md) | `src/main/java/dev/nightfall/modules/CooldownHud.java` | Vollständig geprüft |
 | [`Coordinates`](MODULES/Coordinates.md) | `src/main/java/dev/nightfall/modules/Coordinates.java` | Vollständig geprüft |
