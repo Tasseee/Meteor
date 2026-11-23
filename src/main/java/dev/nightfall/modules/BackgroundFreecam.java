@@ -5,6 +5,7 @@ import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.NumberSetting;
 import net.minecraft.class_243;
 import net.minecraft.class_638;
+import net.minecraft.class_332;
 
 /**
  * Independent, non-rendering scan-position provider used by ChunkMemory.
@@ -118,6 +119,24 @@ public final class BackgroundFreecam extends Module {
       cameraPosition = new class_243(x, y, z);
       cameraWorld = mc.field_1687;
       active = true;
+   }
+
+   @Override
+   public void renderHud(class_332 context) {
+      class_243 position = cameraPosition();
+      if (!this.isEnabled() || position == null) return;
+
+      String title = "BACKGROUND FREECAM";
+      String info = "X " + Math.round(position.field_1352 * 10.0) / 10.0
+         + "  Y " + Math.round(position.field_1351 * 10.0) / 10.0
+         + "  Z " + Math.round(position.field_1350 * 10.0) / 10.0;
+      int width = Math.max(mc.field_1772.method_1727(title), mc.field_1772.method_1727(info)) + 18;
+      int x = 8;
+      int y = 4;
+      context.method_25294(x, y, x + width, y + 34, 0x90000000);
+      context.method_25294(x, y, x + width, y + 2, 0xFF39FFB6);
+      context.method_51433(mc.field_1772, title, x + 8, y + 5, 0xFF39FFB6, true);
+      context.method_51433(mc.field_1772, info, x + 8, y + 18, 0xFFFFFFFF, true);
    }
 
    @Override
