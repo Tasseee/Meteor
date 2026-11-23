@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import net.minecraft.class_2246;
 import net.minecraft.class_2248;
 import net.minecraft.class_2338;
@@ -86,18 +88,38 @@ public final class BlockESP extends Module {
       this.blockIds.get().clear();
    }
 
-   private boolean selected(class_2248 b) {
+   private Set<class_2248> selectedBlocks() {
+      Set<class_2248> selected = new HashSet<>();
       if (this.customSelection.get()) {
-         String id = class_7923.field_41175.method_10221(b).toString();
-         return this.blockIds.has(id);
+         this.ensureBlockList();
+         for (String id : this.blockIds.get()) {
+            class_2248 block = this.blockById.get(id);
+            if (block != null) selected.add(block);
+         }
+         return selected;
       }
-      return this.diamonds.get() && (b == class_2246.field_10442 || b == class_2246.field_29029)
-         || this.ancient.get() && b == class_2246.field_22109
-         || this.chests.get() && (b == class_2246.field_10034 || b == class_2246.field_10380 || b == class_2246.field_16328)
-         || this.spawners.get() && b == class_2246.field_10260
-         || this.obsidian.get() && b == class_2246.field_10540
-         || this.gold.get() && (b == class_2246.field_10571 || b == class_2246.field_29026)
-         || this.emerald.get() && (b == class_2246.field_10013 || b == class_2246.field_29220);
+
+      if (this.diamonds.get()) {
+         selected.add(class_2246.field_10442);
+         selected.add(class_2246.field_29029);
+      }
+      if (this.ancient.get()) selected.add(class_2246.field_22109);
+      if (this.chests.get()) {
+         selected.add(class_2246.field_10034);
+         selected.add(class_2246.field_10380);
+         selected.add(class_2246.field_16328);
+      }
+      if (this.spawners.get()) selected.add(class_2246.field_10260);
+      if (this.obsidian.get()) selected.add(class_2246.field_10540);
+      if (this.gold.get()) {
+         selected.add(class_2246.field_10571);
+         selected.add(class_2246.field_29026);
+      }
+      if (this.emerald.get()) {
+         selected.add(class_2246.field_10013);
+         selected.add(class_2246.field_29220);
+      }
+      return selected;
    }
 
    @Override
@@ -115,6 +137,7 @@ public final class BlockESP extends Module {
          );
          int r = this.range.getInt();
          int cap = this.maxBlocks.getInt();
+         Set<class_2248> selectedBlocks = this.selectedBlocks();
          int minY = Math.max(mc.field_1687.method_31607(), p.method_10264() - r);
          int maxY = Math.min(mc.field_1687.method_31600() - 1, p.method_10264() + r);
          int radiusSquared = r * r;
@@ -142,7 +165,7 @@ public final class BlockESP extends Module {
                            int dy = y - p.method_10264();
                            if (horizontalDistanceSquared + dy * dy > radiusSquared) continue;
                            class_2680 state = ChunkMemory.getBlockState(chunk, x, y, z);
-                           if (state != null && this.selected(state.method_26204())) {
+                           if (state != null && selectedBlocks.contains(state.method_26204())) {
                               this.found.add(new class_238(new class_2338(x, y, z)));
                            }
                         }
