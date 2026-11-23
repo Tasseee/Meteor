@@ -260,8 +260,21 @@ public final class Privat extends HudModule {
          : baseStyle;
       append(out, name, nameStyle);
 
-      // Clan is deliberately not rendered. Privat hides the real clan tag;
-      // the scoreboard's configurable "Clan" value is handled separately.
+      // Optional fake clan: when the setting is empty, absolutely no clan
+      // decoration is rendered. When configured, only this fake clan is shown.
+      String fakeClan = module.clanTag.get();
+      if (fakeClan != null && !fakeClan.isBlank()) {
+         String format = module.clanFormat.get();
+         if ("<>".equals(format)) {
+            append(out, " <" + fakeClan.trim() + ">", baseStyle.method_36139(module.clanColor.rgb()));
+         } else if ("()".equals(format)) {
+            append(out, " (" + fakeClan.trim() + ")", baseStyle.method_36139(module.clanColor.rgb()));
+         } else if ("Ohne Klammern".equals(format)) {
+            append(out, " " + fakeClan.trim(), baseStyle.method_36139(module.clanColor.rgb()));
+         } else {
+            append(out, " [" + fakeClan.trim() + "]", baseStyle.method_36139(module.clanColor.rgb()));
+         }
+      }
    }
 
    private static void append(class_5250 parent, String value, class_2583 style) {
