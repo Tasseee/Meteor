@@ -12,8 +12,11 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.class_2246;
 import net.minecraft.class_2248;
+import net.minecraft.class_2680;
+import net.minecraft.class_2818;
 import net.minecraft.class_2338;
 import net.minecraft.class_238;
+import net.minecraft.class_243;
 import net.minecraft.class_332;
 
 public final class StructureESP extends Module {
@@ -57,13 +60,20 @@ public final class StructureESP extends Module {
       if (mc.field_1724 != null && mc.field_1687 != null && this.timer-- <= 0) {
          this.timer = 30;
          this.positions.clear();
-         class_2338 p = mc.field_1724.method_24515();
+         class_243 scanOrigin = ChunkMemory.scanPosition();
+         if (scanOrigin == null) scanOrigin = mc.field_1724.method_33571();
+         class_2338 p = new class_2338(
+            (int)Math.floor(scanOrigin.field_1352),
+            (int)Math.floor(scanOrigin.field_1351),
+            (int)Math.floor(scanOrigin.field_1350)
+         );
          int r = this.range.getInt();
          int cap = 160;
 
          for (int cx = p.method_10263() - r >> 4; cx <= p.method_10263() + r >> 4 && this.positions.size() < cap; cx++) {
             for (int cz = p.method_10260() - r >> 4; cz <= p.method_10260() + r >> 4 && this.positions.size() < cap; cz++) {
-               if (mc.field_1687.method_2935().method_21730(cx, cz) != null) {
+               class_2818 chunk = ChunkMemory.getAvailableChunk(cx, cz);
+               if (chunk != null) {
                   int x0 = Math.max(p.method_10263() - r, cx << 4);
                   int x1 = Math.min(p.method_10263() + r, (cx << 4) + 15);
                   int z0 = Math.max(p.method_10260() - r, cz << 4);
@@ -72,11 +82,12 @@ public final class StructureESP extends Module {
                   for (int x = x0; x <= x1 && this.positions.size() < cap; x++) {
                      for (int z = z0; z <= z1 && this.positions.size() < cap; z++) {
                         for (int y = Math.max(mc.field_1687.method_31607(), p.method_10264() - r);
-                           y <= Math.min(mc.field_1687.method_31600(), p.method_10264() + r) && this.positions.size() < cap;
+                           y < Math.min(mc.field_1687.method_31600(), p.method_10264() + r + 1) && this.positions.size() < cap;
                            y++
                         ) {
                            class_2338 bp = new class_2338(x, y, z);
-                           if (this.match(mc.field_1687.method_8320(bp).method_26204())) {
+                           class_2680 state = ChunkMemory.getBlockState(chunk, x, y, z);
+                           if (state != null && this.match(state.method_26204())) {
                               this.positions.add(new class_238(bp));
                            }
                         }
