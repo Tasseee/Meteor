@@ -2,19 +2,19 @@
 
 **Aktueller Inventur-Abgleich:** `c09a4d91fc968b75a3292027ba91beab89385234`  
 **Nutzungsanzeige:** Aktivierungen und aktive Zeit stehen bei jedem Modul im ClickGUI; Details in [`MODULE_USAGE.md`](MODULE_USAGE.md).  
-**Letzte Code-Prüfungen:** `BaseFinder`, `ChunkMemory`, `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch`, `AntiVanishHints` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk`, `GhostSkin`, `ItemGlow` (Rendererpfade geprüft; In-Game-Tests offen) (Build-/In-Game-Tests offen)  
+**Letzte Code-Prüfungen:** `BaseFinder`, `BackgroundFreecam`, `ChunkMemory`, `AdvancedWorldOverlay`, `AutoCraftPlanner`, `AutoSmelter`, `DroppedItemNotifier`, `LowHealthWarning`, `CustomCrosshair`, `DebugHud`, `AutoBreed`, `BlockNotifier`, `FavoriteChunk`, `FirstPersonStyle`, `Hats`, `MovementParticles`, `ParticleTrail`, `SkyVisuals`, `BlockESP`, `ChunkEsp`, `ItemEsp`, `StorageEsp`, `EntityEsp`, `PlayerEsp`, `SpawnerEsp`, `AutoFish` und `AutoSign`, `GUITheme`, `FriendManager`, `HitParticles`, `JumpCircles`, `Minimap`, `ModuleList` und `ScannerHud`, `FakeStats`, `GlowESP`, `SafeWalk`, `Step`, `WeaponAnimations`, `WorldLyrics`, `SpotifyLyricsHud`, `AutoFarm` und `LootDropFinder`, `FreeLook`, `Freecam`, `TargetMarker`, `StructureESP`, `OreESP`, `StaffWatch`, `AntiVanishHints` und `SpawnerProtect`, `BoatFly`, `ElytraFly`, `Fly`, `Jesus`, `LongJump`, `NoFall`, `Speed`, `Sprint` und `WaterWalk`, `GhostSkin`, `ItemGlow` (Rendererpfade geprüft; In-Game-Tests offen) (Build-/In-Game-Tests offen)  
 **Quelle:** `src/main/java/dev/nightfall/module/ModuleManager.java`  
-**SHA der Quelle:** `5bf16d282243885870e7eb9912a0939e0fd78890`  
-**Registrierungen:** **103** – jede genau einmal im aktualisierten Audit-Ledger abgebildet.
+**SHA der Quelle:** `025ba3a7e3db820f08b2b483fbf7463c80d766cf`  
+**Registrierungen:** **104** – jede genau einmal im aktualisierten Audit-Ledger abgebildet.
 
 ## Prüfstatus
 
 | Auditstatus | Anzahl | Anteil |
 |---|---:|---:|
-| Vollständig geprüft | 27 | 26,2 % |
+| Vollständig geprüft | 27 | 26,0 % |
 | Teilweise geprüft | 6 | 5,8 % |
-| Offen | 70 | 68,0 % |
-| **Gesamt** | **103** | **100 %** |
+| Offen | 71 | 68,3 % |
+| **Gesamt** | **104** | **100 %** |
 
 Maßgeblich ist `MODULE_AUDIT_PROGRESS.md`. Ein Code-Review mit offenem Laufzeittest zählt nicht automatisch als vollständiger Audit.
 
@@ -44,6 +44,7 @@ Maßgeblich ist `MODULE_AUDIT_PROGRESS.md`. Ein Code-Review mit offenem Laufzeit
 | [`AutoTotem`](MODULES/AutoTotem.md) | `src/main/java/dev/nightfall/modules/AutoTotem.java` | Offen |
 | [`AutoTpa`](MODULES/AutoTpa.md) | `src/main/java/dev/nightfall/modules/AutoTpa.java` | Vollständig geprüft |
 | [`BaseFinder`](MODULES/BaseFinder.md) | `src/main/java/dev/nightfall/modules/BaseFinder.java` | Code geprüft; Laufzeittest offen |
+| [`BackgroundFreecam`](MODULES/BackgroundFreecam.md) | `src/main/java/dev/nightfall/modules/BackgroundFreecam.java` | Code erstellt; Build-/In-Game-Test offen |
 | [`BlockESP`](MODULES/BlockESP.md) | `src/main/java/dev/nightfall/modules/BlockESP.java` | Code geprüft; Laufzeittest offen |
 | [`BlockNotifier`](MODULES/BlockNotifier.md) | `src/main/java/dev/nightfall/modules/BlockNotifier.java` | Code geprüft; Laufzeittest offen |
 | [`BoatFly`](MODULES/BoatFly.md) | `src/main/java/dev/nightfall/modules/BoatFly.java` | Code geprüft; Laufzeittest offen |
