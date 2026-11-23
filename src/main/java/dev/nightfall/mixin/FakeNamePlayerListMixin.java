@@ -26,7 +26,7 @@ public abstract class FakeNamePlayerListMixin {
       if (!Privat.hasVisualOverride()) return;
 
       class_2561 current = cir.getReturnValue();
-      class_2561 changed = Privat.replaceName(current, entry.method_2966().name());
+      class_2561 changed = Privat.replaceTabName(current, entry.method_2966().name());
       if (changed != current) cir.setReturnValue(changed);
    }
 }
