@@ -280,9 +280,7 @@ public class BaseFinder extends Module {
          } else {
             int pcx = mc.field_1724.method_31477() >> 4;
             int pcz = mc.field_1724.method_31479() >> 4;
-            class_243 scanPosition = BackgroundFreecam.isActive()
-               ? BackgroundFreecam.cameraPosition()
-               : FreecamController.isActive() ? FreecamController.cameraPosition() : null;
+            class_243 scanPosition = ChunkMemory.scanPosition();
             if (scanPosition != null) {
                pcx = ((int)Math.floor(scanPosition.field_1352)) >> 4;
                pcz = ((int)Math.floor(scanPosition.field_1350)) >> 4;
@@ -318,8 +316,6 @@ public class BaseFinder extends Module {
       int r = this.range.getInt();
       long minAge = this.rescan.getInt() * 20L;
       List<long[]> cand = new ArrayList<>();
-      var chunkManager = w.method_2935();
-
       for (int dz = -r; dz <= r; dz++) {
          for (int dx = -r; dx <= r; dx++) {
             int d2 = dx * dx + dz * dz;
@@ -327,8 +323,7 @@ public class BaseFinder extends Module {
                long k = key(pcx + dx, pcz + dz);
                ChunkResult res = this.results.get(k);
                if ((res == null || res.lastScanTick == 0L || this.tick - res.lastScanTick >= minAge)
-                  && (chunkManager.method_21730(pcx + dx, pcz + dz) != null
-                     || ChunkMemory.getCachedChunk(pcx + dx, pcz + dz) != null)) {
+                  && ChunkMemory.getAvailableChunk(pcx + dx, pcz + dz) != null) {
                   cand.add(new long[]{d2, k});
                }
             }
