@@ -16,6 +16,7 @@ import net.minecraft.class_2248;
 import net.minecraft.class_2338;
 import net.minecraft.class_2378;
 import net.minecraft.class_238;
+import net.minecraft.class_2680;
 import net.minecraft.class_332;
 import net.minecraft.class_7923;
 
@@ -99,10 +100,9 @@ public final class OreESP extends Module {
             int nz = neighbor.method_10260();
             if (ny < bottomY || ny >= topY) continue;
 
-            // Do not request or load neighboring chunks just to complete a vein.
-            if (mc.field_1687.method_2935().method_21730(nx >> 4, nz >> 4) == null) continue;
-
-            if (mc.field_1687.method_8320(neighbor).method_26204() == ore) {
+            // Only inspect client-loaded or session-cached chunk data.
+            class_2680 neighborState = ChunkMemory.getBlockState(nx, ny, nz);
+            if (neighborState != null && neighborState.method_26204() == ore) {
                visited.add(neighbor);
                pending.addLast(neighbor);
             }
@@ -142,7 +142,9 @@ public final class OreESP extends Module {
                      class_2338 bp = new class_2338(x, y, z);
                      if (visited.contains(bp)) continue;
 
-                     class_2248 block = mc.field_1687.method_8320(bp).method_26204();
+                     class_2680 state = ChunkMemory.getBlockState(x, y, z);
+                     if (state == null) continue;
+                     class_2248 block = state.method_26204();
                      if (this.isOre(block)) {
                         OreMarker vein = this.collectVein(bp, block, visited);
                         this.found.add(vein);
