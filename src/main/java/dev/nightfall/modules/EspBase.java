@@ -8,6 +8,7 @@ import dev.nightfall.module.setting.ColorSetting;
 import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Draw;
+import dev.nightfall.util.Esp2DRenderer;
 import dev.nightfall.util.Projection;
 import dev.nightfall.util.Theme;
 import net.minecraft.class_238;
@@ -88,10 +89,16 @@ public abstract class EspBase extends Module {
             int col = this.argb(rgb, fade);
             boolean shown = false;
             if (!this.style.is("Aus") && fade > 0.005) {
-               shown = Draw.box(ctx,
+               class_238 renderBox = new class_238(
                   box.field_1323 + offsetX, box.field_1322 + offsetY, box.field_1321 + offsetZ,
-                  box.field_1320 + offsetX, box.field_1325 + offsetY, box.field_1324 + offsetZ,
-                  col, this.effectiveThickness(), this.style.is("3D"), this.smoothing.get());
+                  box.field_1320 + offsetX, box.field_1325 + offsetY, box.field_1324 + offsetZ
+               );
+               if (this.style.is("2D")) {
+                  // Match the rounded, filled and softly glowing EntityESP 2D look.
+                  shown = Esp2DRenderer.draw(ctx, renderBox, col, this.effectiveThickness(), 35, true);
+               } else if (this.style.is("3D")) {
+                  shown = Draw.box(ctx, renderBox, col, this.effectiveThickness(), true, this.smoothing.get());
+               }
             }
 
             boolean centerOk = Projection.project(cx, cy, cz, this.pt);
