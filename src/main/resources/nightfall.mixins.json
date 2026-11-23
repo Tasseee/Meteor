@@ -3,7 +3,7 @@
   "package": "dev.nightfall.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "FakeNameSkinMixin",
+    "PrivatSkinMixin",
     "HeldItemRendererMixin",
     "CameraMixin",
     "GameRendererAccessor",
@@ -20,9 +20,9 @@
     "GameRendererMixin",
     "FogRendererMixin",
     "ScreenBackgroundMixin",
-    "FakeNameChatMixin",
-    "FakeNamePlayerListMixin",
-    "FakeNamePlayerRendererMixin",
+    "PrivatChatMixin",
+    "PrivatPlayerListMixin",
+    "PrivatPlayerRendererMixin",
     "FreeLookMouseMixin",
     "PrivatScoreboardMixin"
   ],
