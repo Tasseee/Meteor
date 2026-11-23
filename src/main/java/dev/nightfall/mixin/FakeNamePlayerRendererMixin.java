@@ -27,7 +27,7 @@ public abstract class FakeNamePlayerRendererMixin {
       org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> cir
    ) {
       class_310 mc = class_310.method_1551();
-      if (player == mc.field_1724 && FakeName.hasVisualOverride()) {
+      if (player == mc.field_1724 && FakeName.hasF5Override()) {
          cir.setReturnValue(FakeName.shouldRenderF5Nameplate());
       }
    }
@@ -46,15 +46,14 @@ public abstract class FakeNamePlayerRendererMixin {
       class_310 mc = class_310.method_1551();
       if (mc.field_1724 == null || state == null || state.field_53528 != mc.field_1724.method_5628()) return;
 
-      if (!FakeName.hasVisualOverride()) return;
+      if (!FakeName.hasF5Override()) return;
 
-      // Both fields participate in the render-state name pipeline in 1.21.11.
-      // Keep each text component's style and any prefix/suffix siblings intact.
+      // PlayerEntityRenderState.playerName is the single line used for this
+      // player's nameplate. EntityRenderState.displayName is the second,
+      // separate custom-name line; clear it to prevent duplicate names.
       String accountName = mc.field_1724.method_5477().getString();
       state.field_53525 = FakeName.replaceF5Name(state.field_53525, accountName);
       class_10017 baseState = (class_10017)(Object)state;
-      if (baseState.field_53337 != null) {
-         baseState.field_53337 = FakeName.replaceF5Name(baseState.field_53337, accountName);
-      }
+      baseState.field_53337 = null;
    }
 }
