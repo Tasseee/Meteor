@@ -20,6 +20,7 @@ import net.minecraft.class_2338;
 import net.minecraft.class_238;
 import net.minecraft.class_243;
 import net.minecraft.class_2680;
+import net.minecraft.class_2818;
 import net.minecraft.class_7923;
 import net.minecraft.class_1799;
 import net.minecraft.class_332;
@@ -115,7 +116,8 @@ public final class BlockESP extends Module {
          int r = this.range.getInt();
          int cap = this.maxBlocks.getInt();
          int minY = Math.max(mc.field_1687.method_31607(), p.method_10264() - r);
-         int maxY = Math.min(mc.field_1687.method_31600(), p.method_10264() + r);
+         int maxY = Math.min(mc.field_1687.method_31600() - 1, p.method_10264() + r);
+         int radiusSquared = r * r;
          int minX = p.method_10263() - r;
          int maxX = p.method_10263() + r;
          int minZ = p.method_10260() - r;
@@ -123,24 +125,25 @@ public final class BlockESP extends Module {
 
          for (int cx = minX >> 4; cx <= maxX >> 4 && this.found.size() < cap; cx++) {
             for (int cz = minZ >> 4; cz <= maxZ >> 4 && this.found.size() < cap; cz++) {
-               if (mc.field_1687.method_2935().method_21730(cx, cz) != null
-                  || ChunkMemory.getCachedChunk(cx, cz) != null) {
+               class_2818 chunk = ChunkMemory.getAvailableChunk(cx, cz);
+               if (chunk != null) {
                   int sx = Math.max(minX, cx << 4);
                   int ex = Math.min(maxX, (cx << 4) + 15);
                   int sz = Math.max(minZ, cz << 4);
                   int ez = Math.min(maxZ, (cz << 4) + 15);
 
                   for (int x = sx; x <= ex && this.found.size() < cap; x++) {
+                     int dx = x - p.method_10263();
                      for (int z = sz; z <= ez && this.found.size() < cap; z++) {
+                        int dz = z - p.method_10260();
+                        int horizontalDistanceSquared = dx * dx + dz * dz;
+                        if (horizontalDistanceSquared > radiusSquared) continue;
                         for (int y = minY; y <= maxY && this.found.size() < cap; y++) {
-                           int dx = x - p.method_10263();
                            int dy = y - p.method_10264();
-                           int dz = z - p.method_10260();
-                           if (dx * dx + dy * dy + dz * dz > r * r) continue;
-                           class_2338 bp = new class_2338(x, y, z);
-                           class_2680 state = ChunkMemory.getBlockState(x, y, z);
+                           if (horizontalDistanceSquared + dy * dy > radiusSquared) continue;
+                           class_2680 state = ChunkMemory.getBlockState(chunk, x, y, z);
                            if (state != null && this.selected(state.method_26204())) {
-                              this.found.add(new class_238(bp));
+                              this.found.add(new class_238(new class_2338(x, y, z)));
                            }
                         }
                      }
