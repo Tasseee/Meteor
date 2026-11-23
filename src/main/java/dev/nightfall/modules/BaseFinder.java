@@ -318,6 +318,7 @@ public class BaseFinder extends Module {
       int r = this.range.getInt();
       long minAge = this.rescan.getInt() * 20L;
       List<long[]> cand = new ArrayList<>();
+      var chunkManager = w.method_2935();
 
       for (int dz = -r; dz <= r; dz++) {
          for (int dx = -r; dx <= r; dx++) {
@@ -326,7 +327,7 @@ public class BaseFinder extends Module {
                long k = key(pcx + dx, pcz + dz);
                ChunkResult res = this.results.get(k);
                if ((res == null || res.lastScanTick == 0L || this.tick - res.lastScanTick >= minAge)
-                  && (w.method_2935().method_21730(pcx + dx, pcz + dz) != null
+                  && (chunkManager.method_21730(pcx + dx, pcz + dz) != null
                      || ChunkMemory.getCachedChunk(pcx + dx, pcz + dz) != null)) {
                   cand.add(new long[]{d2, k});
                }
@@ -350,10 +351,7 @@ public class BaseFinder extends Module {
    private void scan(class_638 w, long k) {
       int cx = (int)k;
       int cz = (int)(k >> 32);
-      class_2818 ch = w.method_2935().method_21730(cx, cz);
-      if (ch == null) {
-         ch = ChunkMemory.getCachedChunk(cx, cz);
-      }
+      class_2818 ch = ChunkMemory.getAvailableChunk(cx, cz);
       if (this.isFakeChunk(cx, cz)) {
          ChunkResult ignored = this.results.get(k);
          if (ignored != null) {
