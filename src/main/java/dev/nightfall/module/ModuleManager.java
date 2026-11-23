@@ -32,6 +32,7 @@ import dev.nightfall.modules.OreESP;
 import dev.nightfall.modules.BlockNotifier;
 import dev.nightfall.modules.BoatFly;
 import dev.nightfall.modules.ChunkEsp;
+import dev.nightfall.modules.ChunkMemory;
 import dev.nightfall.modules.ChinaHat;
 import dev.nightfall.modules.CombatStatusHud;
 import dev.nightfall.modules.CooldownHud;
@@ -230,6 +231,7 @@ public final class ModuleManager {
       MODULES.add(new AutoBreed());
       MODULES.add(new AutoSmelter());
       MODULES.add(new AutoCraftPlanner());
+      MODULES.add(new ChunkMemory());
       MODULES.add(new BaseFinder());
       MODULES.add(new AutoRtp());
       MODULES.add(new AutoReconnect());
