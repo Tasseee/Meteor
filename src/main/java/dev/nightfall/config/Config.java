@@ -220,8 +220,11 @@ public final class Config {
             JsonObject mods = root.has("modules") ? root.getAsJsonObject("modules") : new JsonObject();
 
             for (Module m : ModuleManager.all()) {
-               if (mods.has(m.getName())) {
-                  JsonObject o = mods.getAsJsonObject(m.getName());
+               JsonObject o = mods.has(m.getName()) ? mods.getAsJsonObject(m.getName()) : null;
+               if (o == null && "FakeName".equals(m.getName()) && mods.has("Privat")) {
+                  o = mods.getAsJsonObject("Privat");
+               }
+               if (o != null) {
                   if (o.has("settings")) {
                      JsonObject s = o.getAsJsonObject("settings");
 
