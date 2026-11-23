@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.minecraft.class_243;
 import net.minecraft.class_332;
 
 public final class ChunkEsp extends Module {
@@ -121,6 +122,12 @@ public final class ChunkEsp extends Module {
       return dx * dx + dz * dz;
    }
 
+   private class_243 viewCenter() {
+      return FreecamController.isActive()
+         ? FreecamController.cameraPosition()
+         : mc.field_1724.method_33571();
+   }
+
    private static int alpha(int color, double factor) {
       int a = (int)Math.max(0.0, Math.min(255.0, 255.0 * factor));
       return Theme.withAlpha(color, a);
@@ -149,9 +156,10 @@ public final class ChunkEsp extends Module {
          ? this.favoriteColor.rgb()
          : region.status == ChunkResult.Status.GONE ? this.goneColor.rgb() : this.susColor.rgb();
 
+      class_243 origin = this.viewCenter();
       double worldX = region.chunkX * 16.0;
       double worldZ = region.chunkZ * 16.0;
-      double worldY = Math.floor(mc.field_1724.method_23318()) + 0.12;
+      double worldY = Math.floor(origin.field_1351) + 0.12;
       double[] point = new double[2];
       boolean onScreen = Projection.project(worldX, worldY, worldZ, point);
       if (!onScreen && !Projection.projectToEdge(worldX, worldY, worldZ, point)) return;
@@ -203,8 +211,9 @@ public final class ChunkEsp extends Module {
       BaseFinder finder = ModuleManager.get(BaseFinder.class);
       if (finder == null || !finder.isEnabled()) return;
 
-      int playerChunkX = mc.field_1724.method_31477() >> 4;
-      int playerChunkZ = mc.field_1724.method_31479() >> 4;
+      class_243 origin = this.viewCenter();
+      int playerChunkX = ((int)Math.floor(origin.field_1352)) >> 4;
+      int playerChunkZ = ((int)Math.floor(origin.field_1350)) >> 4;
       long now = System.nanoTime();
       int markCount = finder.marks().size();
 
@@ -223,8 +232,8 @@ public final class ChunkEsp extends Module {
       int drawn = 0;
       for (Region region : this.cachedRegions) {
          if (drawn >= this.maxRegions.getInt() || EspBase.drawn >= 2048) break;
-         double dx = region.chunkX * 16.0 - mc.field_1724.method_23317();
-         double dz = region.chunkZ * 16.0 - mc.field_1724.method_23321();
+         double dx = region.chunkX * 16.0 - origin.field_1352;
+         double dz = region.chunkZ * 16.0 - origin.field_1350;
          double distance = Math.sqrt(dx * dx + dz * dz);
          this.drawMarker(ctx, region, now, distance, maxDistance);
          drawn++;
