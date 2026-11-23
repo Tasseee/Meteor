@@ -97,16 +97,20 @@ public abstract class BlockEntityEsp extends EspBase {
             if (!order.isEmpty()) {
                List<class_2338> sortedPositions = new ArrayList<>(this.cache.size());
                List<class_238> sortedBoxes = new ArrayList<>(this.boxes.size());
+               List<class_2586> sortedEntities = new ArrayList<>(this.cachedEntities.size());
 
                for (int i : order) {
                   sortedPositions.add(this.cache.get(i));
                   sortedBoxes.add(this.boxes.get(i));
+                  sortedEntities.add(this.cachedEntities.get(i));
                }
 
                this.cache.clear();
                this.cache.addAll(sortedPositions);
                this.boxes.clear();
                this.boxes.addAll(sortedBoxes);
+               this.cachedEntities.clear();
+               this.cachedEntities.addAll(sortedEntities);
             }
          }
       }
