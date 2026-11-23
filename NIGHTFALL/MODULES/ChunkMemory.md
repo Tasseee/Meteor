@@ -8,14 +8,14 @@
 
 ## Verhalten
 
-ChunkMemory durchlaeuft automatisch die Chunk-Koordinaten innerhalb seiner eingestellten Reichweite. Pro Client-Tick werden so viele Koordinaten geprueft, wie die Einstellung Scan-Geschwindigkeit vorgibt. Ein Chunk wird nur dann gespeichert, wenn er bereits im Client-Chunk-Manager vorhanden ist. Der Lookup fordert keine Chunks beim Server an.
+ChunkMemory durchlaeuft automatisch die Chunk-Koordinaten innerhalb eines einstellbaren horizontalen Blockradius (Standard 50). Pro Client-Tick werden so viele Koordinaten geprueft, wie die Einstellung Scan-Geschwindigkeit vorgibt. Sobald das Ende der Liste erreicht ist, beginnt der Durchlauf wieder am Anfang. Der Bereich wird damit fortlaufend erneut abgefragt; wenn sich das Zentrum in einen anderen Chunk bewegt, wird die Scanliste um das neue Zentrum herum neu aufgebaut. Ein Chunk wird nur dann gespeichert, wenn er bereits im Client-Chunk-Manager vorhanden ist. Der Lookup fordert keine Chunks beim Server an.
 
 Die Daten werden an ihren Weltkoordinaten gehalten. Die Implementierung merkt sich die clientseitigen Chunk-Objekte, statt jeden Block in ein eigenes dauerhaftes Format zu kopieren. Solange ein Chunk geladen ist, werden Aenderungen am Objekt weiter sichtbar; beim erneuten Laden wird die Referenz beim naechsten Durchlauf aktualisiert. Nach dem Verlassen der Welt oder einem Dimensions-/Serverwechsel wird der komplette Cache geleert.
 
 ## Einstellungen
 
-- **Scan-Reichweite (Chunks):** Radius um den Spieler; wenn Freecam aktiv ist und die Option eingeschaltet ist, dient die Freecam-Position als Scan-Zentrum
-- **Scan-Geschwindigkeit (Chunks/Tick):** Anzahl der Chunk-Koordinaten, die pro Client-Tick abgefragt werden
+- **Scan-Radius (Bloecke):** Standard 50 Bloecke horizontal um das aktive Scan-Zentrum. Jeder Chunk wird aufgenommen, wenn seine 16x16-Grundflaeche den Radius schneidet; die gespeicherte Chunk-Datenstruktur enthaelt alle vertikalen Sektionen.
+- **Scan-Geschwindigkeit (Chunks/Tick):** Anzahl der Chunk-Koordinaten, die pro Client-Tick abgefragt werden. Der Cursor laeuft zyklisch durch den Bereich und scannt ihn wiederholt
 - **Max. gespeicherte Chunks:** Obergrenze fuer den LRU-Cache; aelteste Eintraege werden zuerst entfernt
 - **Hintergrund-Freecam als Scan-Zentrum:** Nutzt die unabhaengige automatische Kamera (standardmaessig an)\n- **Manuelle Freecam als Ersatz-Zentrum:** Wird nur verwendet, wenn die Hintergrundkamera nicht als Scan-Zentrum genutzt wird\n\n## BackgroundFreecam-Einstellungen\n\n- **Flugradius:** Horizontaler Orbit-Abstand zum Spieler\n- **Flugtempo:** Geschwindigkeit entlang der Flugbahn\n- **Flughoehe:** Mittlere Hoehe oberhalb der Spieler-Augenposition\n- **Vertikaler Scanbereich:** Staerke der Hoehenbewegung waehrend des Orbits
 
