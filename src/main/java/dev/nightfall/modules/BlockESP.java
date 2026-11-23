@@ -127,9 +127,8 @@ public final class BlockESP extends Module {
       if (mc.field_1724 != null && mc.field_1687 != null && this.timer-- <= 0) {
          this.timer = 12;
          this.found.clear();
-         class_243 scanOrigin = FreecamController.isActive()
-            ? FreecamController.cameraPosition()
-            : mc.field_1724.method_33571();
+         class_243 scanOrigin = ChunkMemory.scanPosition();
+         if (scanOrigin == null) scanOrigin = mc.field_1724.method_33571();
          class_2338 p = new class_2338(
             (int)Math.floor(scanOrigin.field_1352),
             (int)Math.floor(scanOrigin.field_1351),
