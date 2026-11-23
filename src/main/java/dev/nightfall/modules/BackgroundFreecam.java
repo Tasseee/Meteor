@@ -82,12 +82,21 @@ public final class BackgroundFreecam extends Module {
 
    @Override
    public void onTick() {
-      if (mc.field_1724 == null || mc.field_1687 == null || mc.field_1687 != cameraWorld
-         || cameraProxy == null) {
+      if (mc.field_1724 == null || mc.field_1687 == null) {
          active = false;
          cameraProxy = null;
          cameraWorld = null;
          return;
+      }
+
+      // Recreate the independent proxy after a world transition even if the
+      // module itself remained enabled across the disconnect callback.
+      if (mc.field_1687 != cameraWorld || cameraProxy == null) {
+         cameraWorld = mc.field_1687;
+         cameraProxy = new class_1531(class_1299.field_6131, cameraWorld);
+         eyeOffset = cameraProxy.method_5751() - cameraProxy.method_23318();
+         phase = 0.0;
+         active = true;
       }
 
       updatePosition();
