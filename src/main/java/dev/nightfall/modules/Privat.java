@@ -11,9 +11,6 @@ import net.minecraft.class_2583;
 import net.minecraft.class_5250;
 import net.minecraft.class_7417;
 import net.minecraft.class_8828;
-import net.minecraft.class_327;
-import net.minecraft.class_332;
-import net.minecraft.class_310;
 
 public final class Privat extends HudModule {
    private final StringSetting fakeName = this.add(new StringSetting("Name", "", 32));
@@ -40,26 +37,31 @@ public final class Privat extends HudModule {
    private final StringSetting keyall = this.add(new StringSetting("Keyall", "0m 0s", 24));
    private final StringSetting spielzeit = this.add(new StringSetting("Spielzeit", "0d 0h", 24));
 
-   public String getScoreboardValue(int index, String original) {
-      return switch (index) {
-         case 0 -> geld.get();
-         case 1 -> gems.get();
-         case 2 -> stars.get();
-         case 3 -> kills.get();
-         case 4 -> tode.get();
-         case 5 -> clan.get();
-         case 6 -> ping.get();
-         case 7 -> keyall.get();
-         case 8 -> spielzeit.get();
-         default -> original;
-      };
-   }
-
    public Privat() {
       super("Privat", "Privat und HugoSMP-Stats als ein lokales Privat-Modul.");
       this.scalable = true;
    }
 
+   public String getScoreboardValue(String label, String original) {
+      if (label == null) return original;
+
+      return switch (normalizeScoreboardLabel(label)) {
+         case "geld" -> geld.get();
+         case "gems" -> gems.get();
+         case "stars" -> stars.get();
+         case "kills" -> kills.get();
+         case "tode", "tode" -> tode.get();
+         case "clan" -> clan.get();
+         case "ping" -> ping.get();
+         case "keyall" -> keyall.get();
+         case "spielzeit" -> spielzeit.get();
+         default -> original;
+      };
+   }
+
+   private static String normalizeScoreboardLabel(String label) {
+      return label.trim().replaceAll("\s+", " ").toLowerCase(java.util.Locale.ROOT);
+   }
 
    public String value() {
       return this.fakeName.get();
@@ -112,9 +114,8 @@ public final class Privat extends HudModule {
    }
 
    /**
-    * Replaces the local name and the existing HugoSMP rank directly before it.
-    * The server rank (e.g. PREMIUM) is removed instead of being left beside
-    * the configured fake rank. No brackets are added.
+    * Replaces only the local account name and clan decoration.
+    * The real server rank stays visible.
     */
    public static class_2561 replaceName(class_2561 original, String accountName) {
       Privat module = activeModule();
@@ -123,99 +124,7 @@ public final class Privat extends HudModule {
          return original;
       }
 
-      // Keep the server-provided rank. Only remove the clan decoration and replace
-      // the local account name. The original component styles stay untouched.
-      class_2561 changed = replaceInTree(original, accountName, module.fakeName.get(), module);
-      return changed;
-   }
-
-   private static String removeExistingClanToken(String text) {
-      // Remove the old HugoSMP clan decoration from either side of the name.
-      String value = text;
-      value = value.replaceAll("\\s*\\[[^\\]]{1,16}\\]\\s*", " ");
-      value = value.replaceAll("\\s*<[^<>]{1,16}>\\s*", " ");
-      value = value.replaceAll("\\s*\\([^()]{1,16}\\)\\s*", " ");
-      return value.replaceAll("\\s+", " ");
-   }
-
-   private static String removeExistingHugoRank(String prefix) {
-      String trimmed = prefix.stripTrailing();
-      String[] ranks = {
-         "PREMIUM", "MOD", "MEDIA", "FAMOUS", "ADMIN", "OWNER", "HELPER",
-         "SUPPORT", "BUILDER", "YOUTUBER", "TIKTOKER", "VIP"
-      };
-
-      for (String rank : ranks) {
-         if (trimmed.equals(rank)) return "";
-         if (trimmed.endsWith(rank)) {
-            String before = trimmed.substring(0, trimmed.length() - rank.length()).stripTrailing();
-            return before.isEmpty() ? "" : before + " ";
-         }
-      }
-      return prefix;
-   }
-
-   private static class_2561 rebuildPlainName(
-      class_2561 original, String replacementText, class_2583 baseStyle, Privat module
-   ) {
-      class_5250 out = class_2561.method_43470("").method_10862(original.method_10866());
-      String name = module.customNameColor.get()
-         ? replacementText
-         : replacementText;
-      class_2583 nameStyle = module.customNameColor.get()
-         ? baseStyle.method_36139(module.nameColor.rgb())
-         : baseStyle;
-      append(out, name, nameStyle);
-      return out;
-   }
-
-   private static class_2561 rebuildText(
-      class_2561 original, String replacementText, class_2583 baseStyle, Privat module
-   ) {
-      class_5250 out = class_2561.method_43470("").method_10862(original.method_10866());
-
-      String rank = module.getRankPrefix();
-      int rankStart = replacementText.indexOf(rank);
-      int nameStart = rankStart >= 0 ? rankStart + rank.length() : -1;
-
-      if (!rank.isBlank() && rankStart >= 0) {
-         append(out, replacementText.substring(0, rankStart), baseStyle);
-         append(out, rank, baseStyle.method_36139(
-            module.rankPrefix.get().isBlank() ? module.getRankDefaultColor() : module.rankColor.rgb()
-         ).method_10982(true));
-         if (nameStart < replacementText.length() && replacementText.charAt(nameStart) == ' ') {
-            append(out, " ", baseStyle);
-            nameStart++;
-         }
-         appendNameAndRest(out, replacementText.substring(nameStart), baseStyle, module);
-      } else {
-         appendNameAndRest(out, replacementText, baseStyle, module);
-      }
-      return out;
-   }
-
-   private static void appendNameAndRest(
-      class_5250 out, String value, class_2583 baseStyle, Privat module
-   ) {
-      class_2583 finalNameStyle = module.customNameColor.get()
-         ? baseStyle.method_36139(module.nameColor.rgb())
-         : baseStyle.method_36139(
-            module.rankPrefix.get().isBlank() ? module.getRankDefaultColor() : module.rankColor.rgb()
-         );
-      append(out, value, finalNameStyle);
-
-      String clan = module.clanTag.get().trim();
-      if (!clan.isEmpty()) {
-         String formattedClan = module.clanFormat.is("[]") ? "[" + clan + "]"
-            : module.clanFormat.is("<>") ? "<" + clan + ">"
-            : module.clanFormat.is("()") ? "(" + clan + ")"
-            : clan;
-         append(out, " " + formattedClan, baseStyle.method_36139(module.clanColor.rgb()).method_10982(true));
-      }
-   }
-
-   private static class_2583 baseStyle(class_2561 text) {
-      return text.method_10866();
+      return replaceInTree(original, accountName, module.fakeName.get(), module);
    }
 
    private static class_2561 replaceInTree(
@@ -243,11 +152,13 @@ public final class Privat extends HudModule {
       String cleaned = removeClanFromLiteral(raw);
       int from = 0;
       int found = cleaned.indexOf(accountName, from);
+
       if (found < 0) return null;
 
       class_5250 out = class_2561.method_43470("").method_10862(baseStyle);
       int copiedUntil = 0;
       boolean replaced = false;
+
       while (found >= 0) {
          int end = found + accountName.length();
          boolean leftBoundary = found == 0 || !isNameCharacter(cleaned.charAt(found - 1));
@@ -256,8 +167,14 @@ public final class Privat extends HudModule {
          if (leftBoundary && rightBoundary) {
             replaced = true;
             String beforeName = cleaned.substring(copiedUntil, found);
-            append(out, removeExistingHugoRank(beforeName), baseStyle);
-            appendPlainName(out, replacement == null || replacement.isBlank() ? accountName : replacement.trim(), baseStyle, module);
+            append(out, beforeName, baseStyle);
+
+            appendPlainName(
+               out,
+               replacement == null || replacement.isBlank() ? accountName : replacement.trim(),
+               baseStyle,
+               module
+            );
             copiedUntil = end;
          }
 
@@ -283,6 +200,7 @@ public final class Privat extends HudModule {
    private static String stripNonServerRankTokens(String text, String regex) {
       java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(regex).matcher(text);
       StringBuffer out = new StringBuffer();
+
       while (matcher.find()) {
          String inside = matcher.group(1).trim();
          if (isServerRank(inside)) {
@@ -291,6 +209,7 @@ public final class Privat extends HudModule {
             matcher.appendReplacement(out, " ");
          }
       }
+
       matcher.appendTail(out);
       return out.toString();
    }
@@ -300,6 +219,7 @@ public final class Privat extends HudModule {
          "PREMIUM", "MOD", "MEDIA", "FAMOUS", "ADMIN", "OWNER", "HELPER",
          "SUPPORT", "BUILDER", "YOUTUBER", "TIKTOKER", "VIP"
       };
+
       for (String rank : ranks) {
          if (rank.equalsIgnoreCase(value)) return true;
       }
@@ -327,13 +247,17 @@ public final class Privat extends HudModule {
             : module.clanFormat.is("<>") ? "<" + clan + ">"
             : module.clanFormat.is("()") ? "(" + clan + ")"
             : clan;
-         append(out, " " + formattedClan,
-            baseStyle.method_36139(module.clanColor.rgb()).method_10982(true));
+
+         append(
+            out,
+            " " + formattedClan,
+            baseStyle.method_36139(module.clanColor.rgb()).method_10982(true)
+         );
       }
    }
 
    private static void append(class_5250 parent, String value, class_2583 style) {
-      if (!value.isEmpty()) {
+      if (value != null && !value.isEmpty()) {
          parent.method_10852(class_2561.method_43470(value).method_10862(style));
       }
    }
@@ -345,56 +269,14 @@ public final class Privat extends HudModule {
          || c == '_';
    }
 
-
-   private static final int W = 128;
-   private static final int H = 160;
-   private static final String[] LABELS = {
-      "Geld", "Gems", "Stars", "Kills", "Tode", "Clan", "Ping", "Keyall", "Spielzeit"
-   };
-   private static final String[] VALUES = {
-      "104,18M", "550", "898", "886", "1,138", "???", "46ms", "21m 4s", "60d 5h"
-   };
-   private static final int[] VALUE_COLORS = {
-      0xFFE066, 0xFF55FF, 0xFFC825, 0xFFAA00, 0xFF5555,
-      0xFFFFFF, 0x55FFFF, 0x55FF55, 0x55FF55
-   };
-   private static final int[] ICON_COLORS = {
-      0xFF55FF55, 0xFFFF5555, 0xFFFFD700, 0xFFFFAA00,
-      0xFFAA0000, 0xFF55FFFF, 0xFF55FF55, 0xFFAAAAAA, 0xFFAAAAAA
-   };
-
    @Override
    protected int[] defaultPos(int sw, int sh) {
-      return new int[]{sw - W - 3, (sh - H) / 2 + 8};
-   }
-
-   private static int argb(int rgb) { return 0xFF000000 | (rgb & 0xFFFFFF); }
-
-   private static void drawText(class_332 ctx, class_327 tr, String text, int x, int y, int color, boolean shadow) {
-      ctx.method_51433(tr, text, x, y, argb(color), shadow);
-   }
-
-   private static void drawCentered(class_332 ctx, class_327 tr, String s, int cx, int y, int color) {
-      int w = tr.method_1727(s);
-      drawText(ctx, tr, s, cx - w / 2, y, color, true);
-   }
-
-   private static void drawItemIcon(class_332 ctx, int color, int x, int y) {
-      ctx.method_25294(x + 2, y + 2, x + 10, y + 10, color);
-      ctx.method_25294(x + 1, y + 3, x + 11, y + 9, color);
-   }
-
-   private static void drawCrown(class_332 ctx, int cx, int top, int height) {
-      int gold = 0xFFF5B82E, dark = 0xFF8A5A1E;
-      for (int r = 0; r < height; r++) {
-         ctx.method_25294(cx - r - 1, top + r, cx + r + 2, top + r + 1, dark);
-         ctx.method_25294(cx - r, top + r, cx + r + 1, top + r + 1, gold);
-      }
+      return new int[]{sw - 131, (sh - 160) / 2 + 8};
    }
 
    @Override
-   protected void draw(class_332 ctx) {
-      // Privat no longer renders a separate fake-stats panel.
-      // The real server scoreboard remains visible; its numeric values are masked by PrivatScoreboardMixin.
+   protected void draw(net.minecraft.class_332 ctx) {
+      // Intentionally empty: Privat does not render a second fake scoreboard.
+      // PrivatScoreboardMixin changes only the values of the real server sidebar.
    }
 }
