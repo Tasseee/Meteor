@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Storage;
@@ -39,8 +40,11 @@ public final class ChunkMemory extends Module {
    private final NumberSetting maxChunks = this.add(
       new NumberSetting("Max. gespeicherte Chunks", 1024.0, 64.0, 4096.0, 64.0)
    );
+   private final BoolSetting useBackgroundFreecam = this.add(
+      new BoolSetting("Hintergrund-Freecam als Scan-Zentrum", true)
+   );
    private final BoolSetting useFreecamPosition = this.add(
-      new BoolSetting("Freecam als Scan-Zentrum", true)
+      new BoolSetting("Manuelle Freecam als Ersatz-Zentrum", true)
    );
 
    private int centerChunkX = Integer.MIN_VALUE;
@@ -56,6 +60,22 @@ public final class ChunkMemory extends Module {
          "Merkt sich waehrend der Sitzung bereits empfangene Chunks und stellt sie anderen Welt-Modulen bereit.",
          Category.WORLD
       );
+   }
+
+   @Override
+   protected void onEnable() {
+      try {
+         ModuleManager.get(BackgroundFreecam.class).setEnabled(true);
+      } catch (IllegalStateException ignored) {
+      }
+   }
+
+   @Override
+   protected void onDisable() {
+      try {
+         ModuleManager.get(BackgroundFreecam.class).setEnabled(false);
+      } catch (IllegalStateException ignored) {
+      }
    }
 
    private static long key(int cx, int cz) {
@@ -140,19 +160,22 @@ public final class ChunkMemory extends Module {
       }
 
       class_243 center = mc.field_1724.method_33571();
-      if (this.useFreecamPosition.get() && FreecamController.isActive()) {
+      if (this.useBackgroundFreecam.get() && BackgroundFreecam.isActive()) {
+         class_243 backgroundPosition = BackgroundFreecam.cameraPosition();
+         if (backgroundPosition != null) {
+            center = backgroundPosition;
+         }
+      } else if (this.useFreecamPosition.get() && FreecamController.isActive()) {
          class_243 freecam = FreecamController.cameraPosition();
          if (freecam != null) {
             center = freecam;
          }
       }
 
-      int cx = ((int)Math.floor(center.field_1352)) >> 4;
-      int cz = ((int)Math.floor(center.field_1350)) >> 4;
+      this.centerChunkX = ((int)Math.floor(center.field_1352)) >> 4;
+      this.centerChunkZ = ((int)Math.floor(center.field_1350)) >> 4;
       int configuredRange = this.range.getInt();
-      if (cx != this.centerChunkX || cz != this.centerChunkZ || configuredRange != this.pathRange) {
-         this.centerChunkX = cx;
-         this.centerChunkZ = cz;
+      if (configuredRange != this.pathRange) {
          this.pathRange = configuredRange;
          this.rebuildScanPath(configuredRange);
       }
