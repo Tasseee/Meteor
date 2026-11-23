@@ -1,0 +1,24 @@
+# BackgroundFreecam
+
+- **Status:** Code angelegt und registriert; Build-/In-Game-Test offen
+- **Java-Klasse / Anzeigename:** `BackgroundFreecam`
+- **Quellpfad:** `src/main/java/dev/nightfall/modules/BackgroundFreecam.java`
+- **Kategorie:** `WORLD`
+- **Lebenszyklus:** Wird beim Aktivieren von `ChunkMemory` automatisch gestartet und beim Ausschalten wieder gestoppt
+
+## Verhalten
+
+BackgroundFreecam besitzt einen eigenen clientseitigen Kamera-Proxy und eine eigene Positions-/Flugsteuerung. Sie fliegt automatisch in einer dreidimensionalen Orbit-/Sweep-Bahn um die aktuelle Spielerposition. Dabei wird weder die Renderkamera ersetzt noch die echte Spielerposition veraendert. Die Kamera wird nicht in die Welt eingefuegt oder fuer andere Spieler sichtbar gemacht.
+
+ChunkMemory verwendet die Position dieses Hintergrund-Kamera-Proxys als Scan-Zentrum. BaseFinder verwendet sie ebenfalls als Zentrum seiner Chunk-Auswertung. Die manuelle Freecam kann parallel weiter fuer die normale Ansicht verwendet werden.
+
+## Einstellungen
+
+- **Flugradius:** Abstand der Kreisbahn zum Spieler
+- **Flugtempo:** Bewegung entlang der Bahn in Bloecken pro Tick
+- **Flughoehe:** Mittlere Hoehe ueber der Augenposition des Spielers
+- **Vertikaler Scanbereich:** Hoehenbewegung der Kamera entlang der Bahn
+
+## Grenzen
+
+Die Hintergrundkamera erzeugt keine Serveranfragen und laedt keine Chunks selbst. Sie bewegt nur ihren eigenen clientseitigen Scan-Kamerapunkt. ChunkMemory kann weiterhin nur Chunk-Daten speichern, die der Client bereits erhalten hat. Build- und In-Game-Test mit Minecraft 1.21.11, Fabric und Java 21 sind noch offen.
