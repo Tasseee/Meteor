@@ -280,8 +280,10 @@ public class BaseFinder extends Module {
          } else {
             int pcx = mc.field_1724.method_31477() >> 4;
             int pcz = mc.field_1724.method_31479() >> 4;
-            if (FreecamController.isActive()) {
-               class_243 scanPosition = FreecamController.cameraPosition();
+            class_243 scanPosition = BackgroundFreecam.isActive()
+               ? BackgroundFreecam.cameraPosition()
+               : FreecamController.isActive() ? FreecamController.cameraPosition() : null;
+            if (scanPosition != null) {
                pcx = ((int)Math.floor(scanPosition.field_1352)) >> 4;
                pcz = ((int)Math.floor(scanPosition.field_1350)) >> 4;
             }
@@ -1110,9 +1112,11 @@ public class BaseFinder extends Module {
 
    private boolean isMoreThan50BlocksAway(int cx, int cz) {
       if (mc.field_1724 == null) return false;
-      class_243 origin = FreecamController.isActive()
-         ? FreecamController.cameraPosition()
-         : mc.field_1724.method_33571();
+      class_243 origin = BackgroundFreecam.isActive()
+         ? BackgroundFreecam.cameraPosition()
+         : FreecamController.isActive()
+            ? FreecamController.cameraPosition()
+            : mc.field_1724.method_33571();
       long dx = (long)cx * 16L + 8L - (long)Math.floor(origin.field_1352);
       long dz = (long)cz * 16L + 8L - (long)Math.floor(origin.field_1350);
       return dx * dx + dz * dz > 50L * 50L;
