@@ -37,7 +37,7 @@ public final class ChunkMemory extends Module {
       new NumberSetting("Scan-Geschwindigkeit (Chunks/Tick)", 8.0, 1.0, 64.0, 1.0)
    );
    private final NumberSetting maxChunks = this.add(
-      new NumberSetting("Max. gespeicherte Chunks", 512.0, 64.0, 4096.0, 64.0)
+      new NumberSetting("Max. gespeicherte Chunks", 1024.0, 64.0, 4096.0, 64.0)
    );
    private final BoolSetting useFreecamPosition = this.add(
       new BoolSetting("Freecam als Scan-Zentrum", true)
