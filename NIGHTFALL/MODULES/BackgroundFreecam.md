@@ -8,7 +8,7 @@
 
 ## Verhalten
 
-BackgroundFreecam besitzt einen eigenen clientseitigen Kamera-Proxy und eine eigene Positions-/Flugsteuerung. Sie fliegt automatisch in einer dreidimensionalen Orbit-/Sweep-Bahn um die aktuelle Spielerposition. Dabei wird weder die Renderkamera ersetzt noch die echte Spielerposition veraendert. Die Kamera wird nicht in die Welt eingefuegt oder fuer andere Spieler sichtbar gemacht.
+BackgroundFreecam besitzt eine eigene clientseitige Scan-Position und eine Positions-/Flugsteuerung. Sie erstellt dafuer keine Minecraft-Entity mehr; die unveraenderliche Positionsdatenstruktur wird pro Tick einmal aktualisiert und von Scan-Modulen gemeinsam genutzt. Sie fliegt automatisch in einer dreidimensionalen Orbit-/Sweep-Bahn um die aktuelle Spielerposition. Dabei wird weder die Renderkamera ersetzt noch die echte Spielerposition veraendert. Die Kamera wird nicht in die Welt eingefuegt oder fuer andere Spieler sichtbar gemacht.
 
 ChunkMemory verwendet die Position dieses Hintergrund-Kamera-Proxys als Scan-Zentrum. BaseFinder verwendet sie ebenfalls als Zentrum seiner Chunk-Auswertung. Die manuelle Freecam kann parallel weiter fuer die normale Ansicht verwendet werden.
 
@@ -21,4 +21,4 @@ ChunkMemory verwendet die Position dieses Hintergrund-Kamera-Proxys als Scan-Zen
 
 ## Grenzen
 
-Die Hintergrundkamera erzeugt keine Serveranfragen und laedt keine Chunks selbst. Sie bewegt nur ihren eigenen clientseitigen Scan-Kamerapunkt. ChunkMemory kann weiterhin nur Chunk-Daten speichern, die der Client bereits erhalten hat. Build- und In-Game-Test mit Minecraft 1.21.11, Fabric und Java 21 sind noch offen.
+Die Hintergrundkamera erstellt keine Entity, erzeugt keine Serveranfragen und laedt keine Chunks selbst. Sie bewegt nur ihren eigenen clientseitigen Scan-Kamerapunkt. ChunkMemory kann weiterhin nur Chunk-Daten speichern, die der Client bereits erhalten hat. Build- und In-Game-Test mit Minecraft 1.21.11, Fabric und Java 21 sind noch offen.
