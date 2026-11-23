@@ -152,15 +152,17 @@ public final class LootDropFinder extends Module {
          int chunkRange = blockRange + 15 >> 4;
          class_243 scanOrigin = ChunkMemory.scanPosition();
          if (scanOrigin == null) scanOrigin = mc.field_1724.method_33571();
-         int pcx = ((int)Math.floor(scanOrigin.field_1352)) >> 4;
-         int pcz = ((int)Math.floor(scanOrigin.field_1350)) >> 4;
+         final double scanX = scanOrigin.field_1352;
+         final double scanZ = scanOrigin.field_1350;
+         int pcx = ((int)Math.floor(scanX)) >> 4;
+         int pcz = ((int)Math.floor(scanZ)) >> 4;
          double rangeSq = (double)blockRange * blockRange;
          Iterator<Long> cached = this.blockTargetsByChunk.keySet().iterator();
 
          while (cached.hasNext()) {
             long key = cached.next();
-            double dx = chunkX(key) * 16.0 + 8.0 - scanOrigin.field_1352;
-            double dz = chunkZ(key) * 16.0 + 8.0 - scanOrigin.field_1350;
+            double dx = chunkX(key) * 16.0 + 8.0 - scanX;
+            double dz = chunkZ(key) * 16.0 + 8.0 - scanZ;
             if (dx * dx + dz * dz > rangeSq + 512.0 || ChunkMemory.getAvailableChunk(chunkX(key), chunkZ(key)) == null) {
                cached.remove();
                this.lastChunkScan.remove(key);
@@ -175,8 +177,8 @@ public final class LootDropFinder extends Module {
             for (int dx = -chunkRange; dx <= chunkRange; dx++) {
                int cx = pcx + dx;
                int cz = pcz + dz;
-               double wx = cx * 16.0 + 8.0 - scanOrigin.field_1352;
-               double wz = cz * 16.0 + 8.0 - scanOrigin.field_1350;
+               double wx = cx * 16.0 + 8.0 - scanX;
+               double wz = cz * 16.0 + 8.0 - scanZ;
                if (!(wx * wx + wz * wz > rangeSq + 512.0) && ChunkMemory.getAvailableChunk(cx, cz) != null) {
                   long key = chunkKey(cx, cz);
                   if (!this.queuedChunks.contains(key) && this.tick - this.lastChunkScan.getOrDefault(key, -4611686018427387904L) >= CHUNK_REFRESH_TICKS) {
@@ -187,8 +189,8 @@ public final class LootDropFinder extends Module {
          }
 
          candidates.sort(Comparator.comparingDouble(keyx -> {
-            double dxx = chunkX(keyx) * 16.0 + 8.0 - scanOrigin.field_1352;
-            double dzx = chunkZ(keyx) * 16.0 + 8.0 - scanOrigin.field_1350;
+            double dxx = chunkX(keyx) * 16.0 + 8.0 - scanX;
+            double dzx = chunkZ(keyx) * 16.0 + 8.0 - scanZ;
             return dxx * dxx + dzx * dzx;
          }));
          if (!this.initialPassStarted && !candidates.isEmpty()) {
