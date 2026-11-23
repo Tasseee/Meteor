@@ -3,11 +3,15 @@ package dev.nightfall.modules;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import net.minecraft.class_2248;
 import net.minecraft.class_2338;
 import net.minecraft.class_2378;
 import net.minecraft.class_2586;
+import net.minecraft.class_2680;
+import net.minecraft.class_2818;
 import net.minecraft.class_2636;
 import net.minecraft.class_7923;
 
@@ -17,6 +21,8 @@ public class SpawnerEsp extends BlockEntityEsp {
    private final BoolSetting ignoreChunkCorners = this.add(new BoolSetting("Spawner in Chunk-Ecken ignorieren", true));
    private final NumberSetting cornerMargin = this.add(new NumberSetting("Ecken-Abstand", 2.0, 1.0, 4.0, 1.0));
    private final Map<class_2338, Boolean> filterCache = new HashMap<>();
+   private final Map<Long, class_2818> roomChunkCache = new HashMap<>();
+   private final Set<Long> missingRoomChunks = new HashSet<>();
    private int filterCacheTimer;
 
    public SpawnerEsp() {
@@ -33,8 +39,12 @@ public class SpawnerEsp extends BlockEntityEsp {
       Boolean cached = this.filterCache.get(pos);
       if (cached != null) return cached;
 
+      this.roomChunkCache.clear();
+      this.missingRoomChunks.clear();
       boolean hide = this.hideDungeonSpawners.get() && isDungeonRoom(pos)
          || this.hideStructureSpawners.get() && isStructureRoom(pos);
+      this.roomChunkCache.clear();
+      this.missingRoomChunks.clear();
       this.filterCache.put(pos, !hide);
       return !hide;
    }
@@ -93,7 +103,25 @@ public class SpawnerEsp extends BlockEntityEsp {
    }
 
    private String blockId(class_2338 pos) {
-      class_2248 block = mc.field_1687.method_8320(pos).method_26204();
+      int x = pos.method_10263();
+      int y = pos.method_10264();
+      int z = pos.method_10260();
+      int cx = x >> 4;
+      int cz = z >> 4;
+      long key = ((long)cx << 32) ^ (cz & 0xFFFFFFFFL);
+      class_2818 chunk = this.roomChunkCache.get(key);
+      if (chunk == null && !this.missingRoomChunks.contains(key)) {
+         chunk = ChunkMemory.getAvailableChunk(cx, cz);
+         if (chunk == null) {
+            this.missingRoomChunks.add(key);
+         } else {
+            this.roomChunkCache.put(key, chunk);
+         }
+      }
+
+      class_2680 state = ChunkMemory.getBlockState(chunk, x, y, z);
+      if (state == null) return "minecraft:air";
+      class_2248 block = state.method_26204();
       return ((class_2378<class_2248>) class_7923.field_41175).method_10221(block).toString();
    }
 
@@ -110,6 +138,8 @@ public class SpawnerEsp extends BlockEntityEsp {
    protected void onDisable() {
       super.onDisable();
       this.filterCache.clear();
+      this.roomChunkCache.clear();
+      this.missingRoomChunks.clear();
       this.filterCacheTimer = 0;
    }
 
