@@ -123,28 +123,23 @@ public final class Privat extends HudModule {
          return original;
       }
 
-      String replacement = module.fakeName.get().trim();
-      if (replacement.isBlank()) replacement = accountName;
-
       String plain = original.getString();
-      int nameIndex = plain.indexOf(accountName);
-      if (nameIndex < 0) {
-         return replaceInTree(original, accountName, replacement, module);
+      // Only alter text components which actually represent this local account.
+      // The original prefix/suffix is deliberately discarded: it may contain the
+      // server-provided rank and clan tag, which must not leak into the fake display.
+      if (plain == null || !plain.contains(accountName)) {
+         return original;
       }
 
-      String prefix = plain.substring(0, nameIndex);
-      String suffix = plain.substring(nameIndex + accountName.length());
-      String cleanedPrefix = removeExistingClanToken(removeExistingHugoRank(prefix));
-      String cleanedSuffix = removeExistingClanToken(suffix);
-      String rank = module.getRankPrefix();
+      String replacement = module.fakeName.get();
+      if (replacement == null || replacement.isBlank()) replacement = accountName;
+      else replacement = replacement.trim();
 
-      String desiredPrefix = cleanedPrefix;
-      if (!rank.isBlank()) desiredPrefix += rank + " ";
-
-      // Privat only changes the local name. Never add the selected rank or custom clan
-      // to the nameplate/tab-list; the server's rank/clan decoration is stripped.
-      String rebuilt = cleanedPrefix + replacement + cleanedSuffix;
-      return rebuildPlainName(original, rebuilt, baseStyle(original), module);
+      // Build one clean component containing only our configured rank, name and clan.
+      // appendDecoratedName applies the selected colors and clan bracket style.
+      class_5250 out = class_2561.method_43470("").method_10862(original.method_10866());
+      appendDecoratedName(out, replacement, original.method_10866(), module);
+      return out;
    }
 
    private static String removeExistingClanToken(String text) {
