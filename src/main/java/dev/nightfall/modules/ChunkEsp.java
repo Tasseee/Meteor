@@ -123,9 +123,8 @@ public final class ChunkEsp extends Module {
    }
 
    private class_243 viewCenter() {
-      return FreecamController.isActive()
-         ? FreecamController.cameraPosition()
-         : mc.field_1724.method_33571();
+      class_243 shared = ChunkMemory.scanPosition();
+      return shared != null ? shared : mc.field_1724.method_33571();
    }
 
    private static int alpha(int color, double factor) {
