@@ -191,39 +191,22 @@ public final class Privat extends HudModule {
       if (text == null || text.isEmpty()) return text;
 
       String result = text;
-      result = stripNonServerRankTokens(result, "\\[([^\\]]{1,16})\\]");
-      result = stripNonServerRankTokens(result, "<([^<>]{1,16})>");
-      result = stripNonServerRankTokens(result, "\\(([^()]{1,16})\\)");
+      result = stripRankOrClanTokens(result, "\\[([^\\]]{1,16})\\]");
+      result = stripRankOrClanTokens(result, "<([^<>]{1,16})>");
+      result = stripRankOrClanTokens(result, "\\(([^()]{1,16})\\)");
       return result.replaceAll("\\s+", " ").trim();
    }
 
-   private static String stripNonServerRankTokens(String text, String regex) {
+   private static String stripRankOrClanTokens(String text, String regex) {
       java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(regex).matcher(text);
       StringBuffer out = new StringBuffer();
 
       while (matcher.find()) {
-         String inside = matcher.group(1).trim();
-         if (isServerRank(inside)) {
-            matcher.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(matcher.group()));
-         } else {
-            matcher.appendReplacement(out, " ");
-         }
+         matcher.appendReplacement(out, " ");
       }
 
       matcher.appendTail(out);
       return out.toString();
-   }
-
-   private static boolean isServerRank(String value) {
-      String[] ranks = {
-         "PREMIUM", "MOD", "MEDIA", "FAMOUS", "ADMIN", "OWNER", "HELPER",
-         "SUPPORT", "BUILDER", "YOUTUBER", "TIKTOKER", "VIP"
-      };
-
-      for (String rank : ranks) {
-         if (rank.equalsIgnoreCase(value)) return true;
-      }
-      return false;
    }
 
    private static void appendPlainName(
