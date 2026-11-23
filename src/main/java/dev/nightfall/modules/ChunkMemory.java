@@ -447,6 +447,10 @@ public final class ChunkMemory extends Module {
             iterator.remove();
             NEXT_LOOKUP_TICK.remove(key(entry.cx(), entry.cz()));
             removed++;
+         } else {
+            // CACHE is access-ordered: the first fresh entry means all later
+            // entries are at least as recent, so the rest need no inspection.
+            break;
          }
       }
 
