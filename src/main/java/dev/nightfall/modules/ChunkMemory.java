@@ -303,8 +303,15 @@ public final class ChunkMemory extends Module {
       class_243 center = this.resolveScanPosition();
       if (center == null) return;
 
-      this.centerChunkX = ((int)Math.floor(center.field_1352)) >> 4;
-      this.centerChunkZ = ((int)Math.floor(center.field_1350)) >> 4;
+      int nextCenterChunkX = ((int)Math.floor(center.field_1352)) >> 4;
+      int nextCenterChunkZ = ((int)Math.floor(center.field_1350)) >> 4;
+      if (nextCenterChunkX != this.centerChunkX || nextCenterChunkZ != this.centerChunkZ) {
+         // Start near the new virtual/player center when it crosses a chunk
+         // boundary; the per-chunk cooldown still prevents repeated lookups.
+         this.scanCursor = 0;
+      }
+      this.centerChunkX = nextCenterChunkX;
+      this.centerChunkZ = nextCenterChunkZ;
       int configuredRange = this.range.getInt();
       if (configuredRange != this.pathRange) {
          this.pathRange = configuredRange;
@@ -480,20 +487,23 @@ public final class ChunkMemory extends Module {
       String scan = this.pauseScan.get() ? "SCAN PAUSIERT"
          : "Live " + this.lastLoaded + "/" + this.lastLookups
             + "  |  Cache-Fallback " + this.lastCachedFallbacks;
-      String extra = "Neu " + this.lastNewEntries + "  |  Retry uebersprungen " + this.lastRetrySkips
-         + "  |  " + mode;
+      String extra = "Neu " + this.lastNewEntries + "  |  Retry " + this.lastRetrySkips
+         + "  |  Budget " + this.scanSpeed.getInt() + "/Tick";
+      String sourceLine = mode + "  |  Bereinigt " + this.lastPruned;
 
       int width = Math.max(mc.field_1772.method_1727(title),
          Math.max(mc.field_1772.method_1727(line),
-            Math.max(mc.field_1772.method_1727(scan), mc.field_1772.method_1727(extra)))) + 18;
+            Math.max(mc.field_1772.method_1727(scan),
+               Math.max(mc.field_1772.method_1727(extra), mc.field_1772.method_1727(sourceLine))))) + 18;
       int x = 8;
       int y = 42;
-      context.method_25294(x, y, x + width, y + 68, 0x90000000);
+      context.method_25294(x, y, x + width, y + 81, 0x90000000);
       context.method_25294(x, y, x + width, y + 2, this.pauseScan.get() ? 0xFFFFB347 : 0xFF39FFB6);
       context.method_51433(mc.field_1772, title, x + 8, y + 5, 0xFF39FFB6, true);
       context.method_51433(mc.field_1772, line, x + 8, y + 18, 0xFFFFFFFF, true);
       context.method_51433(mc.field_1772, scan, x + 8, y + 31, 0xFFB8C8D8, true);
       context.method_51433(mc.field_1772, extra, x + 8, y + 44, 0xFFB8C8D8, true);
+      context.method_51433(mc.field_1772, sourceLine, x + 8, y + 57, 0xFF8EABB8, true);
    }
 
    @Override
