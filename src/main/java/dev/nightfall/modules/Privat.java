@@ -170,32 +170,52 @@ public final class Privat extends HudModule {
    }
 
    private static boolean hasChatSpeakerSeparator(String suffix) {
-      String value = suffix.stripLeading().toLowerCase(java.util.Locale.ROOT);
-      return value.startsWith(":")
-         || value.startsWith("»")
-         || value.startsWith(">")
-         || value.startsWith("whispers")
-         || value.startsWith("flüstert")
-         || value.startsWith("fluestert");
+      return chatSeparatorIndex(suffix) >= 0;
+   }
+
+   private static int chatSeparatorIndex(String suffix) {
+      String value = suffix.stripLeading();
+      for (int i = 0; i < value.length(); i++) {
+         char c = value.charAt(i);
+         if (c != ':' && c != '»' && c != '>') continue;
+
+         String decoration = value.substring(0, i).trim();
+         while (!decoration.isEmpty()) {
+            if (decoration.startsWith("[")) {
+               int end = decoration.indexOf(']');
+               if (end < 0 || end > 25) return -1;
+               decoration = decoration.substring(end + 1).trim();
+            } else if (decoration.startsWith("<")) {
+               int end = decoration.indexOf('>');
+               if (end < 0 || end > 25) return -1;
+               decoration = decoration.substring(end + 1).trim();
+            } else if (decoration.startsWith("(")) {
+               int end = decoration.indexOf(')');
+               if (end < 0 || end > 25) return -1;
+               decoration = decoration.substring(end + 1).trim();
+            } else if (startsWithIgnoreCase(decoration, "whispers")) {
+               decoration = decoration.substring(8).trim();
+            } else if (startsWithIgnoreCase(decoration, "flüstert")) {
+               decoration = decoration.substring(8).trim();
+            } else if (startsWithIgnoreCase(decoration, "fluestert")) {
+               decoration = decoration.substring(9).trim();
+            } else {
+               return -1;
+            }
+         }
+         return i;
+      }
+      return -1;
+   }
+
+   private static boolean startsWithIgnoreCase(String text, String prefix) {
+      return text.regionMatches(true, 0, prefix, 0, prefix.length());
    }
 
    private static String chatMessageBody(String suffix) {
       String value = suffix.stripLeading();
-      int colon = value.indexOf(':');
-      int arrow = value.indexOf('»');
-      int greater = value.indexOf('>');
-      int separator = -1;
-
-      if (colon >= 0) separator = colon;
-      if (arrow >= 0 && (separator < 0 || arrow < separator)) separator = arrow;
-      if (greater >= 0 && (separator < 0 || greater < separator)) separator = greater;
-
-      if (separator >= 0) {
-         // Keep the actual separator and everything after it; anything before
-         // it belongs to the old local rank/clan decoration.
-         return value.substring(separator);
-      }
-      return value;
+      int separator = chatSeparatorIndex(value);
+      return separator >= 0 ? value.substring(separator) : value;
    }
 
    private static void append(class_5250 parent, String value, class_2583 style) {
