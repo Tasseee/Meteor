@@ -1,6 +1,6 @@
 # ChunkMemory
 
-- **Status:** Code angelegt und in die Module integriert; Build-/In-Game-Test offen
+- **Status:** Code angelegt und integriert; automatischer Kamera-Build-/In-Game-Test offen
 - **Java-Klasse / Anzeigename:** `ChunkMemory`
 - **Quellpfad:** `src/main/java/dev/nightfall/modules/ChunkMemory.java`
 - **Kategorie:** `WORLD`
@@ -17,7 +17,7 @@ Die Daten werden an ihren Weltkoordinaten gehalten. Die Implementierung merkt si
 - **Scan-Reichweite (Chunks):** Radius um den Spieler; wenn Freecam aktiv ist und die Option eingeschaltet ist, dient die Freecam-Position als Scan-Zentrum
 - **Scan-Geschwindigkeit (Chunks/Tick):** Anzahl der Chunk-Koordinaten, die pro Client-Tick abgefragt werden
 - **Max. gespeicherte Chunks:** Obergrenze fuer den LRU-Cache; aelteste Eintraege werden zuerst entfernt
-- **Freecam als Scan-Zentrum:** Verwendet die aktuelle manuelle Freecam-Position statt der Spielerposition
+- **Hintergrund-Freecam als Scan-Zentrum:** Nutzt die unabhaengige automatische Kamera (standardmaessig an)\n- **Manuelle Freecam als Ersatz-Zentrum:** Wird nur verwendet, wenn die Hintergrundkamera nicht als Scan-Zentrum genutzt wird\n\n## BackgroundFreecam-Einstellungen\n\n- **Flugradius:** Horizontaler Orbit-Abstand zum Spieler\n- **Flugtempo:** Geschwindigkeit entlang der Flugbahn\n- **Flughoehe:** Mittlere Hoehe oberhalb der Spieler-Augenposition\n- **Vertikaler Scanbereich:** Staerke der Hoehenbewegung waehrend des Orbits
 
 ## Verbraucher
 
@@ -27,4 +27,4 @@ Die Daten werden an ihren Weltkoordinaten gehalten. Die Implementierung merkt si
 
 ## Grenzen / offene Punkte
 
-Die aktuelle Version besitzt einen automatischen Hintergrund-Scan-Cursor, aber noch keine zweite, separat gerenderte Freecam-Entitaet, die autonom durch die Welt fliegt. Die normale Freecam kann als Scan-Zentrum verwendet werden. Der Cache wertet nur Daten aus, die der Client bereits erhalten hat; er erzeugt keine zusaetzlichen Serverdaten. Ein echter Build- und In-Game-Test mit Minecraft 1.21.11 / Fabric / Java 21 steht noch aus.
+Die Hintergrundkamera ist ein separater, nicht gerenderter Client-Kamera-Proxy. Sie bewegt sich autonom auf einer Orbit-/Sweep-Bahn, waehrend die normale Sicht unveraendert bleibt. Sie loest selbst keine Chunk-Anfragen aus. Gespeichert und ausgewertet werden ausschliesslich Daten von Chunks, die dem Client bereits vorliegen. Ein echter Build- und In-Game-Test mit Minecraft 1.21.11 / Fabric / Java 21 steht noch aus.
