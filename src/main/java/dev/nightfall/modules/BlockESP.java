@@ -18,6 +18,7 @@ import net.minecraft.class_2246;
 import net.minecraft.class_2248;
 import net.minecraft.class_2338;
 import net.minecraft.class_238;
+import net.minecraft.class_2680;
 import net.minecraft.class_7923;
 import net.minecraft.class_1799;
 import net.minecraft.class_332;
@@ -128,7 +129,8 @@ public final class BlockESP extends Module {
                            int dz = z - p.method_10260();
                            if (dx * dx + dy * dy + dz * dz > r * r) continue;
                            class_2338 bp = new class_2338(x, y, z);
-                           if (this.selected(mc.field_1687.method_8320(bp).method_26204())) {
+                           class_2680 state = ChunkMemory.getBlockState(x, y, z);
+                           if (state != null && this.selected(state.method_26204())) {
                               this.found.add(new class_238(bp));
                            }
                         }
