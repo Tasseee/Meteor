@@ -12,6 +12,7 @@ import dev.nightfall.modules.AutoText;
 import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.FriendManager;
+import dev.nightfall.modules.FakeName;
 import dev.nightfall.modules.KillAura;
 import dev.nightfall.modules.StaffWatch;
 import dev.nightfall.modules.TrapperBot;
@@ -307,6 +308,29 @@ public final class Commands {
                return say(c, "Markierungen dieses Servers/Dimension geloescht");
             }))
       );
+      LiteralArgumentBuilder<FabricClientCommandSource> privat = ClientCommandManager.literal("privat")
+         .executes(c -> {
+            FakeName module = ModuleManager.get(FakeName.class);
+            if (!module.isEnabled()) module.setEnabled(true);
+            class_310.method_1551().method_1507(new FakeName.PrivatScreen(module));
+            return say(c, "Privat-Menue geoeffnet");
+         })
+         .then(ClientCommandManager.literal("an").executes(c -> {
+            FakeName module = ModuleManager.get(FakeName.class);
+            if (!module.isEnabled()) module.setEnabled(true);
+            module.setLeaderboardEnabled(true);
+            return say(c, "HugoSMP-Leaderboard: AN");
+         }))
+         .then(ClientCommandManager.literal("aus").executes(c -> {
+            FakeName module = ModuleManager.get(FakeName.class);
+            module.setLeaderboardEnabled(false);
+            return say(c, "HugoSMP-Leaderboard: AUS");
+         }))
+         .then(ClientCommandManager.literal("status").executes(c -> {
+            FakeName module = ModuleManager.get(FakeName.class);
+            return say(c, "HugoSMP-Leaderboard: " + (module.isEnabled() && module.isLeaderboardEnabled() ? "AN" : "AUS"));
+         }));
+      d.register(privat);
       d.register(root);
    }
 
