@@ -1,6 +1,6 @@
 package dev.nightfall.mixin;
 
-import dev.nightfall.modules.Privat;
+import dev.nightfall.modules.FakeName;
 import net.minecraft.class_10017;
 import net.minecraft.class_10055;
 import net.minecraft.class_1007;
@@ -21,14 +21,14 @@ public abstract class FakeNamePlayerRendererMixin {
       at = @At("RETURN"),
       cancellable = true
    )
-   private void nightfall$showPrivatplateForLocalPlayer(
+   private void nightfall$showFakeNameplateForLocalPlayer(
       net.minecraft.class_11890 player,
       double squaredDistance,
       org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> cir
    ) {
       class_310 mc = class_310.method_1551();
-      if (player == mc.field_1724 && Privat.hasVisualOverride()) {
-         cir.setReturnValue(Privat.shouldRenderF5Nameplate());
+      if (player == mc.field_1724 && FakeName.hasVisualOverride()) {
+         cir.setReturnValue(FakeName.shouldRenderF5Nameplate());
       }
    }
 
@@ -46,15 +46,15 @@ public abstract class FakeNamePlayerRendererMixin {
       class_310 mc = class_310.method_1551();
       if (mc.field_1724 == null || state == null || state.field_53528 != mc.field_1724.method_5628()) return;
 
-      if (!Privat.hasVisualOverride()) return;
+      if (!FakeName.hasVisualOverride()) return;
 
       // Both fields participate in the render-state name pipeline in 1.21.11.
       // Keep each text component's style and any prefix/suffix siblings intact.
       String accountName = mc.field_1724.method_5477().getString();
-      state.field_53525 = Privat.replaceF5Name(state.field_53525, accountName);
+      state.field_53525 = FakeName.replaceF5Name(state.field_53525, accountName);
       class_10017 baseState = (class_10017)(Object)state;
       if (baseState.field_53337 != null) {
-         baseState.field_53337 = Privat.replaceF5Name(baseState.field_53337, accountName);
+         baseState.field_53337 = FakeName.replaceF5Name(baseState.field_53337, accountName);
       }
    }
 }
