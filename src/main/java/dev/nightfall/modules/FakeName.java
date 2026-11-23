@@ -142,12 +142,12 @@ public final class FakeName extends HudModule {
 
    private static int rankColor(String rank) {
       return switch (rank) {
-         case "MOD" -> 0xFFFFFF55;
-         case "FAMOUS" -> 0xFFFFAA00;
-         case "Media" -> 0xFFAA00AA;
-         case "Premium" -> 0xFFFF55FF;
-         case "Owner" -> 0xFFAA0000;
-         default -> 0xFFFFFFFF;
+         case "MOD" -> 0xFFFF55;
+         case "FAMOUS" -> 0xFFAA00;
+         case "Media" -> 0xAA00AA;
+         case "Premium" -> 0xFF55FF;
+         case "Owner" -> 0xAA0000;
+         default -> 0xFFFFFF;
       };
    }
 
@@ -174,7 +174,7 @@ public final class FakeName extends HudModule {
       append(result, shownName, shownNameStyle);
 
       if (!selectedClan.isEmpty() && !selectedClan.equals("-")) {
-         append(result, " [" + selectedClan + "]", defaultStyle.method_36139(0xFFB45CFF));
+         append(result, " [" + selectedClan + "]", defaultStyle.method_36139(0xB45CFF));
       }
       return result;
    }
