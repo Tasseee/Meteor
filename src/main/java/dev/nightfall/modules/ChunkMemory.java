@@ -32,7 +32,7 @@ public final class ChunkMemory extends Module {
    private static String cacheContext;
 
    private final NumberSetting range = this.add(
-      new NumberSetting("Scan-Radius (Bloecke)", 50.0, 8.0, 128.0, 2.0)
+      new NumberSetting("Scan-Radius (Bloecke)", 50.0, 30.0, 200.0, 1.0)
    );
    private final NumberSetting scanSpeed = this.add(
       new NumberSetting("Scan-Geschwindigkeit (Chunks/Tick)", 8.0, 1.0, 64.0, 1.0)
@@ -199,8 +199,8 @@ public final class ChunkMemory extends Module {
          int targetZ = this.centerChunkZ + offset.dz();
          processed++;
 
-         // Test the chunk footprint against the current camera's exact 50-block
-         // horizontal radius. Chunk data itself includes every vertical section.
+         // Test the chunk footprint against the configured horizontal radius.
+         // Chunk data itself includes every vertical section.
          if (!intersectsRadius(targetX, targetZ, center.field_1352, center.field_1350, configuredRange)) {
             continue;
          }
