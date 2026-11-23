@@ -530,9 +530,9 @@ public final class FakeName extends HudModule {
          for (int i = 0; i < this.fields.length; i++) {
             int column = i < 5 ? 0 : 1;
             int row = i < 5 ? i : i - 5;
-            int left = x + 14 + column * (colWidth + 14);
+            int rowX = x + 14 + column * (colWidth + 14);
             int top = y + 104 + row * 47;
-            if (mouseX >= left && mouseX <= left + colWidth && mouseY >= top && mouseY <= top + 36) {
+            if (mouseX >= rowX && mouseX <= rowX + colWidth && mouseY >= top && mouseY <= top + 36) {
                this.selectedField = i;
                this.draft = "";
                return;
@@ -570,17 +570,17 @@ public final class FakeName extends HudModule {
          for (int i = 0; i < this.fields.length; i++) {
             int column = i < 5 ? 0 : 1;
             int row = i < 5 ? i : i - 5;
-            int left = x + 14 + column * (colWidth + 14);
+            int rowX = x + 14 + column * (colWidth + 14);
             int top = y + 104 + row * 47;
             boolean active = this.selectedField == i;
-            rect(ctx, left, top, left + colWidth, top + 36, active ? 0xFF182A30 : 0xFF111A20);
-            rect(ctx, left, top, left + 2, top + 36, active ? 0xFF4CE4D1 : 0xFF76572D);
-            drawText(ctx, this.labels[i].toUpperCase(java.util.Locale.ROOT), left + 8, top + 3, 0xFFB8C4CA, false);
-            rect(ctx, left + 7, top + 16, left + colWidth - 7, top + 32, active ? 0xFF263E43 : 0xFF080D11);
+            rect(ctx, rowX, top, rowX + colWidth, top + 36, active ? 0xFF182A30 : 0xFF111A20);
+            rect(ctx, rowX, top, rowX + 2, top + 36, active ? 0xFF4CE4D1 : 0xFF76572D);
+            drawText(ctx, this.labels[i].toUpperCase(java.util.Locale.ROOT), rowX + 8, top + 3, 0xFFB8C4CA, false);
+            rect(ctx, rowX + 7, top + 16, rowX + colWidth - 7, top + 32, active ? 0xFF263E43 : 0xFF080D11);
             String value = active ? this.draft : this.fields[i].get();
             if (value == null || value.isEmpty()) value = active ? "|" : "(leer)";
             int valueColor = i < VALUE_COLORS.length ? VALUE_COLORS[i] : 0xFF42E85A;
-            drawText(ctx, value, left + 12, top + 20, active ? 0xFFFFFFFF : valueColor, true);
+            drawText(ctx, value, rowX + 12, top + 20, active ? 0xFFFFFFFF : valueColor, true);
          }
 
          drawText(ctx, this.selectedField >= 0
