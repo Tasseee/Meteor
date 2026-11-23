@@ -24,7 +24,7 @@
     "FakeNamePlayerListMixin",
     "FakeNamePlayerRendererMixin",
     "FreeLookMouseMixin",
-    "PrivatScoreboardMixin"
+    "FakeNameScoreboardMixin"
   ],
   "injectors": {
     "defaultRequire": 1
