@@ -75,7 +75,7 @@ public abstract class BlockEntityEsp extends EspBase {
                double distanceSquared = pos.method_40081(px, py, pz);
                if (distanceSquared <= r2) {
                   class_2338 stablePos = pos.method_10062();
-                  this.targets.add(new Target(stablePos, new class_238(stablePos), entity, distanceSquared));
+                  this.targets.add(new Target(new class_238(stablePos), entity, distanceSquared));
                }
             }
          }
@@ -106,6 +106,6 @@ public abstract class BlockEntityEsp extends EspBase {
       }
    }
 
-   private record Target(class_2338 pos, class_238 box, class_2586 entity, double distanceSquared) {
+   private record Target(class_238 box, class_2586 entity, double distanceSquared) {
    }
 }
