@@ -3,27 +3,21 @@ package dev.nightfall.modules;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.NumberSetting;
-import net.minecraft.class_1299;
-import net.minecraft.class_1531;
 import net.minecraft.class_243;
 import net.minecraft.class_638;
 
 /**
- * Independent, non-rendering scout camera used only as ChunkMemory's scan origin.
+ * Independent, non-rendering scan-position provider used by ChunkMemory.
  *
- * The proxy is never added to the world and never replaces Minecraft's active
- * camera entity. Its position is used for lookup-only reads of chunks already
- * present in the client.
+ * It stores only a client-side position. It does not create or register an
+ * Entity, replace the render camera, move the player, send packets, or request
+ * chunks from the server.
  */
 public final class BackgroundFreecam extends Module {
    private static boolean active;
-   private static class_1531 cameraProxy;
    private static class_638 cameraWorld;
-   private static double cameraX;
-   private static double cameraY;
-   private static double cameraZ;
+   private static class_243 cameraPosition;
    private static double phase;
-   private static double eyeOffset;
 
    private final NumberSetting orbitRadius = this.add(
       new NumberSetting("Flugradius (Bloecke)", 48.0, 8.0, 192.0, 2.0)
@@ -47,11 +41,11 @@ public final class BackgroundFreecam extends Module {
    }
 
    public static boolean isActive() {
-      return active && cameraProxy != null && cameraWorld == mc.field_1687;
+      return active && cameraPosition != null && cameraWorld == mc.field_1687 && mc.field_1724 != null;
    }
 
    public static class_243 cameraPosition() {
-      return isActive() ? new class_243(cameraX, cameraY, cameraZ) : null;
+      return isActive() ? cameraPosition : null;
    }
 
    @Override
@@ -59,14 +53,12 @@ public final class BackgroundFreecam extends Module {
       class_638 world = mc.field_1687;
       if (world == null || mc.field_1724 == null) {
          active = false;
-         cameraProxy = null;
          cameraWorld = null;
+         cameraPosition = null;
          return;
       }
 
       cameraWorld = world;
-      cameraProxy = new class_1531(class_1299.field_6131, world);
-      eyeOffset = cameraProxy.method_5751() - cameraProxy.method_23318();
       phase = 0.0;
       active = true;
       updatePosition();
@@ -75,8 +67,8 @@ public final class BackgroundFreecam extends Module {
    @Override
    protected void onDisable() {
       active = false;
-      cameraProxy = null;
       cameraWorld = null;
+      cameraPosition = null;
       phase = 0.0;
    }
 
@@ -84,17 +76,14 @@ public final class BackgroundFreecam extends Module {
    public void onTick() {
       if (mc.field_1724 == null || mc.field_1687 == null) {
          active = false;
-         cameraProxy = null;
          cameraWorld = null;
+         cameraPosition = null;
          return;
       }
 
-      // Recreate the independent proxy after a world transition even if the
-      // module itself remained enabled across the disconnect callback.
-      if (mc.field_1687 != cameraWorld || cameraProxy == null) {
+      // Rebind the position provider after a world transition.
+      if (mc.field_1687 != cameraWorld || cameraPosition == null) {
          cameraWorld = mc.field_1687;
-         cameraProxy = new class_1531(class_1299.field_6131, cameraWorld);
-         eyeOffset = cameraProxy.method_5751() - cameraProxy.method_23318();
          phase = 0.0;
          active = true;
       }
@@ -103,41 +92,39 @@ public final class BackgroundFreecam extends Module {
    }
 
    private void updatePosition() {
-      if (mc.field_1724 == null || cameraProxy == null) return;
+      if (mc.field_1724 == null || mc.field_1687 == null) {
+         cameraPosition = null;
+         active = false;
+         return;
+      }
 
       double radius = Math.max(8.0, orbitRadius.get());
-      double angularStep = flightSpeed.get() / radius;
-      phase += angularStep;
-      if (phase >= Math.PI * 2.0) phase -= Math.PI * 2.0;
+      phase += flightSpeed.get() / radius;
+      if (phase >= Math.PI * 2.0) {
+         phase -= Math.PI * 2.0;
+      }
 
-      // A slow radial sweep plus a gentle vertical wave makes this a 3D patrol,
-      // while the player's actual position and active render camera stay untouched.
-      double radialFactor = 0.75 + 0.25 * Math.sin(phase * 0.22);
-      double currentRadius = radius * radialFactor;
+      // A smooth orbit with gentle radial and vertical sweeps.
+      double currentRadius = radius * (0.75 + 0.25 * Math.sin(phase * 0.22));
       double playerX = mc.field_1724.method_23317();
       double playerY = mc.field_1724.method_33571().field_1351;
       double playerZ = mc.field_1724.method_23321();
 
-      cameraX = playerX + Math.cos(phase) * currentRadius;
-      cameraZ = playerZ + Math.sin(phase) * currentRadius;
-      cameraY = playerY + height.get() + Math.sin(phase * 0.5) * verticalSweep.get();
+      double x = playerX + Math.cos(phase) * currentRadius;
+      double z = playerZ + Math.sin(phase) * currentRadius;
+      double y = playerY + height.get() + Math.sin(phase * 0.5) * verticalSweep.get();
 
-      float yaw = (float)Math.toDegrees(Math.atan2(playerX - cameraX, playerZ - cameraZ));
-      double horizontalDistance = Math.sqrt(
-         (playerX - cameraX) * (playerX - cameraX)
-            + (playerZ - cameraZ) * (playerZ - cameraZ)
-      );
-      float pitch = (float)-Math.toDegrees(Math.atan2(playerY - cameraY, horizontalDistance));
-      cameraProxy.method_36456(yaw);
-      cameraProxy.method_36457(pitch);
-      cameraProxy.method_5814(cameraX, cameraY - eyeOffset, cameraZ);
+      // class_243 is immutable, so consumers can safely share this per-tick value.
+      cameraPosition = new class_243(x, y, z);
+      cameraWorld = mc.field_1687;
+      active = true;
    }
 
    @Override
    public void onWorldLeave() {
       active = false;
-      cameraProxy = null;
       cameraWorld = null;
+      cameraPosition = null;
       phase = 0.0;
    }
 }
