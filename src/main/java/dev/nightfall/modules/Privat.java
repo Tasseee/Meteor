@@ -255,7 +255,8 @@ public final class Privat extends HudModule {
 
          if (leftBoundary && rightBoundary) {
             replaced = true;
-            append(out, cleaned.substring(copiedUntil, found), baseStyle);
+            String beforeName = cleaned.substring(copiedUntil, found);
+            append(out, removeExistingHugoRank(beforeName), baseStyle);
             appendPlainName(out, replacement == null || replacement.isBlank() ? accountName : replacement.trim(), baseStyle, module);
             copiedUntil = end;
          }
@@ -308,10 +309,27 @@ public final class Privat extends HudModule {
    private static void appendPlainName(
       class_5250 out, String name, class_2583 baseStyle, Privat module
    ) {
-      class_2583 style = module.customNameColor.get()
+      String rank = module.getRankPrefix();
+      if (rank != null && !rank.isBlank()) {
+         int color = module.rankPrefix.get().isBlank()
+            ? module.getRankDefaultColor() : module.rankColor.rgb();
+         append(out, rank + " ", baseStyle.method_36139(color).method_10982(true));
+      }
+
+      class_2583 nameStyle = module.customNameColor.get()
          ? baseStyle.method_36139(module.nameColor.rgb())
          : baseStyle;
-      append(out, name, style);
+      append(out, name, nameStyle);
+
+      String clan = module.clanTag.get() == null ? "" : module.clanTag.get().trim();
+      if (!clan.isEmpty()) {
+         String formattedClan = module.clanFormat.is("[]") ? "[" + clan + "]"
+            : module.clanFormat.is("<>") ? "<" + clan + ">"
+            : module.clanFormat.is("()") ? "(" + clan + ")"
+            : clan;
+         append(out, " " + formattedClan,
+            baseStyle.method_36139(module.clanColor.rgb()).method_10982(true));
+      }
    }
 
    private static void append(class_5250 parent, String value, class_2583 style) {
