@@ -60,7 +60,9 @@ public final class Privat extends HudModule {
    }
 
    private static String normalizeScoreboardLabel(String label) {
-      return label.trim().replaceAll("\s+", " ").toLowerCase(java.util.Locale.ROOT);
+      String normalized = label.replaceAll("§[0-9A-FK-ORa-fk-or]", "")
+         .replaceAll("\\s+", " ").trim().toLowerCase(java.util.Locale.ROOT);
+      return normalized.replaceAll("[\\s:：]+$", "").trim();
    }
 
    public String value() {
