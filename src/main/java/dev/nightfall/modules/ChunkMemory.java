@@ -13,7 +13,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.class_2338;
 import net.minecraft.class_243;
 import net.minecraft.class_2680;
 import net.minecraft.class_2818;
@@ -104,38 +103,42 @@ public final class ChunkMemory extends Module {
    }
 
    /**
-    * Reads a block from a currently loaded chunk or from the last cached chunk
-    * section. A null result means the client has never had that chunk available.
+    * Returns the live chunk when available, otherwise the session snapshot.
+    * Callers that scan many blocks in one chunk should keep this reference and
+    * use the overload below, avoiding a chunk-manager lookup for every block.
+    */
+   public static class_2818 getAvailableChunk(int cx, int cz) {
+      class_638 world = mc.field_1687;
+      if (world == null) {
+         return null;
+      }
+
+      class_2818 loaded = world.method_2935().method_21730(cx, cz);
+      return loaded != null ? loaded : getCachedChunk(cx, cz);
+   }
+
+   /**
+    * Reads from the selected chunk section directly. This avoids allocating a
+    * BlockPos and repeating world/chunk-manager lookups during large ESP scans.
     */
    public static class_2680 getBlockState(int x, int y, int z) {
+      return getBlockState(getAvailableChunk(x >> 4, z >> 4), x, y, z);
+   }
+
+   public static class_2680 getBlockState(class_2818 chunk, int x, int y, int z) {
       class_638 world = mc.field_1687;
-      if (world == null || y < world.method_31607() || y >= world.method_31600()) {
+      if (chunk == null || world == null || y < world.method_31607() || y >= world.method_31600()) {
          return null;
       }
 
-      int cx = x >> 4;
-      int cz = z >> 4;
-      class_2818 loaded = world.method_2935().method_21730(cx, cz);
-      if (loaded != null) {
-         return world.method_8320(new class_2338(x, y, z));
-      }
-
-      class_2818 cached = getCachedChunk(cx, cz);
-      if (cached == null) {
-         return null;
-      }
-
-      class_2826[] sections = cached.method_12006();
+      class_2826[] sections = chunk.method_12006();
       int sectionIndex = (y >> 4) - (world.method_31607() >> 4);
       if (sectionIndex < 0 || sectionIndex >= sections.length) {
          return null;
       }
 
       class_2826 section = sections[sectionIndex];
-      if (section == null) {
-         return null;
-      }
-      return section.method_12254(x & 15, y & 15, z & 15);
+      return section == null ? null : section.method_12254(x & 15, y & 15, z & 15);
    }
 
    public static void clearSessionCache() {
@@ -187,6 +190,8 @@ public final class ChunkMemory extends Module {
          this.rebuildScanPath(configuredRange);
       }
 
+      var chunkManager = world.method_2935();
+      int radiusSquared = configuredRange * configuredRange;
       int processed = 0;
       int budget = this.scanSpeed.getInt();
       while (processed < budget && !this.scanPath.isEmpty()) {
@@ -201,14 +206,18 @@ public final class ChunkMemory extends Module {
 
          // Test the chunk footprint against the configured horizontal radius.
          // Chunk data itself includes every vertical section.
-         if (!intersectsRadius(targetX, targetZ, center.field_1352, center.field_1350, configuredRange)) {
+         if (!intersectsRadius(targetX, targetZ, center.field_1352, center.field_1350, radiusSquared)) {
             continue;
          }
 
          // This is intentionally a lookup-only operation. A null result is not loaded.
-         class_2818 loaded = world.method_2935().method_21730(targetX, targetZ);
+         class_2818 loaded = chunkManager.method_21730(targetX, targetZ);
          if (loaded != null) {
-            CACHE.put(key(targetX, targetZ), new CachedChunk(targetX, targetZ, loaded, this.scanTick));
+            long chunkKey = key(targetX, targetZ);
+            CachedChunk previous = CACHE.get(chunkKey); // Also refreshes LRU order.
+            if (previous == null || previous.chunk() != loaded) {
+               CACHE.put(chunkKey, new CachedChunk(targetX, targetZ, loaded, this.scanTick));
+            }
          }
       }
 
@@ -258,14 +267,14 @@ public final class ChunkMemory extends Module {
       this.scanCursor = 0;
    }
 
-   private static boolean intersectsRadius(int chunkX, int chunkZ, double centerX, double centerZ, int radiusBlocks) {
+   private static boolean intersectsRadius(int chunkX, int chunkZ, double centerX, double centerZ, int radiusSquared) {
       double minX = (double)chunkX * 16.0;
       double minZ = (double)chunkZ * 16.0;
       double nearestX = centerX < minX ? minX - centerX
          : centerX > minX + 16.0 ? centerX - (minX + 16.0) : 0.0;
       double nearestZ = centerZ < minZ ? minZ - centerZ
          : centerZ > minZ + 16.0 ? centerZ - (minZ + 16.0) : 0.0;
-      return nearestX * nearestX + nearestZ * nearestZ <= (double)radiusBlocks * radiusBlocks;
+      return nearestX * nearestX + nearestZ * nearestZ <= radiusSquared;
    }
 
    private void resetScanPath() {
