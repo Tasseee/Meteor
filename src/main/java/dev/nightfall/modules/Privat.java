@@ -123,23 +123,10 @@ public final class Privat extends HudModule {
          return original;
       }
 
-      String plain = original.getString();
-      // Only alter text components which actually represent this local account.
-      // The original prefix/suffix is deliberately discarded: it may contain the
-      // server-provided rank and clan tag, which must not leak into the fake display.
-      if (plain == null || !plain.contains(accountName)) {
-         return original;
-      }
-
-      String replacement = module.fakeName.get();
-      if (replacement == null || replacement.isBlank()) replacement = accountName;
-      else replacement = replacement.trim();
-
-      // Build one clean component containing only our configured rank, name and clan.
-      // appendDecoratedName applies the selected colors and clan bracket style.
-      class_5250 out = class_2561.method_43470("").method_10862(original.method_10866());
-      appendDecoratedName(out, replacement, original.method_10866(), module);
-      return out;
+      // Keep the server-provided rank. Only remove the clan decoration and replace
+      // the local account name. The original component styles stay untouched.
+      class_2561 changed = replaceInTree(original, accountName, module.fakeName.get(), module);
+      return changed;
    }
 
    private static String removeExistingClanToken(String text) {
@@ -253,8 +240,9 @@ public final class Privat extends HudModule {
    private static class_5250 replaceLiteral(
       String raw, String accountName, String replacement, class_2583 baseStyle, Privat module
    ) {
+      String cleaned = removeClanFromLiteral(raw);
       int from = 0;
-      int found = raw.indexOf(accountName, from);
+      int found = cleaned.indexOf(accountName, from);
       if (found < 0) return null;
 
       class_5250 out = class_2561.method_43470("").method_10862(baseStyle);
@@ -262,23 +250,59 @@ public final class Privat extends HudModule {
       boolean replaced = false;
       while (found >= 0) {
          int end = found + accountName.length();
-         boolean leftBoundary = found == 0 || !isNameCharacter(raw.charAt(found - 1));
-         boolean rightBoundary = end == raw.length() || !isNameCharacter(raw.charAt(end));
+         boolean leftBoundary = found == 0 || !isNameCharacter(cleaned.charAt(found - 1));
+         boolean rightBoundary = end == cleaned.length() || !isNameCharacter(cleaned.charAt(end));
 
          if (leftBoundary && rightBoundary) {
             replaced = true;
-            append(out, raw.substring(copiedUntil, found), baseStyle);
-            appendPlainName(out, replacement, baseStyle, module);
+            append(out, cleaned.substring(copiedUntil, found), baseStyle);
+            appendPlainName(out, replacement == null || replacement.isBlank() ? accountName : replacement.trim(), baseStyle, module);
             copiedUntil = end;
          }
 
          from = end;
-         found = raw.indexOf(accountName, Math.max(from, found + 1));
+         found = cleaned.indexOf(accountName, Math.max(from, found + 1));
       }
 
       if (!replaced) return null;
-      append(out, raw.substring(copiedUntil), baseStyle);
+      append(out, cleaned.substring(copiedUntil), baseStyle);
       return out;
+   }
+
+   private static String removeClanFromLiteral(String text) {
+      if (text == null || text.isEmpty()) return text;
+
+      String result = text;
+      result = stripNonServerRankTokens(result, "\\[([^\\]]{1,16})\\]");
+      result = stripNonServerRankTokens(result, "<([^<>]{1,16})>");
+      result = stripNonServerRankTokens(result, "\\(([^()]{1,16})\\)");
+      return result.replaceAll("\\s+", " ").trim();
+   }
+
+   private static String stripNonServerRankTokens(String text, String regex) {
+      java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(regex).matcher(text);
+      StringBuffer out = new StringBuffer();
+      while (matcher.find()) {
+         String inside = matcher.group(1).trim();
+         if (isServerRank(inside)) {
+            matcher.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(matcher.group()));
+         } else {
+            matcher.appendReplacement(out, " ");
+         }
+      }
+      matcher.appendTail(out);
+      return out.toString();
+   }
+
+   private static boolean isServerRank(String value) {
+      String[] ranks = {
+         "PREMIUM", "MOD", "MEDIA", "FAMOUS", "ADMIN", "OWNER", "HELPER",
+         "SUPPORT", "BUILDER", "YOUTUBER", "TIKTOKER", "VIP"
+      };
+      for (String rank : ranks) {
+         if (rank.equalsIgnoreCase(value)) return true;
+      }
+      return false;
    }
 
    private static void appendPlainName(
