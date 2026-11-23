@@ -1,6 +1,6 @@
 package dev.nightfall.mixin;
 
-import dev.nightfall.modules.Privat;
+import dev.nightfall.modules.FakeName;
 import net.minecraft.class_2561;
 import net.minecraft.class_310;
 import org.spongepowered.asm.mixin.Mixin;
@@ -32,8 +32,8 @@ public abstract class FakeNameChatMixin {
 
    private static class_2561 replace(class_2561 message) {
       class_310 mc = class_310.method_1551();
-      if (mc.field_1724 == null || message == null || !Privat.hasVisualOverride()) return message;
+      if (mc.field_1724 == null || message == null || !FakeName.hasVisualOverride()) return message;
       String accountName = mc.field_1724.method_5477().getString();
-      return Privat.replaceChatName(message, accountName);
+      return FakeName.replaceChatName(message, accountName);
    }
 }
