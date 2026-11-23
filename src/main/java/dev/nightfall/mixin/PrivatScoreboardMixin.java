@@ -3,66 +3,60 @@ package dev.nightfall.mixin;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.Privat;
 import net.minecraft.class_2561;
-import net.minecraft.class_266;
-import net.minecraft.class_269;
-import net.minecraft.class_9011;
+import net.minecraft.class_310;
+import net.minecraft.class_329;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.spongepowered.asm.mixin.injection.ModifyArgs;
+import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
-@Mixin(net.minecraft.class_329.class)
+/**
+ * Rewrites only the value column of the real Minecraft sidebar.
+ * The original sidebar position, labels and title stay untouched.
+ */
+@Mixin(class_329.class)
 abstract class PrivatScoreboardMixin {
-   private static final ThreadLocal<class_9011> NIGHTFALL_SCOREBOARD_ENTRY = new ThreadLocal<>();
-
-   /**
-    * Minecraft builds each sidebar row from a ScoreboardEntry. Capturing that
-    * entry lets the score replacement use the real row label instead of the
-    * fragile draw-order index.
-    */
-   @Inject(
-      method = "method_55439",
-      at = @At("HEAD")
-   )
-   private void nightfall$captureEntry(
-      class_269 scoreboard,
-      net.minecraft.class_9022 numberFormat,
-      class_9011 entry,
-      CallbackInfoReturnable<?> cir
-   ) {
-      NIGHTFALL_SCOREBOARD_ENTRY.set(entry);
-   }
-
-   @ModifyArg(
-      method = "method_55439",
+   @ModifyArgs(
+      method = "method_55439(Lnet/minecraft/class_269;Lnet/minecraft/class_9022;Lnet/minecraft/class_9011;)Lnet/minecraft/class_329$class_9016;",
       at = @At(
          value = "INVOKE",
          target = "Lnet/minecraft/class_329$class_9016;<init>(Lnet/minecraft/class_2561;Lnet/minecraft/class_2561;I)V"
       ),
-      index = 1
+      require = 0
    )
-   private class_2561 nightfall$customizeScoreValue(class_2561 original) {
+   private void nightfall$customizeScoreboardEntry(Args args) {
+      Privat privat;
+
       try {
-         Privat privat = ModuleManager.get(Privat.class);
-         class_9011 entry = NIGHTFALL_SCOREBOARD_ENTRY.get();
-
-         if (privat == null || !privat.isEnabled() || original == null || entry == null) {
-            return original;
-         }
-
-         String label = entry.method_55387().getString();
-         String replacement = privat.getScoreboardValue(label, original.getString());
-
-         if (replacement == null || replacement.isBlank() || replacement.equals(original.getString())) {
-            return original;
-         }
-
-         return class_2561.method_43470(replacement).method_10862(original.method_10866());
+         privat = ModuleManager.get(Privat.class);
       } catch (Throwable ignored) {
-         return original;
-      } finally {
-         NIGHTFALL_SCOREBOARD_ENTRY.remove();
+         return;
+      }
+
+      if (privat == null || !privat.isEnabled()) return;
+
+      class_2561 label = (class_2561) args.get(0);
+      class_2561 originalValue = (class_2561) args.get(1);
+
+      if (label == null || originalValue == null) return;
+
+      String replacement = privat.getScoreboardValue(label.getString(), originalValue.getString());
+      if (replacement == null || replacement.isBlank()) return;
+      if (replacement.equals(originalValue.getString())) return;
+
+      class_2561 changedValue = class_2561.method_43470(replacement)
+         .method_10862(originalValue.method_10866());
+
+      args.set(1, changedValue);
+
+      // SidebarEntry stores the value width for right-alignment.
+      // Recalculate it so the replacement keeps the original scoreboard layout.
+      try {
+         class_310 mc = class_310.method_1551();
+         int width = mc.field_1772.method_27525(changedValue);
+         args.set(2, width);
+      } catch (Throwable ignored) {
+         // Keeping the original width is still preferable to breaking the sidebar.
       }
    }
 }
