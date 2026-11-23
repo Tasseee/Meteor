@@ -4,6 +4,7 @@ import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.Privat;
 import net.minecraft.class_2561;
 import net.minecraft.class_332;
+import net.minecraft.class_9779;
 import net.minecraft.class_327;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
