@@ -116,8 +116,10 @@ public final class Privat extends HudModule {
       String desiredPrefix = cleanedPrefix;
       if (!rank.isBlank()) desiredPrefix += rank + " ";
 
-      String rebuilt = desiredPrefix + replacement + cleanedSuffix;
-      return rebuildText(original, rebuilt, baseStyle(original), module);
+      // Privat only changes the local name. Never add the selected rank or custom clan
+      // to the nameplate/tab-list; the server's rank/clan decoration is stripped.
+      String rebuilt = cleanedPrefix + replacement + cleanedSuffix;
+      return rebuildPlainName(original, rebuilt, baseStyle(original), module);
    }
 
    private static String removeExistingClanToken(String text) {
@@ -144,6 +146,20 @@ public final class Privat extends HudModule {
          }
       }
       return prefix;
+   }
+
+   private static class_2561 rebuildPlainName(
+      class_2561 original, String replacementText, class_2583 baseStyle, Privat module
+   ) {
+      class_5250 out = class_2561.method_43470("").method_10862(original.method_10866());
+      String name = module.customNameColor.get()
+         ? replacementText
+         : replacementText;
+      class_2583 nameStyle = module.customNameColor.get()
+         ? baseStyle.method_36139(module.nameColor.rgb())
+         : baseStyle;
+      append(out, name, nameStyle);
+      return out;
    }
 
    private static class_2561 rebuildText(
@@ -232,7 +248,7 @@ public final class Privat extends HudModule {
          if (leftBoundary && rightBoundary) {
             replaced = true;
             append(out, raw.substring(copiedUntil, found), baseStyle);
-            appendDecoratedName(out, replacement, baseStyle, module);
+            appendPlainName(out, replacement, baseStyle, module);
             copiedUntil = end;
          }
 
@@ -245,32 +261,13 @@ public final class Privat extends HudModule {
       return out;
    }
 
-   private static void appendDecoratedName(
+   private static void appendPlainName(
       class_5250 out, String name, class_2583 baseStyle, Privat module
    ) {
-      String rank = module.getRankPrefix();
-      if (!rank.isEmpty()) {
-         int color = module.rankPrefix.get().isBlank()
-            ? module.getRankDefaultColor()
-            : module.rankColor.rgb();
-         append(out, rank + " ", baseStyle.method_36139(color).method_10982(true));
-      }
-
-      class_2583 finalNameStyle = module.customNameColor.get()
+      class_2583 style = module.customNameColor.get()
          ? baseStyle.method_36139(module.nameColor.rgb())
-         : baseStyle.method_36139(
-            module.rankPrefix.get().isBlank() ? module.getRankDefaultColor() : module.rankColor.rgb()
-         );
-      append(out, name, finalNameStyle);
-
-      String clan = module.clanTag.get().trim();
-      if (!clan.isEmpty()) {
-         String formattedClan = module.clanFormat.is("[]") ? "[" + clan + "]"
-            : module.clanFormat.is("<>") ? "<" + clan + ">"
-            : module.clanFormat.is("()") ? "(" + clan + ")"
-            : clan;
-         append(out, " " + formattedClan, baseStyle.method_36139(module.clanColor.rgb()).method_10982(true));
-      }
+         : baseStyle;
+      append(out, name, style);
    }
 
    private static void append(class_5250 parent, String value, class_2583 style) {
