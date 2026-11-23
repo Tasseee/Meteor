@@ -10,7 +10,7 @@
 
 ChunkMemory durchlaeuft automatisch die Chunk-Koordinaten innerhalb eines einstellbaren horizontalen Blockradius (Standard 50). Pro Client-Tick werden so viele Koordinaten geprueft, wie die Einstellung Scan-Geschwindigkeit vorgibt. Sobald das Ende der Liste erreicht ist, beginnt der Durchlauf wieder am Anfang. Der Bereich wird damit fortlaufend erneut abgefragt; wenn sich das Zentrum in einen anderen Chunk bewegt, wird die Scanliste um das neue Zentrum herum neu aufgebaut. Ein Chunk wird nur dann gespeichert, wenn er bereits im Client-Chunk-Manager vorhanden ist. Der Lookup fordert keine Chunks beim Server an.
 
-Die Daten werden an ihren Weltkoordinaten gehalten. Die Implementierung merkt sich die clientseitigen Chunk-Objekte, statt jeden Block in ein eigenes dauerhaftes Format zu kopieren. Solange ein Chunk geladen ist, werden Aenderungen am Objekt weiter sichtbar; beim erneuten Laden wird die Referenz beim naechsten Durchlauf aktualisiert. Nach dem Verlassen der Welt oder einem Dimensions-/Serverwechsel wird der komplette Cache geleert.
+Der 50-Block-Radius wird vor jedem Chunk-Lookup gegen die aktuelle Hintergrundkamera-Position geprueft. Er umfasst die horizontalen Richtungen rund um die Kamera; jeder aufgenommene Chunk liefert alle seine vertikalen Sektionen. Die Daten werden an ihren Weltkoordinaten gehalten. Die Implementierung merkt sich die clientseitigen Chunk-Objekte, statt jeden Block in ein eigenes dauerhaftes Format zu kopieren. Solange ein Chunk geladen ist, werden Aenderungen am Objekt weiter sichtbar; bei jedem neuen Rundlauf wird die Referenz fuer weiterhin geladene Chunks aktualisiert. Nach dem Verlassen der Welt oder einem Dimensions-/Serverwechsel wird der komplette Cache geleert.
 
 ## Einstellungen
 
