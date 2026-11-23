@@ -10,7 +10,7 @@
 
 ChunkMemory durchlaeuft automatisch die Chunk-Koordinaten innerhalb eines einstellbaren horizontalen Blockradius. Der Radius kann im Modul-Menue von **30 bis 200 Bloecken** eingestellt werden (Standard: 50). Pro Client-Tick werden so viele Koordinaten geprueft, wie die Einstellung Scan-Geschwindigkeit vorgibt. Sobald das Ende der Liste erreicht ist, beginnt der Durchlauf wieder am Anfang. Der Bereich wird damit fortlaufend erneut abgefragt; wenn sich das Zentrum in einen anderen Chunk bewegt, wird derselbe relative Scanpfad automatisch um das neue Zentrum verschoben. Ein Chunk wird nur dann gespeichert, wenn er bereits im Client-Chunk-Manager vorhanden ist. Der Lookup fordert keine Chunks beim Server an.
 
-Der eingestellte Radius wird vor jedem Chunk-Lookup gegen die aktuelle Hintergrundkamera-Position geprueft. Er umfasst die horizontalen Richtungen rund um die Kamera; jeder aufgenommene Chunk liefert alle seine vertikalen Sektionen. Die Daten werden an ihren Weltkoordinaten gehalten. Die Implementierung merkt sich die clientseitigen Chunk-Objekte, statt jeden Block in ein eigenes dauerhaftes Format zu kopieren. Solange ein Chunk geladen ist, werden Aenderungen am Objekt weiter sichtbar; bei jedem neuen Rundlauf wird die Referenz fuer weiterhin geladene Chunks aktualisiert. Nach dem Verlassen der Welt oder einem Dimensions-/Serverwechsel wird der komplette Cache geleert.
+Der eingestellte Radius wird vor jedem Chunk-Lookup gegen die aktuelle Hintergrundkamera-Position geprueft. Er umfasst die horizontalen Richtungen rund um die Kamera; jeder aufgenommene Chunk liefert alle seine vertikalen Sektionen. Der Scanpfad wird nur bei einer Radiusaenderung neu aufgebaut; pro Tick wird der Chunk-Manager einmal ermittelt und bereits bekannte, unveraenderte Chunk-Referenzen werden ohne neue Cache-Objekte weiterverwendet. Die Daten werden an ihren Weltkoordinaten gehalten. Die Implementierung merkt sich die clientseitigen Chunk-Objekte, statt jeden Block in ein eigenes dauerhaftes Format zu kopieren. Solange ein Chunk geladen ist, werden Aenderungen am Objekt weiter sichtbar; bei jedem neuen Rundlauf wird die Referenz fuer weiterhin geladene Chunks aktualisiert. Nach dem Verlassen der Welt oder einem Dimensions-/Serverwechsel wird der komplette Cache geleert.
 
 ## Einstellungen
 
@@ -30,7 +30,7 @@ Der eingestellte Radius wird vor jedem Chunk-Lookup gegen die aktuelle Hintergru
 ## Verbraucher
 
 - **BaseFinder:** Kann fuer den eigenen Scan auf gespeicherte Chunks zurueckgreifen. Die interne Fake-Pattern-Erkennung von BaseFinder bleibt getrennt von den manuellen FakeBases-Markierungen.
-- **BlockESP und OreESP:** Koennen Blockzustaende aus gespeicherten Chunk-Sektionen lesen, wenn der Chunk nicht mehr aktiv geladen ist.
+- **BlockESP und OreESP:** Koennen Blockzustaende direkt aus Chunk-Sektionen lesen. Bei Bereichsscans wird die Chunk-Referenz einmal je Chunk aufgeloest und fuer alle Blockabfragen wiederverwendet.
 - **Block-Entity-ESP-Unterbau:** StorageESP und andere davon abgeleitete Module koennen gespeicherte Block-Entity-Informationen weiter darstellen.
 
 ## Grenzen / offene Punkte
