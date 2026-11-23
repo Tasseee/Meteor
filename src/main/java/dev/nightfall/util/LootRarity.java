@@ -24,7 +24,7 @@ public final class LootRarity {
    );
 
    private static final Set<String> LEGENDARY = ids(
-      "dragon_head,heavy_core,music_disc_creator,music_disc_creator_music_box,music_disc_otherside,music_disc_pigstep,music_disc_precipice,nether_star,netherite_block,netherite_boots,netherite_chestplate,netherite_helmet,netherite_hoe,netherite_horse_armor,netherite_ingot,netherite_leggings,netherite_nautilus_armor,netherite_pickaxe,netherite_shovel,shulker_shell,totem_of_undying,wither_skeleton_skull"
+      "dragon_head,end_crystal,heavy_core,music_disc_creator,music_disc_creator_music_box,music_disc_otherside,music_disc_pigstep,music_disc_precipice,nether_star,netherite_block,netherite_boots,netherite_chestplate,netherite_helmet,netherite_hoe,netherite_horse_armor,netherite_ingot,netherite_leggings,netherite_nautilus_armor,netherite_pickaxe,netherite_shovel,shulker_shell,totem_of_undying,wither_skeleton_skull"
    );
 
    private static final Set<String> MYTHIC = ids(
