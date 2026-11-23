@@ -7,14 +7,23 @@ import net.minecraft.class_332;
 import net.minecraft.class_327;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Keeps the real server sidebar and replaces only its displayed numeric score values.
- * The labels/player names stay exactly as sent by the server.
+ * Keeps the real server sidebar and replaces only its displayed score values.
+ * The order of the sidebar entries is used to map them to Privat's editable stats.
  */
 @Mixin(net.minecraft.class_329.class)
 abstract class PrivatScoreboardMixin {
+   private static int nightfall$scoreIndex;
+
+   @Inject(method = {"method_1757", "method_55803"}, at = @At("HEAD"), require = 0)
+   private void nightfall$resetScoreIndex(class_332 context, class_9779 tickCounter, CallbackInfo ci) {
+      nightfall$scoreIndex = 0;
+   }
+
    @ModifyArg(
       method = {"method_1757", "method_55803"},
       at = @At(
@@ -24,25 +33,21 @@ abstract class PrivatScoreboardMixin {
       index = 1,
       require = 0
    )
-   private class_2561 nightfall$zeroScoreText(class_2561 original) {
-      if (!privatEnabled() || original == null) return original;
-
-      String text = original.getString();
-      if (!containsDigit(text)) return original;
-
-      // Only scoreboard values are numeric here. Keep suffixes such as M, ms, d, h and s.
-      String zeroed = text.replaceAll("[0-9]+(?:[.,][0-9]+)?", "0");
-      if (zeroed.equals(text)) return original;
-
-      return class_2561.method_43470(zeroed).method_10862(original.method_10866());
-   }
-
-   private static boolean privatEnabled() {
+   private class_2561 nightfall$customizeScoreValue(class_2561 original) {
       try {
          Privat privat = ModuleManager.get(Privat.class);
-         return privat != null && privat.isEnabled();
+         if (privat == null || !privat.isEnabled() || original == null) return original;
+
+         String text = original.getString().trim();
+         if (!containsDigit(text)) return original;
+
+         int index = nightfall$scoreIndex++;
+         String replacement = privat.getScoreboardValue(index, text);
+         if (replacement == null || replacement.isBlank()) return original;
+
+         return class_2561.method_43470(replacement).method_10862(original.method_10866());
       } catch (Throwable ignored) {
-         return false;
+         return original;
       }
    }
 
