@@ -110,8 +110,10 @@ public final class Privat extends HudModule {
       String afterName = raw.substring(nameEnd);
       if (!hasChatSpeakerSeparator(afterName)) return original;
 
+      // Discard any extra rank/clan decoration between the account name and
+      // the chat separator as well as the prefix that appeared before it.
+      String messageBody = chatMessageBody(afterName);
       String selectedName = module.showInChat.get() ? module.fakeName.get().trim() : "";
-      String messageBody = module.showInChat.get() ? afterName : stripSpeakerSeparator(afterName);
 
       class_5250 result = class_2561.method_43470("").method_10862(original.method_10866());
       append(result, raw.substring(0, start), original.method_10866());
@@ -177,14 +179,23 @@ public final class Privat extends HudModule {
          || value.startsWith("fluestert");
    }
 
-   private static String stripSpeakerSeparator(String suffix) {
+   private static String chatMessageBody(String suffix) {
       String value = suffix.stripLeading();
-      if (value.startsWith(":") || value.startsWith("»") || value.startsWith(">")) {
-         return value.substring(1).stripLeading();
-      }
-
       int colon = value.indexOf(':');
-      return colon >= 0 ? value.substring(colon + 1).stripLeading() : value;
+      int arrow = value.indexOf('»');
+      int greater = value.indexOf('>');
+      int separator = -1;
+
+      if (colon >= 0) separator = colon;
+      if (arrow >= 0 && (separator < 0 || arrow < separator)) separator = arrow;
+      if (greater >= 0 && (separator < 0 || greater < separator)) separator = greater;
+
+      if (separator >= 0) {
+         // Keep the actual separator and everything after it; anything before
+         // it belongs to the old local rank/clan decoration.
+         return value.substring(separator);
+      }
+      return value;
    }
 
    private static void append(class_5250 parent, String value, class_2583 style) {
