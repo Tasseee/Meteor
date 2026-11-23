@@ -3,7 +3,9 @@ package dev.nightfall.modules;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.setting.NumberSetting;
+import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.util.Draw;
+import dev.nightfall.util.Esp2DRenderer;
 import dev.nightfall.util.Projection;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -20,6 +22,7 @@ import net.minecraft.class_7923;
 public final class OreESP extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 48.0, 8.0, 96.0, 4.0));
    private final NumberSetting maxBlocks = this.add(new NumberSetting("Max Erzblöcke pro Scan", 500.0, 20.0, 1000.0, 20.0));
+   private final ModeSetting display = this.add(new ModeSetting("Darstellung", "3D", "3D", "2D", "Aus"));
    private final List<OreMarker> found = new ArrayList<>();
    private static final int[][] NEIGHBORS = {
       {1, 0, 0}, {-1, 0, 0},
@@ -156,9 +159,13 @@ public final class OreESP extends Module {
 
    @Override
    public void renderHud(class_332 ctx) {
-      if (Projection.valid()) {
+      if (Projection.valid() && !this.display.is("Aus")) {
          for (OreMarker marker : this.found) {
-            Draw.box(ctx, marker.box(), marker.color(), 2, true);
+            if (this.display.is("2D")) {
+               Esp2DRenderer.draw(ctx, marker.box(), marker.color(), 2, 35, true);
+            } else {
+               Draw.box(ctx, marker.box(), marker.color(), 2, true);
+            }
          }
       }
    }
