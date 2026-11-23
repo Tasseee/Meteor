@@ -25,6 +25,7 @@ public final class FakeName extends HudModule {
    private final BoolSetting showInChat = this.add(new BoolSetting("Im Chat anzeigen", true));
    private final BoolSetting showInTab = this.add(new BoolSetting("In Tab-Liste anzeigen", true));
    private final BoolSetting showInF5 = this.add(new BoolSetting("In F5 anzeigen", true));
+   private final StringSetting rank = this.add(new StringSetting("F5-Rang", "Keiner", 16));
    private final ColorSetting nameColor = this.add(new ColorSetting("Name-Farbe", 0xFFFFFF));
    private final BoolSetting customNameColor = this.add(new BoolSetting("Eigene Namensfarbe verwenden", false));
 
@@ -96,20 +97,86 @@ public final class FakeName extends HudModule {
    public static StringSetting[] leaderboardFields(FakeName module) {
       return new StringSetting[]{
          module.geld, module.gems, module.stars, module.kills, module.tode,
-         module.clan, module.ping, module.keyall, module.spielzeit, module.spielerzahl
+         module.clan, module.ping, module.keyall, module.spielzeit, module.spielerzahl,
+         module.fakeName
       };
    }
 
    public static String[] leaderboardLabels() {
-      return new String[]{"Geld", "Gems", "Stars", "Kills", "Tode", "Clan", "Ping", "Keyall", "Spielzeit", "Online"};
+      return new String[]{
+         "Geld", "Gems", "Stars", "Kills", "Tode", "Clan", "Ping",
+         "Keyall", "Spielzeit", "Online", "F5-Name"
+      };
+   }
+
+   public static boolean hasF5Override() {
+      FakeName module = activeModule();
+      return module != null && module.isEnabled() && module.showInF5.get();
    }
 
    public static boolean shouldRenderF5Nameplate() {
+      return hasF5Override();
+   }
+
+   public void cycleRank() {
+      String[] ranks = new String[]{"Keiner", "MOD", "FAMOUS", "Media", "Premium", "Owner"};
+      String current = this.rank.get();
+      int index = 0;
+      for (int i = 0; i < ranks.length; i++) {
+         if (ranks[i].equalsIgnoreCase(current)) {
+            index = i;
+            break;
+         }
+      }
+      this.rank.set(ranks[(index + 1) % ranks.length]);
+      Config.save();
+   }
+
+   public String selectedRank() {
+      String value = this.rank.get();
+      for (String allowed : new String[]{"Keiner", "MOD", "FAMOUS", "Media", "Premium", "Owner"}) {
+         if (allowed.equalsIgnoreCase(value)) return allowed;
+      }
+      return "Keiner";
+   }
+
+   private static int rankColor(String rank) {
+      return switch (rank) {
+         case "MOD" -> 0xFFFFFF55;
+         case "FAMOUS" -> 0xFFFFAA00;
+         case "Media" -> 0xFFAA00AA;
+         case "Premium" -> 0xFFFF55FF;
+         case "Owner" -> 0xFFAA0000;
+         default -> 0xFFFFFFFF;
+      };
+   }
+
+   /** Build one single F5 nameplate line: optional rank, name and optional clan. */
+   public static class_2561 composeF5Name(class_2561 original, String accountName) {
       FakeName module = activeModule();
-      return module != null && module.isEnabled()
-         && module.showInF5.get()
-         && module.fakeName.get() != null
-         && !module.fakeName.get().isBlank();
+      if (module == null || !module.isEnabled()) return original;
+      String shownName = module.fakeName.get() == null ? "" : module.fakeName.get().trim();
+      if (shownName.isEmpty()) shownName = accountName == null ? "" : accountName.trim();
+      String selectedRank = module.selectedRank();
+      String selectedClan = module.clan.get() == null ? "" : module.clan.get().trim();
+
+      class_2583 defaultStyle = original == null
+         ? class_2561.method_43470("").method_10866()
+         : original.method_10866();
+      class_5250 result = class_2561.method_43470("");
+
+      if (!selectedRank.equals("Keiner")) {
+         append(result, "[" + selectedRank + "] ", defaultStyle.method_36139(rankColor(selectedRank)));
+      }
+      class_2583 shownNameStyle = module.customNameColor.get()
+         ? defaultStyle.method_36139(module.nameColor.rgb())
+         : defaultStyle;
+      append(result, shownName, shownNameStyle);
+
+      if (!selectedClan.isEmpty() && !selectedClan.equals("-")) {
+         append(result, " [" + selectedClan + "]", defaultStyle.method_36139(0xFFB45CFF));
+      }
+      return result;
    }
 
    public static String activeName() {
@@ -178,8 +245,8 @@ public final class FakeName extends HudModule {
    /** F5 nameplates are also replaced wholesale to remove all server decorations. */
    public static class_2561 replaceF5Name(class_2561 original, String accountName) {
       FakeName module = activeModule();
-      if (original == null || module == null || !module.isEnabled()) return original;
-      return selectedNameText(original, module.showInF5.get(), module);
+      if (module == null || !module.isEnabled() || !module.showInF5.get()) return original;
+      return composeF5Name(original, accountName);
    }
 
    private static class_2561 selectedNameText(class_2561 original, boolean enabled, FakeName module) {
@@ -507,7 +574,7 @@ public final class FakeName extends HudModule {
       }
 
       private int panelY() {
-         return Math.max(8, (this.field_22790 - 390) / 2);
+         return Math.max(8, (this.field_22790 - 450) / 2);
       }
 
       private void click(int mouseX, int mouseY) {
@@ -520,7 +587,12 @@ public final class FakeName extends HudModule {
             return;
          }
 
-         if (mouseY >= y + 350 && mouseY <= y + 378 && mouseX >= x + w - 98 && mouseX <= x + w - 12) {
+         if (mouseY >= y + 87 && mouseY <= y + 115 && mouseX >= x + 14 && mouseX <= x + w - 14) {
+            this.module.cycleRank();
+            return;
+         }
+
+         if (mouseY >= y + 410 && mouseY <= y + 438 && mouseX >= x + w - 98 && mouseX <= x + w - 12) {
             Config.save();
             this.method_25419();
             return;
@@ -528,11 +600,11 @@ public final class FakeName extends HudModule {
 
          int colWidth = (w - 42) / 2;
          for (int i = 0; i < this.fields.length; i++) {
-            int column = i < 5 ? 0 : 1;
-            int row = i < 5 ? i : i - 5;
+            int column = i < 6 ? 0 : 1;
+            int row = i < 6 ? i : i - 6;
             int rowX = x + 14 + column * (colWidth + 14);
-            int top = y + 104 + row * 47;
-            if (mouseX >= rowX && mouseX <= rowX + colWidth && mouseY >= top && mouseY <= top + 36) {
+            int top = y + 130 + row * 43;
+            if (mouseX >= rowX && mouseX <= rowX + colWidth && mouseY >= top && mouseY <= top + 34) {
                this.selectedField = i;
                this.draft = "";
                return;
@@ -551,11 +623,11 @@ public final class FakeName extends HudModule {
          int y = this.panelY();
          int w = this.panelWidth();
          rect(ctx, 0, 0, this.field_22789, this.field_22790, 0xA8000000);
-         rect(ctx, x, y, x + w, y + 390, 0xFF080D11);
+         rect(ctx, x, y, x + w, y + 450, 0xFF080D11);
          rect(ctx, x, y, x + w, y + 3, 0xFFD69A37);
-         rect(ctx, x, y + 3, x + 3, y + 387, 0xFF8B5D27);
-         rect(ctx, x + w - 3, y + 3, x + w, y + 387, 0xFF8B5D27);
-         rect(ctx, x + 3, y + 387, x + w - 3, y + 390, 0xFFD69A37);
+         rect(ctx, x, y + 3, x + 3, y + 447, 0xFF8B5D27);
+         rect(ctx, x + w - 3, y + 3, x + w, y + 447, 0xFF8B5D27);
+         rect(ctx, x + 3, y + 447, x + w - 3, y + 450, 0xFFD69A37);
 
          drawText(ctx, "HUGOSMP  /  PRIVAT", x + 16, y + 15, 0xFFFFC34C, true);
          drawText(ctx, "LEADERBOARD-WERTE BEARBEITEN", x + 16, y + 31, 0xFF9DAAB4, false);
@@ -566,30 +638,37 @@ public final class FakeName extends HudModule {
          drawText(ctx, "Leaderboard: " + (enabled ? "AN" : "AUS"), x + 23, y + 64,
             enabled ? 0xFF8FFFA0 : 0xFFFF9292, true);
 
+         String selectedRank = this.module.selectedRank();
+         int rankColor = rankColor(selectedRank);
+         rect(ctx, x + 14, y + 87, x + w - 14, y + 115, 0xFF111A20);
+         rect(ctx, x + 14, y + 87, x + 16, y + 115, 0xFF76572D);
+         drawText(ctx, "F5-RANG: " + selectedRank, x + 23, y + 97, rankColor, true);
+         drawText(ctx, "ANKLICKEN ZUM WECHSELN", x + w - 154, y + 97, 0xFF8A9AA5, false);
+
          int colWidth = (w - 42) / 2;
          for (int i = 0; i < this.fields.length; i++) {
-            int column = i < 5 ? 0 : 1;
-            int row = i < 5 ? i : i - 5;
+            int column = i < 6 ? 0 : 1;
+            int row = i < 6 ? i : i - 6;
             int rowX = x + 14 + column * (colWidth + 14);
-            int top = y + 104 + row * 47;
+            int top = y + 130 + row * 43;
             boolean active = this.selectedField == i;
-            rect(ctx, rowX, top, rowX + colWidth, top + 36, active ? 0xFF182A30 : 0xFF111A20);
-            rect(ctx, rowX, top, rowX + 2, top + 36, active ? 0xFF4CE4D1 : 0xFF76572D);
-            drawText(ctx, this.labels[i].toUpperCase(java.util.Locale.ROOT), rowX + 8, top + 3, 0xFFB8C4CA, false);
-            rect(ctx, rowX + 7, top + 16, rowX + colWidth - 7, top + 32, active ? 0xFF263E43 : 0xFF080D11);
+            rect(ctx, rowX, top, rowX + colWidth, top + 34, active ? 0xFF182A30 : 0xFF111A20);
+            rect(ctx, rowX, top, rowX + 2, top + 34, active ? 0xFF4CE4D1 : 0xFF76572D);
+            drawText(ctx, this.labels[i].toUpperCase(java.util.Locale.ROOT), rowX + 8, top + 2, 0xFFB8C4CA, false);
+            rect(ctx, rowX + 7, top + 15, rowX + colWidth - 7, top + 30, active ? 0xFF263E43 : 0xFF080D11);
             String value = active ? this.draft : this.fields[i].get();
             if (value == null || value.isEmpty()) value = active ? "|" : "(leer)";
-            int valueColor = i < VALUE_COLORS.length ? VALUE_COLORS[i] : 0xFF42E85A;
-            drawText(ctx, value, rowX + 12, top + 20, active ? 0xFFFFFFFF : valueColor, true);
+            int valueColor = i < VALUE_COLORS.length ? VALUE_COLORS[i] : (i == 10 ? 0xFFFFFFFF : 0xFF42E85A);
+            drawText(ctx, value, rowX + 12, top + 19, active ? 0xFFFFFFFF : valueColor, true);
          }
 
          drawText(ctx, this.selectedField >= 0
             ? "Tippen, Backspace und ENTER zum Speichern  |  ESC: Schliessen"
-            : "Feld anklicken zum Bearbeiten  |  ENTER speichert  |  ESC schliesst",
-            x + 16, y + 328, 0xFF8A9AA5, false);
-         rect(ctx, x + w - 98, y + 350, x + w - 12, y + 378, 0xFF3B2817);
-         rect(ctx, x + w - 98, y + 350, x + w - 96, y + 378, 0xFFFFC34C);
-         drawText(ctx, "FERTIG", x + w - 75, y + 360, 0xFFFFD98A, true);
+            : "Feld anklicken zum Bearbeiten  |  Rang anklicken zum Wechseln",
+            x + 16, y + 395, 0xFF8A9AA5, false);
+         rect(ctx, x + w - 98, y + 410, x + w - 12, y + 438, 0xFF3B2817);
+         rect(ctx, x + w - 98, y + 410, x + w - 96, y + 438, 0xFFFFC34C);
+         drawText(ctx, "FERTIG", x + w - 75, y + 420, 0xFFFFD98A, true);
       }
    }
 
