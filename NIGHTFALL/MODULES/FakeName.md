@@ -8,7 +8,7 @@
 
 FakeName ersetzt ausschliesslich die lokal gerenderte Identitaet des eigenen Spielers. Die echte Minecraft-Konto-ID, der serverseitige Name und die vom Server empfangenen Daten werden nicht veraendert. Der Server und andere Spieler koennen weiterhin die echte Identitaet sehen.
 
-Rang- und Clan-Tags direkt vor dem eigenen Namen werden in den unterstuetzten lokalen Textanzeigen entfernt. Es wird nur der eingestellte Fake-Name dargestellt. Die Anzeigen sind unabhaengig schaltbar:
+Fruehere Fake-Rang-/Clan-Einstellungen werden nicht uebernommen. Tab-Liste und F5-Namensschild werden komplett durch den eingestellten Fake-Namen ersetzt; dadurch bleiben keine Server-Praefixe oder Clan-Suffixe stehen. Im Chat wird der komplette Praefix vor dem eigenen Namen entfernt. Es wird nur der eingestellte Fake-Name dargestellt. Alle frueher gespeicherten Werte aus dem alten Modul `Privat` werden zurueckgesetzt und nicht in `FakeName` importiert. Die Anzeigen sind unabhaengig schaltbar:
 
 - **Im Chat anzeigen**
 - **In Tab-Liste anzeigen**
