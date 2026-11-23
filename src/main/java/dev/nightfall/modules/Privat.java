@@ -24,7 +24,7 @@ public final class Privat extends HudModule {
    ));
    private final ColorSetting rankColor = this.add(new ColorSetting("Rang-Farbe", 0xFFFFFF));
    private final ColorSetting clanColor = this.add(new ColorSetting("Clan-Farbe", 0x5AE6FF));
-   private final ColorSetting nameColor = this.add(new ColorSetting("Name-Farbe", 0xFFFFFF));
+   private final ColorSetting nameColor = this.add(new ColorSetting("Name-Farbe", 0xFFAAAAAA));
    private final BoolSetting customNameColor = this.add(new BoolSetting("Eigene Namensfarbe verwenden", false));
 
    private final StringSetting geld = this.add(new StringSetting("Geld", "0M", 24));
@@ -85,7 +85,7 @@ public final class Privat extends HudModule {
       return switch (this.rank.get()) {
          case "MOD" -> 0xFFFFFF55;
          case "MEDIA" -> 0xFFAA00FF;
-         case "FAMOUS" -> 0xFFFF55FF;
+         case "FAMOUS" -> 0xFFFFAA00;
          default -> 0xFFFFAA00;
       };
    }
