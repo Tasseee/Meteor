@@ -116,8 +116,8 @@ public final class Privat extends HudModule {
    }
 
    /**
-    * Replaces only the local account name and clan decoration.
-    * The real server rank stays visible.
+    * Replaces the local account name while removing the real HugoSMP rank/clan
+    * decoration. The configured fake server rank is then added back.
     */
    public static class_2561 replaceName(class_2561 original, String accountName) {
       Privat module = activeModule();
@@ -136,10 +136,16 @@ public final class Privat extends HudModule {
       class_7417 content = text.method_10851();
 
       if (content instanceof class_8828 literal) {
-         class_5250 changed = replaceLiteral(
-            literal.comp_737(), accountName, replacement, text.method_10866(), module
-         );
-         if (changed != null) result = changed;
+         String raw = literal.comp_737();
+
+         if (raw != null && raw.contains(accountName)) {
+            class_5250 changed = replaceLiteral(
+               raw, accountName, replacement, text.method_10866(), module
+            );
+            if (changed != null) result = changed;
+         } else if (isOnlyIdentityDecoration(raw, module)) {
+            return class_2561.method_43470("").method_10862(text.method_10866());
+         }
       }
 
       for (class_2561 sibling : text.method_10855()) {
@@ -151,7 +157,7 @@ public final class Privat extends HudModule {
    private static class_5250 replaceLiteral(
       String raw, String accountName, String replacement, class_2583 baseStyle, Privat module
    ) {
-      String cleaned = removeClanFromLiteral(raw);
+      String cleaned = removeOriginalIdentityDecoration(raw, module);
       int from = 0;
       int found = cleaned.indexOf(accountName, from);
 
@@ -189,14 +195,42 @@ public final class Privat extends HudModule {
       return out;
    }
 
-   private static String removeClanFromLiteral(String text) {
+   private static String removeOriginalIdentityDecoration(String text, Privat module) {
       if (text == null || text.isEmpty()) return text;
 
       String result = text;
+
+      // Remove HugoSMP's common rank tokens when they are part of the same
+      // text component as the local player name.
+      result = result.replaceAll(
+         "(?i)(?<![A-Za-z0-9_])(PREMIUM|MOD|MEDIA|FAMOUS)(?![A-Za-z0-9_])", " "
+      );
+
+      // Remove bracketed/angled/parenthesized clan decorations.
       result = stripRankOrClanTokens(result, "\\[([^\\]]{1,16})\\]");
       result = stripRankOrClanTokens(result, "<([^<>]{1,16})>");
       result = stripRankOrClanTokens(result, "\\(([^()]{1,16})\\)");
+
+      // Also remove the user-configured fake clan from an old identity
+      // component, so toggling the clan setting cannot leave duplicate tags.
+      String configuredClan = module.clanTag.get();
+      if (configuredClan != null && !configuredClan.isBlank()) {
+         result = result.replace(configuredClan.trim(), " ");
+      }
+
       return result.replaceAll("\\s+", " ").trim();
+   }
+
+   private static boolean isOnlyIdentityDecoration(String text, Privat module) {
+      if (text == null || text.isBlank()) return false;
+
+      String cleaned = removeOriginalIdentityDecoration(text, module);
+      if (!cleaned.isBlank()) return false;
+
+      String raw = text.replaceAll("§[0-9A-FK-ORa-fk-or]", "")
+         .replaceAll("\\s+", " ").trim();
+
+      return !raw.isBlank();
    }
 
    private static String stripRankOrClanTokens(String text, String regex) {
@@ -226,19 +260,8 @@ public final class Privat extends HudModule {
          : baseStyle;
       append(out, name, nameStyle);
 
-      String clan = module.clanTag.get() == null ? "" : module.clanTag.get().trim();
-      if (!clan.isEmpty()) {
-         String formattedClan = module.clanFormat.is("[]") ? "[" + clan + "]"
-            : module.clanFormat.is("<>") ? "<" + clan + ">"
-            : module.clanFormat.is("()") ? "(" + clan + ")"
-            : clan;
-
-         append(
-            out,
-            " " + formattedClan,
-            baseStyle.method_36139(module.clanColor.rgb()).method_10982(true)
-         );
-      }
+      // Clan is deliberately not rendered. Privat hides the real clan tag;
+      // the scoreboard's configurable "Clan" value is handled separately.
    }
 
    private static void append(class_5250 parent, String value, class_2583 style) {
