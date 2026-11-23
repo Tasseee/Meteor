@@ -30,6 +30,31 @@ public final class Privat extends HudModule {
    private final ColorSetting nameColor = this.add(new ColorSetting("Name-Farbe", 0xFFFFFF));
    private final BoolSetting customNameColor = this.add(new BoolSetting("Eigene Namensfarbe verwenden", false));
 
+   private final StringSetting geld = this.add(new StringSetting("Geld", "0M", 24));
+   private final StringSetting gems = this.add(new StringSetting("Gems", "0", 24));
+   private final StringSetting stars = this.add(new StringSetting("Stars", "0", 24));
+   private final StringSetting kills = this.add(new StringSetting("Kills", "0", 24));
+   private final StringSetting tode = this.add(new StringSetting("Tode", "0", 24));
+   private final StringSetting clan = this.add(new StringSetting("Clan", "???", 24));
+   private final StringSetting ping = this.add(new StringSetting("Ping", "0ms", 24));
+   private final StringSetting keyall = this.add(new StringSetting("Keyall", "0m 0s", 24));
+   private final StringSetting spielzeit = this.add(new StringSetting("Spielzeit", "0d 0h", 24));
+
+   public String getScoreboardValue(int index, String original) {
+      return switch (index) {
+         case 0 -> geld.get();
+         case 1 -> gems.get();
+         case 2 -> stars.get();
+         case 3 -> kills.get();
+         case 4 -> tode.get();
+         case 5 -> clan.get();
+         case 6 -> ping.get();
+         case 7 -> keyall.get();
+         case 8 -> spielzeit.get();
+         default -> original;
+      };
+   }
+
    public Privat() {
       super("Privat", "Privat und HugoSMP-Stats als ein lokales Privat-Modul.");
       this.scalable = true;
