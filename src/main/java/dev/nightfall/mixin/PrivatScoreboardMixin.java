@@ -13,8 +13,8 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Keeps the real server sidebar and replaces only its displayed score values.
- * The order of the sidebar entries is used to map them to Privat's editable stats.
+ * Keeps the real server sidebar untouched and replaces only the numeric score
+ * text on the right side. The label/name on the left is never modified.
  */
 @Mixin(net.minecraft.class_329.class)
 abstract class PrivatScoreboardMixin {
@@ -40,7 +40,9 @@ abstract class PrivatScoreboardMixin {
          if (privat == null || !privat.isEnabled() || original == null) return original;
 
          String text = original.getString().trim();
-         if (!containsDigit(text)) return original;
+         // The vanilla sidebar draws each score as a separate Text object. Only
+         // numeric Text objects are scores; labels/names are left completely intact.
+         if (!containsDigit(text) || text.length() > 32) return original;
 
          int index = nightfall$scoreIndex++;
          String replacement = privat.getScoreboardValue(index, text);
