@@ -9,6 +9,7 @@ import dev.nightfall.modules.AntiCheatMonitor;
 import dev.nightfall.modules.AutoReconnect;
 import dev.nightfall.modules.AutoTpa;
 import dev.nightfall.modules.BaseFinder;
+import dev.nightfall.modules.FakeName;
 import dev.nightfall.modules.Atmosphere;
 import dev.nightfall.modules.SeedCracker;
 import dev.nightfall.render.KillEffectRenderer;
@@ -59,6 +60,11 @@ public class Nightfall implements ClientModInitializer {
       ModuleUsageStats.load();
       ModuleManager.init();
       Config.load();
+      HudElementRegistry.replaceElement(VanillaHudElements.SCOREBOARD, original -> (ctx, tickCounter) -> {
+         if (!FakeName.shouldRenderCustomScoreboard()) {
+            original.render(ctx, tickCounter);
+         }
+      });
       ModuleUsageStats.startTracking(ModuleManager.all());
       ItemGlowRenderer.init();
       GhostSkinFeatureRenderer.register();
