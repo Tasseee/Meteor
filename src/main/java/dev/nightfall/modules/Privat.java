@@ -50,7 +50,7 @@ public final class Privat extends HudModule {
          case "gems" -> gems.get();
          case "stars" -> stars.get();
          case "kills" -> kills.get();
-         case "tode", "tode" -> tode.get();
+         case "tode" -> tode.get();
          case "clan" -> clan.get();
          case "ping" -> ping.get();
          case "keyall" -> keyall.get();
