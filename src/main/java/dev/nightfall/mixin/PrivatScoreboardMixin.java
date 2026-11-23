@@ -25,7 +25,7 @@ abstract class PrivatScoreboardMixin {
       require = 0
    )
    private class_2561 nightfall$zeroScoreText(class_2561 original) {
-      if (!Privat.isEnabledStatic() || original == null) return original;
+      if (!privatEnabled() || original == null) return original;
 
       String text = original.getString();
       if (!containsDigit(text)) return original;
@@ -35,6 +35,15 @@ abstract class PrivatScoreboardMixin {
       if (zeroed.equals(text)) return original;
 
       return class_2561.method_43470(zeroed).method_10862(original.method_10866());
+   }
+
+   private static boolean privatEnabled() {
+      try {
+         Privat privat = ModuleManager.get(Privat.class);
+         return privat != null && privat.isEnabled();
+      } catch (Throwable ignored) {
+         return false;
+      }
    }
 
    private static boolean containsDigit(String text) {
