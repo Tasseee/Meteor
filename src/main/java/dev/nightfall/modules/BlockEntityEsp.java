@@ -15,6 +15,7 @@ import net.minecraft.class_4184;
 public abstract class BlockEntityEsp extends EspBase {
    private final List<class_2338> cache = new ArrayList<>();
    private final List<class_238> boxes = new ArrayList<>();
+   private final List<class_2586> cachedEntities = new ArrayList<>();
    private int timer;
 
    protected BlockEntityEsp(String n, String d, int r, int mr, int rgb) {
@@ -33,12 +34,14 @@ public abstract class BlockEntityEsp extends EspBase {
    protected void onDisable() {
       this.cache.clear();
       this.boxes.clear();
+      this.cachedEntities.clear();
    }
 
    @Override
    public void onWorldLeave() {
       this.cache.clear();
       this.boxes.clear();
+      this.cachedEntities.clear();
       this.timer = 0;
    }
 
@@ -49,6 +52,7 @@ public abstract class BlockEntityEsp extends EspBase {
             this.timer = 10;
             this.cache.clear();
             this.boxes.clear();
+            this.cachedEntities.clear();
             int r = this.range.getInt();
             class_4184 camera = mc.field_1773.method_19418();
             class_243 origin = camera != null && camera.method_19332() ? camera.method_71156() : mc.field_1724.method_33571();
@@ -62,7 +66,12 @@ public abstract class BlockEntityEsp extends EspBase {
 
             for (int dz = -cr; dz <= cr; dz++) {
                for (int dx = -cr; dx <= cr; dx++) {
-                  class_2818 ch = mc.field_1687.method_2935().method_21730(pcx + dx, pcz + dz);
+                  int chunkX = pcx + dx;
+                  int chunkZ = pcz + dz;
+                  class_2818 ch = mc.field_1687.method_2935().method_21730(chunkX, chunkZ);
+                  if (ch == null) {
+                     ch = ChunkMemory.getCachedChunk(chunkX, chunkZ);
+                  }
                   if (ch != null && this.acceptChunk(ch)) {
                      for (class_2586 be : ch.method_12214().values()) {
                         if (this.accept(be)) {
@@ -70,6 +79,7 @@ public abstract class BlockEntityEsp extends EspBase {
                            if (!(bp.method_40081(px, py, pz) > r2)) {
                               this.cache.add(bp.method_10062());
                               this.boxes.add(new class_238(bp));
+                              this.cachedEntities.add(be);
                            }
                         }
                      }
@@ -110,7 +120,7 @@ public abstract class BlockEntityEsp extends EspBase {
 
          for (int i = 0; i < n && shown < this.maxObjects.getInt() && !this.capReached(); i++) {
             class_2338 bp = this.cache.get(i);
-            class_2586 be = mc.field_1687.method_8321(bp);
+            class_2586 be = this.cachedEntities.get(i);
             if (be != null && this.accept(be)) {
                double d = Math.sqrt(bp.method_40081(Projection.eyeX(), Projection.eyeY(), Projection.eyeZ()));
                this.drawTarget(ctx, this.boxes.get(i), this.label(this.nameOf(be), d), this.color.rgb());
