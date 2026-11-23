@@ -41,6 +41,7 @@ import net.minecraft.class_2627;
 import net.minecraft.class_2636;
 import net.minecraft.class_2680;
 import net.minecraft.class_1297;
+import net.minecraft.class_243;
 import net.minecraft.class_1309;
 import net.minecraft.class_1657;
 import net.minecraft.class_2818;
@@ -279,6 +280,11 @@ public class BaseFinder extends Module {
          } else {
             int pcx = mc.field_1724.method_31477() >> 4;
             int pcz = mc.field_1724.method_31479() >> 4;
+            if (FreecamController.isActive()) {
+               class_243 scanPosition = FreecamController.cameraPosition();
+               pcx = ((int)Math.floor(scanPosition.field_1352)) >> 4;
+               pcz = ((int)Math.floor(scanPosition.field_1350)) >> 4;
+            }
             if (this.queue.isEmpty() && this.tick % 20L == 0L) {
                this.refill(w, pcx, pcz);
             }
