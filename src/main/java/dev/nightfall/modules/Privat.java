@@ -126,7 +126,22 @@ public final class Privat extends HudModule {
          return original;
       }
 
-      return replaceInTree(original, accountName, module.fakeName.get(), module);
+      // Replace the complete local identity component instead of editing
+      // individual siblings. This prevents real rank/clan decorations from
+      // surviving in separate children of the original text tree.
+      String originalText = original.getString();
+      if (originalText == null || !originalText.contains(accountName)) return original;
+
+      class_5250 identity = class_2561.method_43470("")
+         .method_10862(original.method_10866());
+      String fake = module.fakeName.get();
+      appendPlainName(
+         identity,
+         fake == null || fake.isBlank() ? accountName : fake.trim(),
+         original.method_10866(),
+         module
+      );
+      return identity;
    }
 
    private static class_2561 replaceInTree(
