@@ -8,6 +8,7 @@ import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.module.setting.ListSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.Draw;
+import dev.nightfall.util.Esp2DRenderer;
 import dev.nightfall.util.Projection;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,7 +26,7 @@ public final class BlockESP extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 12.0, 6.0, 200.0, 1.0));
    private final NumberSetting maxBlocks = this.add(new NumberSetting("Max Markierungen", 600.0, 20.0, 1200.0, 20.0));
    private final ModeSetting style = this.add(new ModeSetting(
-      "Rahmen-Stil", "Block-Outline", "Ecken", "Voll", "Leuchten", "Block-Outline"
+      "Rahmen-Stil", "Block-Outline", "Ecken", "Voll", "Leuchten", "Block-Outline", "2D"
    ));
    private final NumberSetting outline = this.add(new NumberSetting("Outline-Stärke", 2.0, 1.0, 5.0, 1.0));
    private final ColorSetting color = this.add(new ColorSetting("Farbe", 0x62D8FF));
@@ -149,6 +150,10 @@ public final class BlockESP extends Module {
          boolean smooth = !this.style.is("Voll");
 
          for (class_238 box : this.found) {
+            if (this.style.is("2D")) {
+               Esp2DRenderer.draw(ctx, box, argb, thickness, 35, true);
+               continue;
+            }
             if (this.style.is("Leuchten")) {
                Draw.box(ctx, box, (0x35 << 24) | rgb, thickness + 4, true, true);
             }
