@@ -125,18 +125,32 @@ public final class OreESP extends Module {
 
          for (int[] direction : NEIGHBORS) {
             class_2338 neighbor = current.method_10069(direction[0], direction[1], direction[2]);
-            if (!visited.add(neighbor)) continue;
+            if (visited.contains(neighbor)) continue;
 
             int nx = neighbor.method_10263();
             int ny = neighbor.method_10264();
             int nz = neighbor.method_10260();
-            if (ny < bottomY || ny >= topY) continue;
+            if (ny < bottomY || ny >= topY) {
+               visited.add(neighbor);
+               continue;
+            }
 
             // Only inspect client-loaded or session-cached chunk data.
             class_2818 neighborChunk = scanChunk(nx >> 4, nz >> 4, chunks, missingChunks);
             class_2680 neighborState = ChunkMemory.getBlockState(neighborChunk, nx, ny, nz);
-            if (neighborState != null && neighborState.method_26204() == ore) {
+            if (neighborState == null) {
+               visited.add(neighbor);
+               continue;
+            }
+
+            class_2248 neighborBlock = neighborState.method_26204();
+            if (neighborBlock == ore) {
+               visited.add(neighbor);
                pending.addLast(neighbor);
+            } else if (!oreInfo(neighborBlock).isOre()) {
+               // Remember empty/non-ore boundaries, but leave a different ore
+               // type unvisited so it can seed its own vein later in this scan.
+               visited.add(neighbor);
             }
          }
       }
