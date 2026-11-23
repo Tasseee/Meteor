@@ -16,6 +16,7 @@ import net.minecraft.class_2248;
 import net.minecraft.class_2338;
 import net.minecraft.class_2378;
 import net.minecraft.class_238;
+import net.minecraft.class_243;
 import net.minecraft.class_2680;
 import net.minecraft.class_332;
 import net.minecraft.class_7923;
@@ -121,7 +122,14 @@ public final class OreESP extends Module {
       if (mc.field_1724 == null || mc.field_1687 == null || this.timer-- > 0) return;
       this.timer = 12;
       this.found.clear();
-      class_2338 p = mc.field_1724.method_24515();
+      class_243 scanOrigin = FreecamController.isActive()
+         ? FreecamController.cameraPosition()
+         : mc.field_1724.method_33571();
+      class_2338 p = new class_2338(
+         (int)Math.floor(scanOrigin.field_1352),
+         (int)Math.floor(scanOrigin.field_1351),
+         (int)Math.floor(scanOrigin.field_1350)
+      );
       int r = this.range.getInt();
       int cap = this.maxBlocks.getInt();
       int minY = Math.max(mc.field_1687.method_31607(), p.method_10264() - r);
@@ -133,7 +141,8 @@ public final class OreESP extends Module {
 
       for (int cx = minX >> 4; cx <= maxX >> 4 && scannedOreBlocks < cap; cx++) {
          for (int cz = minZ >> 4; cz <= maxZ >> 4 && scannedOreBlocks < cap; cz++) {
-            if (mc.field_1687.method_2935().method_21730(cx, cz) == null) continue;
+            if (mc.field_1687.method_2935().method_21730(cx, cz) == null
+               && ChunkMemory.getCachedChunk(cx, cz) == null) continue;
             int sx = Math.max(minX, cx << 4), ex = Math.min(maxX, (cx << 4) + 15);
             int sz = Math.max(minZ, cz << 4), ez = Math.min(maxZ, (cz << 4) + 15);
             for (int x = sx; x <= ex && scannedOreBlocks < cap; x++) {
