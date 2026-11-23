@@ -28,7 +28,7 @@ public abstract class FakeNamePlayerRendererMixin {
    ) {
       class_310 mc = class_310.method_1551();
       if (player == mc.field_1724 && Privat.hasVisualOverride()) {
-         cir.setReturnValue(true);
+         cir.setReturnValue(Privat.shouldRenderF5Nameplate());
       }
    }
 
@@ -51,10 +51,10 @@ public abstract class FakeNamePlayerRendererMixin {
       // Both fields participate in the render-state name pipeline in 1.21.11.
       // Keep each text component's style and any prefix/suffix siblings intact.
       String accountName = mc.field_1724.method_5477().getString();
-      state.field_53525 = Privat.replaceName(state.field_53525, accountName);
+      state.field_53525 = Privat.replaceF5Name(state.field_53525, accountName);
       class_10017 baseState = (class_10017)(Object)state;
       if (baseState.field_53337 != null) {
-         baseState.field_53337 = Privat.replaceName(baseState.field_53337, accountName);
+         baseState.field_53337 = Privat.replaceF5Name(baseState.field_53337, accountName);
       }
    }
 }
