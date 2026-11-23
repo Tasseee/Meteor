@@ -17,6 +17,7 @@ import net.minecraft.class_243;
 import net.minecraft.class_2680;
 import net.minecraft.class_2818;
 import net.minecraft.class_2826;
+import net.minecraft.class_332;
 import net.minecraft.class_638;
 
 /**
@@ -52,6 +53,9 @@ public final class ChunkMemory extends Module {
    private List<Offset> scanPath = List.of();
    private int scanCursor;
    private long scanTick;
+   private int lastLookups;
+   private int lastLoaded;
+   private boolean startedBackgroundFreecam;
 
    public ChunkMemory() {
       super(
@@ -63,17 +67,43 @@ public final class ChunkMemory extends Module {
 
    @Override
    protected void onEnable() {
-      try {
-         ModuleManager.get(BackgroundFreecam.class).setEnabled(true);
-      } catch (IllegalStateException ignored) {
-      }
+      this.startedBackgroundFreecam = false;
+      this.syncBackgroundFreecam();
    }
 
    @Override
    protected void onDisable() {
+      if (this.startedBackgroundFreecam) {
+         try {
+            BackgroundFreecam camera = ModuleManager.get(BackgroundFreecam.class);
+            if (camera.isEnabled()) camera.setEnabled(false);
+         } catch (IllegalStateException ignored) {
+         }
+      }
+      this.startedBackgroundFreecam = false;
+   }
+
+   /**
+    * Enable the helper only when this module needs it. If the user had
+    * already enabled BackgroundFreecam manually, do not claim ownership and
+    * do not switch it off when ChunkMemory is disabled.
+    */
+   private void syncBackgroundFreecam() {
+      BackgroundFreecam camera;
       try {
-         ModuleManager.get(BackgroundFreecam.class).setEnabled(false);
+         camera = ModuleManager.get(BackgroundFreecam.class);
       } catch (IllegalStateException ignored) {
+         return;
+      }
+
+      boolean shouldRun = this.useBackgroundFreecam.get()
+         && mc.field_1724 != null && mc.field_1687 != null;
+      if (shouldRun && !camera.isEnabled()) {
+         camera.setEnabled(true);
+         this.startedBackgroundFreecam = true;
+      } else if (!shouldRun && this.startedBackgroundFreecam) {
+         if (camera.isEnabled()) camera.setEnabled(false);
+         this.startedBackgroundFreecam = false;
       }
    }
 
@@ -154,12 +184,7 @@ public final class ChunkMemory extends Module {
          return;
       }
 
-      BackgroundFreecam backgroundCamera = ModuleManager.get(BackgroundFreecam.class);
-      if (this.useBackgroundFreecam.get() && !backgroundCamera.isEnabled()) {
-         backgroundCamera.setEnabled(true);
-      } else if (!this.useBackgroundFreecam.get() && backgroundCamera.isEnabled()) {
-         backgroundCamera.setEnabled(false);
-      }
+      this.syncBackgroundFreecam();
 
       String context = Storage.server() + "_" + Storage.dim();
       if (world != cacheWorld || !context.equals(cacheContext)) {
@@ -194,6 +219,8 @@ public final class ChunkMemory extends Module {
       int radiusSquared = configuredRange * configuredRange;
       int processed = 0;
       int budget = this.scanSpeed.getInt();
+      this.lastLookups = 0;
+      this.lastLoaded = 0;
       while (processed < budget && !this.scanPath.isEmpty()) {
          if (this.scanCursor >= this.scanPath.size()) {
             this.scanCursor = 0;
@@ -211,8 +238,10 @@ public final class ChunkMemory extends Module {
          }
 
          // This is intentionally a lookup-only operation. A null result is not loaded.
+         this.lastLookups++;
          class_2818 loaded = chunkManager.method_21730(targetX, targetZ);
          if (loaded != null) {
+            this.lastLoaded++;
             long chunkKey = key(targetX, targetZ);
             CachedChunk previous = CACHE.get(chunkKey); // Also refreshes LRU order.
             if (previous == null || previous.chunk() != loaded) {
@@ -293,10 +322,44 @@ public final class ChunkMemory extends Module {
    }
 
    @Override
+   public void renderHud(class_332 context) {
+      if (mc.field_1724 == null || mc.field_1687 == null) return;
+
+      class_243 center = mc.field_1724.method_33571();
+      String source = "Spieler";
+      if (this.useBackgroundFreecam.get() && BackgroundFreecam.isActive()) {
+         class_243 position = BackgroundFreecam.cameraPosition();
+         if (position != null) {
+            center = position;
+            source = "BackgroundFreecam";
+         }
+      } else if (this.useFreecamPosition.get() && FreecamController.isActive()) {
+         center = FreecamController.cameraPosition();
+         source = "Freecam";
+      }
+
+      String title = "CHUNKMEMORY";
+      String line = "Cache " + cachedChunkCount() + "/" + this.maxChunks.getInt()
+         + "  |  Radius " + this.range.getInt() + " Bloecke";
+      String scan = source + "  |  Scan " + this.lastLoaded + "/" + this.lastLookups + " Chunks";
+      int width = Math.max(mc.field_1772.method_1727(title),
+         Math.max(mc.field_1772.method_1727(line), mc.field_1772.method_1727(scan))) + 18;
+      int x = 8;
+      int y = 42;
+      context.method_25294(x, y, x + width, y + 55, 0x90000000);
+      context.method_25294(x, y, x + width, y + 2, 0xFF39FFB6);
+      context.method_51433(mc.field_1772, title, x + 8, y + 5, 0xFF39FFB6, true);
+      context.method_51433(mc.field_1772, line, x + 8, y + 18, 0xFFFFFFFF, true);
+      context.method_51433(mc.field_1772, scan, x + 8, y + 31, 0xFFB8C8D8, true);
+   }
+
+   @Override
    public void onWorldLeave() {
       clearSessionCache();
       this.resetScanPath();
       this.scanTick = 0L;
+      this.lastLookups = 0;
+      this.lastLoaded = 0;
    }
 
    public record CachedChunk(int cx, int cz, class_2818 chunk, long capturedAtTick) {
