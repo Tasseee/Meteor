@@ -159,7 +159,7 @@ public final class OreESP extends Module {
          minX, minY, minZ,
          maxX + 1.0, maxY + 1.0, maxZ + 1.0
       );
-      return new OreMarker(bounds, this.oreColor(ore), blockCount);
+      return new OreMarker(bounds, oreInfo(ore).color(), blockCount);
    }
 
    @Override
