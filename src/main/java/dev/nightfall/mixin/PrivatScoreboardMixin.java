@@ -3,7 +3,6 @@ package dev.nightfall.mixin;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.Privat;
 import net.minecraft.class_2561;
-import net.minecraft.class_310;
 import net.minecraft.class_329;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -11,8 +10,8 @@ import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 /**
- * Rewrites only the value column of the real Minecraft sidebar.
- * The original sidebar position, labels and title stay untouched.
+ * Applies Minecraft's real obfuscated text style to the value column of
+ * every vanilla sidebar row. The label/title and sidebar layout are untouched.
  */
 @Mixin(class_329.class)
 abstract class PrivatScoreboardMixin {
@@ -24,7 +23,7 @@ abstract class PrivatScoreboardMixin {
       ),
       require = 1
    )
-   private void nightfall$customizeScoreboardEntry(Args args) {
+   private void nightfall$obfuscateSidebarValue(Args args) {
       Privat privat;
 
       try {
@@ -35,33 +34,14 @@ abstract class PrivatScoreboardMixin {
 
       if (privat == null || !privat.isEnabled()) return;
 
-      class_2561 label = (class_2561) args.get(0);
-      class_2561 originalValue = (class_2561) args.get(1);
+      // SidebarEntry constructor arguments are: left label, right value, width.
+      // Obfuscate the actual Text style, not a literal "§k" string. This works
+      // with server-provided colored Text and resource-pack glyph fonts too.
+      class_2561 value = (class_2561) args.get(1);
+      if (value == null || value.getString().isEmpty()) return;
 
-      if (label == null || originalValue == null) return;
-
-      String replacement = privat.getScoreboardValue(label.getString(), originalValue.getString());
-      if (replacement == null) return;
-      if (replacement.equals(originalValue.getString())) return;
-
-      // §k (obfuscated) makes every configured scoreboard value render with
-      // rapidly changing characters. §r prevents the effect leaking onward.
-      String obfuscated = replacement.isEmpty()
-         ? replacement
-         : "\u00A7k" + replacement + "\u00A7r";
-      class_2561 changedValue = class_2561.method_43470(obfuscated)
-         .method_10862(originalValue.method_10866());
-
-      args.set(1, changedValue);
-
-      // SidebarEntry stores the value width for right-alignment.
-      // Recalculate it so the replacement keeps the original scoreboard layout.
-      try {
-         class_310 mc = class_310.method_1551();
-         int width = mc.field_1772.method_27525(changedValue);
-         args.set(2, width);
-      } catch (Throwable ignored) {
-         // Keeping the original width is still preferable to breaking the sidebar.
-      }
+      class_2561 obfuscatedValue = value.method_27662()
+         .method_10862(value.method_10866().method_36141(true));
+      args.set(1, obfuscatedValue);
    }
 }
