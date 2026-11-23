@@ -197,13 +197,19 @@ public final class ChunkMemory extends Module {
          Offset offset = this.scanPath.get(this.scanCursor++);
          int targetX = this.centerChunkX + offset.dx();
          int targetZ = this.centerChunkZ + offset.dz();
+         processed++;
+
+         // Test the chunk footprint against the current camera's exact 50-block
+         // horizontal radius. Chunk data itself includes every vertical section.
+         if (!intersectsRadius(targetX, targetZ, center.field_1352, center.field_1350, configuredRange)) {
+            continue;
+         }
 
          // This is intentionally a lookup-only operation. A null result is not loaded.
          class_2818 loaded = world.method_2935().method_21730(targetX, targetZ);
          if (loaded != null) {
             CACHE.put(key(targetX, targetZ), new CachedChunk(targetX, targetZ, loaded, this.scanTick));
          }
-         processed++;
       }
 
       this.scanTick++;
@@ -217,10 +223,13 @@ public final class ChunkMemory extends Module {
     */
    private void rebuildScanPath(int radiusBlocks) {
       List<Offset> offsets = new ArrayList<>();
-      int radiusChunks = (radiusBlocks + 15) / 16 + 1;
+      // Keep a one-chunk margin around the path. The exact radius is checked
+      // against the live camera position immediately before each lookup.
+      int candidateRadius = radiusBlocks + 16;
+      int radiusChunks = (candidateRadius + 15) / 16 + 1;
       int centerX = this.centerChunkX * 16 + 8;
       int centerZ = this.centerChunkZ * 16 + 8;
-      int radiusSquared = radiusBlocks * radiusBlocks;
+      int radiusSquared = candidateRadius * candidateRadius;
 
       for (int dz = -radiusChunks; dz <= radiusChunks; dz++) {
          for (int dx = -radiusChunks; dx <= radiusChunks; dx++) {
@@ -247,6 +256,16 @@ public final class ChunkMemory extends Module {
          .thenComparingInt(Offset::dx));
       this.scanPath = offsets;
       this.scanCursor = 0;
+   }
+
+   private static boolean intersectsRadius(int chunkX, int chunkZ, double centerX, double centerZ, int radiusBlocks) {
+      double minX = (double)chunkX * 16.0;
+      double minZ = (double)chunkZ * 16.0;
+      double nearestX = centerX < minX ? minX - centerX
+         : centerX > minX + 16.0 ? centerX - (minX + 16.0) : 0.0;
+      double nearestZ = centerZ < minZ ? minZ - centerZ
+         : centerZ > minZ + 16.0 ? centerZ - (minZ + 16.0) : 0.0;
+      return nearestX * nearestX + nearestZ * nearestZ <= (double)radiusBlocks * radiusBlocks;
    }
 
    private void resetScanPath() {
