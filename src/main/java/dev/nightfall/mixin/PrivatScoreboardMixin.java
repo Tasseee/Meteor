@@ -22,7 +22,7 @@ abstract class PrivatScoreboardMixin {
          value = "INVOKE",
          target = "Lnet/minecraft/class_329$class_9016;<init>(Lnet/minecraft/class_2561;Lnet/minecraft/class_2561;I)V"
       ),
-      require = 0
+      require = 1
    )
    private void nightfall$customizeScoreboardEntry(Args args) {
       Privat privat;
@@ -41,7 +41,7 @@ abstract class PrivatScoreboardMixin {
       if (label == null || originalValue == null) return;
 
       String replacement = privat.getScoreboardValue(label.getString(), originalValue.getString());
-      if (replacement == null || replacement.isBlank()) return;
+      if (replacement == null) return;
       if (replacement.equals(originalValue.getString())) return;
 
       class_2561 changedValue = class_2561.method_43470(replacement)
