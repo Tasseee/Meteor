@@ -24,6 +24,7 @@ import dev.nightfall.modules.AutoSmelter;
 import dev.nightfall.modules.AutoText;
 import dev.nightfall.modules.AutoTotem;
 import dev.nightfall.modules.AutoTpa;
+import dev.nightfall.modules.BackgroundFreecam;
 import dev.nightfall.modules.BaseFinder;
 import dev.nightfall.modules.BeaconFinder;
 import dev.nightfall.modules.BlockHighlight;
@@ -231,6 +232,7 @@ public final class ModuleManager {
       MODULES.add(new AutoBreed());
       MODULES.add(new AutoSmelter());
       MODULES.add(new AutoCraftPlanner());
+      MODULES.add(new BackgroundFreecam());
       MODULES.add(new ChunkMemory());
       MODULES.add(new BaseFinder());
       MODULES.add(new AutoRtp());
