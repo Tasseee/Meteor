@@ -34,6 +34,6 @@ public abstract class FakeNameChatMixin {
       class_310 mc = class_310.method_1551();
       if (mc.field_1724 == null || message == null || !Privat.hasVisualOverride()) return message;
       String accountName = mc.field_1724.method_5477().getString();
-      return Privat.replaceName(message, accountName);
+      return Privat.replaceChatName(message, accountName);
    }
 }
