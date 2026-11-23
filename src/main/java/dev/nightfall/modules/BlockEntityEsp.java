@@ -48,9 +48,12 @@ public abstract class BlockEntityEsp extends EspBase {
       this.timer = 10;
       this.targets.clear();
       int r = this.range.getInt();
-      class_4184 camera = mc.field_1773.method_19418();
-      class_243 origin = camera != null && camera.method_19332()
-         ? camera.method_71156() : mc.field_1724.method_33571();
+      class_243 origin = ChunkMemory.scanPosition();
+      if (origin == null) {
+         class_4184 camera = mc.field_1773.method_19418();
+         origin = camera != null && camera.method_19332()
+            ? camera.method_71156() : mc.field_1724.method_33571();
+      }
       double px = origin.field_1352;
       double py = origin.field_1351;
       double pz = origin.field_1350;
