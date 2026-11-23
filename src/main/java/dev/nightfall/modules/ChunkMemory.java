@@ -101,6 +101,16 @@ public final class ChunkMemory extends Module {
          }
       }
       this.startedBackgroundFreecam = false;
+      // Disabling memory must also release cached world references. Other
+      // modules then transparently fall back to currently loaded chunks.
+      clearSessionCache();
+      this.resetScanPath();
+      this.lastLookups = 0;
+      this.lastLoaded = 0;
+      this.lastNewEntries = 0;
+      this.lastCachedFallbacks = 0;
+      this.lastRetrySkips = 0;
+      this.lastPruned = 0;
    }
 
    /**
