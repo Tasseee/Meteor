@@ -32,7 +32,7 @@ public final class ChunkMemory extends Module {
    private static String cacheContext;
 
    private final NumberSetting range = this.add(
-      new NumberSetting("Scan-Reichweite (Chunks)", 16.0, 2.0, 48.0, 1.0)
+      new NumberSetting("Scan-Radius (Bloecke)", 50.0, 8.0, 128.0, 2.0)
    );
    private final NumberSetting scanSpeed = this.add(
       new NumberSetting("Scan-Geschwindigkeit (Chunks/Tick)", 8.0, 1.0, 64.0, 1.0)
@@ -210,17 +210,38 @@ public final class ChunkMemory extends Module {
       this.trimCache(this.maxChunks.getInt());
    }
 
-   private void rebuildScanPath(int radius) {
+   /**
+    * Build a circular scan path in block coordinates. A chunk is included when
+    * its horizontal 16x16 footprint intersects the configured radius. Each
+    * cached chunk contains all of its vertical sections.
+    */
+   private void rebuildScanPath(int radiusBlocks) {
       List<Offset> offsets = new ArrayList<>();
-      int radiusSquared = radius * radius;
-      for (int dz = -radius; dz <= radius; dz++) {
-         for (int dx = -radius; dx <= radius; dx++) {
-            int distanceSquared = dx * dx + dz * dz;
-            if (distanceSquared <= radiusSquared) {
-               offsets.add(new Offset(dx, dz, distanceSquared));
+      int radiusChunks = (radiusBlocks + 15) / 16 + 1;
+      int centerX = this.centerChunkX * 16 + 8;
+      int centerZ = this.centerChunkZ * 16 + 8;
+      int radiusSquared = radiusBlocks * radiusBlocks;
+
+      for (int dz = -radiusChunks; dz <= radiusChunks; dz++) {
+         for (int dx = -radiusChunks; dx <= radiusChunks; dx++) {
+            int chunkMinX = (this.centerChunkX + dx) * 16;
+            int chunkMinZ = (this.centerChunkZ + dz) * 16;
+            int nearestX = centerX < chunkMinX ? chunkMinX - centerX
+               : centerX > chunkMinX + 16 ? centerX - (chunkMinX + 16) : 0;
+            int nearestZ = centerZ < chunkMinZ ? chunkMinZ - centerZ
+               : centerZ > chunkMinZ + 16 ? centerZ - (chunkMinZ + 16) : 0;
+            int distanceToFootprint = nearestX * nearestX + nearestZ * nearestZ;
+
+            if (distanceToFootprint <= radiusSquared) {
+               int chunkCenterX = chunkMinX + 8;
+               int chunkCenterZ = chunkMinZ + 8;
+               int centerDistance = (chunkCenterX - centerX) * (chunkCenterX - centerX)
+                  + (chunkCenterZ - centerZ) * (chunkCenterZ - centerZ);
+               offsets.add(new Offset(dx, dz, centerDistance));
             }
          }
       }
+
       offsets.sort(Comparator.comparingInt(Offset::distanceSquared)
          .thenComparingInt(Offset::dz)
          .thenComparingInt(Offset::dx));
