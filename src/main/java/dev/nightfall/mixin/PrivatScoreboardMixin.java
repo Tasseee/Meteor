@@ -19,7 +19,7 @@ abstract class PrivatScoreboardMixin {
       method = "method_1757(Lnet/minecraft/class_332;Lnet/minecraft/class_266;)V",
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_332;method_51439(Lnet/minecraft/class_327;Lnet/minecraft/class_2561;IIIZ)V",
+         target = "Lnet/minecraft/class_332;method_51439(Lnet/minecraft/class_327;Lnet/minecraft/class_2561;IIIZ)I",
          ordinal = 2
       ),
       index = 1,
