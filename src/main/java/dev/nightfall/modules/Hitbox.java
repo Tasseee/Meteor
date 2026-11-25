@@ -27,7 +27,7 @@ public final class Hitbox extends Module {
 
    public static class_238 expand(class_1297 entity, class_238 original) {
       Hitbox module = instance;
-      if (module == null || !module.isEnabled() || entity == null || original == null) return original;
+      if (module == null || !module.isEnabled() || entity == null || original == null || entity == mc.field_1724) return original;
 
       boolean selected = entity instanceof class_1657
          ? module.players.get()
