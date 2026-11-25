@@ -20,6 +20,7 @@ import net.minecraft.class_2680;
 import net.minecraft.class_304;
 import net.minecraft.class_3532;
 import net.minecraft.class_746;
+import org.lwjgl.glfw.GLFW;
 
 public class AutoPvp extends Module {
    private final NumberSetting follow = this.add(new NumberSetting("Verfolgen bis (Bloecke)", 32.0, 4.0, 48.0, 1.0));
@@ -34,7 +35,7 @@ public class AutoPvp extends Module {
    private final NumberSetting driveBySwitchTicks = this.add(new NumberSetting("Drive-by Seitenwechsel", 2.0, 1.0, 4.0, 1.0));
    private final BoolSetting jump = this.add(new BoolSetting("Springen bei Hindernis", true));
    private final BoolSetting dauerCrit = this.add(new BoolSetting("Dauer-Crit", true));
-   private final BoolSetting useWindchargeMace = this.add(new BoolSetting("Windcharge -> Mace", false));
+   private final BoolSetting useWindchargeMace = this.add(new BoolSetting("Windcharge -> Mace", true));
    private final BoolSetting useShieldBreak = this.add(new BoolSetting("Schild mit Axt kontern", true));
    private final BoolSetting useAutoGap = this.add(new BoolSetting("AutoGap integrieren", true));
    private final BoolSetting useAutoTotem = this.add(new BoolSetting("AutoTotem integrieren", true));
@@ -74,6 +75,9 @@ public class AutoPvp extends Module {
    private int originalSlot = -1;
    private int windSlot = -1;
    private int maceSlot = -1;
+   private boolean windchargeMaceRequested;
+   private boolean windchargeMaceKeyDown;
+   private static final int WINDCHARGE_MACE_KEY = GLFW.GLFW_KEY_R;
    private int critJumpDelayTicks;
    private boolean wasAirborne;
    private int critOrbitDir = 1;
@@ -99,6 +103,10 @@ public class AutoPvp extends Module {
       this.wasAirborne = false;
       this.driveByTimer = 0;
       this.resetCrystalCombo();
+      this.windchargeMaceKeyDown = false;
+      this.windchargeMaceRequested = false;
+      this.windchargeMaceKeyDown = false;
+      this.windchargeMaceRequested = false;
       this.cancelWindchargeMace(true);
       this.releaseShieldAxe();
       this.release();
@@ -401,6 +409,7 @@ public class AutoPvp extends Module {
       this.windchargeMacePhase = AutoPvp.WindchargeMacePhase.NONE;
       this.windchargeMaceTarget = null;
       this.windchargeMaceTicks = 0;
+      this.windchargeMaceRequested = false;
       this.originalSlot = this.windSlot = this.maceSlot = -1;
    }
 
@@ -413,6 +422,11 @@ public class AutoPvp extends Module {
          return false;
       } else {
          if (this.windchargeMacePhase == AutoPvp.WindchargeMacePhase.NONE) {
+            // Start the sequence only after the dedicated hotkey was pressed.
+            if (!this.windchargeMaceRequested) {
+               return false;
+            }
+            this.windchargeMaceRequested = false;
             if (!p.method_24828() || distance < 3.5 || distance > 7.5 || !p.method_6057(target) || !this.clearAbove(p, 4)) {
                return false;
             }
@@ -779,6 +793,13 @@ public class AutoPvp extends Module {
       if (this.pearlUseDelay > 0) this.pearlUseDelay--;
       class_746 p = mc.field_1724;
       if (p != null && mc.field_1755 == null && mc.field_1761 != null && mc.field_1687 != null) {
+         boolean maceKeyDown = mc.method_22683() != null
+            && GLFW.glfwGetKey(mc.method_22683().method_4490(), WINDCHARGE_MACE_KEY) == GLFW.GLFW_PRESS;
+         if (maceKeyDown && !this.windchargeMaceKeyDown) {
+            this.windchargeMaceRequested = true;
+         }
+         this.windchargeMaceKeyDown = maceKeyDown;
+
          class_1657 target = CombatUtil.nearestPlayer(this.follow.get());
          if (target == null) {
             this.resetCritCycle();
