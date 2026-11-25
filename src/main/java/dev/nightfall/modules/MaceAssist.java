@@ -26,6 +26,7 @@ public class MaceAssist extends Module {
    private int prevSlot = -1;
    private int maceSlot = -1;
    private boolean userChangedSlot = false;
+   private boolean swapActive = false;
 
    public MaceAssist() {
       super("MaceAssist", "Mace-Smash: Auto-Switch, Zielerfassung und Angriff bei ausreichender Fallhoehe.", Category.COMBAT);
@@ -52,6 +53,7 @@ public class MaceAssist extends Module {
       this.prevSlot = -1;
       this.maceSlot = -1;
       this.userChangedSlot = false;
+      this.swapActive = false;
    }
 
    public static double smashDamage(double fall) {
@@ -112,15 +114,11 @@ public class MaceAssist extends Module {
          if (!p.method_24828() && !(fall < this.minFall.get()) && !p.method_5799() && !p.method_6128()) {
             class_1309 target = this.findFallingTarget(p);
 
-            if (target != null) {
-               this.aimAt(target, p);
-            }
-
-            // A manual hotbar selection cancels this Mace swap action.
-            if (this.prevSlot >= 0 && InvUtil.selected() != this.maceSlot) {
+            // If the player changes the hotbar slot while our swap is active,
+            // immediately cancel the swap. Never fight the player's selection.
+            if (this.swapActive && InvUtil.selected() != this.maceSlot) {
                this.userChangedSlot = true;
-               this.prevSlot = -1;
-               this.maceSlot = -1;
+               this.swapActive = false;
             }
 
             if (!this.userChangedSlot && !p.method_6047().method_31574(class_1802.field_49814)) {
@@ -136,6 +134,7 @@ public class MaceAssist extends Module {
                if (this.prevSlot < 0) {
                   this.prevSlot = InvUtil.selected();
                   this.maceSlot = s;
+                  this.swapActive = true;
                }
 
                InvUtil.select(s);
@@ -143,17 +142,26 @@ public class MaceAssist extends Module {
 
             this.estimate = smashDamage(fall);
 
-            // Attack at vanilla survival reach without waiting for the cooldown bar
-            // or the Mace's charged state.
-            if (this.autoAttack.get() && target != null
-               && p.method_5739(target) <= Math.min(this.range.get(), 3.0)
-               && p.method_6057(target)
+            // Triggerbot: attack only the entity the player is actually
+            // looking at with the Mace. No forced camera angle and no
+            // requirement to hit the exact center of the target.
+            class_1309 crosshairTarget = mc.field_1692 instanceof class_1309 entity ? entity : null;
+            boolean lookingAtTarget = crosshairTarget != null
+               && crosshairTarget != p
+               && crosshairTarget.method_5805()
+               && p.method_5739(crosshairTarget) <= 3.0
+               && (!(crosshairTarget instanceof class_1657 player)
+                  || (this.players.get() && this.validPlayerTarget(player, p)))
+               && (!(crosshairTarget instanceof class_1657) || this.players.get())
+               && (crosshairTarget instanceof class_1657 || this.mobs.get());
+
+            if (this.autoAttack.get() && lookingAtTarget
                && p.method_18798().field_1351 < -0.03
                && p.method_6047().method_31574(class_1802.field_49814)) {
-               mc.field_1761.method_2918(p, target);
+               mc.field_1761.method_2918(p, crosshairTarget);
                p.method_6104(class_1268.field_5808);
             }
-         } else if (p.method_24828() && (this.prevSlot >= 0 || this.userChangedSlot)) {
+         } else if (p.method_24828() && (this.prevSlot >= 0 || this.userChangedSlot || this.swapActive)) {
             if (this.switchBack.get() && !this.userChangedSlot && InvUtil.selected() == this.maceSlot) {
                InvUtil.select(this.prevSlot);
             }
