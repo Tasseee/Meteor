@@ -160,7 +160,6 @@ public class MaceAssist extends Module {
                && p.method_5739(target) <= Math.min(this.range.get(), 3.0)
                && (p.method_23318() - target.method_23318()) <= 2.2
                && (p.method_23318() - target.method_23318()) >= 0.0
-               && p.field_7512 != null
                && p.method_18798().field_1351 < -0.03;
 
             if (!hitReady) {
