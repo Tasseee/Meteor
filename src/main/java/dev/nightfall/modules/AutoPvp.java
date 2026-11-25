@@ -470,6 +470,8 @@ public class AutoPvp extends Module {
 
                   return true;
                case RISING:
+                  this.steerInAir(p, target);
+                  this.aimAt(target.method_23317(), target.method_23323(0.55), target.method_23321());
                   if (p.method_18798().field_1351 > 0.12) {
                      // Wind Charge has launched the player. From here on,
                      // MaceAssist owns the fall, target tracking and hit timing.
@@ -483,6 +485,7 @@ public class AutoPvp extends Module {
 
                   return true;
                case FALLING:
+                  this.steerInAir(p, target);
                   InvUtil.select(this.maceSlot);
                   this.aimAt(target.method_23317(), target.method_23323(0.55), target.method_23321());
                   if (p.method_18798().field_1351 <= 0.0
@@ -509,6 +512,23 @@ public class AutoPvp extends Module {
             return false;
          }
       }
+   }
+
+   private void steerInAir(class_746 p, class_1657 target) {
+      double dx = target.method_23317() - p.method_23317();
+      double dz = target.method_23321() - p.method_23321();
+      double horizontal = Math.hypot(dx, dz);
+      if (horizontal < 0.15 || horizontal > this.follow.get() + 4.0) return;
+
+      class_243 velocity = p.method_18798();
+      double desiredX = dx / horizontal * 0.42;
+      double desiredZ = dz / horizontal * 0.42;
+      double strength = velocity.field_1351 > 0.0 ? 0.08 : 0.12;
+      double nextX = velocity.field_1352 + (desiredX - velocity.field_1352) * strength;
+      double nextZ = velocity.field_1350 + (desiredZ - velocity.field_1350) * strength;
+
+      // Nur horizontal korrigieren; die Windcharge-/Fallhoehe bleibt unveraendert.
+      p.method_18800(nextX, velocity.field_1351, nextZ);
    }
 
    private class_243 predictLandingPoint(class_1657 target) {
