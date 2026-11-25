@@ -13,10 +13,11 @@ import net.minecraft.class_746;
 public final class ShieldBreaker extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 4.2, 2.0, 6.0, 0.2));
    private final NumberSetting delay = this.add(new NumberSetting("Angriffsintervall (Ticks)", 1.0, 1.0, 8.0, 1.0));
+   private final NumberSetting attacksPerTick = this.add(new NumberSetting("Angriffe pro Tick", 2.0, 1.0, 4.0, 1.0));
    private int cooldown;
 
    public ShieldBreaker() {
-      super("ShieldBreaker", "Schneller Axtwechsel und Angriff gegen blockende Gegner.", Category.COMBAT);
+      super("ShieldBreaker", "Mehrere schnelle Axt-Angriffsversuche gegen blockende Gegner.", Category.COMBAT);
    }
 
    @Override
@@ -40,12 +41,21 @@ public final class ShieldBreaker extends Module {
       int previousSlot = InvUtil.selected();
       if (!InvUtil.select(axeSlot)) return;
 
-      // InvUtil.select sends the held-slot packet immediately. The attack follows
-      // in the same tick, then the original slot is restored without waiting a tick.
-      mc.field_1761.method_2918(player, target);
-      player.method_6104(class_1268.field_5808);
-      if (previousSlot != axeSlot) InvUtil.select(previousSlot);
+      // The axe slot packet is sent before the attack. Multiple attempts are
+      // issued in this client tick; server-side cooldowns may discard extras.
+      int attempts = this.attacksPerTick.getInt();
+      for (int i = 0; i < attempts; i++) {
+         if (!target.method_5805() || !target.method_6039()
+            || player.method_5858(target) > this.range.get() * this.range.get()
+            || !player.method_6057(target)) {
+            break;
+         }
 
+         mc.field_1761.method_2918(player, target);
+         player.method_6104(class_1268.field_5808);
+      }
+
+      if (previousSlot != axeSlot) InvUtil.select(previousSlot);
       this.cooldown = Math.max(0, this.delay.getInt() - 1);
    }
 
