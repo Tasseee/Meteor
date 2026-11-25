@@ -153,7 +153,7 @@ public class MaceAssist extends Module {
                mc.field_1761.method_2918(p, target);
                p.method_6104(class_1268.field_5808);
             }
-         } else if (p.method_24828() && this.prevSlot >= 0) {
+         } else if (p.method_24828() && (this.prevSlot >= 0 || this.userChangedSlot)) {
             if (this.switchBack.get() && !this.userChangedSlot && InvUtil.selected() == this.maceSlot) {
                InvUtil.select(this.prevSlot);
             }
