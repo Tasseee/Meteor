@@ -23,7 +23,8 @@
     "FakeNameChatMixin",
     "FakeNamePlayerListMixin",
     "FakeNamePlayerRendererMixin",
-    "FreeLookMouseMixin"
+    "FreeLookMouseMixin",
+    "EntityHitboxMixin"
   ],
   "injectors": {
     "defaultRequire": 1
