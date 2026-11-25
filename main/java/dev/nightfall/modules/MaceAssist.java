@@ -10,12 +10,14 @@ import net.minecraft.class_1268;
 import net.minecraft.class_1309;
 import net.minecraft.class_1657;
 import net.minecraft.class_1802;
+import net.minecraft.class_243;
 import net.minecraft.class_3532;
 import net.minecraft.class_746;
 
 public class MaceAssist extends Module {
    private final NumberSetting minFall = this.add(new NumberSetting("Min. Fallhoehe", 1.5, 1.5, 20.0, 0.5));
-   private final NumberSetting range = this.add(new NumberSetting("Angriffs-Reichweite", 3.2, 1.0, 6.0, 0.1));
+   private final NumberSetting range = this.add(new NumberSetting("Angriffs-Reichweite", 3.0, 1.0, 6.0, 0.1));
+   private final NumberSetting aimRange = this.add(new NumberSetting("Aim-Reichweite", 6.0, 3.0, 12.0, 0.1));
    private final NumberSetting hitDelay = this.add(new NumberSetting("Hit-Verzoegerung (Ticks)", 0.0, 0.0, 20.0, 1.0));
    private final BoolSetting visibleOnly = this.add(new BoolSetting("Nur sichtbares Ziel", true));
    private final BoolSetting autoSwitch = this.add(new BoolSetting("Auto-Switch zur Mace", true));
@@ -67,7 +69,7 @@ public class MaceAssist extends Module {
          && p.method_5805()
          && !p.method_7325()
          && !CombatUtil.isFriend(p)
-         && p.method_5739(me) <= this.range.get()
+         && p.method_5739(me) <= this.aimRange.get()
          && (!this.visibleOnly.get() || me.method_6057(p));
    }
 
@@ -116,6 +118,23 @@ public class MaceAssist extends Module {
 
             if (target != null) {
                this.aimAt(target, p);
+
+               // Bereits vor der normalen Hit-Distanz horizontal zum aktuellen
+               // Zielpunkt ziehen. Die vertikale Windcharge-/Fallbewegung bleibt erhalten.
+               if (!p.method_24828()) {
+                  double dx = target.method_23317() - p.method_23317();
+                  double dz = target.method_23321() - p.method_23321();
+                  double horizontal = Math.hypot(dx, dz);
+                  if (horizontal > 0.15 && horizontal <= this.aimRange.get() + 2.0) {
+                     class_243 velocity = p.method_18798();
+                     double desiredX = dx / horizontal * 0.42;
+                     double desiredZ = dz / horizontal * 0.42;
+                     double steer = 0.10;
+                     double nextX = velocity.field_1352 + (desiredX - velocity.field_1352) * steer;
+                     double nextZ = velocity.field_1350 + (desiredZ - velocity.field_1350) * steer;
+                     p.method_18800(nextX, velocity.field_1351, nextZ);
+                  }
+               }
             }
 
             if (!p.method_6047().method_31574(class_1802.field_49814)) {
@@ -138,7 +157,7 @@ public class MaceAssist extends Module {
             this.estimate = smashDamage(fall);
 
             boolean hitReady = target != null
-               && p.method_5739(target) <= this.range.get()
+               && p.method_5739(target) <= Math.min(this.range.get(), 3.0)
                && (p.method_23318() - target.method_23318()) <= 2.2
                && (p.method_23318() - target.method_23318()) >= 0.0
                && p.method_7261(0.5F) >= 0.95F
