@@ -6,46 +6,47 @@ import net.minecraft.class_2561;
 import net.minecraft.class_329;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.ModifyArgs;
+import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 /**
- * Obfuscates only the right-hand score Text in Minecraft 1.21.11's sidebar.
- * In displayScoreboardSidebar, Text draw calls are: title (0), row name (1),
- * score value (2). This injection targets only the score value.
+ * Obfuscates the actual score Text while Minecraft creates each sidebar row.
+ * The SidebarEntry constructor arguments are (label, score, scoreWidth).
+ *
+ * We modify only argument 1. The original scoreWidth (argument 2) is left
+ * untouched, so the value keeps the exact vanilla right-aligned position.
  */
 @Mixin(class_329.class)
 abstract class PrivatScoreboardMixin {
-   @ModifyArg(
-      method = "method_1757(Lnet/minecraft/class_332;Lnet/minecraft/class_266;)V",
+   @ModifyArgs(
+      method = "method_55439(Lnet/minecraft/class_269;Lnet/minecraft/class_9022;Lnet/minecraft/class_9011;)Lnet/minecraft/class_329$class_9016;",
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_332;method_51439(Lnet/minecraft/class_327;Lnet/minecraft/class_2561;IIIZ)I",
-         ordinal = 2
+         target = "Lnet/minecraft/class_329$class_9016;<init>(Lnet/minecraft/class_2561;Lnet/minecraft/class_2561;I)V"
       ),
-      index = 1,
       require = 1
    )
-   private class_2561 nightfall$obfuscateRightScore(class_2561 originalValue) {
-      if (originalValue == null || originalValue.getString().isEmpty()
-         || !containsDigit(originalValue.getString()) || !privatEnabled()) {
-         return originalValue;
-      }
-
-      // §k / Formatting.OBFUSCATED: preserve the original Text and all its
-      // colors/components, changing only the rendered glyphs.
-      // The underlying text and measured width remain unchanged, so the
-      // right-aligned score does not move to the left.
-      return originalValue.method_27662()
-         .method_10862(originalValue.method_10866().method_36141(true));
-   }
-
-   private static boolean privatEnabled() {
+   private void nightfall$obfuscateSidebarScore(Args args) {
+      Privat privat;
       try {
-         Privat privat = ModuleManager.get(Privat.class);
-         return privat != null && privat.isEnabled();
+         privat = ModuleManager.get(Privat.class);
       } catch (Throwable ignored) {
-         return false;
+         return;
       }
+
+      if (privat == null || !privat.isEnabled()) return;
+
+      class_2561 originalValue = (class_2561) args.get(1);
+      if (originalValue == null) return;
+
+      String raw = originalValue.getString();
+      if (raw == null || raw.isEmpty() || !containsDigit(raw)) return;
+
+      // §k is stored as the native Text Style obfuscated flag. Keep the
+      // original component, colors and exact scoreWidth to avoid left-shifting.
+      class_2561 obfuscated = originalValue.method_27662()
+         .method_10862(originalValue.method_10866().method_36141(true));
+      args.set(1, obfuscated);
    }
 
    private static boolean containsDigit(String value) {
