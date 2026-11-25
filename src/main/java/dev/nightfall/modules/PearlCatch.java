@@ -23,6 +23,7 @@ public final class PearlCatch extends Module {
    private float originalYaw;
    private float originalPitch;
    private boolean savedView;
+   private boolean prepared;
    private boolean pearlUsed;
 
    public PearlCatch() {
@@ -50,6 +51,7 @@ public final class PearlCatch extends Module {
       this.originalYaw = player.method_36454();
       this.originalPitch = player.method_36455();
       this.savedView = true;
+      this.prepared = false;
       this.pearlUsed = false;
       this.waitTicks = 0;
 
@@ -62,6 +64,12 @@ public final class PearlCatch extends Module {
       class_746 player = mc.field_1724;
       if (player == null || mc.field_1761 == null || mc.field_1687 == null) {
          this.setEnabled(false);
+         return;
+      }
+
+      // Let the normal player tick send the upward rotation before the pearl-use packet.
+      if (!this.prepared) {
+         this.prepared = true;
          return;
       }
 
@@ -99,6 +107,7 @@ public final class PearlCatch extends Module {
       this.originalSlot = -1;
       this.waitTicks = 0;
       this.savedView = false;
+      this.prepared = false;
       this.pearlUsed = false;
    }
 
