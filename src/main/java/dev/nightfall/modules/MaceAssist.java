@@ -24,6 +24,8 @@ public class MaceAssist extends Module {
    private final BoolSetting mobs = this.add(new BoolSetting("Mobs", false));
    public double estimate;
    private int prevSlot = -1;
+   private int maceSlot = -1;
+   private boolean userChangedSlot = false;
 
    public MaceAssist() {
       super("MaceAssist", "Mace-Smash: Auto-Switch, Zielerfassung und Angriff bei ausreichender Fallhoehe.", Category.COMBAT);
@@ -42,11 +44,14 @@ public class MaceAssist extends Module {
    }
 
    private void restoreSlot() {
-      if (this.switchBack.get() && this.prevSlot >= 0 && mc.field_1724 != null) {
+      if (this.switchBack.get() && this.prevSlot >= 0 && mc.field_1724 != null
+         && !this.userChangedSlot && InvUtil.selected() == this.maceSlot) {
          InvUtil.select(this.prevSlot);
       }
 
       this.prevSlot = -1;
+      this.maceSlot = -1;
+      this.userChangedSlot = false;
    }
 
    public static double smashDamage(double fall) {
@@ -111,7 +116,14 @@ public class MaceAssist extends Module {
                this.aimAt(target, p);
             }
 
-            if (!p.method_6047().method_31574(class_1802.field_49814)) {
+            // A manual hotbar selection cancels this Mace swap action.
+            if (this.prevSlot >= 0 && InvUtil.selected() != this.maceSlot) {
+               this.userChangedSlot = true;
+               this.prevSlot = -1;
+               this.maceSlot = -1;
+            }
+
+            if (!this.userChangedSlot && !p.method_6047().method_31574(class_1802.field_49814)) {
                if (!this.autoSwitch.get()) {
                   return;
                }
@@ -123,6 +135,7 @@ public class MaceAssist extends Module {
 
                if (this.prevSlot < 0) {
                   this.prevSlot = InvUtil.selected();
+                  this.maceSlot = s;
                }
 
                InvUtil.select(s);
@@ -130,17 +143,23 @@ public class MaceAssist extends Module {
 
             this.estimate = smashDamage(fall);
 
+            // Attack at vanilla survival reach without waiting for the cooldown bar
+            // or the Mace's charged state.
             if (this.autoAttack.get() && target != null
-               && p.method_5739(target) <= this.range.get()
-               && p.method_7261(0.5F) >= 0.95F
-               && p.field_7512 != null
-               && p.method_18798().field_1351 < -0.03) {
+               && p.method_5739(target) <= Math.min(this.range.get(), 3.0)
+               && p.method_6057(target)
+               && p.method_18798().field_1351 < -0.03
+               && p.method_6047().method_31574(class_1802.field_49814)) {
                mc.field_1761.method_2918(p, target);
                p.method_6104(class_1268.field_5808);
             }
-         } else if (p.method_24828() && this.prevSlot >= 0 && this.switchBack.get()) {
-            InvUtil.select(this.prevSlot);
+         } else if (p.method_24828() && this.prevSlot >= 0) {
+            if (this.switchBack.get() && !this.userChangedSlot && InvUtil.selected() == this.maceSlot) {
+               InvUtil.select(this.prevSlot);
+            }
             this.prevSlot = -1;
+            this.maceSlot = -1;
+            this.userChangedSlot = false;
          }
       }
    }
