@@ -10,6 +10,7 @@ import dev.nightfall.module.setting.ListSetting;
 import dev.nightfall.module.setting.MessageListSetting;
 import dev.nightfall.module.setting.ModeSetting;
 import dev.nightfall.module.setting.NumberSetting;
+import dev.nightfall.module.setting.KeySetting;
 import dev.nightfall.module.setting.Setting;
 import dev.nightfall.module.setting.StringSetting;
 import dev.nightfall.modules.GUITheme;
@@ -64,6 +65,7 @@ public final class NightfallGuiScreen extends class_437 {
    private boolean searchFocused;
    private boolean favoritesOnly;
    private Module bindingModule;
+   private KeySetting bindingSetting;
    private NumberSetting numberSlider;
    private int numberSliderX;
    private int numberSliderW;
@@ -118,7 +120,24 @@ public final class NightfallGuiScreen extends class_437 {
 
    public boolean method_25404(class_11908 input) {
       int key = input.comp_4795();
-      if (this.bindingModule != null) {
+      if (this.bindingSetting != null) {
+         if (key == 256) {
+            this.bindingSetting = null;
+            return true;
+         } else if (key == 259 || key == 261) {
+            this.bindingSetting.set(-1);
+            this.bindingSetting = null;
+            Config.save();
+            this.showFeedback("Taste entfernt");
+            return true;
+         } else {
+            this.bindingSetting.set(key);
+            this.showFeedback(this.bindingSetting.getName() + " · " + keyLabel(key));
+            this.bindingSetting = null;
+            Config.save();
+            return true;
+         }
+      } else if (this.bindingModule != null) {
          if (key == 256) {
             this.bindingModule = null;
             return true;
@@ -1093,6 +1112,22 @@ public final class NightfallGuiScreen extends class_437 {
          } else if (rightClick && over) {
             n.set(n.get() - n.step);
             Config.save();
+         }
+      } else if (s instanceof KeySetting k) {
+         String value = this.bindingSetting == k ? "PRESS..." : keyLabel(k.get());
+         int boxW = Math.min(92, Math.max(58, w - 104));
+         int boxX = x + w - boxW - 5;
+         int boxY = y + 4;
+         ctx.method_51433(mc.field_1772, k.getName(), x + 5, y + 7, Theme.TEXT_DIM, false);
+         roundedRect(ctx, boxX, boxY, boxW, 14, 6,
+            this.bindingSetting == k ? Theme.withAlpha(Theme.ACCENT, 170) : 1715222344);
+         int valueW = mc.field_1772.method_1727(value);
+         ctx.method_51433(mc.field_1772, value, boxX + Math.max(4, (boxW - valueW) / 2), y + 7,
+            this.bindingSetting == k ? Theme.TEXT : Theme.TEXT_DIM, false);
+         if (click && over) {
+            this.bindingSetting = k;
+            this.bindingModule = null;
+            this.searchFocused = false;
          }
       } else if (s instanceof ColorSetting c) {
          ctx.method_51433(mc.field_1772, c.getName(), x + 5, y + 7, Theme.TEXT_DIM, false);
