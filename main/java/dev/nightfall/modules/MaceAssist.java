@@ -16,6 +16,7 @@ import net.minecraft.class_746;
 public class MaceAssist extends Module {
    private final NumberSetting minFall = this.add(new NumberSetting("Min. Fallhoehe", 1.5, 1.5, 20.0, 0.5));
    private final NumberSetting range = this.add(new NumberSetting("Angriffs-Reichweite", 3.2, 1.0, 6.0, 0.1));
+   private final NumberSetting hitDelay = this.add(new NumberSetting("Hit-Verzoegerung (Ticks)", 0.0, 0.0, 20.0, 1.0));
    private final BoolSetting visibleOnly = this.add(new BoolSetting("Nur sichtbares Ziel", true));
    private final BoolSetting autoSwitch = this.add(new BoolSetting("Auto-Switch zur Mace", true));
    private final BoolSetting switchBack = this.add(new BoolSetting("Zurueckwechseln", true));
@@ -24,6 +25,8 @@ public class MaceAssist extends Module {
    private final BoolSetting mobs = this.add(new BoolSetting("Mobs", false));
    public double estimate;
    private int prevSlot = -1;
+   private int readyTicks;
+   private int readyTargetId = -1;
 
    public MaceAssist() {
       super("MaceAssist", "Mace-Smash: Auto-Switch, Zielerfassung und Angriff bei ausreichender Fallhoehe.", Category.COMBAT);
@@ -33,12 +36,16 @@ public class MaceAssist extends Module {
    protected void onDisable() {
       this.restoreSlot();
       this.estimate = 0.0;
+      this.readyTicks = 0;
+      this.readyTargetId = -1;
    }
 
    @Override
    public void onWorldLeave() {
       this.restoreSlot();
       this.estimate = 0.0;
+      this.readyTicks = 0;
+      this.readyTargetId = -1;
    }
 
    private void restoreSlot() {
@@ -130,15 +137,34 @@ public class MaceAssist extends Module {
 
             this.estimate = smashDamage(fall);
 
-            if (this.autoAttack.get() && target != null
+            boolean hitReady = target != null
                && p.method_5739(target) <= this.range.get()
                && (p.method_23318() - target.method_23318()) <= 2.2
                && (p.method_23318() - target.method_23318()) >= 0.0
                && p.method_7261(0.5F) >= 0.95F
                && p.field_7512 != null
-               && p.method_18798().field_1351 < -0.03) {
-               mc.field_1761.method_2918(p, target);
-               p.method_6104(class_1268.field_5808);
+               && p.method_18798().field_1351 < -0.03;
+
+            if (!hitReady) {
+               this.readyTicks = 0;
+               this.readyTargetId = -1;
+            } else {
+               int targetId = target.method_5628();
+               if (this.readyTargetId != targetId) {
+                  this.readyTargetId = targetId;
+                  this.readyTicks = 0;
+               }
+
+               // Start counting only once the target is actually in the hit-ready
+               // state. The configurable delay therefore happens after range,
+               // height and attack-readiness have been detected.
+               this.readyTicks++;
+
+               if (this.autoAttack.get() && this.readyTicks > this.hitDelay.getInt()) {
+                  mc.field_1761.method_2918(p, target);
+                  p.method_6104(class_1268.field_5808);
+                  this.readyTicks = 0;
+               }
             }
          } else if (p.method_24828() && this.prevSlot >= 0 && this.switchBack.get()) {
             InvUtil.select(this.prevSlot);
