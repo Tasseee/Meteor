@@ -41,6 +41,7 @@ public final class BlockESP extends Module {
    private final BoolSetting ancient = this.add(new BoolSetting("Antiker Schrott", true));
    private final BoolSetting chests = this.add(new BoolSetting("Kisten", true));
    private final BoolSetting spawners = this.add(new BoolSetting("Spawner", true));
+   private final BoolSetting memory = this.add(new BoolSetting("Gedaechtnis-Chunks (Momentaufnahme)", false));
    private final BoolSetting obsidian = this.add(new BoolSetting("Obsidian", false));
    private final BoolSetting gold = this.add(new BoolSetting("Golderz", false));
    private final BoolSetting emerald = this.add(new BoolSetting("Smaragderz", false));
@@ -147,8 +148,11 @@ public final class BlockESP extends Module {
 
          for (int cx = minX >> 4; cx <= maxX >> 4 && this.found.size() < cap; cx++) {
             for (int cz = minZ >> 4; cz <= maxZ >> 4 && this.found.size() < cap; cz++) {
-               class_2818 chunk = ChunkMemory.getAvailableChunk(cx, cz);
+               class_2818 chunk = ChunkMemory.chunk(cx, cz, this.memory.get());
                if (chunk != null) {
+                  long occupiedMask = ChunkMemory.occupiedMask(chunk);
+                  int bottomY = mc.field_1687.method_31607();
+                  if (!ChunkMemory.anyOccupied(occupiedMask, bottomY, minY, maxY)) continue;
                   int sx = Math.max(minX, cx << 4);
                   int ex = Math.min(maxX, (cx << 4) + 15);
                   int sz = Math.max(minZ, cz << 4);
@@ -161,6 +165,7 @@ public final class BlockESP extends Module {
                         int horizontalDistanceSquared = dx * dx + dz * dz;
                         if (horizontalDistanceSquared > radiusSquared) continue;
                         for (int y = minY; y <= maxY && this.found.size() < cap; y++) {
+                           if (!ChunkMemory.sectionOccupied(occupiedMask, bottomY, y)) { y += 15 - ((y - bottomY) & 15); continue; }
                            int dy = y - p.method_10264();
                            if (horizontalDistanceSquared + dy * dy > radiusSquared) continue;
                            class_2680 state = ChunkMemory.getBlockState(chunk, x, y, z);

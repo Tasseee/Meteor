@@ -1,538 +1,188 @@
 package dev.nightfall.modules;
-
+import dev.nightfall.Nightfall;
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
-import dev.nightfall.util.Storage;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import dev.nightfall.scanner.ChunkStore;
 import net.minecraft.class_243;
 import net.minecraft.class_2680;
 import net.minecraft.class_2818;
 import net.minecraft.class_2826;
-import net.minecraft.class_332;
 import net.minecraft.class_638;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
-/**
- * Shared session cache for client chunks that are already present locally.
- *
- * All chunk-manager reads are lookup-only. This module never asks the server
- * for a chunk, force-loads a chunk, changes the player, or replaces the render
- * camera. Other modules can use getAvailableChunk/getBlockState as a common API.
- */
+/** Shared, bounded memory for chunks already received by the client. No chunk requests or force-loads. */
 public final class ChunkMemory extends Module {
-   private static final Map<Long, CachedChunk> CACHE = new LinkedHashMap<>(256, 0.75F, true);
-   private static final Map<Long, Long> NEXT_LOOKUP_TICK = new LinkedHashMap<>(256, 0.75F, true);
-   private static final int MAX_LOOKUP_SCHEDULES = 8192;
-
-   private static class_638 cacheWorld;
-   private static String cacheContext;
-   private static long sessionTick;
-   private static long maxCacheAgeTicks = 24_000L;
-
-   private final NumberSetting range = this.add(
-      new NumberSetting("Scan-Radius (Bloecke)", 50.0, 30.0, 200.0, 1.0)
-   );
-   private final NumberSetting scanSpeed = this.add(
-      new NumberSetting("Scan-Budget (Chunks/Tick)", 8.0, 1.0, 64.0, 1.0)
-   );
-   private final NumberSetting maxChunks = this.add(
-      new NumberSetting("Max. gespeicherte Chunks", 1024.0, 64.0, 4096.0, 64.0)
-   );
-   private final NumberSetting maxAgeMinutes = this.add(
-      new NumberSetting("Cache-Lebensdauer (Minuten)", 20.0, 1.0, 120.0, 1.0)
-   );
-   private final NumberSetting lookupRetrySeconds = this.add(
-      new NumberSetting("Wiederholungsintervall (Sekunden)", 2.0, 1.0, 15.0, 1.0)
-   );
-   private final BoolSetting useBackgroundFreecam = this.add(
-      new BoolSetting("BackgroundFreecam als Zentrum", true)
-   );
-   private final BoolSetting useFreecamPosition = this.add(
-      new BoolSetting("Manuelle Freecam als Ersatz", true)
-   );
-   private final BoolSetting pauseScan = this.add(
-      new BoolSetting("Chunk-Scan pausieren", false)
-   );
-
-   private int centerChunkX = Integer.MIN_VALUE;
-   private int centerChunkZ = Integer.MIN_VALUE;
-   private int pathRange = -1;
-   private List<Offset> scanPath = List.of();
-   private int scanCursor;
-   private int lastLookups;
-   private int lastLoaded;
-   private int lastNewEntries;
-   private int lastCachedFallbacks;
-   private int lastRetrySkips;
-   private int lastPruned;
-   private String centerSource = "Spieler";
-   private boolean startedBackgroundFreecam;
-
-   public ChunkMemory() {
-      super(
-         "ChunkMemory",
-         "Session-Cache fuer bereits empfangene Chunks mit gemeinsamer API und BackgroundFreecam-Scan.",
-         Category.WORLD
-      );
+   public enum ChunkState{UNAVAILABLE,LOADED,STALE,REMEMBERED}
+   public enum ScanStatus{OFF,ACTIVE,IDLE,WAITING,PAUSED}
+   public interface RememberedVisitor{void visit(int cx,int cz,class_2818 chunk,long ageTicks);}
+   public record CachedChunk(int cx,int cz,class_2818 chunk,long capturedAtTick,long lastAccessTick){}
+   private static final int PRIORITY_NEAREST=0,PRIORITY_NEW_FIRST=1,PRIORITY_STALE_FIRST=2;
+   private static final int VALIDATE_PER_TICK=24,MAINTENANCE_INTERVAL=100;
+   private static ChunkMemory instance;
+   private final NumberSetting limit=add(new NumberSetting("Max. Gedaechtnis-Chunks",256,0,2048,32));
+   private final NumberSetting budget=add(new NumberSetting("Scan-Budget (Chunks/Tick)",32,4,256,4));
+   private final NumberSetting ttl=add(new NumberSetting("Aktualitaet (Sek.)",30,5,300,5));
+   private final NumberSetting forget=add(new NumberSetting("Vergessen nach (Min.)",10,0,60,1));
+   private final NumberSetting passiveRadius=add(new NumberSetting("Passiver Radius (Chunks)",10,2,32,1));
+   private final BoolSetting debug=add(new BoolSetting("Debug-Log",false));
+   private final ChunkStore<class_2818> store=new ChunkStore<>();
+   private final ChunkStore.Live<class_2818> liveLookup=this::liveChunk;
+   private class_638 world;private long tick,worldEpoch;
+   private boolean publishedPending,pubPaused,driven;private int pubPriority,pubRadius,curCenterCx,curCenterCz,curRadius;
+   private double pubX,pubZ;private boolean curPaused;
+   private int[] disc=new int[0];private int discSize,discRadius=-1,cursor,pass;
+   private int anchorCx=Integer.MIN_VALUE,anchorCz=Integer.MIN_VALUE,lastRadius=-1;
+   private int unavailableThisSweep,lastSweepUnavailable;private long lastActiveTick=-1000L;
+   private long checkedTotal,newTotal,refreshedTotal,surveyedTotal,skippedFreshTotal,sweepsDone;
+   private int surveyedLastTick,surveyedRateWindow,ratePerSec;private long lastTickNanos;
+   private ScanStatus status=ScanStatus.OFF;
+   public ChunkMemory(){super("ChunkMemory","Session-Cache fuer bereits empfangene Chunks; begrenztes Scan-Budget, keine Chunk-Anfragen.",Category.WORLD);instance=this;}
+   @Override protected void onEnable(){resetAll();}
+   @Override protected void onDisable(){resetAll();status=ScanStatus.OFF;}
+   @Override public void onWorldLeave(){resetAll();}
+   private void resetAll(){
+      store.clear();world=null;worldEpoch++;cursor=pass=0;anchorCx=anchorCz=Integer.MIN_VALUE;lastRadius=-1;
+      unavailableThisSweep=lastSweepUnavailable=0;lastActiveTick=-1000L;
+      checkedTotal=newTotal=refreshedTotal=surveyedTotal=skippedFreshTotal=sweepsDone=0L;
+      surveyedLastTick=surveyedRateWindow=ratePerSec=0;publishedPending=driven=false;status=ScanStatus.IDLE;
    }
-
-   @Override
-   protected void onEnable() {
-      this.startedBackgroundFreecam = false;
-      this.syncBackgroundFreecam();
-   }
-
-   @Override
-   protected void onDisable() {
-      if (this.startedBackgroundFreecam) {
-         try {
-            BackgroundFreecam camera = ModuleManager.get(BackgroundFreecam.class);
-            if (camera.isEnabled()) camera.setEnabled(false);
-         } catch (IllegalStateException ignored) {
-         }
+   @Override public void onTick(){
+      class_638 w=mc.field_1687;if(w==null||mc.field_1724==null)return;long started=System.nanoTime();
+      if(w!=world){resetAll();world=w;}tick++;store.setLimit(limit.getInt());
+      driven=publishedPending;publishedPending=false;
+      if(driven){curCenterCx=(int)Math.floor(pubX)>>4;curCenterCz=(int)Math.floor(pubZ)>>4;curRadius=pubRadius;curPaused=pubPaused;}
+      else{curCenterCx=(int)Math.floor(mc.field_1724.method_23317())>>4;curCenterCz=(int)Math.floor(mc.field_1724.method_23321())>>4;curRadius=passiveRadius.getInt();curPaused=false;}
+      store.validate(liveLookup,VALIDATE_PER_TICK,tick);
+      if(tick%MAINTENANCE_INTERVAL==0L){int m=forget.getInt();if(m>0)store.expire(tick,m*60L*20L);if(debug.get())logStats();}
+      surveyedLastTick=0;
+      if(curPaused)status=ScanStatus.PAUSED;
+      else{ sweep(w,driven?pubPriority:PRIORITY_NEAREST);surveyedRateWindow+=surveyedLastTick;
+         if(surveyedLastTick>0)lastActiveTick=tick;
+         if(tick-lastActiveTick<=10L)status=ScanStatus.ACTIVE;
+         else if(lastSweepUnavailable>0&&store.loadedCount()==0)status=ScanStatus.WAITING;else status=ScanStatus.IDLE;
       }
-      this.startedBackgroundFreecam = false;
-      // Disabling memory must also release cached world references. Other
-      // modules then transparently fall back to currently loaded chunks.
-      clearSessionCache();
-      this.resetScanPath();
-      this.lastLookups = 0;
-      this.lastLoaded = 0;
-      this.lastNewEntries = 0;
-      this.lastCachedFallbacks = 0;
-      this.lastRetrySkips = 0;
-      this.lastPruned = 0;
+      if(tick%20L==0L){ratePerSec=surveyedRateWindow;surveyedRateWindow=0;}
+      lastTickNanos=System.nanoTime()-started;
+   }
+   private class_2818 liveChunk(int x,int z){class_638 w=world;return w==null?null:w.method_2935().method_21730(x,z);}
+   private void ensureDisc(int r){
+      if(r==discRadius)return;int[] temp=new int[(2*r+1)*(2*r+1)];long[] keys=new long[temp.length];int n=0;
+      for(int dz=-r;dz<=r;dz++)for(int dx=-r;dx<=r;dx++){int d=dx*dx+dz*dz;if(d<=r*r)keys[n++]=((long)d<<32)|((long)((dx+64)&255)<<8)|((dz+64)&255);}
+      java.util.Arrays.sort(keys,0,n);for(int i=0;i<n;i++){int dx=(int)(keys[i]>>8&255)-64,dz=(int)(keys[i]&255)-64;temp[i]=(dx&65535)|(dz<<16);}
+      disc=temp;discSize=n;discRadius=r;cursor=pass=0;
+   }
+   /** Keep a stable anchor through a full pass; moving between chunks cannot starve the outer ring. */
+   private void sweep(class_638 w,int priority){
+      int r=Math.max(1,Math.min(32,curRadius));ensureDisc(r);
+      if(anchorCx==Integer.MIN_VALUE||anchorCz==Integer.MIN_VALUE||r!=lastRadius){anchorCx=curCenterCx;anchorCz=curCenterCz;lastRadius=r;cursor=pass=0;}
+      int passes=priority==PRIORITY_NEAREST?1:2,b=budget.getInt(),maxChecks=Math.min(1024,b*8+64);
+      long ttlTicks=ttl.getInt()*20L;int checks=0,surveyed=0;
+      while(checks<maxChecks&&surveyed<b){
+         if(cursor>=discSize){cursor=0;pass++;if(pass>=passes){pass=0;sweepsDone++;lastSweepUnavailable=unavailableThisSweep;unavailableThisSweep=0;anchorCx=curCenterCx;anchorCz=curCenterCz;break;}}
+         int p=disc[cursor++],cx=anchorCx+(short)(p&65535),cz=anchorCz+(p>>16);checks++;checkedTotal++;
+         long k=ChunkStore.key(cx,cz);class_2818 live=w.method_2935().method_21730(cx,cz);ChunkStore.Entry<class_2818> e=store.loadedEntry(k);
+         if(live==null){if(e!=null)store.unload(e,tick);unavailableThisSweep++;continue;}
+         boolean freshNew=e==null;if(!freshNew&&e.chunk!=live)e=store.adopt(cx,cz,live);
+         if(!freshNew&&e.surveyTick>=0L&&tick-e.surveyTick<ttlTicks){skippedFreshTotal++;continue;}
+         boolean accept=switch(priority){case PRIORITY_NEW_FIRST->pass==0?freshNew:!freshNew;case PRIORITY_STALE_FIRST->pass==0?!freshNew:freshNew;default->true;};
+         if(!accept)continue;if(freshNew){e=store.adopt(cx,cz,live);newTotal++;}else refreshedTotal++;
+         survey(e,live);surveyed++;
+      }surveyedLastTick=surveyed;
+   }
+   private void survey(ChunkStore.Entry<class_2818> e,class_2818 c){long m=occupiedMask(c);if(m!=e.mask){e.mask=m;e.version++;}e.surveyTick=tick;e.surveys++;surveyedTotal++;}
+   private void logStats(){
+      Nightfall.LOGGER.info("[ChunkMemory] geladen={} gemerkt={}/{} geprueft={} neu={} aktualisiert={} frisch-uebersprungen={} verdraengt={} verworfen={} ungueltig={} sweeps={} tick={}us",
+         store.loadedCount(),store.rememberedCount(),store.limit(),checkedTotal,newTotal,refreshedTotal,skippedFreshTotal,
+         store.evicted,store.unloaded,store.invalidated,sweepsDone,lastTickNanos/1000L);
+   }
+   static void publishScan(double x,double z,int radius,int priority,boolean paused){
+      ChunkMemory m=instance;if(m==null)return;m.pubX=x;m.pubZ=z;m.pubRadius=radius;m.pubPriority=priority;m.pubPaused=paused;m.publishedPending=true;
+   }
+   public static boolean isRunning(){return instance!=null&&instance.isEnabled()&&instance.world!=null;}
+   public static long worldEpoch(){return instance==null?0L:instance.worldEpoch;}
+   /** Live client chunk lookup; no load request. */
+   public static class_2818 loaded(int x,int z){
+      class_638 w=mc.field_1687;class_2818 c=w==null?null:w.method_2935().method_21730(x,z);
+      ChunkMemory m=instance;if(c!=null&&m!=null&&m.isEnabled()&&m.world==w)m.store.adopt(x,z,c);return c;
+   }
+   public static class_2818 chunk(int x,int z,boolean remembered){
+      class_2818 c=loaded(x,z);if(c!=null||!remembered)return c;
+      ChunkMemory m=instance;if(m==null||!m.isEnabled()||m.world==null||m.world!=mc.field_1687)return null;
+      ChunkStore.Entry<class_2818> e=m.store.rememberedEntry(ChunkStore.key(x,z),true);return e==null?null:e.chunk;
+   }
+   public static ChunkState stateOf(int x,int z){
+      class_2818 c=loaded(x,z);ChunkMemory m=instance;
+      if(c!=null){if(m!=null&&m.isEnabled()&&m.world!=null){ChunkStore.Entry<class_2818> e=m.store.loadedEntry(ChunkStore.key(x,z));
+         if(e!=null&&e.surveyTick>=0L&&m.tick-e.surveyTick<m.ttl.getInt()*20L&&e.chunk==c)return ChunkState.LOADED;}return ChunkState.STALE;}
+      return m!=null&&m.isEnabled()&&m.world!=null&&m.store.rememberedEntry(ChunkStore.key(x,z),false)!=null?ChunkState.REMEMBERED:ChunkState.UNAVAILABLE;
+   }
+   public static int version(int x,int z){
+      ChunkMemory m=instance;if(m==null||!m.isEnabled()||m.world==null)return 0;long k=ChunkStore.key(x,z);
+      ChunkStore.Entry<class_2818> e=m.store.loadedEntry(k);if(e==null)e=m.store.rememberedEntry(k,false);return e==null?0:e.version;
+   }
+   public static long ageTicks(int x,int z){
+      ChunkMemory m=instance;if(m==null||m.world==null)return Long.MAX_VALUE;ChunkStore.Entry<class_2818> e=m.store.loadedEntry(ChunkStore.key(x,z));
+      return e==null||e.surveyTick<0L?Long.MAX_VALUE:m.tick-e.surveyTick;
+   }
+   public static int interest(int x,int z,int minY,int maxY){
+      ChunkMemory m=instance;if(m==null||m.world==null)return -1;ChunkStore.Entry<class_2818> e=m.store.loadedEntry(ChunkStore.key(x,z));
+      if(e==null||e.surveyTick<0L)return -1;int b=m.world.method_31607(),lo=Math.max(0,(minY-b)>>4),hi=Math.min(63,(maxY-b)>>4);if(hi<lo)return 0;
+      long bits=(hi>=63?-1L:(1L<<(hi+1))-1L)&-(1L<<lo);return Long.bitCount(e.mask&bits);
+   }
+   public static void forEachRemembered(RememberedVisitor v){
+      ChunkMemory m=instance;if(m==null||!m.isEnabled()||m.world==null)return;long now=m.tick;
+      m.store.forEachRemembered(e->{if(e.chunk!=null)v.visit(e.cx,e.cz,e.chunk,now-e.unloadTick);});
+   }
+   public static long occupiedMask(class_2818 c){
+      if(c==null)return 0L;class_2826[] s=c.method_12006();int n=Math.min(s.length,64);long m=0L;
+      for(int i=0;i<n;i++)if(s[i]!=null&&!s[i].method_38292())m|=1L<<i;return m;
+   }
+   public static boolean sectionOccupied(long mask,int bottomY,int y){int i=(y-bottomY)>>4;return i>=0&&(i>=64||((mask>>>i)&1L)!=0L);}
+   public static boolean anyOccupied(long mask,int bottomY,int minY,int maxY){
+      int lo=Math.max(0,(minY-bottomY)>>4),hi=(maxY-bottomY)>>4;if(hi<lo)return false;if(hi>=63)return true;
+      long bits=((1L<<(hi+1))-1L)&-(1L<<lo);return(mask&bits)!=0L;
    }
 
-   /**
-    * The helper is owned only when ChunkMemory itself switched it on. A
-    * BackgroundFreecam enabled manually by the user is never disabled here.
-    */
-   private void syncBackgroundFreecam() {
-      BackgroundFreecam camera;
-      try {
-         camera = ModuleManager.get(BackgroundFreecam.class);
-      } catch (IllegalStateException ignored) {
-         return;
-      }
-
-      boolean shouldRun = this.useBackgroundFreecam.get()
-         && mc.field_1724 != null && mc.field_1687 != null;
-      if (shouldRun && !camera.isEnabled()) {
-         camera.setEnabled(true);
-         this.startedBackgroundFreecam = true;
-      } else if (!shouldRun && this.startedBackgroundFreecam) {
-         if (camera.isEnabled()) camera.setEnabled(false);
-         this.startedBackgroundFreecam = false;
-      }
+   // Preserve the current Nightfall API for BaseFinder, StructureESP, BlockEntityESP, etc.
+   public static class_243 scanPosition(){
+      if(BackgroundFreecam.isActive()){class_243 p=BackgroundFreecam.cameraPosition();if(p!=null)return p;}
+      if(FreecamController.isActive())return FreecamController.cameraPosition();return mc.field_1724==null?null:mc.field_1724.method_33571();
    }
-
-   private class_243 resolveScanPosition() {
-      if (mc.field_1724 == null || mc.field_1687 == null) return null;
-
-      if (this.useBackgroundFreecam.get() && BackgroundFreecam.isActive()) {
-         class_243 backgroundPosition = BackgroundFreecam.cameraPosition();
-         if (backgroundPosition != null) {
-            this.centerSource = BackgroundFreecam.isPaused()
-               ? "BackgroundFreecam (pausiert)" : "BackgroundFreecam";
-            return backgroundPosition;
-         }
-      }
-
-      if (this.useFreecamPosition.get() && FreecamController.isActive()) {
-         this.centerSource = "Manuelle Freecam";
-         return FreecamController.cameraPosition();
-      }
-
-      this.centerSource = "Spieler";
-      return mc.field_1724.method_33571();
+   public static String scanSource(){if(BackgroundFreecam.isActive())return BackgroundFreecam.isPaused()?"BackgroundFreecam (pausiert)":"BackgroundFreecam";return FreecamController.isActive()?"Manuelle Freecam":"Spieler";}
+   public static class_2818 getCachedChunk(int x,int z){
+      ChunkMemory m=instance;if(m==null||!m.isEnabled()||m.world==null||m.world!=mc.field_1687)return null;
+      ChunkStore.Entry<class_2818> e=m.store.rememberedEntry(ChunkStore.key(x,z),true);return e==null?null:e.chunk;
    }
-
-   /** Shared scan origin for BlockESP, OreESP, BaseFinder and other modules. */
-   public static class_243 scanPosition() {
-      try {
-         ChunkMemory module = ModuleManager.get(ChunkMemory.class);
-         if (module.isEnabled()) {
-            class_243 position = module.resolveScanPosition();
-            if (position != null) return position;
-         }
-      } catch (IllegalStateException ignored) {
-      }
-
-      if (BackgroundFreecam.isActive()) {
-         class_243 position = BackgroundFreecam.cameraPosition();
-         if (position != null) return position;
-      }
-      if (FreecamController.isActive()) {
-         return FreecamController.cameraPosition();
-      }
-      return mc.field_1724 == null ? null : mc.field_1724.method_33571();
+   public static Collection<CachedChunk> cachedChunks(){
+      List<CachedChunk> out=new ArrayList<>();forEachRemembered((x,z,c,age)->{long n=instance==null?0:instance.tick;out.add(new CachedChunk(x,z,c,Math.max(0,n-age),n));});
+      return java.util.Collections.unmodifiableList(out);
    }
-
-   public static String scanSource() {
-      try {
-         ChunkMemory module = ModuleManager.get(ChunkMemory.class);
-         if (module.isEnabled()) {
-            module.resolveScanPosition();
-            return module.centerSource;
-         }
-      } catch (IllegalStateException ignored) {
-      }
-      if (BackgroundFreecam.isActive()) {
-         return BackgroundFreecam.isPaused() ? "BackgroundFreecam (pausiert)" : "BackgroundFreecam";
-      }
-      return FreecamController.isActive() ? "Manuelle Freecam" : "Spieler";
+   public static int cachedChunkCount(){return rememberedCount();}
+   public static long cachedChunkAgeTicks(int x,int z){
+      ChunkMemory m=instance;if(m==null||m.world==null)return -1L;ChunkStore.Entry<class_2818> e=m.store.rememberedEntry(ChunkStore.key(x,z),false);
+      return e==null?-1L:Math.max(0L,m.tick-e.unloadTick);
    }
-
-   private static long key(int cx, int cz) {
-      return (cx & 0xFFFFFFFFL) | ((long)cz << 32);
+   public static class_2818 getAvailableChunk(int x,int z){return chunk(x,z,true);}
+   public static class_2680 getBlockState(int x,int y,int z){return getBlockState(getAvailableChunk(x>>4,z>>4),x,y,z);}
+   public static class_2680 getBlockState(class_2818 c,int x,int y,int z){
+      class_638 w=mc.field_1687;if(c==null||w==null||y<w.method_31607()||y>=w.method_31600())return null;
+      class_2826[] s=c.method_12006();int i=(y>>4)-(w.method_31607()>>4);if(i<0||i>=s.length)return null;
+      return s[i]==null?null:s[i].method_12254(x&15,y&15,z&15);
    }
-
-   private static void rememberLiveChunk(int cx, int cz, class_2818 chunk) {
-      if (chunk == null || cacheWorld == null || mc.field_1687 != cacheWorld) return;
-
-      long chunkKey = key(cx, cz);
-      CachedChunk previous = CACHE.get(chunkKey);
-      if (previous == null) {
-         CACHE.put(chunkKey, new CachedChunk(cx, cz, chunk, sessionTick, sessionTick));
-      } else if (previous.chunk() != chunk) {
-         // A new client chunk instance replaced the old snapshot.
-         CACHE.put(chunkKey, new CachedChunk(cx, cz, chunk, sessionTick, sessionTick));
-      } else {
-         CACHE.put(chunkKey, new CachedChunk(cx, cz, chunk, previous.capturedAtTick(), sessionTick));
-      }
-   }
-
-   /** Returns a cached chunk only while it belongs to the current client world. */
-   public static class_2818 getCachedChunk(int cx, int cz) {
-      if (cacheWorld == null || mc.field_1687 != cacheWorld) return null;
-
-      long chunkKey = key(cx, cz);
-      CachedChunk cached = CACHE.get(chunkKey);
-      if (cached == null) return null;
-
-      if (sessionTick - cached.lastAccessTick() > maxCacheAgeTicks) {
-         CACHE.remove(chunkKey);
-         return null;
-      }
-
-      CACHE.put(chunkKey, new CachedChunk(
-         cached.cx(), cached.cz(), cached.chunk(), cached.capturedAtTick(), sessionTick
-      ));
-      return cached.chunk();
-   }
-
-   /** Snapshot of current cache entries. Chunk instances remain client-owned. */
-   public static Collection<CachedChunk> cachedChunks() {
-      if (cacheWorld == null || mc.field_1687 != cacheWorld) return List.of();
-      return Collections.unmodifiableList(new ArrayList<>(CACHE.values()));
-   }
-
-   public static int cachedChunkCount() {
-      return cacheWorld != null && mc.field_1687 == cacheWorld ? CACHE.size() : 0;
-   }
-
-   public static long cachedChunkAgeTicks(int cx, int cz) {
-      CachedChunk cached = CACHE.get(key(cx, cz));
-      return cached == null ? -1L : Math.max(0L, sessionTick - cached.capturedAtTick());
-   }
-
-   /**
-    * Returns the live client chunk first and falls back to the session cache.
-    * No chunk request or forced load is performed by this method.
-    */
-   public static class_2818 getAvailableChunk(int cx, int cz) {
-      class_638 world = mc.field_1687;
-      if (world == null) return null;
-
-      class_2818 loaded = world.method_2935().method_21730(cx, cz);
-      if (loaded != null) {
-         rememberLiveChunk(cx, cz, loaded);
-         return loaded;
-      }
-
-      return getCachedChunk(cx, cz);
-   }
-
-   /** Reads one block through the shared live-or-cached chunk API. */
-   public static class_2680 getBlockState(int x, int y, int z) {
-      return getBlockState(getAvailableChunk(x >> 4, z >> 4), x, y, z);
-   }
-
-   /**
-    * Direct section read. Callers scanning many blocks in the same chunk
-    * should resolve the chunk once and reuse this overload.
-    */
-   public static class_2680 getBlockState(class_2818 chunk, int x, int y, int z) {
-      class_638 world = mc.field_1687;
-      if (chunk == null || world == null || y < world.method_31607() || y >= world.method_31600()) {
-         return null;
-      }
-
-      class_2826[] sections = chunk.method_12006();
-      int sectionIndex = (y >> 4) - (world.method_31607() >> 4);
-      if (sectionIndex < 0 || sectionIndex >= sections.length) return null;
-
-      class_2826 section = sections[sectionIndex];
-      return section == null ? null : section.method_12254(x & 15, y & 15, z & 15);
-   }
-
-   public static void clearSessionCache() {
-      CACHE.clear();
-      NEXT_LOOKUP_TICK.clear();
-      cacheWorld = null;
-      cacheContext = null;
-      sessionTick = 0L;
-   }
-
-   @Override
-   public void onTick() {
-      class_638 world = mc.field_1687;
-      if (world == null || mc.field_1724 == null) return;
-
-      this.syncBackgroundFreecam();
-
-      String context = Storage.server() + "_" + Storage.dim();
-      if (world != cacheWorld || !context.equals(cacheContext)) {
-         clearSessionCache();
-         cacheWorld = world;
-         cacheContext = context;
-         this.resetScanPath();
-      }
-
-      maxCacheAgeTicks = (long)this.maxAgeMinutes.getInt() * 1200L;
-      class_243 center = this.resolveScanPosition();
-      if (center == null) return;
-
-      int nextCenterChunkX = ((int)Math.floor(center.field_1352)) >> 4;
-      int nextCenterChunkZ = ((int)Math.floor(center.field_1350)) >> 4;
-      if (nextCenterChunkX != this.centerChunkX || nextCenterChunkZ != this.centerChunkZ) {
-         // Start near the new virtual/player center when it crosses a chunk
-         // boundary; the per-chunk cooldown still prevents repeated lookups.
-         this.scanCursor = 0;
-      }
-      this.centerChunkX = nextCenterChunkX;
-      this.centerChunkZ = nextCenterChunkZ;
-      int configuredRange = this.range.getInt();
-      if (configuredRange != this.pathRange) {
-         this.pathRange = configuredRange;
-         this.rebuildScanPath(configuredRange);
-      }
-
-      this.lastLookups = 0;
-      this.lastLoaded = 0;
-      this.lastNewEntries = 0;
-      this.lastCachedFallbacks = 0;
-      this.lastRetrySkips = 0;
-
-      if (!this.pauseScan.get()) {
-         this.scanAvailableChunks(world, center, configuredRange);
-      }
-
-      sessionTick++;
-      this.trimCache(this.maxChunks.getInt());
-   }
-
-   private void scanAvailableChunks(class_638 world, class_243 center, int radiusBlocks) {
-      int radiusSquared = radiusBlocks * radiusBlocks;
-      int processed = 0;
-      int budget = this.scanSpeed.getInt();
-      long retryTicks = (long)this.lookupRetrySeconds.getInt() * 20L;
-      var chunkManager = world.method_2935();
-
-      while (processed < budget && !this.scanPath.isEmpty()) {
-         if (this.scanCursor >= this.scanPath.size()) this.scanCursor = 0;
-
-         Offset offset = this.scanPath.get(this.scanCursor++);
-         processed++;
-
-         int targetX = this.centerChunkX + offset.dx();
-         int targetZ = this.centerChunkZ + offset.dz();
-         if (!intersectsRadius(targetX, targetZ, center.field_1352, center.field_1350, radiusSquared)) {
-            continue;
-         }
-
-         long chunkKey = key(targetX, targetZ);
-         Long nextLookup = NEXT_LOOKUP_TICK.get(chunkKey);
-         if (nextLookup != null && sessionTick < nextLookup) {
-            this.lastRetrySkips++;
-            continue;
-         }
-         if (nextLookup != null) NEXT_LOOKUP_TICK.remove(chunkKey);
-
-         this.lastLookups++;
-         class_2818 loaded = chunkManager.method_21730(targetX, targetZ);
-         if (loaded != null) {
-            this.lastLoaded++;
-            CachedChunk previous = CACHE.get(chunkKey);
-            if (previous == null || previous.chunk() != loaded) {
-               if (previous == null) this.lastNewEntries++;
-               rememberLiveChunk(targetX, targetZ, loaded);
-            } else {
-               rememberLiveChunk(targetX, targetZ, loaded);
-            }
-            NEXT_LOOKUP_TICK.put(chunkKey, sessionTick + retryTicks);
-         } else {
-            CachedChunk previous = CACHE.get(chunkKey);
-            if (previous != null && sessionTick - previous.lastAccessTick() <= maxCacheAgeTicks) {
-               this.lastCachedFallbacks++;
-               CACHE.put(chunkKey, new CachedChunk(
-                  previous.cx(), previous.cz(), previous.chunk(),
-                  previous.capturedAtTick(), sessionTick
-               ));
-            }
-            // A missing chunk is not requested. Retry it later because it may
-            // become available through normal client/server gameplay meanwhile.
-            NEXT_LOOKUP_TICK.put(chunkKey, sessionTick + retryTicks);
-         }
-
-         trimLookupSchedule();
-      }
-   }
-
-   private void rebuildScanPath(int radiusBlocks) {
-      List<Offset> offsets = new ArrayList<>();
-      int candidateRadius = radiusBlocks + 16;
-      int radiusChunks = (candidateRadius + 15) / 16 + 1;
-      int radiusSquared = candidateRadius * candidateRadius;
-
-      for (int dz = -radiusChunks; dz <= radiusChunks; dz++) {
-         for (int dx = -radiusChunks; dx <= radiusChunks; dx++) {
-            int chunkMinX = dx * 16;
-            int chunkMinZ = dz * 16;
-            int nearestX = chunkMinX > 0 ? chunkMinX : chunkMinX + 16 < 0 ? -(chunkMinX + 16) : 0;
-            int nearestZ = chunkMinZ > 0 ? chunkMinZ : chunkMinZ + 16 < 0 ? -(chunkMinZ + 16) : 0;
-            int distanceToFootprint = nearestX * nearestX + nearestZ * nearestZ;
-            if (distanceToFootprint <= radiusSquared) {
-               int chunkCenterX = chunkMinX + 8;
-               int chunkCenterZ = chunkMinZ + 8;
-               int centerDistance = chunkCenterX * chunkCenterX + chunkCenterZ * chunkCenterZ;
-               offsets.add(new Offset(dx, dz, centerDistance));
-            }
-         }
-      }
-
-      offsets.sort(Comparator.comparingInt(Offset::distanceSquared)
-         .thenComparingInt(Offset::dz)
-         .thenComparingInt(Offset::dx));
-      this.scanPath = offsets;
-      this.scanCursor = 0;
-   }
-
-   private static boolean intersectsRadius(
-      int chunkX, int chunkZ, double centerX, double centerZ, int radiusSquared
-   ) {
-      double minX = (double)chunkX * 16.0;
-      double minZ = (double)chunkZ * 16.0;
-      double nearestX = centerX < minX ? minX - centerX
-         : centerX > minX + 16.0 ? centerX - (minX + 16.0) : 0.0;
-      double nearestZ = centerZ < minZ ? minZ - centerZ
-         : centerZ > minZ + 16.0 ? centerZ - (minZ + 16.0) : 0.0;
-      return nearestX * nearestX + nearestZ * nearestZ <= radiusSquared;
-   }
-
-   private void resetScanPath() {
-      this.centerChunkX = Integer.MIN_VALUE;
-      this.centerChunkZ = Integer.MIN_VALUE;
-      this.pathRange = -1;
-      this.scanPath = List.of();
-      this.scanCursor = 0;
-   }
-
-   private static void trimLookupSchedule() {
-      while (NEXT_LOOKUP_TICK.size() > MAX_LOOKUP_SCHEDULES) {
-         Long eldest = NEXT_LOOKUP_TICK.keySet().iterator().next();
-         NEXT_LOOKUP_TICK.remove(eldest);
-      }
-   }
-
-   private int trimCache(int limit) {
-      int removed = 0;
-      Iterator<Map.Entry<Long, CachedChunk>> iterator = CACHE.entrySet().iterator();
-      while (iterator.hasNext()) {
-         CachedChunk entry = iterator.next().getValue();
-         if (sessionTick - entry.lastAccessTick() > maxCacheAgeTicks) {
-            iterator.remove();
-            NEXT_LOOKUP_TICK.remove(key(entry.cx(), entry.cz()));
-            removed++;
-         } else {
-            // CACHE is access-ordered: the first fresh entry means all later
-            // entries are at least as recent, so the rest need no inspection.
-            break;
-         }
-      }
-
-      while (CACHE.size() > limit) {
-         Long eldest = CACHE.keySet().iterator().next();
-         CACHE.remove(eldest);
-         NEXT_LOOKUP_TICK.remove(eldest);
-         removed++;
-      }
-      this.lastPruned = removed;
-      return removed;
-   }
-
-   @Override
-   public void renderHud(class_332 context) {
-      if (mc.field_1724 == null || mc.field_1687 == null) return;
-
-      class_243 center = this.resolveScanPosition();
-      if (center == null) return;
-
-      String title = "CHUNKMEMORY";
-      String mode = BackgroundFreecam.isActive()
-         ? BackgroundFreecam.movementModeName() + (BackgroundFreecam.isPaused() ? " / PAUSE" : "")
-         : this.centerSource;
-      String line = "Cache " + cachedChunkCount() + "/" + this.maxChunks.getInt()
-         + "  |  " + this.range.getInt() + " B";
-      String scan = this.pauseScan.get() ? "SCAN PAUSIERT"
-         : "Live " + this.lastLoaded + "/" + this.lastLookups
-            + "  |  Cache-Fallback " + this.lastCachedFallbacks;
-      String extra = "Neu " + this.lastNewEntries + "  |  Retry " + this.lastRetrySkips
-         + "  |  Budget " + this.scanSpeed.getInt() + "/Tick";
-      String sourceLine = mode + "  |  Bereinigt " + this.lastPruned;
-
-      int width = Math.max(mc.field_1772.method_1727(title),
-         Math.max(mc.field_1772.method_1727(line),
-            Math.max(mc.field_1772.method_1727(scan),
-               Math.max(mc.field_1772.method_1727(extra), mc.field_1772.method_1727(sourceLine))))) + 18;
-      int x = 8;
-      int y = 42;
-      context.method_25294(x, y, x + width, y + 81, 0x90000000);
-      context.method_25294(x, y, x + width, y + 2, this.pauseScan.get() ? 0xFFFFB347 : 0xFF39FFB6);
-      context.method_51433(mc.field_1772, title, x + 8, y + 5, 0xFF39FFB6, true);
-      context.method_51433(mc.field_1772, line, x + 8, y + 18, 0xFFFFFFFF, true);
-      context.method_51433(mc.field_1772, scan, x + 8, y + 31, 0xFFB8C8D8, true);
-      context.method_51433(mc.field_1772, extra, x + 8, y + 44, 0xFFB8C8D8, true);
-      context.method_51433(mc.field_1772, sourceLine, x + 8, y + 57, 0xFF8EABB8, true);
-   }
-
-   @Override
-   public void onWorldLeave() {
-      clearSessionCache();
-      this.resetScanPath();
-      this.lastLookups = 0;
-      this.lastLoaded = 0;
-      this.lastNewEntries = 0;
-      this.lastCachedFallbacks = 0;
-      this.lastRetrySkips = 0;
-      this.lastPruned = 0;
-   }
-
-   public record CachedChunk(
-      int cx, int cz, class_2818 chunk, long capturedAtTick, long lastAccessTick
-   ) {
-   }
-
-   private record Offset(int dx, int dz, int distanceSquared) {
-   }
+   public static void clearSessionCache(){if(instance!=null)instance.resetAll();}
+   public static ScanStatus scanStatus(){return instance==null||!instance.isEnabled()?ScanStatus.OFF:instance.status;}
+   public static int loadedCount(){return instance==null?0:instance.store.loadedCount();}
+   public static int rememberedCount(){return instance==null?0:instance.store.rememberedCount();}
+   public static int memoryLimit(){return instance==null?0:instance.store.limit();}
+   public static long checkedTotal(){return instance==null?0L:instance.checkedTotal;}
+   public static long newTotal(){return instance==null?0L:instance.newTotal;}
+   public static long refreshedTotal(){return instance==null?0L:instance.refreshedTotal;}
+   public static long evictedTotal(){return instance==null?0L:instance.store.evicted;}
+   public static int surveyRate(){return instance==null?0:instance.ratePerSec;}
+   public static long lastTickMicros(){return instance==null?0L:instance.lastTickNanos/1000L;}
 }

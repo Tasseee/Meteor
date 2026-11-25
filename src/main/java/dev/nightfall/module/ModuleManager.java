@@ -92,6 +92,7 @@ import dev.nightfall.modules.PlayerAura;
 import dev.nightfall.modules.LogoutSpots;
 import dev.nightfall.modules.SafeWalk;
 import dev.nightfall.modules.ScannerHud;
+import dev.nightfall.modules.ScanStatusHud;
 import dev.nightfall.modules.SeedCracker;
 import dev.nightfall.modules.ShieldBreaker;
 import dev.nightfall.modules.SkyVisuals;
@@ -252,6 +253,7 @@ public final class ModuleManager {
       MODULES.add(new ModuleList());
       MODULES.add(new Minimap());
       MODULES.add(new ScannerHud());
+      MODULES.add(new ScanStatusHud());
       MODULES.add(new CombatStatusHud());
       MODULES.add(new ArmorHud());
       MODULES.add(new CooldownHud());

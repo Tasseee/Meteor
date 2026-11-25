@@ -79,7 +79,7 @@ public final class OreESP extends Module {
       if (chunk != null) return chunk;
       if (missingChunks.contains(key)) return null;
 
-      chunk = ChunkMemory.getAvailableChunk(x, z);
+      chunk = ChunkMemory.loaded(x, z);
       if (chunk == null) {
          missingChunks.add(key);
       } else {
@@ -190,6 +190,9 @@ public final class OreESP extends Module {
          for (int cz = minZ >> 4; cz <= maxZ >> 4 && scannedOreBlocks < cap; cz++) {
             class_2818 chunk = scanChunk(cx, cz, chunks, missingChunks);
             if (chunk == null) continue;
+            long occupiedMask = ChunkMemory.occupiedMask(chunk);
+            int bottomY = mc.field_1687.method_31607();
+            if (!ChunkMemory.anyOccupied(occupiedMask, bottomY, minY, maxY)) continue;
             int sx = Math.max(minX, cx << 4), ex = Math.min(maxX, (cx << 4) + 15);
             int sz = Math.max(minZ, cz << 4), ez = Math.min(maxZ, (cz << 4) + 15);
             for (int x = sx; x <= ex && scannedOreBlocks < cap; x++) {
@@ -199,6 +202,7 @@ public final class OreESP extends Module {
                   int horizontalDistanceSquared = dx * dx + dz * dz;
                   if (horizontalDistanceSquared > radiusSquared) continue;
                   for (int y = minY; y <= maxY && scannedOreBlocks < cap; y++) {
+                     if (!ChunkMemory.sectionOccupied(occupiedMask, bottomY, y)) { y += 15 - ((y - bottomY) & 15); continue; }
                      int dy = y - p.method_10264();
                      if (horizontalDistanceSquared + dy * dy > radiusSquared) continue;
                      class_2338 bp = new class_2338(x, y, z);
