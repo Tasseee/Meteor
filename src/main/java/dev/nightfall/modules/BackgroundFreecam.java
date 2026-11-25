@@ -77,6 +77,6 @@ public final class BackgroundFreecam extends Module {
    public static double centerZ(){return instance==null?0:instance.z;}
    public static int scanRadiusChunks(){return instance==null?0:instance.scanRadius.getInt();}
    public static double speedBlocksPerTick(){return instance==null?0:instance.speed.get();}
-   public static String modeName(){return instance==null?"-":instance.modeName();}
-   private String modeName(){return auto.get()?mode.get():"Folgt Spieler";}
+   public static String modeName(){return instance==null?"-":instance.displayModeName();}
+   private String displayModeName(){return auto.get()?mode.get():"Folgt Spieler";}
 }
