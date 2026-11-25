@@ -79,6 +79,8 @@ import dev.nightfall.modules.LongJump;
 import dev.nightfall.modules.LootDropFinder;
 import dev.nightfall.modules.LowHealthWarning;
 import dev.nightfall.modules.MaceAssist;
+import dev.nightfall.modules.PearlCatch;
+import dev.nightfall.modules.Hitbox;
 import dev.nightfall.modules.MacroManager;
 import dev.nightfall.modules.Minimap;
 import dev.nightfall.modules.ModuleList;
@@ -161,6 +163,8 @@ public final class ModuleManager {
       MODULES.add(new CrystalTest());
       MODULES.add(new AutoAnchor());
       MODULES.add(new MaceAssist());
+      MODULES.add(new PearlCatch());
+      MODULES.add(new Hitbox());
       MODULES.add(new AutoTotem());
       MODULES.add(new AutoGap());
       MODULES.add(new Fly());
