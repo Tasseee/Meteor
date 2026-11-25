@@ -94,7 +94,7 @@ public class MaceAssist extends Module {
 
       float yawDelta = class_3532.method_15393(desiredYaw - player.method_36454());
       float pitchDelta = desiredPitch - player.method_36455();
-      float maxStep = (float)this.aimSpeed.get();
+      float maxStep = this.aimSpeed.get().floatValue();
 
       player.method_36456(player.method_36454() + class_3532.method_15363(yawDelta, -maxStep, maxStep));
       player.method_36457(class_3532.method_15363(player.method_36455() + class_3532.method_15363(pitchDelta, -maxStep, maxStep), -90.0F, 90.0F));
