@@ -5,6 +5,7 @@ import dev.nightfall.module.Module;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
+import dev.nightfall.module.setting.KeySetting;
 import dev.nightfall.util.CombatUtil;
 import dev.nightfall.util.InvUtil;
 import net.minecraft.class_1268;
@@ -36,6 +37,7 @@ public class AutoPvp extends Module {
    private final BoolSetting jump = this.add(new BoolSetting("Springen bei Hindernis", true));
    private final BoolSetting dauerCrit = this.add(new BoolSetting("Dauer-Crit", true));
    private final BoolSetting useWindchargeMace = this.add(new BoolSetting("Windcharge -> Mace", true));
+   private final KeySetting maceWindchargeKey = this.add(new KeySetting("Mace Windcharge Taste", GLFW.GLFW_KEY_R));
    private final BoolSetting useShieldBreak = this.add(new BoolSetting("Schild mit Axt kontern", true));
    private final BoolSetting useAutoGap = this.add(new BoolSetting("AutoGap integrieren", true));
    private final BoolSetting useAutoTotem = this.add(new BoolSetting("AutoTotem integrieren", true));
@@ -77,7 +79,6 @@ public class AutoPvp extends Module {
    private int maceSlot = -1;
    private boolean windchargeMaceRequested;
    private boolean windchargeMaceKeyDown;
-   private static final int WINDCHARGE_MACE_KEY = GLFW.GLFW_KEY_R;
    private int critJumpDelayTicks;
    private boolean wasAirborne;
    private int critOrbitDir = 1;
@@ -794,7 +795,7 @@ public class AutoPvp extends Module {
       class_746 p = mc.field_1724;
       if (p != null && mc.field_1755 == null && mc.field_1761 != null && mc.field_1687 != null) {
          boolean maceKeyDown = mc.method_22683() != null
-            && GLFW.glfwGetKey(mc.method_22683().method_4490(), WINDCHARGE_MACE_KEY) == GLFW.GLFW_PRESS;
+            && GLFW.glfwGetKey(mc.method_22683().method_4490(), this.maceWindchargeKey.get()) == GLFW.GLFW_PRESS;
          if (maceKeyDown && !this.windchargeMaceKeyDown) {
             this.windchargeMaceRequested = true;
          }
