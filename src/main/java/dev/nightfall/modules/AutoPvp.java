@@ -428,7 +428,10 @@ public class AutoPvp extends Module {
                return false;
             }
             this.windchargeMaceRequested = false;
-            if (!p.method_24828() || distance < 3.5 || distance > 7.5 || !p.method_6057(target) || !this.clearAbove(p, 4)) {
+            // The key press is the explicit trigger. Do not require a narrow
+            // distance/visibility/ceiling check here; MaceAssist handles the
+            // actual hit after the Wind Charge has launched the player upward.
+            if (target == null || !target.method_5805()) {
                return false;
             }
 
@@ -468,8 +471,11 @@ public class AutoPvp extends Module {
                   return true;
                case RISING:
                   if (p.method_18798().field_1351 > 0.12) {
-                     this.windchargeMacePhase = AutoPvp.WindchargeMacePhase.FALLING;
-                     InvUtil.select(this.maceSlot);
+                     // Wind Charge has launched the player. From here on,
+                     // MaceAssist owns the fall, target tracking and hit timing.
+                     // Do not run a second Mace attack here.
+                     this.cancelWindchargeMace(true);
+                     return false;
                   } else if (this.windchargeMaceTicks > 8) {
                      this.cancelWindchargeMace(true);
                      return false;
