@@ -7,11 +7,11 @@ import dev.nightfall.module.setting.NumberSetting;
 import net.minecraft.class_1297;
 import net.minecraft.class_1309;
 import net.minecraft.class_1657;
+import net.minecraft.class_238;
 
 /**
- * Expands the entity targeting margin used by Minecraft's target selection.
- * This intentionally does not mutate the entity's visible/physical bounding box.
- * The remote server still performs its own authoritative hit validation.
+ * Client-side entity bounding-box expansion.
+ * The server remains authoritative for actual hit registration.
  */
 public final class Hitbox extends Module {
    private static Hitbox instance;
@@ -21,22 +21,27 @@ public final class Hitbox extends Module {
    private final BoolSetting mobs = this.add(new BoolSetting("Mobs", false));
 
    public Hitbox() {
-      super("Hitbox", "Erweitert die clientseitige Zielerfassung fuer Spieler und/oder Mobs.", Category.COMBAT);
+      super("Hitbox", "Vergroessert Entity-Hitboxen clientseitig fuer Spieler und/oder Mobs.", Category.COMBAT);
       instance = this;
    }
 
-   public static float adjustTargetingMargin(class_1297 entity, float vanillaMargin) {
+   public static class_238 expand(class_1297 entity, class_238 original) {
       Hitbox module = instance;
-      if (module == null || !module.isEnabled() || entity == null || entity == mc.field_1724) {
-         return vanillaMargin;
-      }
+      if (module == null || !module.isEnabled() || entity == null || original == null || entity == mc.field_1724) return original;
 
       boolean selected = entity instanceof class_1657
          ? module.players.get()
          : entity instanceof class_1309 && module.mobs.get();
+      double amount = module.extra.get();
+      if (!selected || amount <= 0.0) return original;
 
-      if (!selected) return vanillaMargin;
-
-      return vanillaMargin + (float)module.extra.get();
+      return new class_238(
+         original.field_1323 - amount,
+         original.field_1322 - amount,
+         original.field_1321 - amount,
+         original.field_1320 + amount,
+         original.field_1325 + amount,
+         original.field_1324 + amount
+      );
    }
 }
