@@ -2,6 +2,7 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
+import dev.nightfall.module.setting.BoolSetting;
 import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.CombatUtil;
 import net.minecraft.class_1268;
@@ -10,6 +11,7 @@ import net.minecraft.class_1743;
 
 public final class ShieldBreaker extends Module {
    private final NumberSetting range = this.add(new NumberSetting("Reichweite", 4.2, 2.0, 6.0, 0.2));
+   private final BoolSetting onlyLookedAt = this.add(new BoolSetting("Nur angeschautes Ziel", true));
    private final NumberSetting delay = this.add(new NumberSetting("Angriffsintervall (Ticks)", 3.0, 1.0, 12.0, 1.0));
    private int cooldown;
    private int previousSlot = -1;
@@ -40,7 +42,7 @@ public final class ShieldBreaker extends Module {
       } else if (this.cooldown > 0) {
          this.cooldown--;
       } else {
-         class_1657 target = CombatUtil.nearestPlayer(this.range.get());
+         class_1657 target = this.onlyLookedAt.get() ? this.lookedAtPlayer() : CombatUtil.nearestPlayer(this.range.get());
          if (target != null && target.method_6039() && mc.field_1724.method_6057(target)) {
             int axeSlot = -1;
 
@@ -56,9 +58,28 @@ public final class ShieldBreaker extends Module {
                this.selectedAxeSlot = axeSlot;
                this.pendingTarget = target;
                mc.field_1724.method_31548().method_61496(axeSlot);
+
+               // The looked-at target is already under the crosshair, so break
+               // its shield immediately in the same client tick after the swap.
+               if (this.onlyLookedAt.get()) {
+                  mc.field_1761.method_2918(mc.field_1724, target);
+                  mc.field_1724.method_6104(class_1268.field_5808);
+                  this.cooldown = 1;
+                  this.restore();
+               }
             }
          }
       }
+   }
+
+   private class_1657 lookedAtPlayer() {
+      if (!(mc.field_1692 instanceof class_1657 target) || target == mc.field_1724
+         || !target.method_5805()
+         || mc.field_1724.method_5858(target) > this.range.get() * this.range.get()
+         || !mc.field_1724.method_6057(target)) {
+         return null;
+      }
+      return target;
    }
 
    private void restore() {
