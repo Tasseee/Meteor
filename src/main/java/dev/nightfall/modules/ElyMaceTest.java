@@ -101,6 +101,19 @@ public final class ElyMaceTest extends Module {
       return -1;
    }
 
+   private int findInventoryByKey(String wanted) {
+      class_746 player = mc.field_1724;
+      if (player == null) return -1;
+
+      for (int i = 9; i < 36; i++) {
+         if (itemKey(player.method_31548().method_5438(i)).equals(wanted)) {
+            return i;
+         }
+      }
+
+      return this.findHotbarByKey(wanted);
+   }
+
    private int findChestplateHotbar() {
       class_746 player = mc.field_1724;
       if (player == null) return -1;
@@ -112,6 +125,18 @@ public final class ElyMaceTest extends Module {
       return -1;
    }
 
+   private int findChestplateInventory() {
+      class_746 player = mc.field_1724;
+      if (player == null) return -1;
+
+      for (int i = 9; i < 36; i++) {
+         String key = itemKey(player.method_31548().method_5438(i));
+         if (key.endsWith("_chestplate")) return i;
+      }
+
+      return this.findChestplateHotbar();
+   }
+
    private boolean hasElytraEquipped(class_746 player) {
       return itemKey(player.method_31548().method_5438(38)).equals("item.minecraft.elytra");
    }
@@ -120,29 +145,67 @@ public final class ElyMaceTest extends Module {
       return itemKey(player.method_31548().method_5438(38)).endsWith("_chestplate");
    }
 
-   private void equipFromHotbar(int hotbarSlot) {
+   private void equipArmorFromInventory(int inventorySlot) {
       class_746 player = mc.field_1724;
-      if (player == null || hotbarSlot < 0 || hotbarSlot > 8 || player.field_7512 != player.field_7498) return;
+      if (player == null || inventorySlot < 0 || inventorySlot >= 36 || player.field_7512 != player.field_7498) return;
 
-      // PlayerScreenHandler chest slot is 6. SWAP exchanges that armor slot
-      // with the requested hotbar slot without opening the inventory screen.
-      mc.field_1761.method_2906(
-         player.field_7498.field_7763,
-         6,
-         hotbarSlot,
-         class_1713.field_7791,
-         player
-      );
+      // PlayerScreenHandler chest armor slot is 6.
+      // Hotbar slots can be exchanged directly with SWAP. Main-inventory
+      // slots are moved with PICKUP so the actual Elytra/chestplate slot is
+      // explicitly used instead of relying on the currently selected item.
+      int screenSlot = inventorySlot < 9 ? 36 + inventorySlot : 9 + (inventorySlot - 9);
+
+      if (inventorySlot < 9) {
+         mc.field_1761.method_2906(
+            player.field_7498.field_7763,
+            6,
+            inventorySlot,
+            class_1713.field_7792,
+            player
+         );
+      } else {
+         mc.field_1761.method_2906(
+            player.field_7498.field_7763,
+            screenSlot,
+            0,
+            class_1713.field_7790,
+            player
+         );
+         mc.field_1761.method_2906(
+            player.field_7498.field_7763,
+            6,
+            0,
+            class_1713.field_7790,
+            player
+         );
+         mc.field_1761.method_2906(
+            player.field_7498.field_7763,
+            screenSlot,
+            0,
+            class_1713.field_7790,
+            player
+         );
+      }
+   }
+
+   private void ensureElytraEquipped() {
+      class_746 player = mc.field_1724;
+      if (player == null || this.hasElytraEquipped(player)) return;
+
+      int elytra = this.findInventoryByKey("item.minecraft.elytra");
+      if (elytra >= 0) {
+         this.equipArmorFromInventory(elytra);
+      }
    }
 
    private void swapToChestplate() {
       class_746 player = mc.field_1724;
       if (player == null || !this.autoChestplate.get() || this.chestplateSwapped || !this.hasElytraEquipped(player)) return;
 
-      int chest = this.findChestplateHotbar();
+      int chest = this.findChestplateInventory();
       if (chest < 0) return;
 
-      this.equipFromHotbar(chest);
+      this.equipArmorFromInventory(chest);
       this.chestplateSwapped = this.hasChestplateEquipped(player);
    }
 
@@ -150,10 +213,10 @@ public final class ElyMaceTest extends Module {
       class_746 player = mc.field_1724;
       if (player == null || !this.chestplateSwapped || !this.hasChestplateEquipped(player)) return;
 
-      int elytra = this.findHotbarByKey("item.minecraft.elytra");
+      int elytra = this.findInventoryByKey("item.minecraft.elytra");
       if (elytra < 0) return;
 
-      this.equipFromHotbar(elytra);
+      this.equipArmorFromInventory(elytra);
       this.chestplateSwapped = !this.hasElytraEquipped(player);
    }
 
@@ -267,10 +330,11 @@ public final class ElyMaceTest extends Module {
 
       switch (this.phase) {
          case LAUNCH -> {
+            // At the start of the module, explicitly move the Elytra into
+            // the chest armor slot. Do not assume it is already equipped.
             if (!this.hasElytraEquipped(player)) {
-               this.swapBackToElytra();
+               this.ensureElytraEquipped();
                if (!this.hasElytraEquipped(player)) {
-                  this.phase = Phase.SEARCH;
                   return;
                }
             }
@@ -282,6 +346,9 @@ public final class ElyMaceTest extends Module {
                player.method_36457(-35.0F);
                this.startFlight(player);
 
+               // Once Elytra flight is actually active, use a real firework
+               // interaction to boost upward. This starts automatically as
+               // soon as the module is enabled.
                if (player.method_6128() && this.autoRocket.get()) {
                   if (this.rocketTimer-- <= 0) {
                      this.useRocket();
