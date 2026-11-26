@@ -2,8 +2,8 @@ package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
 import dev.nightfall.module.Module;
-import dev.nightfall.setting.BoolSetting;
-import dev.nightfall.setting.NumberSetting;
+import dev.nightfall.module.setting.BoolSetting;
+import dev.nightfall.module.setting.NumberSetting;
 import dev.nightfall.util.CombatUtil;
 import dev.nightfall.util.InvUtil;
 import net.minecraft.class_1268;
