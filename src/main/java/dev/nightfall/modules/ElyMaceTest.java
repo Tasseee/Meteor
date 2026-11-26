@@ -113,7 +113,7 @@ public final class ElyMaceTest extends Module {
    }
 
    private boolean hasElytraEquipped(class_746 player) {
-      return itemKey(player.method_31548().method_5444(2)).equals("item.minecraft.elytra");
+      return itemKey(player.method_31548().method_5438(38)).equals("item.minecraft.elytra");
    }
 
    private boolean hasChestplateEquipped(class_746 player) {
