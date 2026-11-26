@@ -194,7 +194,9 @@ public final class ElyMaceTest extends Module {
       // Hotbar slots can be exchanged directly with SWAP. Main-inventory
       // slots are moved with PICKUP so the actual Elytra/chestplate slot is
       // explicitly used instead of relying on the currently selected item.
-      int screenSlot = inventorySlot < 9 ? 36 + inventorySlot : 9 + (inventorySlot - 9);
+      // PlayerScreenHandler uses slots 9-35 for the main inventory and
+      // 36-44 for the hotbar. The chest armor slot is 6.
+      int screenSlot = inventorySlot < 9 ? 36 + inventorySlot : inventorySlot;
 
       if (inventorySlot < 9) {
          mc.field_1761.method_2906(
@@ -258,7 +260,7 @@ public final class ElyMaceTest extends Module {
       if (elytra < 0) return;
 
       this.equipArmorFromInventory(elytra);
-      this.chestplateSwapped = !this.hasElytraEquipped(player);
+      this.chestplateSwapped = this.hasElytraEquipped(player) ? false : this.chestplateSwapped;
    }
 
    private void aimAt(class_1309 entity, class_746 player, double yOffset) {
@@ -293,16 +295,21 @@ public final class ElyMaceTest extends Module {
 
    private void useRocket() {
       class_746 player = mc.field_1724;
-      if (player == null || mc.field_1761 == null) return;
+      if (player == null || mc.field_1761 == null || !player.method_6128()) return;
 
-      int rocket = this.findHotbarByKey("item.minecraft.firework_rocket");
+      int rocket = this.ensureHotbarByKey("item.minecraft.firework_rocket");
       if (rocket < 0) return;
 
       int old = InvUtil.selected();
-      InvUtil.select(rocket);
+      if (!InvUtil.select(rocket)) return;
+
+      // Firework boost is only useful while Elytra flight is active.
+      // Keep the rocket selected for the interaction, then immediately return
+      // to the previous combat slot.
       mc.field_1761.method_2919(player, class_1268.field_5808);
       player.method_6104(class_1268.field_5808);
-      if (old != rocket && this.phase != Phase.CLIMB) {
+
+      if (old != rocket) {
          InvUtil.select(old);
       }
    }
@@ -343,9 +350,13 @@ public final class ElyMaceTest extends Module {
    }
 
    private void enterReset() {
+      // The hit is the end of one Elytra-Mace cycle. Immediately put the
+      // Elytra back on and start the next flight instead of waiting on the
+      // ground for another reset cycle.
       this.swapBackToElytra();
       this.resetTimer = this.resetDelay.getInt();
-      this.phase = Phase.RESET;
+      this.rocketTimer = 0;
+      this.phase = Phase.LAUNCH;
    }
 
    @Override
