@@ -18,6 +18,7 @@
     "HandledScreenAccessor",
     "ItemGlowMeshMixin",
     "GameRendererMixin",
+    "HitboxGameRendererMixin",
     "FogRendererMixin",
     "ScreenBackgroundMixin",
     "PrivatChatMixin",
