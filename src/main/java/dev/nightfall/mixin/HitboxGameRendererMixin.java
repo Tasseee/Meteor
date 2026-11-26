@@ -4,7 +4,6 @@ import dev.nightfall.module.ModuleManager;
 import dev.nightfall.modules.Hitbox;
 import net.minecraft.class_1297;
 import net.minecraft.class_238;
-import net.minecraft.class_239;
 import net.minecraft.class_243;
 import net.minecraft.class_3966;
 import net.minecraft.class_746;
@@ -26,7 +25,7 @@ public abstract class HitboxGameRendererMixin {
       class_746 player = mc.field_1724;
       if (player == null || mc.field_1687 == null || mc.field_1755 != null) return;
 
-      class_239 current = mc.field_1692;
+      class_1297 current = mc.field_1692;
       class_243 start = player.method_33571();
       class_243 direction = player.method_5828(tickDelta);
       double maxDistance = module.getRange();
@@ -60,11 +59,15 @@ public abstract class HitboxGameRendererMixin {
 
       if (bestEntity == null || bestHit == null) return;
 
-      if (current != null && current.method_17784() != null) {
-         double currentDistanceSq = start.method_1025(current.method_17784());
-         if (currentDistanceSq < bestDistanceSq) return;
+      if (current != null && current != player && current.method_5805()) {
+         Optional<class_243> currentHit = current.method_5829().method_992(start, end);
+         if (currentHit.isPresent()) {
+            double currentDistanceSq = start.method_1025(currentHit.get());
+            if (currentDistanceSq < bestDistanceSq) return;
+         }
       }
 
-      mc.field_1692 = new class_3966(bestEntity, bestHit);
+      mc.field_1692 = bestEntity;
+      mc.field_1765 = new class_3966(bestEntity, bestHit);
    }
 }
