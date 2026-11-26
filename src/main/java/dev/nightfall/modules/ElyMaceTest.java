@@ -117,7 +117,7 @@ public final class ElyMaceTest extends Module {
    }
 
    private boolean hasChestplateEquipped(class_746 player) {
-      return itemKey(player.method_31548().method_5444(2)).endsWith("_chestplate");
+      return itemKey(player.method_31548().method_5438(38)).endsWith("_chestplate");
    }
 
    private void equipFromHotbar(int hotbarSlot) {
