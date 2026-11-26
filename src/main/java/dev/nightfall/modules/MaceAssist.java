@@ -17,6 +17,7 @@ import net.minecraft.class_746;
 
 public class MaceAssist extends Module {
    private final NumberSetting minFall = this.add(new NumberSetting("Min. Fallhoehe", 1.5, 1.5, 20.0, 0.5));
+   private final NumberSetting maceSwapHeight = this.add(new NumberSetting("Mace-Swap Hoehe", 1.5, 1.5, 20.0, 0.5));
    private final NumberSetting range = this.add(new NumberSetting("Angriffs-Reichweite", 3.2, 1.0, 6.0, 0.1));
    private final NumberSetting aimRange = this.add(new NumberSetting("Aim-Reichweite", 8.0, 2.0, 16.0, 0.5));
    private final NumberSetting snapSmoothness = this.add(new NumberSetting("Aim-Snap Smoothness", 0.0, 0.0, 100.0, 1.0));
@@ -195,7 +196,9 @@ public class MaceAssist extends Module {
 
       // The Mace swap is also independent from Auto-Attack. Reaching the
       // configured fall height is enough to trigger the switch.
-      this.switchToMace(me);
+      if (fall >= this.maceSwapHeight.get()) {
+         this.switchToMace(me);
+      }
       this.estimate = smashDamage(fall);
 
       class_1309 crosshairTarget = mc.field_1692 instanceof class_1309 entity ? entity : null;
