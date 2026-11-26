@@ -16,8 +16,8 @@ import net.minecraft.class_3532;
 import net.minecraft.class_746;
 
 public class MaceAssist extends Module {
-   private final NumberSetting minFall = this.add(new NumberSetting("Min. Fallhoehe", 1.5, 1.5, 20.0, 0.5));
-   private final NumberSetting maceSwapHeight = this.add(new NumberSetting("Mace-Swap Hoehe", 1.5, 1.5, 20.0, 0.5));
+   private final NumberSetting minFall = this.add(new NumberSetting("Min. Fallhoehe", 0.2, 0.2, 20.0, 0.1));
+   private final NumberSetting maceSwapHeight = this.add(new NumberSetting("Mace-Swap Hoehe", 0.2, 0.2, 20.0, 0.1));
    private final NumberSetting range = this.add(new NumberSetting("Angriffs-Reichweite", 3.2, 1.0, 6.0, 0.1));
    private final NumberSetting aimRange = this.add(new NumberSetting("Aim-Reichweite", 8.0, 2.0, 16.0, 0.5));
    private final NumberSetting snapSmoothness = this.add(new NumberSetting("Aim-Snap Smoothness", 0.0, 0.0, 100.0, 1.0));
@@ -111,9 +111,6 @@ public class MaceAssist extends Module {
          return;
       }
 
-      // 0 = instant snap, 100 = slowest snap.
-      // The interpolation is exponential, so it remains responsive while
-      // still allowing a very smooth transition at higher values.
       float factor = (float)Math.max(0.03, 1.0 - smooth / 100.0);
       float yawError = class_3532.method_15393(yaw - me.method_36454());
       float pitchError = pitch - me.method_36455();
@@ -128,7 +125,7 @@ public class MaceAssist extends Module {
       double dy = target.method_23323(0.55) - eye.field_1351;
       double dz = target.method_23321() - eye.field_1350;
 
-      float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+      float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
       float pitch = (float)(-Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz))));
 
       float yawError = Math.abs(class_3532.method_15393(yaw - me.method_36454()));
@@ -157,9 +154,6 @@ public class MaceAssist extends Module {
          this.maceSlot = slot;
       }
 
-      // This intentionally does not respect a manual hotbar change while the
-      // fall is active: once the configured fall height is reached, every
-      // qualifying fall switches to the Mace.
       InvUtil.select(slot);
       this.swapActive = true;
    }
@@ -190,12 +184,8 @@ public class MaceAssist extends Module {
       class_1309 target = this.findFallingTarget(me);
       if (target == null) return;
 
-      // Aim assist starts for every qualifying falling target, independently
-      // from Auto-Switch and Auto-Attack.
       this.aimAt(target, me);
 
-      // The Mace swap is also independent from Auto-Attack. Reaching the
-      // configured fall height is enough to trigger the switch.
       if (fall >= this.maceSwapHeight.get()) {
          this.switchToMace(me);
       }
