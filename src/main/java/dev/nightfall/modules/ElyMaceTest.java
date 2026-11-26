@@ -160,7 +160,7 @@ public final class ElyMaceTest extends Module {
             player.field_7498.field_7763,
             6,
             inventorySlot,
-            class_1713.field_7792,
+            class_1713.field_7791,
             player
          );
       } else {
