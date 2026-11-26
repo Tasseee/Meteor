@@ -62,6 +62,7 @@ import dev.nightfall.modules.GUITheme;
 import dev.nightfall.modules.GlowESP;
 import dev.nightfall.modules.GlassChams;
 import dev.nightfall.modules.HitParticles;
+import dev.nightfall.modules.Hitbox;
 import dev.nightfall.modules.InvSee;
 import dev.nightfall.modules.ItemEsp;
 import dev.nightfall.modules.ItemGlow;
@@ -158,6 +159,7 @@ public final class ModuleManager {
       MODULES.add(new CrystalTest());
       MODULES.add(new AutoAnchor());
       MODULES.add(new MaceAssist());
+      MODULES.add(new Hitbox());
       MODULES.add(new AutoTotem());
       MODULES.add(new AutoGap());
       MODULES.add(new Fly());
