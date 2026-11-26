@@ -126,12 +126,9 @@ public final class ElyMaceTest extends Module {
       }
 
       if (destination < 0) {
-         int selected = player.method_31548().method_67532();
-         destination = selected;
+         destination = player.method_31548().method_67532();
       }
 
-      // Inventory 9-35 maps to PlayerScreenHandler slots 10-36.
-      // SWAP puts the inventory rocket directly into the selected hotbar slot.
       mc.field_1761.method_2906(
          player.field_7498.field_7763,
          source + 1,
@@ -190,12 +187,6 @@ public final class ElyMaceTest extends Module {
       class_746 player = mc.field_1724;
       if (player == null || inventorySlot < 0 || inventorySlot >= 36 || player.field_7512 != player.field_7498) return;
 
-      // PlayerScreenHandler chest armor slot is 6.
-      // Hotbar slots can be exchanged directly with SWAP. Main-inventory
-      // slots are moved with PICKUP so the actual Elytra/chestplate slot is
-      // explicitly used instead of relying on the currently selected item.
-      // PlayerScreenHandler uses slots 9-35 for the main inventory and
-      // 36-44 for the hotbar. The chest armor slot is 6.
       int screenSlot = inventorySlot < 9 ? 36 + inventorySlot : inventorySlot;
 
       if (inventorySlot < 9) {
@@ -293,6 +284,18 @@ public final class ElyMaceTest extends Module {
       return Math.hypot(dx, dz);
    }
 
+   private boolean shouldBoostUp(class_746 player) {
+      if (!player.method_6128() || !this.autoRocket.get()) return false;
+
+      double height = player.method_23318() - this.target.method_23318();
+      double verticalSpeed = player.method_18798().field_1351;
+
+      // Keep using rockets while below the required attack height. If the
+      // Elytra starts losing altitude during the climb, immediately boost
+      // again instead of waiting for the normal rocket interval.
+      return height < this.climbHeight.get() || verticalSpeed < 0.05;
+   }
+
    private void useRocket() {
       class_746 player = mc.field_1724;
       if (player == null || mc.field_1761 == null || !player.method_6128()) return;
@@ -302,9 +305,6 @@ public final class ElyMaceTest extends Module {
 
       if (!InvUtil.select(rocket)) return;
 
-      // Keep the rocket selected after the swap. This makes the rocket
-      // interaction happen with the actual rocket stack in the active hand
-      // instead of switching away again in the same tick.
       mc.field_1761.method_2919(player, class_1268.field_5808);
       player.method_6104(class_1268.field_5808);
    }
@@ -324,9 +324,6 @@ public final class ElyMaceTest extends Module {
       class_746 player = mc.field_1724;
       if (player == null || !this.autoMace.get()) return;
 
-      // The mace can have been moved out of the hotbar when a rocket had to
-      // use the only available hotbar slot. Put it back into a hotbar slot
-      // before selecting it.
       int slot = this.ensureHotbarByKey("item.minecraft.mace");
       if (slot < 0) return;
 
@@ -348,9 +345,6 @@ public final class ElyMaceTest extends Module {
    }
 
    private void enterReset() {
-      // The hit is the end of one Elytra-Mace cycle. Immediately put the
-      // Elytra back on and start the next flight instead of waiting on the
-      // ground for another reset cycle.
       this.swapBackToElytra();
       this.resetTimer = this.resetDelay.getInt();
       this.rocketTimer = 0;
@@ -380,8 +374,6 @@ public final class ElyMaceTest extends Module {
 
       switch (this.phase) {
          case LAUNCH -> {
-            // At the start of the module, explicitly move the Elytra into
-            // the chest armor slot. Do not assume it is already equipped.
             if (!this.hasElytraEquipped(player)) {
                this.ensureElytraEquipped();
                if (!this.hasElytraEquipped(player)) {
@@ -391,17 +383,17 @@ public final class ElyMaceTest extends Module {
 
             double height = player.method_23318() - this.target.method_23318();
 
-            // Do not run aim assist during launch/climb. The bot only starts
-            // steering toward the target once the actual dive begins.
+            // No aim assist during launch/climb. Steering starts only in the dive.
             if (height < this.climbHeight.get()) {
                player.method_36457(-35.0F);
                this.startFlight(player);
 
-               // Once Elytra flight is actually active, use a real firework
-               // interaction to boost upward. This starts automatically as
-               // soon as the module is enabled.
                if (player.method_6128() && this.autoRocket.get()) {
-                  if (this.rocketTimer-- <= 0) {
+                  boolean needsBoost = this.shouldBoostUp(player);
+
+                  // Normal interval rockets are used while climbing. If the
+                  // player is not gaining enough height, boost immediately.
+                  if (needsBoost && (this.rocketTimer-- <= 0 || player.method_18798().field_1351 < 0.05)) {
                      this.useRocket();
                      this.rocketTimer = this.rocketInterval.getInt();
                   }
@@ -411,9 +403,7 @@ public final class ElyMaceTest extends Module {
             }
          }
 
-         case CLIMB -> {
-            this.phase = Phase.DIVE;
-         }
+         case CLIMB -> this.phase = Phase.DIVE;
 
          case DIVE -> {
             double height = player.method_23318() - this.target.method_23318();
@@ -422,10 +412,6 @@ public final class ElyMaceTest extends Module {
             this.aimAt(this.target, player, 0.55);
 
             if (height > this.chestSwapDistance.get() || horizontal > this.diveDistance.get()) {
-               if (player.method_6128() && this.autoRocket.get() && this.rocketTimer-- <= 0 && height > 2.0) {
-                  this.useRocket();
-                  this.rocketTimer = this.rocketInterval.getInt();
-               }
                return;
             }
 
