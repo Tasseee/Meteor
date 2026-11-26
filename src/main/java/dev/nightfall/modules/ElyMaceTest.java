@@ -22,6 +22,7 @@ public final class ElyMaceTest extends Module {
    private final NumberSetting diveDistance = this.add(new NumberSetting("Dive-Distanz", 10.0, 4.0, 20.0, 0.5));
    private final NumberSetting rocketInterval = this.add(new NumberSetting("Rocket-Intervall", 4.0, 1.0, 10.0, 1.0));
    private final NumberSetting chestSwapDistance = this.add(new NumberSetting("Chest-Swap-Distanz", 5.0, 2.0, 8.0, 0.5));
+   private final NumberSetting maceSwapHeight = this.add(new NumberSetting("Mace-Swap-Hoehe", 3.0, 1.0, 10.0, 0.1));
    private final NumberSetting aimSmoothness = this.add(new NumberSetting("Aim-Smoothness", 15.0, 0.0, 80.0, 1.0));
    private final NumberSetting resetDelay = this.add(new NumberSetting("Reset-Verzoegerung", 8.0, 0.0, 40.0, 1.0));
    private final BoolSetting autoRocket = this.add(new BoolSetting("Auto-Rockets", true));
@@ -290,9 +291,6 @@ public final class ElyMaceTest extends Module {
       double height = player.method_23318() - this.target.method_23318();
       double verticalSpeed = player.method_18798().field_1351;
 
-      // Keep using rockets while below the required attack height. If the
-      // Elytra starts losing altitude during the climb, immediately boost
-      // again instead of waiting for the normal rocket interval.
       return height < this.climbHeight.get() || verticalSpeed < 0.05;
    }
 
@@ -383,7 +381,6 @@ public final class ElyMaceTest extends Module {
 
             double height = player.method_23318() - this.target.method_23318();
 
-            // No aim assist during launch/climb. Steering starts only in the dive.
             if (height < this.climbHeight.get()) {
                player.method_36457(-35.0F);
                this.startFlight(player);
@@ -391,8 +388,6 @@ public final class ElyMaceTest extends Module {
                if (player.method_6128() && this.autoRocket.get()) {
                   boolean needsBoost = this.shouldBoostUp(player);
 
-                  // Normal interval rockets are used while climbing. If the
-                  // player is not gaining enough height, boost immediately.
                   if (needsBoost && (this.rocketTimer-- <= 0 || player.method_18798().field_1351 < 0.05)) {
                      this.useRocket();
                      this.rocketTimer = this.rocketInterval.getInt();
@@ -419,7 +414,9 @@ public final class ElyMaceTest extends Module {
                this.swapToChestplate();
             }
 
-            if (this.hasChestplateEquipped(player)) {
+            // The mace is deliberately not selected during the initial dive.
+            // Only take it into the hand once the configured mace height is reached.
+            if (this.hasChestplateEquipped(player) && height <= this.maceSwapHeight.get()) {
                this.selectMace();
                this.phase = Phase.STRIKE;
             }
