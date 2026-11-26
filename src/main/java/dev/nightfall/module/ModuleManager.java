@@ -43,6 +43,7 @@ import dev.nightfall.modules.DebugHud;
 import dev.nightfall.modules.DroppedItemNotifier;
 import dev.nightfall.modules.DropGlow;
 import dev.nightfall.modules.ElytraFly;
+import dev.nightfall.modules.ElyMaceTest;
 import dev.nightfall.modules.EntityEsp;
 import dev.nightfall.modules.EntityEsp2D;
 import dev.nightfall.modules.EntityScanEsp;
@@ -164,6 +165,7 @@ public final class ModuleManager {
       MODULES.add(new AutoGap());
       MODULES.add(new Fly());
       MODULES.add(new ElytraFly());
+      MODULES.add(new ElyMaceTest());
       MODULES.add(new BoatFly());
       MODULES.add(new Speed());
       MODULES.add(new Sprint());
