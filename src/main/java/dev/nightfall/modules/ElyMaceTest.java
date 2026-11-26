@@ -300,18 +300,13 @@ public final class ElyMaceTest extends Module {
       int rocket = this.ensureHotbarByKey("item.minecraft.firework_rocket");
       if (rocket < 0) return;
 
-      int old = InvUtil.selected();
       if (!InvUtil.select(rocket)) return;
 
-      // Firework boost is only useful while Elytra flight is active.
-      // Keep the rocket selected for the interaction, then immediately return
-      // to the previous combat slot.
+      // Keep the rocket selected after the swap. This makes the rocket
+      // interaction happen with the actual rocket stack in the active hand
+      // instead of switching away again in the same tick.
       mc.field_1761.method_2919(player, class_1268.field_5808);
       player.method_6104(class_1268.field_5808);
-
-      if (old != rocket) {
-         InvUtil.select(old);
-      }
    }
 
    private void startFlight(class_746 player) {
@@ -329,7 +324,10 @@ public final class ElyMaceTest extends Module {
       class_746 player = mc.field_1724;
       if (player == null || !this.autoMace.get()) return;
 
-      int slot = InvUtil.findHotbar(class_1802.field_49814);
+      // The mace can have been moved out of the hotbar when a rocket had to
+      // use the only available hotbar slot. Put it back into a hotbar slot
+      // before selecting it.
+      int slot = this.ensureHotbarByKey("item.minecraft.mace");
       if (slot < 0) return;
 
       if (this.previousSlot < 0) {
