@@ -101,6 +101,47 @@ public final class ElyMaceTest extends Module {
       return -1;
    }
 
+   private int ensureHotbarByKey(String wanted) {
+      class_746 player = mc.field_1724;
+      if (player == null || mc.field_1761 == null || player.field_7512 != player.field_7498) return -1;
+
+      int hotbar = this.findHotbarByKey(wanted);
+      if (hotbar >= 0) return hotbar;
+
+      int source = -1;
+      for (int i = 9; i < 36; i++) {
+         if (itemKey(player.method_31548().method_5438(i)).equals(wanted)) {
+            source = i;
+            break;
+         }
+      }
+      if (source < 0) return -1;
+
+      int destination = -1;
+      for (int i = 0; i < 9; i++) {
+         if (player.method_31548().method_5438(i).method_7960()) {
+            destination = i;
+            break;
+         }
+      }
+
+      if (destination < 0) {
+         int selected = player.method_31548().method_67532();
+         destination = selected;
+      }
+
+      // Inventory 9-35 maps to PlayerScreenHandler slots 10-36.
+      // SWAP puts the inventory rocket directly into the selected hotbar slot.
+      mc.field_1761.method_2906(
+         player.field_7498.field_7763,
+         source + 1,
+         destination,
+         class_1713.field_7791,
+         player
+      );
+      return destination;
+   }
+
    private int findInventoryByKey(String wanted) {
       class_746 player = mc.field_1724;
       if (player == null) return -1;
@@ -340,8 +381,9 @@ public final class ElyMaceTest extends Module {
             }
 
             double height = player.method_23318() - this.target.method_23318();
-            this.aimAt(this.target, player, 0.55);
 
+            // Do not run aim assist during launch/climb. The bot only starts
+            // steering toward the target once the actual dive begins.
             if (height < this.climbHeight.get()) {
                player.method_36457(-35.0F);
                this.startFlight(player);
@@ -370,7 +412,7 @@ public final class ElyMaceTest extends Module {
 
             this.aimAt(this.target, player, 0.55);
 
-            if (height > 1.0 || horizontal > this.diveDistance.get()) {
+            if (height > this.chestSwapDistance.get() || horizontal > this.diveDistance.get()) {
                if (player.method_6128() && this.autoRocket.get() && this.rocketTimer-- <= 0 && height > 2.0) {
                   this.useRocket();
                   this.rocketTimer = this.rocketInterval.getInt();
