@@ -50,7 +50,6 @@ import dev.nightfall.modules.EntityScanEsp;
 import dev.nightfall.modules.EspBase;
 import dev.nightfall.modules.FakeBases;
 import dev.nightfall.modules.FakeRain;
-import dev.nightfall.modules.FakeLag;
 import dev.nightfall.modules.FavoriteChunk;
 import dev.nightfall.modules.Favorites;
 import dev.nightfall.modules.FirstPersonStyle;
@@ -209,7 +208,6 @@ public final class ModuleManager {
       MODULES.add(new FirstPersonStyle());
       MODULES.add(new WeaponAnimations());
       MODULES.add(new SlowSwing());
-      MODULES.add(new FakeLag());
       MODULES.add(new InvSee());
       MODULES.add(new GlowESP());
       MODULES.add(new GlassChams());
@@ -370,7 +368,8 @@ public final class ModuleManager {
          try {
             m.onWorldLeave();
          } catch (Throwable var3) {
-            Nightfall.LOGGER.error("Fehler beim Zuruecksetzen von Modul {}", m.getName(), var3);
+            Nightfall.LOGGER.error("Fehler beim Zuruecksetzen von Modul {}",
+               m.getName(), var3);
          }
       }
    }
@@ -452,10 +451,6 @@ public final class ModuleManager {
    }
 
    public static void renderWorld(WorldRenderContext context) {
-      // EntityScanEsp is rendered entirely from the HUD projection now.
-      // Do not invoke its legacy world-vertex path: on current Minecraft
-      // vertex formats that path can submit incomplete vertices and crash
-      // during the render-buffer flush (Normal/LineWidth missing).
       EspBase.drawn = 0;
    }
 
