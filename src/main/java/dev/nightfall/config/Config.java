@@ -10,6 +10,7 @@ import dev.nightfall.Nightfall;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.ModuleManager;
 import dev.nightfall.module.setting.Setting;
+import dev.nightfall.modules.SafeMode;
 import dev.nightfall.util.Storage;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -79,9 +80,13 @@ public final class Config {
          root.addProperty("guiAnimationDuration", guiAnimationDuration);
          JsonObject mods = new JsonObject();
 
+         SafeMode safeMode = ModuleManager.get(SafeMode.class);
          for (Module m : ModuleManager.all()) {
             JsonObject o = new JsonObject();
-            o.addProperty("enabled", m.isEnabled());
+            boolean savedEnabled = safeMode.isEnabled() && safeMode.hasPreviousState(m)
+               ? safeMode.getPreviousState(m)
+               : m.isEnabled();
+            o.addProperty("enabled", savedEnabled);
             o.addProperty("favorite", m.isFavorite());
             o.addProperty("key", m.getKey());
             JsonObject s = new JsonObject();
@@ -219,7 +224,11 @@ public final class Config {
 
             JsonObject mods = root.has("modules") ? root.getAsJsonObject("modules") : new JsonObject();
 
+            SafeMode safeMode = ModuleManager.get(SafeMode.class);
             for (Module m : ModuleManager.all()) {
+               if (m instanceof SafeMode) {
+                  continue;
+               }
                if (mods.has(m.getName())) {
                   JsonObject o = mods.getAsJsonObject(m.getName());
                   if (o.has("settings")) {
@@ -245,6 +254,27 @@ public final class Config {
                   if (o.has("enabled")) {
                      m.setEnabled(o.get("enabled").getAsBoolean());
                   }
+               }
+            }
+
+            if (mods.has(safeMode.getName())) {
+               JsonObject safeModeConfig = mods.getAsJsonObject(safeMode.getName());
+               if (safeModeConfig.has("key")) {
+                  safeMode.setKey(safeModeConfig.get("key").getAsInt());
+               }
+               if (safeModeConfig.has("favorite")) {
+                  safeMode.setFavorite(safeModeConfig.get("favorite").getAsBoolean());
+               }
+               if (safeModeConfig.has("settings")) {
+                  JsonObject s = safeModeConfig.getAsJsonObject("settings");
+                  for (Setting<?> st : safeMode.getSettings()) {
+                     if (s.has(st.getName())) {
+                        st.load(s.get(st.getName()));
+                     }
+                  }
+               }
+               if (safeModeConfig.has("enabled")) {
+                  safeMode.setEnabled(safeModeConfig.get("enabled").getAsBoolean());
                }
             }
 
