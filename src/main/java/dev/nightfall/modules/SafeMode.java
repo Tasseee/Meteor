@@ -27,6 +27,7 @@ public final class SafeMode extends Module {
          || module instanceof ParticleTrail
          || module instanceof Trail
          || module instanceof HitParticles
+         || module instanceof DropGlow
          || module instanceof KillEffect
          || module instanceof JumpCircles
          || module instanceof JumpWave
