@@ -19,7 +19,6 @@ import dev.nightfall.render.GlassChamsFeatureRenderer;
 import dev.nightfall.render.GlassChamsItemRenderer;
 import dev.nightfall.render.ItemGlowRenderer;
 import dev.nightfall.render.FakeLagGhostRenderer;
-import dev.nightfall.render.FakeLagHud;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import dev.nightfall.render.SkyVisualRenderer;
 import dev.nightfall.scanner.WaypointManager;
@@ -29,13 +28,9 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.ClientStarted;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.ClientStopping;
+import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
-import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.Game;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.Disconnect;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.Join;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.class_2960;
@@ -72,9 +67,8 @@ public class Nightfall implements ClientModInitializer {
       PlayerAuraRenderer.register();
       KillEffectRenderer.register();
       FakeLagGhostRenderer.register();
-      HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, class_2960.method_60655("nightfall", "fake_lag_status"), (ctx, tickCounter) -> FakeLagHud.render(ctx));
       WorldRenderEvents.AFTER_ENTITIES.register(ModuleManager::renderWorld);
-      ClientLifecycleEvents.CLIENT_STARTED.register((ClientStarted)client -> SeedCracker.syncState());
+      ClientLifecycleEvents.CLIENT_STARTED.register((client) -> SeedCracker.syncState());
       ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
       HudElementRegistry.attachElementAfter(VanillaHudElements.MISC_OVERLAYS, class_2960.method_60655("nightfall", "hud"), (ctx, tickCounter) -> {
          class_310 mc = class_310.method_1551();
@@ -82,26 +76,26 @@ public class Nightfall implements ClientModInitializer {
             ModuleManager.renderHud(ctx, tickCounter.method_60637(false));
          }
       });
-      ClientPlayConnectionEvents.JOIN.register((Join)(handler, sender, client) -> {
+      ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
          SeedResultListener.resetForNewWorld();
          ModuleManager.get(AutoReconnect.class).onJoined();
       });
-      ClientPlayConnectionEvents.DISCONNECT.register((Disconnect)(handler, client) -> {
+      ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
          ModuleManager.get(AutoReconnect.class).onDisconnected(client.method_1558());
          ModuleManager.onWorldLeave();
          SeedResultListener.resetForNewWorld();
          Config.save();
          ModuleUsageStats.save();
       });
-      ClientReceiveMessageEvents.GAME.register((Game)(message, overlay) -> {
+      ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
          if (!overlay) {
             String raw = message.getString();
             ModuleManager.get(AutoTpa.class).onMessage(raw);
             ModuleManager.get(AntiCheatMonitor.class).onServerMessage(raw);
          }
       });
-      ClientCommandRegistrationCallback.EVENT.register((ClientCommandRegistrationCallback)(dispatcher, registryAccess) -> Commands.register(dispatcher));
-      ClientLifecycleEvents.CLIENT_STOPPING.register((ClientStopping)c -> {
+      ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> Commands.register(dispatcher));
+      ClientLifecycleEvents.CLIENT_STOPPING.register((client) -> {
          ModuleManager.get(BaseFinder.class).saveMarks();
          WaypointManager.save();
          Config.save();
