@@ -11,12 +11,34 @@ public final class SafeMode extends Module {
    private boolean restoring;
 
    public SafeMode() {
-      super("Safe Mode", "Schaltet alle nicht-vanilla Module temporaer aus und stellt ihren vorherigen Zustand beim Deaktivieren wieder her.", Category.MISC);
+      super("Safe Mode", "Schaltet nicht erlaubte Module aus, behaelt aber harmlose kosmetische Visuals aktiv und stellt den vorherigen Zustand wieder her.", Category.MISC);
+   }
+
+   private boolean isSafeVisual(Module module) {
+      return module instanceof Atmosphere
+         || module instanceof FakeRain
+         || module instanceof SkyVisuals
+         || module instanceof ChinaHat
+         || module instanceof FirstPersonStyle
+         || module instanceof WeaponAnimations
+         || module instanceof SlowSwing
+         || module instanceof MovementParticles
+         || module instanceof ParticleTrail
+         || module instanceof Trail
+         || module instanceof HitParticles
+         || module instanceof KillEffect
+         || module instanceof JumpCircles
+         || module instanceof JumpWave
+         || module instanceof Fog
+         || module instanceof GhostSkin
+         || module instanceof CustomCrosshair
+         || module instanceof GUITheme;
    }
 
    @Override
    protected void onEnable() {
       this.previousStates.clear();
+
       for (Module module : ModuleManager.all()) {
          if (module != this) {
             this.previousStates.put(module, module.isEnabled());
@@ -27,7 +49,7 @@ public final class SafeMode extends Module {
       ModuleManager.setSafeModeTransition(true);
       try {
          for (Module module : this.previousStates.keySet()) {
-            if (module.isEnabled()) {
+            if (!this.isSafeVisual(module) && module.isEnabled()) {
                module.setEnabled(false);
             }
          }
