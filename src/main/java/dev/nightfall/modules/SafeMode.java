@@ -1,6 +1,7 @@
 package dev.nightfall.modules;
 
 import dev.nightfall.module.Category;
+import dev.nightfall.module.HudModule;
 import dev.nightfall.module.Module;
 import dev.nightfall.module.ModuleManager;
 import java.util.IdentityHashMap;
@@ -11,7 +12,7 @@ public final class SafeMode extends Module {
    private boolean restoring;
 
    public SafeMode() {
-      super("Safe Mode", "Schaltet nicht erlaubte Module aus, behaelt aber harmlose kosmetische Visuals aktiv und stellt den vorherigen Zustand wieder her.", Category.MISC);
+      super("Safe Mode", "Schaltet nicht erlaubte Module aus, behaelt harmlose kosmetische Visuals aktiv und blendet alle Client-HUDs aus.", Category.MISC);
    }
 
    private boolean isSafeVisual(Module module) {
@@ -35,6 +36,10 @@ public final class SafeMode extends Module {
          || module instanceof GUITheme;
    }
 
+   private boolean isHiddenHud(Module module) {
+      return module instanceof HudModule;
+   }
+
    @Override
    protected void onEnable() {
       this.previousStates.clear();
@@ -49,7 +54,7 @@ public final class SafeMode extends Module {
       ModuleManager.setSafeModeTransition(true);
       try {
          for (Module module : this.previousStates.keySet()) {
-            if (!this.isSafeVisual(module) && module.isEnabled()) {
+            if ((!this.isSafeVisual(module) || this.isHiddenHud(module)) && module.isEnabled()) {
                module.setEnabled(false);
             }
          }
