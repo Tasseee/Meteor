@@ -87,4 +87,12 @@ public final class SafeMode extends Module {
    public boolean isRestoring() {
       return this.restoring;
    }
+
+   public boolean getPreviousState(Module module) {
+      return this.previousStates.getOrDefault(module, module.isEnabled());
+   }
+
+   public boolean hasPreviousState(Module module) {
+      return this.previousStates.containsKey(module);
+   }
 }
