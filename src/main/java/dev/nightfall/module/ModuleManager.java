@@ -95,6 +95,7 @@ import dev.nightfall.modules.ScannerHud;
 import dev.nightfall.modules.SeedCracker;
 import dev.nightfall.modules.ShieldBreaker;
 import dev.nightfall.modules.SkyVisuals;
+import dev.nightfall.modules.SafeMode;
 import dev.nightfall.modules.SlowSwing;
 import dev.nightfall.modules.JumpWave;
 import dev.nightfall.modules.SpawnerEsp;
@@ -137,6 +138,7 @@ public final class ModuleManager {
    private static final long[] COMBAT_TICK_MAX_NANOS = new long[5];
    private static final long[] COMBAT_TICK_SAMPLES = new long[5];
    private static boolean combatTickProfiling;
+   private static boolean safeModeTransition;
    public static int errorCount;
 
    private ModuleManager() {
@@ -145,6 +147,7 @@ public final class ModuleManager {
    public static void init() {
       setCombatTickProfiling(false);
       MODULES.clear();
+      MODULES.add(new SafeMode());
       MODULES.add(new TrapCrit());
       MODULES.add(new KillAura());
       MODULES.add(new TriggerBot());
@@ -267,6 +270,23 @@ public final class ModuleManager {
       get(FirstPersonStyle.class).setEnabled(true);
    }
 
+   public static boolean isSafeModeActive() {
+      for (Module m : MODULES) {
+         if (m instanceof SafeMode) {
+            return m.isEnabled();
+         }
+      }
+      return false;
+   }
+
+   public static boolean isSafeModeTransition() {
+      return safeModeTransition;
+   }
+
+   public static void setSafeModeTransition(boolean value) {
+      safeModeTransition = value;
+   }
+
    public static List<Module> all() {
       return Collections.unmodifiableList(MODULES);
    }
@@ -327,6 +347,10 @@ public final class ModuleManager {
          long h = mc.method_22683().method_4490();
 
          for (Module m : MODULES) {
+            if (isSafeModeActive() && !(m instanceof SafeMode)) {
+               continue;
+            }
+
             int k = m.getKey();
             if (k >= 0 && k <= 348) {
                boolean d = GLFW.glfwGetKey(h, k) == 1;
