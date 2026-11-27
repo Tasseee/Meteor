@@ -83,6 +83,10 @@ public abstract class Module {
    }
 
    public void setEnabled(boolean e) {
+      if (e && ModuleManager.isSafeModeActive() && !ModuleManager.isSafeModeTransition()) {
+         return;
+      }
+
       if (e != this.enabled) {
          this.enabled = e;
          if (e) {
